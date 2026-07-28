@@ -3,22 +3,44 @@ import { getLocalizedOptionLabel } from './localizedProductOptions';
 import { reportNonBlockingError } from './nonBlockingError';
 import { formatProductSpecLabel } from './productSpecLabels';
 
+const LEGACY_SELECTED_SPEC_PAIR_PATTERN = /(?:^|[;/|,]\s*|\s+)([^:=;/|,][^:=;/|,]*?)\s*[:=]\s*([^:=;/|,]+?)(?=\s*(?:[;/|,]|\s+[^:=;/|,]+?\s*[:=]|$))/g;
+
+const normalizeSelectedSpecEntries = (entries: Array<[string, unknown]>): Record<string, string> => entries.reduce((result: Record<string, string>, [key, option]) => {
+  const normalizedKey = String(key || '').trim();
+  if (!normalizedKey || option === undefined || option === null) return result;
+  if (typeof option === 'object') return result;
+  const normalizedOption = String(option).trim();
+  if (normalizedOption) result[normalizedKey] = normalizedOption;
+  return result;
+}, {});
+
+const parseLegacySelectedSpecs = (value: string): Record<string, string> => {
+  const normalizedValue = value.replace(/\s+/g, ' ').trim();
+  if (!normalizedValue) return {};
+
+  const entries: Array<[string, string]> = [];
+  let match: RegExpExecArray | null;
+  LEGACY_SELECTED_SPEC_PAIR_PATTERN.lastIndex = 0;
+  while ((match = LEGACY_SELECTED_SPEC_PAIR_PATTERN.exec(normalizedValue)) !== null) {
+    entries.push([match[1], match[2]]);
+  }
+  return normalizeSelectedSpecEntries(entries);
+};
+
 export const parseSelectedSpecs = (value?: string | null): Record<string, string> => {
   if (!value) return {};
+  const normalizedValue = String(value).trim();
+  if (!normalizedValue) return {};
+  const looksLikeJson = normalizedValue.startsWith('{') || normalizedValue.startsWith('[');
+  if (!looksLikeJson) return parseLegacySelectedSpecs(normalizedValue);
+
   try {
-    const parsed = JSON.parse(value);
+    const parsed = JSON.parse(normalizedValue);
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
-    return Object.entries(parsed).reduce((result: Record<string, string>, [key, option]) => {
-      const normalizedKey = String(key || '').trim();
-      if (!normalizedKey || option === undefined || option === null) return result;
-      if (typeof option === 'object') return result;
-      const normalizedOption = String(option).trim();
-      if (normalizedOption) result[normalizedKey] = normalizedOption;
-      return result;
-    }, {});
+    return normalizeSelectedSpecEntries(Object.entries(parsed));
   } catch (error) {
     reportNonBlockingError('selectedSpecs.parseSelectedSpecs', error);
-    return {};
+    return parseLegacySelectedSpecs(normalizedValue);
   }
 };
 

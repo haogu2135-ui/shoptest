@@ -1,0 +1,7 @@
+# ShopMX commercial security contact (RFC 9116)
+Canonical: https://pet.686888666.xyz/.well-known/security.txt
+Contact: https://pet.686888666.xyz/
+Contact: https://pet.686888666.xyz/track-order
+Preferred-Languages: es, en, zh
+Policy: https://pet.686888666.xyz/privacy
+Expires: 2027-07-22T00:00:00.000Z

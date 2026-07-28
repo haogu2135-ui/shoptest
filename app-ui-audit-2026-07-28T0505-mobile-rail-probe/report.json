@@ -1,0 +1,1643 @@
+{
+  "summary": {
+    "generatedAt": "2026-07-28T05:06:12.686Z",
+    "baseUrl": "http://127.0.0.1:4200",
+    "outDir": "/home/guhao/shoptest/app-ui-audit-2026-07-28T0505-mobile-rail-probe",
+    "routeCount": 12,
+    "metricCount": 24,
+    "portalBottomBarCount": 24,
+    "portalCookieCount": 24,
+    "bottomNearViewportCount": 24,
+    "cookieAboveNavCount": 24,
+    "cookieControlsObscuredTotal": 0,
+    "abnormalBottomBars": [],
+    "remainingCookieObscured": [],
+    "errors": []
+  },
+  "results": [
+    {
+      "viewport": "small-320-app",
+      "route": "coupons",
+      "metrics": [
+        {
+          "routeName": "coupons",
+          "stateName": "top",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 320,
+          "innerHeight": 568,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 496,
+            "bottom": 568,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 267,
+            "bottom": 486,
+            "height": 219
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products",
+              "text": "Productos",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons shop-nav__bottomItem--active",
+              "text": "Cupones",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        },
+        {
+          "routeName": "coupons",
+          "stateName": "mid",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 320,
+          "innerHeight": 568,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 496,
+            "bottom": 568,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 267,
+            "bottom": 486,
+            "height": 219
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products",
+              "text": "Productos",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons shop-nav__bottomItem--active",
+              "text": "Cupones",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        }
+      ],
+      "error": null,
+      "screenshot": "small-320-app-coupons.png"
+    },
+    {
+      "viewport": "small-320-app",
+      "route": "products",
+      "metrics": [
+        {
+          "routeName": "products",
+          "stateName": "top",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 320,
+          "innerHeight": 568,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 496,
+            "bottom": 568,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 267,
+            "bottom": 486,
+            "height": 219
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-button ant-btn ant-btn-default shop-button--default product-list__filterButton",
+              "text": "Filtrar",
+              "y": 490.03125,
+              "bottom": 534.03125,
+              "overlapPx": 38.03125
+            },
+            {
+              "selector": "product-list__filterHintDismiss",
+              "text": "Entendido",
+              "y": 549.03125,
+              "bottom": 593.03125,
+              "overlapPx": 18.96875
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products shop-nav__bottomItem--active",
+              "text": "Productos",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons",
+              "text": "Cupones",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        },
+        {
+          "routeName": "products",
+          "stateName": "mid",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 320,
+          "innerHeight": 568,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 496,
+            "bottom": 568,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 267,
+            "bottom": 486,
+            "height": 219
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-button ant-btn ant-btn-default ant-btn-sm shop-button--small shop-button--default",
+              "text": "Ver cupones",
+              "y": 455.65625,
+              "bottom": 499.65625,
+              "overlapPx": 3.65625
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products shop-nav__bottomItem--active",
+              "text": "Productos",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons",
+              "text": "Cupones",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        }
+      ],
+      "error": null,
+      "screenshot": "small-320-app-products.png"
+    },
+    {
+      "viewport": "small-320-app",
+      "route": "wishlist",
+      "metrics": [
+        {
+          "routeName": "wishlist",
+          "stateName": "top",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 320,
+          "innerHeight": 568,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 496,
+            "bottom": 568,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 267,
+            "bottom": 486,
+            "height": 219
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-button ant-btn ant-btn-default shop-button--default",
+              "text": "Ver cupones",
+              "y": 453.3125,
+              "bottom": 497.3125,
+              "overlapPx": 1.3125
+            },
+            {
+              "selector": "shop-button ant-btn ant-btn-default shop-button--default",
+              "text": "Encontrar producto ideal",
+              "y": 505.3125,
+              "bottom": 549.3125,
+              "overlapPx": 44
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products",
+              "text": "Productos",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons",
+              "text": "Cupones",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        },
+        {
+          "routeName": "wishlist",
+          "stateName": "mid",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 320,
+          "innerHeight": 568,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 496,
+            "bottom": 568,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 267,
+            "bottom": 486,
+            "height": 219
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products",
+              "text": "Productos",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons",
+              "text": "Cupones",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        }
+      ],
+      "error": null,
+      "screenshot": "small-320-app-wishlist.png"
+    },
+    {
+      "viewport": "small-320-app",
+      "route": "notifications",
+      "metrics": [
+        {
+          "routeName": "notifications",
+          "stateName": "top",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 320,
+          "innerHeight": 568,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 496,
+            "bottom": 568,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 267,
+            "bottom": 486,
+            "height": 219
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-button ant-btn ant-btn-default shop-button--default",
+              "text": "Ver cupones",
+              "y": 473.28125,
+              "bottom": 517.28125,
+              "overlapPx": 21.28125
+            },
+            {
+              "selector": "shop-button ant-btn ant-btn-default shop-button--default",
+              "text": "Rastrear pedido",
+              "y": 525.28125,
+              "bottom": 569.28125,
+              "overlapPx": 42.71875
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products",
+              "text": "Productos",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons",
+              "text": "Cupones",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        },
+        {
+          "routeName": "notifications",
+          "stateName": "mid",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 320,
+          "innerHeight": 568,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 496,
+            "bottom": 568,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 267,
+            "bottom": 486,
+            "height": 219
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products",
+              "text": "Productos",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons",
+              "text": "Cupones",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 503,
+              "bottom": 562,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        }
+      ],
+      "error": null,
+      "screenshot": "small-320-app-notifications.png"
+    },
+    {
+      "viewport": "phone-360-app",
+      "route": "coupons",
+      "metrics": [
+        {
+          "routeName": "coupons",
+          "stateName": "top",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 360,
+          "innerHeight": 740,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 668,
+            "bottom": 740,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 439,
+            "bottom": 658,
+            "height": 219
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products",
+              "text": "Productos",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons shop-nav__bottomItem--active",
+              "text": "Cupones",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        },
+        {
+          "routeName": "coupons",
+          "stateName": "mid",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 360,
+          "innerHeight": 740,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 668,
+            "bottom": 740,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 439,
+            "bottom": 658,
+            "height": 219
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products",
+              "text": "Productos",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons shop-nav__bottomItem--active",
+              "text": "Cupones",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        }
+      ],
+      "error": null,
+      "screenshot": "phone-360-app-coupons.png"
+    },
+    {
+      "viewport": "phone-360-app",
+      "route": "products",
+      "metrics": [
+        {
+          "routeName": "products",
+          "stateName": "top",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 360,
+          "innerHeight": 740,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 668,
+            "bottom": 740,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 439,
+            "bottom": 658,
+            "height": 219
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "product-list__activeContextChip product-list__mobileContextChip",
+              "text": "Buscar: bed",
+              "y": 715.3125,
+              "bottom": 759.3125,
+              "overlapPx": 24.6875
+            },
+            {
+              "selector": "product-list__activeContextChip product-list__mobileContextChip",
+              "text": "Ver ofertas",
+              "y": 715.3125,
+              "bottom": 759.3125,
+              "overlapPx": 24.6875
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products shop-nav__bottomItem--active",
+              "text": "Productos",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons",
+              "text": "Cupones",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        },
+        {
+          "routeName": "products",
+          "stateName": "mid",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 360,
+          "innerHeight": 740,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 668,
+            "bottom": 740,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 439,
+            "bottom": 658,
+            "height": 219
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "product-list__emptyDiscoveryCard",
+              "text": "Ver ofertasEmpieza por los mejor calificados si buscas una compra segura.",
+              "y": 650.65625,
+              "bottom": 730.34375,
+              "overlapPx": 62.34375
+            },
+            {
+              "selector": "product-list__emptyDiscoveryCard",
+              "text": "Ver cuponesNo pudimos cargar el catálogo por ahora. Reintenta, limpia filtros o ",
+              "y": 738.34375,
+              "bottom": 818.03125,
+              "overlapPx": 1.65625
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products shop-nav__bottomItem--active",
+              "text": "Productos",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons",
+              "text": "Cupones",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        }
+      ],
+      "error": null,
+      "screenshot": "phone-360-app-products.png"
+    },
+    {
+      "viewport": "phone-360-app",
+      "route": "wishlist",
+      "metrics": [
+        {
+          "routeName": "wishlist",
+          "stateName": "top",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 360,
+          "innerHeight": 740,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 668,
+            "bottom": 740,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 439,
+            "bottom": 658,
+            "height": 219
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products",
+              "text": "Productos",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons",
+              "text": "Cupones",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        },
+        {
+          "routeName": "wishlist",
+          "stateName": "mid",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 360,
+          "innerHeight": 740,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 668,
+            "bottom": 740,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 439,
+            "bottom": 658,
+            "height": 219
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products",
+              "text": "Productos",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons",
+              "text": "Cupones",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        }
+      ],
+      "error": null,
+      "screenshot": "phone-360-app-wishlist.png"
+    },
+    {
+      "viewport": "phone-360-app",
+      "route": "notifications",
+      "metrics": [
+        {
+          "routeName": "notifications",
+          "stateName": "top",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 360,
+          "innerHeight": 740,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 668,
+            "bottom": 740,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 439,
+            "bottom": 658,
+            "height": 219
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products",
+              "text": "Productos",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons",
+              "text": "Cupones",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        },
+        {
+          "routeName": "notifications",
+          "stateName": "mid",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 360,
+          "innerHeight": 740,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 668,
+            "bottom": 740,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 439,
+            "bottom": 658,
+            "height": 219
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products",
+              "text": "Productos",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons",
+              "text": "Cupones",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 675,
+              "bottom": 734,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        }
+      ],
+      "error": null,
+      "screenshot": "phone-360-app-notifications.png"
+    },
+    {
+      "viewport": "phone-390-app",
+      "route": "coupons",
+      "metrics": [
+        {
+          "routeName": "coupons",
+          "stateName": "top",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 772,
+            "bottom": 844,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 560.25,
+            "bottom": 762,
+            "height": 201.75
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products",
+              "text": "Productos",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons shop-nav__bottomItem--active",
+              "text": "Cupones",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        },
+        {
+          "routeName": "coupons",
+          "stateName": "mid",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 772,
+            "bottom": 844,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 560.25,
+            "bottom": 762,
+            "height": 201.75
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products",
+              "text": "Productos",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons shop-nav__bottomItem--active",
+              "text": "Cupones",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        }
+      ],
+      "error": null,
+      "screenshot": "phone-390-app-coupons.png"
+    },
+    {
+      "viewport": "phone-390-app",
+      "route": "products",
+      "metrics": [
+        {
+          "routeName": "products",
+          "stateName": "top",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 772,
+            "bottom": 844,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 560.25,
+            "bottom": 762,
+            "height": 201.75
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "product-list__mobileDiscoveryButton",
+              "text": "Todo el catálogo",
+              "y": 788.3125,
+              "bottom": 849.484375,
+              "overlapPx": 55.6875
+            },
+            {
+              "selector": "product-list__mobileDiscoveryButton product-list__mobileDiscoveryButton--active",
+              "text": "Ver ofertas",
+              "y": 788.3125,
+              "bottom": 849.484375,
+              "overlapPx": 55.6875
+            },
+            {
+              "selector": "product-list__mobileDiscoveryButton",
+              "text": "Tecnología para mascotas",
+              "y": 788.3125,
+              "bottom": 849.484375,
+              "overlapPx": 55.6875
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products shop-nav__bottomItem--active",
+              "text": "Productos",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons",
+              "text": "Cupones",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        },
+        {
+          "routeName": "products",
+          "stateName": "mid",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 772,
+            "bottom": 844,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 560.25,
+            "bottom": 762,
+            "height": 201.75
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-button ant-btn ant-btn-default shop-button--default",
+              "text": "Ver cupones: No encontramos productos",
+              "y": 767.890625,
+              "bottom": 811.890625,
+              "overlapPx": 39.890625
+            },
+            {
+              "selector": "shop-button ant-btn ant-btn-default shop-button--default",
+              "text": "Guía para mascotas: No encontramos productos",
+              "y": 821.890625,
+              "bottom": 865.890625,
+              "overlapPx": 22.109375
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products shop-nav__bottomItem--active",
+              "text": "Productos",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons",
+              "text": "Cupones",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        }
+      ],
+      "error": null,
+      "screenshot": "phone-390-app-products.png"
+    },
+    {
+      "viewport": "phone-390-app",
+      "route": "wishlist",
+      "metrics": [
+        {
+          "routeName": "wishlist",
+          "stateName": "top",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 772,
+            "bottom": 844,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 560.25,
+            "bottom": 762,
+            "height": 201.75
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products",
+              "text": "Productos",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons",
+              "text": "Cupones",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        },
+        {
+          "routeName": "wishlist",
+          "stateName": "mid",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 772,
+            "bottom": 844,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 560.25,
+            "bottom": 762,
+            "height": 201.75
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products",
+              "text": "Productos",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons",
+              "text": "Cupones",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        }
+      ],
+      "error": null,
+      "screenshot": "phone-390-app-wishlist.png"
+    },
+    {
+      "viewport": "phone-390-app",
+      "route": "notifications",
+      "metrics": [
+        {
+          "routeName": "notifications",
+          "stateName": "top",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 772,
+            "bottom": 844,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 560.25,
+            "bottom": 762,
+            "height": 201.75
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products",
+              "text": "Productos",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons",
+              "text": "Cupones",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        },
+        {
+          "routeName": "notifications",
+          "stateName": "mid",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android shop-cookie-consent-visible",
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "bottomBarParent": "body",
+          "cookieParent": "body",
+          "bottomRect": {
+            "top": 772,
+            "bottom": 844,
+            "height": 72
+          },
+          "cookieRect": {
+            "top": 560.25,
+            "bottom": 762,
+            "height": 201.75
+          },
+          "cookieAboveNav": true,
+          "bottomNearViewport": true,
+          "bottomObscured": [
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--home",
+              "text": "Inicio",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--products",
+              "text": "Productos",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--coupons",
+              "text": "Cupones",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--cart",
+              "text": "Carrito",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            },
+            {
+              "selector": "shop-nav__bottomItem shop-nav__bottomItem--account",
+              "text": "Cuenta",
+              "y": 779,
+              "bottom": 838,
+              "overlapPx": 59
+            }
+          ],
+          "cookieControlsObscured": 0
+        }
+      ],
+      "error": null,
+      "screenshot": "phone-390-app-notifications.png"
+    }
+  ]
+}

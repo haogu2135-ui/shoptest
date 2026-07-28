@@ -61,6 +61,7 @@ declare global {
 const loadNavbar = () => import(/* webpackChunkName: "navbar" */ './components/Navbar');
 const LazyNavbar = lazy(loadNavbar);
 const LazyCookieConsentBanner = lazy(() => import(/* webpackChunkName: "cookie-consent" */ './components/CookieConsentBanner'));
+const BOTTOM_RAIL_CONFLICT_BODY_CLASS = 'shop-bottom-rail-conflict';
 const LazyNativeMobileUpdateGate = lazy(() => import(/* webpackChunkName: "mobile-update-gate" */ './components/NativeMobileUpdateGate'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminLayout = lazy(() => import('./components/AdminLayout'));
@@ -1155,6 +1156,7 @@ const StorefrontLayout: React.FC = () => {
       const nextBottomRailConflict = Boolean(mainContent && Array.from(mainContent.querySelectorAll<HTMLElement>(interactiveSelector)).some((element) => {
         const style = window.getComputedStyle(element);
         if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity || 1) === 0) return false;
+        if (element.closest('[data-cookie-consent-visible="true"]')) return false;
         if (style.position !== 'fixed' && style.position !== 'sticky') return false;
         const rect = element.getBoundingClientRect();
         if (rect.width <= 0 || rect.height <= 0 || rect.top >= window.innerHeight) return false;
@@ -1174,6 +1176,13 @@ const StorefrontLayout: React.FC = () => {
       window.clearTimeout(timeoutId);
     };
   }, [location.pathname, location.search, location.hash]);
+
+  useEffect(() => {
+    document.body.classList.toggle(BOTTOM_RAIL_CONFLICT_BODY_CLASS, bottomRailConflict);
+    return () => {
+      document.body.classList.remove(BOTTOM_RAIL_CONFLICT_BODY_CLASS);
+    };
+  }, [bottomRailConflict]);
 
   const shellClassName = [
     'shop-app-shell',

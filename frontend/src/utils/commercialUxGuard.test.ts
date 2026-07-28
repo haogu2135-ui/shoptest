@@ -792,7 +792,10 @@ describe('commercial UX contracts', () => {
     expect(banner).toContain('cookieConsent.acceptAll');
     expect(banner).toContain('cookieConsent.acceptEssential');
     expect(banner).toContain("to=\"/privacy\"");
+    expect(banner).toContain('cookie-consent-banner__legal');
+    expect(banner).toContain('createPortal(banner, document.body)');
     expect(bannerCss).toContain('Commercial cookie consent mobile touch targets');
+    expect(bannerCss).toContain('--shop-z-cookie-consent');
     expect(banner).toContain('shop-cookie-consent-visible');
     expect(banner).toContain('--shop-cookie-consent-clearance');
     expect(banner).toContain('data-cookie-consent-visible');
@@ -809,7 +812,18 @@ describe('commercial UX contracts', () => {
     expect(bannerCss).toContain('product-list__mobileConversionBar');
     expect(bannerCss).toContain('product-list__backToTop');
 
-    expect(bannerCss).toContain('min-height: 44px');
+    expect(bannerCss).toMatch(/\.cookie-consent-banner__button\.ant-btn\s*\{[\s\S]*?min-height:\s*44px/);
+    expect(bannerCss).toMatch(/\.cookie-consent-banner__button\.ant-btn\s*\{[\s\S]*?min-height:\s*44px/);
+    expect(bannerCss).toMatch(/@media \(max-width: 780px\)[\s\S]*?\.cookie-consent-banner__link\s*\{[\s\S]*?min-height:\s*40px/);
+    expect(bannerCss).toMatch(/@media \(max-width: 780px\)[\s\S]*?\.cookie-consent-banner__legal\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+    expect(bannerCss).not.toMatch(/\.cookie-consent-banner__button\.ant-btn,\s*\.cookie-consent-banner__link\s*\{[\s\S]*?min-height:\s*44px/);
+    expect(bannerCss).toMatch(/@media \(max-width: 390px\)[\s\S]*?\.cookie-consent-banner__legal[\s\S]*?display:\s*flex/);
+    expect(bannerCss).toMatch(/@media \(max-width: 390px\)[\s\S]*?\.cookie-consent-banner__button\.ant-btn[\s\S]*?min-height:\s*44px/);
+    expect(bannerCss).toMatch(/@media \(max-width: 390px\) and \(max-height: 620px\)[\s\S]*?-webkit-line-clamp:\s*1/);
+    expect(bannerCss).toContain('wishlist-page__emptyPanel');
+    expect(bannerCss).toContain('notifications-page__emptyPanel');
+    expect(bannerCss).toContain('product-list--empty');
+    expect(readFrontend('components', 'PageFeedback.css')).toMatch(/shop-cookie-consent-visible \.product-list--empty \.page-feedback__actions[\s\S]*?flex-wrap:\s*nowrap/);
     expect(register).toContain('register-page__legalNotice');
     expect(register).toContain('pages.auth.registerAgreementPrefix');
     expect(login).toContain('shopee-login-legalNotice');
@@ -824,9 +838,13 @@ describe('commercial UX contracts', () => {
 
   it('keeps product-detail shell free of global bottom nav so sticky buybar owns the rail', () => {
     const navCss = readFrontend('components', 'Navbar.css');
+    const nav = readFrontend('components', 'Navbar.tsx');
     const app = readFrontend('App.tsx');
     expect(app).toContain("shop-app-shell--product-detail");
+    expect(nav).toContain('mobileTaskBottomBarHidden');
+    expect(nav).toContain('shop-nav__bottomBar--mobile-task-hidden');
     expect(navCss).toMatch(/\.shop-app-shell--product-detail \.shop-nav__bottomBar[\s\S]*?display:\s*none/);
+    expect(navCss).toMatch(/\.shop-nav__bottomBar--mobile-task-hidden[\s\S]*?display:\s*none/);
   });
 
 
@@ -1742,6 +1760,14 @@ ${orderActions}`;
     expect(productList).toContain('pages.productList.mobileFilterHint');
     expect(css).toContain('product-list__filterHint');
     expect(css).toMatch(/product-list__filterHintDismiss[\s\S]*?min-height:\s*32px/);
+    expect(css).toMatch(/\.product-list__filterHint[\s\S]*?position:\s*absolute/);
+    expect(css).toMatch(/product-list__filterHintText[\s\S]*?-webkit-line-clamp:\s*3/);
+    expect(css).toContain('empty catalog first-screen densify');
+    expect(css).toMatch(/shop-cookie-consent-visible[\s\S]*?\.product-list--empty \.product-list__mobileDiscovery[\s\S]*?display:\s*none\s*!important/);
+    expect(css).toMatch(/\.product-list--empty \.product-list__heroBand[\s\S]*?display:\s*none\s*!important/);
+    expect(css).toMatch(/shop-cookie-consent-visible[\s\S]*?\.product-list--empty \.product-list__emptyDiscovery[\s\S]*?display:\s*none\s*!important/);
+    expect(css).toMatch(/shop-cookie-consent-visible[\s\S]*?\.product-list--empty \.product-list__mobileConversionBar[\s\S]*?position:\s*fixed\s*!important/);
+    expect(css).toMatch(/shop-cookie-consent-visible[\s\S]*?\.product-list--empty \.product-list__mobileConversionStats[\s\S]*?display:\s*none\s*!important/);
     for (const locale of [en, es, zh]) {
       expect(locale).toContain('"mobileFilterHint"');
       expect(locale).toContain('"mobileFilterHintDismiss"');

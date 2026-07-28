@@ -1,0 +1,15 @@
+{
+  "generatedAt": "2026-07-28T05:06:12.686Z",
+  "baseUrl": "http://127.0.0.1:4200",
+  "outDir": "/home/guhao/shoptest/app-ui-audit-2026-07-28T0505-mobile-rail-probe",
+  "routeCount": 12,
+  "metricCount": 24,
+  "portalBottomBarCount": 24,
+  "portalCookieCount": 24,
+  "bottomNearViewportCount": 24,
+  "cookieAboveNavCount": 24,
+  "cookieControlsObscuredTotal": 0,
+  "abnormalBottomBars": [],
+  "remainingCookieObscured": [],
+  "errors": []
+}

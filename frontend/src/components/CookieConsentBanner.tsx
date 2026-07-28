@@ -1,4 +1,5 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ShopIcon, SI } from './ShopIcon';
 
 import { Link } from 'react-router-dom';
@@ -77,7 +78,7 @@ const CookieConsentBanner: React.FC = () => {
     setVisible(false);
   };
 
-  return (
+  const banner = (
     <div
       ref={bannerRef}
       className="cookie-consent-banner"
@@ -94,15 +95,17 @@ const CookieConsentBanner: React.FC = () => {
             {t('cookieConsent.title')}
           </span>
           <p id="cookie-consent-banner-text" className="cookie-consent-banner__text">
-            {t('cookieConsent.body')}{' '}
+            {t('cookieConsent.body')}
+          </p>
+          <div className="cookie-consent-banner__legal" aria-label={t('cookieConsent.title')}>
             <Link to="/privacy" className="cookie-consent-banner__link">
               {t('footer.privacy')}
             </Link>
-            {' · '}
+            <span className="cookie-consent-banner__separator" aria-hidden="true">·</span>
             <Link to="/terms" className="cookie-consent-banner__link">
               {t('footer.terms')}
             </Link>
-          </p>
+          </div>
         </div>
         <div className="cookie-consent-banner__actions">
           <ShopButton
@@ -127,6 +130,8 @@ const CookieConsentBanner: React.FC = () => {
       </div>
     </div>
   );
+
+  return typeof document === 'undefined' ? banner : createPortal(banner, document.body);
 };
 
 export default CookieConsentBanner;

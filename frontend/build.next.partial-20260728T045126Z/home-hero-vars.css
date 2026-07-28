@@ -1,0 +1,25 @@
+/* Commercial LCP: static hero image-set vars (WebP-first). Loaded as a public asset so paint does not wait on React. */
+:root,
+.shopee-home,
+.shopee-home--loading {
+  --shop-home-hero-dog: image-set(
+    url("/assets/home/hero-dog.webp") type("image/webp"),
+    url("/assets/home/hero-dog.jpg") type("image/jpeg")
+  );
+  --shop-home-hero-cat-dog: image-set(
+    url("/assets/home/hero-cat-dog.webp") type("image/webp"),
+    url("/assets/home/hero-cat-dog.jpg") type("image/jpeg")
+  );
+  --shop-home-hero-dogs: image-set(
+    url("/assets/home/hero-dogs.webp") type("image/webp"),
+    url("/assets/home/hero-dogs.jpg") type("image/jpeg")
+  );
+  --shop-home-hero-mobile-pet: image-set(
+    url("/assets/home/hero-mobile-pet.webp") type("image/webp"),
+    url("/assets/home/hero-mobile-pet.jpg") type("image/jpeg")
+  );
+  --shop-home-hero-pet-care: image-set(
+    url("/assets/home/hero-pet-care.webp") type("image/webp"),
+    url("/assets/home/hero-pet-care.jpg") type("image/jpeg")
+  );
+}

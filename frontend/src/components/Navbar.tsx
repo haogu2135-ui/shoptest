@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
 import ShopSearchField from './ShopSearchField';
@@ -194,7 +195,14 @@ const Navbar: React.FC = () => {
     return () => window.clearTimeout(refreshTimer);
   }, []);
 
-  const bottomBarClassName = `shop-nav__bottomBar shop-nav__bottomBar--${language}${nativeBottomNav ? ' shop-nav__bottomBar--native' : ''}`;
+  const mobileTaskBottomBarHidden = location.pathname.startsWith('/products/')
+    || ['/cart', '/checkout', '/track-order', '/login', '/register', '/forgot-password'].includes(location.pathname);
+  const bottomBarClassName = [
+    'shop-nav__bottomBar',
+    `shop-nav__bottomBar--${language}`,
+    nativeBottomNav ? 'shop-nav__bottomBar--native' : '',
+    mobileTaskBottomBarHidden ? 'shop-nav__bottomBar--mobile-task-hidden' : '',
+  ].filter(Boolean).join(' ');
   const currencyOptions = Object.values(markets).map((item) => ({ value: item.currency, label: item.label }));
   const safeCartCount = normalizeBadgeCount(cartCount);
   const safeUnreadCount = normalizeBadgeCount(unreadCount);
@@ -682,6 +690,54 @@ const Navbar: React.FC = () => {
   const announcementClassName = `shop-nav__announcement${announcementPaused ? ' shop-nav__announcement--paused' : ''}`;
   const announcementToggleLabel = announcementPaused ? t('nav.resumeAnnouncements') : t('nav.pauseAnnouncements');
 
+  const bottomBar = (
+    <nav className={bottomBarClassName} aria-label={t('home.categories')}>
+      <Link to="/" className={location.pathname === '/' ? 'shop-nav__bottomItem shop-nav__bottomItem--home shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--home'} aria-current={location.pathname === '/' ? 'page' : undefined}>
+        <ShopIcon path={SI.home} />
+        <span>{t('nav.ariaHome')}</span>
+      </Link>
+      <Link to="/products" className={isProductsActive ? 'shop-nav__bottomItem shop-nav__bottomItem--products shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--products'} aria-current={isProductsActive ? 'page' : undefined}>
+        <ShopIcon path={SI.shopping} />
+        <span>{t('nav.products')}</span>
+      </Link>
+      <Link to="/coupons" className={isCouponsActive ? 'shop-nav__bottomItem shop-nav__bottomItem--coupons shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--coupons'} aria-current={isCouponsActive ? 'page' : undefined}>
+        <ShopIcon path={SI.gift} />
+        <span>{t('nav.coupons')}</span>
+      </Link>
+      <Link to="/cart" className={isCartActive ? 'shop-nav__bottomItem shop-nav__bottomItem--cart shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--cart'} aria-label={cartBadgeLabel} title={cartBadgeLabel} aria-current={isCartActive ? 'page' : undefined}>
+        {renderCartBadge()}
+        <span>{t('pages.cart.title')}</span>
+      </Link>
+      {!nativeBottomNav && showAndroidDownloadLink ? (
+        androidApkUrl ? (
+          <a href={androidApkUrl} download className="shop-nav__bottomItem shop-nav__bottomItem--app" aria-label={t('nav.downloadAndroid')} title={t('nav.downloadAndroid')}>
+            <ShopIcon path={SI.download} />
+            <span>{t('nav.mobileAppShort')}</span>
+          </a>
+        ) : (
+          <button
+            type="button"
+            className="shop-nav__bottomItem shop-nav__bottomItem--app"
+            onClick={handleAndroidDownloadUnavailable}
+            aria-label={androidDownloadActionLabel}
+            title={androidDownloadActionLabel}
+          >
+            <ShopIcon path={SI.download} />
+            <span>{t('nav.mobileAppShort')}</span>
+          </button>
+        )
+      ) : null}
+      <Link
+        to={token ? '/profile' : '/login'}
+        className={isAccountActive ? 'shop-nav__bottomItem shop-nav__bottomItem--account shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--account'}
+        aria-current={isAccountActive ? 'page' : undefined}
+      >
+        <ShopIcon path={SI.user} />
+        <span>{bottomAccountLabel}</span>
+      </Link>
+    </nav>
+  );
+
   return (
     <>
       <header className={`shop-nav shop-nav--${language}`}>
@@ -1074,51 +1130,7 @@ const Navbar: React.FC = () => {
         </div>
       </div>
       </header>
-      <nav className={bottomBarClassName} aria-label={t('home.categories')}>
-        <Link to="/" className={location.pathname === '/' ? 'shop-nav__bottomItem shop-nav__bottomItem--home shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--home'} aria-current={location.pathname === '/' ? 'page' : undefined}>
-          <ShopIcon path={SI.home} />
-          <span>{t('nav.ariaHome')}</span>
-        </Link>
-        <Link to="/products" className={isProductsActive ? 'shop-nav__bottomItem shop-nav__bottomItem--products shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--products'} aria-current={isProductsActive ? 'page' : undefined}>
-          <ShopIcon path={SI.shopping} />
-          <span>{t('nav.products')}</span>
-        </Link>
-        <Link to="/coupons" className={isCouponsActive ? 'shop-nav__bottomItem shop-nav__bottomItem--coupons shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--coupons'} aria-current={isCouponsActive ? 'page' : undefined}>
-          <ShopIcon path={SI.gift} />
-          <span>{t('nav.coupons')}</span>
-        </Link>
-        <Link to="/cart" className={isCartActive ? 'shop-nav__bottomItem shop-nav__bottomItem--cart shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--cart'} aria-label={cartBadgeLabel} title={cartBadgeLabel} aria-current={isCartActive ? 'page' : undefined}>
-          {renderCartBadge()}
-          <span>{t('pages.cart.title')}</span>
-        </Link>
-        {!nativeBottomNav && showAndroidDownloadLink ? (
-          androidApkUrl ? (
-            <a href={androidApkUrl} download className="shop-nav__bottomItem shop-nav__bottomItem--app" aria-label={t('nav.downloadAndroid')} title={t('nav.downloadAndroid')}>
-              <ShopIcon path={SI.download} />
-              <span>{t('nav.mobileAppShort')}</span>
-            </a>
-          ) : (
-            <button
-              type="button"
-              className="shop-nav__bottomItem shop-nav__bottomItem--app"
-              onClick={handleAndroidDownloadUnavailable}
-              aria-label={androidDownloadActionLabel}
-              title={androidDownloadActionLabel}
-            >
-              <ShopIcon path={SI.download} />
-              <span>{t('nav.mobileAppShort')}</span>
-            </button>
-          )
-        ) : null}
-        <Link
-          to={token ? '/profile' : '/login'}
-          className={isAccountActive ? 'shop-nav__bottomItem shop-nav__bottomItem--account shop-nav__bottomItem--active' : 'shop-nav__bottomItem shop-nav__bottomItem--account'}
-          aria-current={isAccountActive ? 'page' : undefined}
-        >
-          <ShopIcon path={SI.user} />
-          <span>{bottomAccountLabel}</span>
-        </Link>
-      </nav>
+      {typeof document === 'undefined' ? bottomBar : createPortal(bottomBar, document.body)}
     </>
   );
 };

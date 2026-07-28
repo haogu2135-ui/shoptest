@@ -1980,7 +1980,8 @@
   .shop-app-shell--cart .shop-nav__bottomBar,
   .shop-app-shell--checkout-flow .shop-nav__bottomBar,
   .shop-app-shell--order-tracking-flow .shop-nav__bottomBar,
-  .shop-app-shell--auth-flow .shop-nav__bottomBar {
+  .shop-app-shell--auth-flow .shop-nav__bottomBar,
+  .shop-nav__bottomBar--mobile-task-hidden {
     display: none;
   }
 

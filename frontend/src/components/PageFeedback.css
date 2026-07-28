@@ -136,3 +136,122 @@
   outline: 3px solid rgba(18, 71, 52, 0.35);
   outline-offset: 2px;
 }
+
+/* Commercial: empty/auth feedback CTAs clear bottom nav (and cookie rail when open). */
+@media (max-width: 780px) {
+  body.shop-mobile-app .page-feedback {
+    padding-top: 16px !important;
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 28px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.shop-mobile-app .page-feedback__emptyImage {
+    min-height: 64px;
+    margin-bottom: 0;
+  }
+
+  body.shop-mobile-app .page-feedback__emptyIcon {
+    width: 56px;
+    height: 56px;
+    font-size: 22px;
+  }
+
+  body.shop-mobile-app .page-feedback__empty,
+  body.shop-mobile-app .page-feedback__result {
+    gap: 8px;
+  }
+
+  body.shop-mobile-app .page-feedback__actions,
+  body.shop-mobile-app .page-feedback__resultExtra {
+    gap: 8px;
+    margin-top: 4px;
+    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  body.shop-mobile-app.shop-cookie-consent-visible .page-feedback {
+    padding-top: 12px !important;
+    padding-bottom: calc(var(--shop-cookie-consent-clearance, 200px) + 28px) !important;
+  }
+
+  body.shop-mobile-app.shop-cookie-consent-visible .page-feedback__actions,
+  body.shop-mobile-app.shop-cookie-consent-visible .page-feedback__resultExtra {
+    scroll-margin-bottom: calc(var(--shop-cookie-consent-clearance, 200px) + 12px);
+  }
+
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .page-feedback__actions,
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .page-feedback__resultExtra {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-padding-inline: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .page-feedback__actions .ant-btn,
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .page-feedback__resultExtra .ant-btn {
+    width: auto;
+    min-width: 136px;
+    max-width: min(74vw, 240px);
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}
+
+/* Short phones: keep empty conversion CTAs above cookie/bottom rails on first paint. */
+@media (max-width: 390px) and (max-height: 700px) {
+  body.shop-mobile-app .page-feedback {
+    padding-top: 8px !important;
+    padding-left: 10px !important;
+    padding-right: 10px !important;
+  }
+
+  body.shop-mobile-app .page-feedback__emptyImage {
+    min-height: 48px;
+  }
+
+  body.shop-mobile-app .page-feedback__emptyIcon {
+    width: 48px;
+    height: 48px;
+    font-size: 20px;
+  }
+
+  body.shop-mobile-app .page-feedback__resultTitle {
+    font-size: 18px !important;
+  }
+
+  body.shop-mobile-app .page-feedback__resultSubtitle,
+  body.shop-mobile-app .page-feedback__emptyDescription {
+    font-size: 13px;
+    line-height: 1.4;
+  }
+
+  body.shop-mobile-app .page-feedback__actions,
+  body.shop-mobile-app .page-feedback__resultExtra {
+    gap: 6px;
+  }
+
+  body.shop-mobile-app.shop-cookie-consent-visible .page-feedback__emptyImage {
+    display: none;
+  }
+
+  body.shop-mobile-app.shop-cookie-consent-visible .page-feedback__actions,
+  body.shop-mobile-app.shop-cookie-consent-visible .page-feedback__resultExtra {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    scroll-padding-inline: 8px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.shop-mobile-app.shop-cookie-consent-visible .page-feedback__actions .ant-btn,
+  body.shop-mobile-app.shop-cookie-consent-visible .page-feedback__resultExtra .ant-btn {
+    width: auto;
+    min-width: 124px;
+    max-width: min(72vw, 220px);
+    flex: 0 0 auto;
+    white-space: nowrap;
+  }
+}

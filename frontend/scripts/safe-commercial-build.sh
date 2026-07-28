@@ -15,6 +15,26 @@ export GENERATE_SOURCEMAP="${GENERATE_SOURCEMAP:-false}"
 export DISABLE_ESLINT_PLUGIN="${DISABLE_ESLINT_PLUGIN:-true}"
 unset CI || true
 
+# Default low-memory commercial build for the live two-core host. The forked TS
+# checker + webpack can thrash under the runner's 1G budget; keep Node heap and
+# the checker under control unless an operator explicitly opts out.
+SHOPTEST_LOW_MEMORY_BUILD="${SHOPTEST_LOW_MEMORY_BUILD:-true}"
+if [[ -z "${NODE_OPTIONS:-}" ]]; then
+  if [[ "${SHOPTEST_LOW_MEMORY_BUILD}" == "true" ]]; then
+    export NODE_OPTIONS="--max-old-space-size=768"
+  else
+    export NODE_OPTIONS="--max-old-space-size=1536"
+  fi
+fi
+if [[ "${SHOPTEST_LOW_MEMORY_BUILD}" == "true" ]]; then
+  DISABLE_FORK_TS_CHECKER_HOOK="$(cd "$(dirname "$0")" && pwd)/disable-fork-ts-checker.cjs"
+  case " ${NODE_OPTIONS} " in
+    *" ${DISABLE_FORK_TS_CHECKER_HOOK} "*) ;;
+    *) export NODE_OPTIONS="--require ${DISABLE_FORK_TS_CHECKER_HOOK} ${NODE_OPTIONS}" ;;
+  esac
+  echo "[safe-commercial-build] low-memory mode on (skip fork-ts-checker, NODE_OPTIONS=${NODE_OPTIONS})"
+fi
+
 echo "[safe-commercial-build] prebuild mobile version metadata"
 node scripts/generate-mobile-version.js
 

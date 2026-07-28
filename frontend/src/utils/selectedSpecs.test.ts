@@ -32,4 +32,16 @@ describe('selectedSpecs', () => {
 
     expect(label).toBe('Size: S / Bundle deal / Bowl x2');
   });
+
+  it('parses legacy human-readable selectedSpecs without console noise', () => {
+    expect(parseSelectedSpecs('Size: Large Delivery: Express')).toEqual({
+      Size: 'Large',
+      Delivery: 'Express',
+    });
+    expect(parseSelectedSpecs('Color=Red Size=S')).toEqual({
+      Color: 'Red',
+      Size: 'S',
+    });
+    expect(formatSelectedSpecs('Size: Large Delivery: Express')).toBe('Size: Large / Delivery: Express');
+  });
 });

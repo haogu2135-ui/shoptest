@@ -277,7 +277,9 @@ describe('Navbar Android app download entry', () => {
     const css = readNavbarCss();
     const f3393Css = css.slice(css.indexOf('/* F3393'));
 
-    expect(source).toContain("const bottomBarClassName = `shop-nav__bottomBar shop-nav__bottomBar--${language}");
+    expect(source).toContain('createPortal(bottomBar, document.body)');
+    expect(source).toContain('`shop-nav__bottomBar--${language}`');
+    expect(source).toContain('shop-nav__bottomBar--mobile-task-hidden');
     expect(f3393Css).toMatch(/@media \(min-width:\s*341px\) and \(max-width:\s*380px\)\s*\{/);
     expect(f3393Css).toMatch(/\.shop-nav__bottomBar--es:not\(\.shop-nav__bottomBar--native\)\s*\{[\s\S]*?grid-template-columns:\s*0\.94fr 1\.1fr 1fr 0\.98fr 0\.88fr 1fr;[\s\S]*?column-gap:\s*3px;/);
     expect(f3393Css).toMatch(/\.shop-nav__bottomBar--es \.shop-nav__bottomItem--products span:not\(\.anticon\):not\(\.ant-badge\)(?::not\(\.shop-badge\))?:not\(\.ant-scroll-number\)\s*\{[\s\S]*?font-size:\s*12px\s*!important;[\s\S]*?letter-spacing:\s*0;[\s\S]*?text-overflow:\s*clip;/);
@@ -369,12 +371,23 @@ describe('Navbar Android app download entry', () => {
     expect(bottomBarSource).not.toContain('Config Center');
   });
 
+  it('portals the bottom nav outside the app scroll shell', () => {
+    const { container } = renderNavbar();
+    const bottomBar = document.body.querySelector('.shop-nav__bottomBar');
+
+    expect(bottomBar).not.toBeNull();
+    expect(bottomBar?.parentElement).toBe(document.body);
+    expect(container.contains(bottomBar)).toBe(false);
+  });
+
   it('keeps scroll state from withdrawing the native bottom rail', () => {
     const css = readNavbarCss();
     const mobileCss = readMobileAppCss();
 
     expect(mobileCss).toContain('shop-app-shell--bottom-rail-conflict');
+    expect(mobileCss).toContain('shop-bottom-rail-conflict');
     expect(mobileCss).toMatch(/shop-app-shell--bottom-rail-conflict \.shop-nav__bottomBar\s*\{[\s\S]*?display:\s*none\s*!important;[\s\S]*?pointer-events:\s*none\s*!important;/);
+    expect(mobileCss).toMatch(/shop-bottom-rail-conflict \.shop-nav__bottomBar,[\s\S]*?\.shop-nav__bottomBar--mobile-task-hidden\s*\{[\s\S]*?display:\s*none\s*!important;[\s\S]*?pointer-events:\s*none\s*!important;/);
     expect(mobileCss).not.toMatch(/shop-app-shell--scrolled \.shop-nav__bottomBar[\s\S]*?display:\s*none\s*!important;/);
     expect(css).not.toMatch(/shop-app-shell--scrolled \.shop-nav__bottomBar[\s\S]*?visibility:\s*hidden\s*!important;/);
     expect(mobileCss).toMatch(/\.shop-nav__bottomBar :where\([\s\S]*?\.shop-nav__bottomItem,[\s\S]*?\.ant-scroll-number-only-unit[\s\S]*?\)\s*\{[\s\S]*?font-size:\s*12px\s*!important;/);
@@ -607,6 +620,7 @@ describe('Navbar Android app download entry', () => {
     const bottomNavCss = css.slice(css.indexOf('/* Mobile bottom commerce navigation */'));
 
     expect(bottomNavCss).toMatch(/\.shop-app-shell--product-detail \.shop-nav__bottomBar,[\s\S]*?\.shop-app-shell--cart \.shop-nav__bottomBar,[\s\S]*?\.shop-app-shell--checkout-flow \.shop-nav__bottomBar[\s\S]*?display:\s*none;/);
+    expect(bottomNavCss).toMatch(/\.shop-nav__bottomBar--mobile-task-hidden[\s\S]*?display:\s*none;/);
   });
 
   it('keeps localized bottom navigation labels readable before the icon-only fallback', () => {

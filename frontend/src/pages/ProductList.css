@@ -4558,6 +4558,20 @@
   }
 }
 
+/* Commercial: empty discovery cards stay clear of bottom nav + cookie. */
+@media (max-width: 780px) {
+  body.shop-mobile-app .product-list--empty .product-list__emptyDiscovery,
+  body.shop-mobile-app .product-list--empty .product-list__mobileDiscovery {
+    margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .product-list__emptyDiscovery,
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .product-list__mobileDiscovery,
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .product-list__mobileNextStep {
+    margin-bottom: calc(var(--shop-cookie-consent-clearance, 200px) + 12px);
+  }
+}
+
 /* UI-20260607-06E: final App catalog bottom-nav clearance. */
 @media (max-width: 780px) {
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-list {
@@ -5025,13 +5039,15 @@ body .shop-mobile-popup-layer.shop-select__popup {
   min-width: 0;
 }
 
-/* Commercial mobile first-use filter guidance */
+/* Commercial mobile first-use filter guidance.
+   Keep the tip as an absolute popover so it never inflates the narrow filter
+   column (~108px) into a tall stack under the cookie/bottom rails. */
 .product-list__filterControl {
   position: relative;
   display: inline-flex;
   flex-direction: column;
   align-items: stretch;
-  gap: 6px;
+  gap: 0;
   max-width: 100%;
 }
 
@@ -5041,10 +5057,16 @@ body .shop-mobile-popup-layer.shop-select__popup {
 
 @media (max-width: 860px) {
   .product-list__filterHint {
-    display: flex;
-    align-items: flex-start;
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    z-index: 30;
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    align-items: start;
     gap: 8px;
-    max-width: min(280px, 72vw);
+    width: min(280px, calc(100vw - 24px));
+    max-width: min(280px, calc(100vw - 24px));
     padding: 8px 10px;
     border: 1px solid rgba(18, 71, 52, 0.18);
     border-radius: 12px;
@@ -5054,10 +5076,15 @@ body .shop-mobile-popup-layer.shop-select__popup {
   }
 
   .product-list__filterHintText {
+    min-width: 0;
     flex: 1 1 auto;
+    display: -webkit-box;
+    overflow: hidden;
     font-size: 12px;
     line-height: 1.35;
     font-weight: 600;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
   }
 
   .product-list__filterHintDismiss {
@@ -5071,11 +5098,25 @@ body .shop-mobile-popup-layer.shop-select__popup {
     font-size: 12px;
     font-weight: 700;
     cursor: pointer;
+    white-space: nowrap;
   }
 
   .product-list__filterHintDismiss:focus-visible {
     outline: 3px solid #ee4d2d;
     outline-offset: 2px;
+  }
+}
+
+@media (max-width: 390px) {
+  .product-list__filterHint {
+    left: auto;
+    right: 0;
+    width: min(260px, calc(100vw - 16px));
+    max-width: min(260px, calc(100vw - 16px));
+  }
+
+  .product-list__filterHintText {
+    -webkit-line-clamp: 2;
   }
 }
 
@@ -5086,4 +5127,156 @@ body .shop-mobile-popup-layer.shop-select__popup {
 .product-list__recentSearchTag:focus-visible {
   outline: 3px solid #ee4d2d;
   outline-offset: 2px;
+}
+
+
+/* Commercial: empty catalog first-screen densify under cookie/bottom rails. */
+@media (max-width: 780px) {
+  body.shop-mobile-app .product-list--empty .product-list__heroBand {
+    margin-bottom: 8px;
+  }
+
+  body.shop-mobile-app .product-list--empty .product-list__heroContent {
+    gap: 6px;
+    padding-block: 8px;
+  }
+
+  body.shop-mobile-app .product-list--empty .product-list__toolbar.product-list__panel {
+    margin-bottom: 6px;
+  }
+
+  body.shop-mobile-app .product-list--empty .product-list__toolbar .product-list__panelBody,
+  body.shop-mobile-app .product-list--empty .product-list__toolbar .product-list__toolbarBody {
+    padding: 8px !important;
+  }
+
+  body.shop-mobile-app .product-list--empty .product-list__mobileDiscovery {
+    display: flex !important;
+    flex-wrap: nowrap;
+    gap: 7px;
+    max-height: 52px;
+    margin-top: 4px;
+    margin-bottom: 6px;
+    overflow-x: auto;
+    overflow-y: hidden;
+  }
+
+  body.shop-mobile-app .product-list--empty .product-list__mobileDiscoveryButton {
+    flex: 0 0 auto;
+    max-width: min(70vw, 220px);
+  }
+
+  body.shop-mobile-app .product-list--empty .product-list__mobileNextStep {
+    display: none !important;
+  }
+
+  body.shop-mobile-app .product-list--empty .product-list__mobileConversionBar {
+    position: static !important;
+    margin: 6px 0 8px !important;
+    max-height: none;
+  }
+
+  body.shop-mobile-app .product-list--empty .product-list__empty,
+  body.shop-mobile-app .product-list--empty .page-feedback.product-list__empty {
+    padding-top: 12px !important;
+    padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 20px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .product-list__empty,
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .page-feedback.product-list__empty {
+    padding-bottom: calc(var(--shop-cookie-consent-clearance, 200px) + 20px) !important;
+  }
+
+  body.shop-mobile-app .product-list--empty .product-list__emptyDiscovery {
+    margin-top: 8px;
+    margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .product-list__emptyDiscovery,
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .product-list__mobileDiscovery {
+    margin-bottom: calc(var(--shop-cookie-consent-clearance, 200px) + 12px);
+  }
+
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .product-list__mobileContextBar,
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .product-list__mobileDiscovery,
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .product-list__mobileNextStep {
+    display: none !important;
+  }
+
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .product-list__emptyDiscovery,
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .product-list__empty .page-feedback__actions {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .product-list__mobileConversionBar {
+    position: fixed !important;
+    top: auto !important;
+    right: max(8px, env(safe-area-inset-right, 0px)) !important;
+    bottom: calc(var(--shop-cookie-consent-clearance, 200px) + 8px) !important;
+    left: max(8px, env(safe-area-inset-left, 0px)) !important;
+    z-index: var(--shop-z-product-conversion, 8999) !important;
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: auto !important;
+    max-width: calc(100vw - 16px) !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 6px !important;
+    border-radius: 16px !important;
+  }
+
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .product-list__mobileConversionStats {
+    display: none !important;
+  }
+
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .product-list__mobileConversionActions {
+    display: flex !important;
+    flex-wrap: nowrap !important;
+    gap: 6px !important;
+    overflow-x: auto !important;
+    overscroll-behavior-inline: contain;
+    scroll-padding-inline: 6px;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .product-list__mobileConversionActions .ant-btn {
+    flex: 0 0 auto !important;
+    width: auto !important;
+    min-width: 118px !important;
+    max-width: min(68vw, 210px) !important;
+    min-height: 44px !important;
+    white-space: nowrap !important;
+  }
+
+  body.shop-mobile-app .product-list--empty .product-list__emptyDiscoveryCard,
+  body.shop-mobile-app .product-list--empty .product-list__mobileDiscoveryButton,
+  body.shop-mobile-app .product-list--empty .product-list__mobileContextChip,
+  body.shop-mobile-app .product-list--empty .product-list__filterButton.ant-btn {
+    scroll-margin-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 16px + env(safe-area-inset-bottom, 0px));
+  }
+
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .product-list__emptyDiscoveryCard,
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .product-list__mobileDiscoveryButton,
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .product-list__mobileContextChip,
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .product-list__filterButton.ant-btn {
+    scroll-margin-bottom: calc(var(--shop-cookie-consent-clearance, 200px) + 12px);
+  }
+}
+
+@media (max-width: 390px) and (max-height: 700px) {
+  body.shop-mobile-app .product-list--empty .product-list__heroBand {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+
+  body.shop-mobile-app .product-list--empty .shop-breadcrumb {
+    margin-bottom: 4px;
+  }
+
+  body.shop-mobile-app.shop-cookie-consent-visible .product-list--empty .product-list__filterHint {
+    display: none !important;
+  }
 }
