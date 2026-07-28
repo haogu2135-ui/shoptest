@@ -5280,3 +5280,45 @@ body .shop-mobile-popup-layer.shop-select__popup {
     display: none !important;
   }
 }
+
+/* Commercial mobile catalog toolbar: the inline search must not collapse behind
+   sort/filter controls after AntD rows were replaced by the shell grid. */
+@media (max-width: 720px) {
+  .shop-app-shell--product-list .product-list__toolbar .product-list__toolbarRow,
+  body.shop-mobile-app .shop-app-shell--product-list .product-list__toolbar .product-list__toolbarRow {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) minmax(104px, auto) !important;
+    gap: 8px !important;
+    align-items: stretch !important;
+  }
+
+  .shop-app-shell--product-list .product-list__toolbarSearch,
+  body.shop-mobile-app .shop-app-shell--product-list .product-list__toolbarSearch {
+    grid-column: 1 / -1 !important;
+    min-width: 0 !important;
+    width: 100% !important;
+  }
+
+  .shop-app-shell--product-list .product-list__toolbarSort,
+  body.shop-mobile-app .shop-app-shell--product-list .product-list__toolbarSort {
+    grid-column: 1 !important;
+    min-width: 0 !important;
+  }
+
+  .shop-app-shell--product-list .product-list__toolbarMetaWrap,
+  body.shop-mobile-app .shop-app-shell--product-list .product-list__toolbarMetaWrap {
+    grid-column: 2 !important;
+    min-width: 104px !important;
+  }
+
+  .shop-app-shell--product-list .product-list__search.shop-search-field,
+  body.shop-mobile-app .shop-app-shell--product-list .product-list__search.shop-search-field {
+    width: 100% !important;
+    min-width: 0 !important;
+  }
+
+  .shop-app-shell--product-list .product-list__search .shop-search-field__input,
+  body.shop-mobile-app .shop-app-shell--product-list .product-list__search .shop-search-field__input {
+    min-width: 140px !important;
+  }
+}

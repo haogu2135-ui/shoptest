@@ -3772,3 +3772,16 @@ body .shop-nav__dropdown-popup.shop-dropdown__popup {
 .shop-nav .shop-badge.ant-badge {
   line-height: 1;
 }
+
+/* Commercial mobile task rail guard: the bottom bar is portaled to body, so
+   page-scoped shell selectors cannot be the final authority on PDP/checkout. */
+@media (max-width: 860px) {
+  .shop-nav__bottomBar.shop-nav__bottomBar--mobile-task-hidden,
+  body .shop-nav__bottomBar.shop-nav__bottomBar--mobile-task-hidden {
+    display: none !important;
+    visibility: hidden !important;
+    opacity: 0 !important;
+    pointer-events: none !important;
+    transform: translateY(calc(100% + 18px)) !important;
+  }
+}

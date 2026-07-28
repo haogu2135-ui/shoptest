@@ -845,6 +845,8 @@ describe('commercial UX contracts', () => {
     expect(nav).toContain('shop-nav__bottomBar--mobile-task-hidden');
     expect(navCss).toMatch(/\.shop-app-shell--product-detail \.shop-nav__bottomBar[\s\S]*?display:\s*none/);
     expect(navCss).toMatch(/\.shop-nav__bottomBar--mobile-task-hidden[\s\S]*?display:\s*none/);
+    expect(navCss).toMatch(/\.shop-nav__bottomBar\.shop-nav__bottomBar--mobile-task-hidden[\s\S]*?display:\s*none\s*!important/);
+    expect(navCss).toMatch(/\.shop-nav__bottomBar\.shop-nav__bottomBar--mobile-task-hidden[\s\S]*?visibility:\s*hidden\s*!important/);
   });
 
 
@@ -1768,6 +1770,10 @@ ${orderActions}`;
     expect(css).toMatch(/shop-cookie-consent-visible[\s\S]*?\.product-list--empty \.product-list__emptyDiscovery[\s\S]*?display:\s*none\s*!important/);
     expect(css).toMatch(/shop-cookie-consent-visible[\s\S]*?\.product-list--empty \.product-list__mobileConversionBar[\s\S]*?position:\s*fixed\s*!important/);
     expect(css).toMatch(/shop-cookie-consent-visible[\s\S]*?\.product-list--empty \.product-list__mobileConversionStats[\s\S]*?display:\s*none\s*!important/);
+    expect(css).toContain('Commercial mobile catalog toolbar');
+    expect(css).toMatch(/\.shop-app-shell--product-list \.product-list__toolbar \.product-list__toolbarRow[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) minmax\(104px, auto\) !important/);
+    expect(css).toMatch(/\.shop-app-shell--product-list \.product-list__toolbarSearch[\s\S]*?grid-column:\s*1 \/ -1 !important/);
+    expect(css).toMatch(/\.shop-app-shell--product-list \.product-list__search \.shop-search-field__input[\s\S]*?min-width:\s*140px !important/);
     for (const locale of [en, es, zh]) {
       expect(locale).toContain('"mobileFilterHint"');
       expect(locale).toContain('"mobileFilterHintDismiss"');
