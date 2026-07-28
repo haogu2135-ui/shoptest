@@ -12,7 +12,8 @@
 .shop-nav__announcement {
   position: relative;
   overflow: hidden;
-  padding-inline-end: 44px;
+  min-height: 44px;
+  padding-inline-end: 60px;
   background: linear-gradient(90deg, #fff7f0, #f8fcf9 52%, #e6f1e9);
   color: #124734;
   font-size: 13px;
@@ -51,16 +52,20 @@
   top: 50%;
   right: 8px;
   z-index: 2;
-  width: 28px;
-  height: 28px;
-  display: inline-grid;
-  place-items: center;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   border: 1px solid rgba(18, 71, 52, 0.24);
-  border-radius: 50%;
+  border-radius: 999px;
   background: rgba(255, 255, 255, 0.92);
   color: #124734 !important;
   box-shadow: 0 4px 10px rgba(18, 71, 52, 0.14);
   transform: translateY(-50%);
+  touch-action: manipulation;
 }
 
 .shop-nav__announcementToggle:hover {
@@ -210,6 +215,7 @@
   flex: 0 0 auto;
   align-items: center;
   gap: 12px;
+  min-height: 44px;
   font-size: 30px;
   font-weight: 800;
   letter-spacing: 0;
@@ -935,7 +941,7 @@
   .shop-nav__megaButton--active {
     border-color: rgba(238, 77, 45, 0.34);
     background: #fff2ee;
-    color: #d94424 !important;
+    color: #c73719 !important;
     box-shadow: none;
   }
 
@@ -1284,6 +1290,19 @@
 .shop-nav__admin {
   min-height: 44px;
   padding-inline: 9px;
+}
+
+.shop-nav__actions .shop-nav__secondary-action,
+.shop-nav__actions .shop-nav__cart-action,
+.shop-nav__actions .shop-nav__more-trigger {
+  box-sizing: border-box;
+  flex: 0 0 44px;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  justify-content: center;
+  padding: 0;
 }
 
 .shop-nav__actions button:hover,
@@ -3735,7 +3754,7 @@ body .shop-nav__dropdown-popup.shop-dropdown__popup {
 /* Gate124 shop search densify */
 .shop-nav__search .shop-search-field {
   height: 44px;
-  padding: 3px;
+  padding: 0;
   border-radius: 8px;
   background: #fff;
   box-shadow: 0 10px 24px rgba(0, 0, 0, 0.14);
@@ -3745,8 +3764,8 @@ body .shop-nav__dropdown-popup.shop-dropdown__popup {
   box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2), 0 0 0 3px rgba(238, 77, 45, 0.24);
 }
 .shop-nav__search .shop-search-field__control {
-  height: auto;
-  min-height: 38px;
+  height: 44px;
+  min-height: 44px;
   border: 0;
   border-radius: 6px 0 0 6px;
   box-shadow: none;
@@ -3755,11 +3774,16 @@ body .shop-nav__dropdown-popup.shop-dropdown__popup {
 .shop-nav__search .shop-search-field__submit {
   width: 62px;
   min-width: 62px;
-  min-height: 38px;
+  height: 44px;
+  min-height: 44px;
   border-radius: 6px !important;
   background: #ee4d2d;
   color: #ffffff;
   font-weight: 800;
+}
+.shop-nav__search .shop-search-field__input {
+  height: 44px;
+  min-height: 44px;
 }
 .shop-nav__search .shop-search-field__submit:hover,
 .shop-nav__search .shop-search-field__submit:focus-visible {

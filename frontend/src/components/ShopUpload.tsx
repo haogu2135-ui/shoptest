@@ -1,6 +1,6 @@
 import React, { useId, useRef } from 'react';
-import './ShopUpload.css';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import './ShopUpload.css';
 
 /** Drop-in stand-in for ant Upload.LIST_IGNORE — skip file-list mutation. */
 export const SHOP_UPLOAD_LIST_IGNORE = false as const;

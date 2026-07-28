@@ -222,6 +222,33 @@ describe('commercial UX contracts', () => {
     expect(home).toContain('role="listitem"');
   });
 
+  it('keeps homepage pet gallery samples out of live community proof', () => {
+    const home = readHomeSurface();
+    const homePetGallery = readFrontend('components', 'HomePetGallery.tsx');
+    const homeActions = readFrontend('hooks', 'useHomeProductActions.ts');
+    const homeCss = readFrontend('pages', 'Home.css');
+
+    expect(home).toContain('isSample: true');
+    expect(home).toContain('likeCount: 0');
+    expect(home).toContain('likedByMe: false');
+    expect(home).toContain('const petGalleryLiveItemsCount = useMemo(');
+    expect(home).toContain('petGalleryItems.filter((item) => !item.isSample).length');
+    expect(home).toContain('petGalleryLiveItemsCount: number;');
+    expect(home).toContain('value: `${params.petGalleryLiveItemsCount}+`');
+    expect(home).toContain("summary: params.t('home.petUgcStoriesSummary', { count: params.petGalleryLiveItemsCount })");
+    expect(home).toContain("homeSectionActionLabel(t('home.petUgcTitle'), t('nav.petGallery'), petGalleryLiveItemsCount)");
+    expect(homePetGallery).toContain('isSample?: boolean');
+    expect(homePetGallery).toContain('pet-ugc__card--sample');
+    expect(homePetGallery).toContain('pet-ugc__sampleBadge');
+    expect(homePetGallery).toContain('pet-ugc__sampleMeta');
+    expect(homePetGallery).toContain("t('pages.petGallery.sampleBadge')");
+    expect(homePetGallery).toContain("t('pages.petGallery.sampleSource')");
+    expect(homePetGallery).toMatch(/item\.isSample \? \(\s*<span className="pet-ugc__sampleMeta"/);
+    expect(homeActions).toContain('if (item.isSample) {');
+    expect(homeCss).toContain('.pet-ugc__sampleBadge');
+    expect(homeCss).toContain('.pet-ugc__sampleMeta');
+  });
+
   it('keeps cart free-shipping progress and trust signals commercial-ready', () => {
     const cart = readCartSurface();
     expect(cart).toContain('pages.cart.freeShippingProgressLabel');
@@ -512,12 +539,29 @@ describe('commercial UX contracts', () => {
     expect(productDetail).toContain("navigate('/pet-finder')");
   });
 
+  it('keeps commerce thumbnails on accessible image semantics', () => {
+    const productList = readProductListSurface();
+    const productDetail = readProductDetailSurface();
+    expect(productList).toMatch(/className="product-list__checkoutPathThumb"[\s\S]*?alt=\{productName\}/);
+    expect(productList).not.toMatch(/className="product-list__checkoutPathThumb"[\s\S]{0,180}?alt=""/);
+    expect(productDetail).toMatch(/alt=""[\s\S]*?aria-hidden="true"[\s\S]*?role="presentation"[\s\S]*?className="product-detail-thumbs__img"/);
+    expect(productDetail).toMatch(/alt=\{getGalleryImageLabel\(index\)\}[\s\S]*?className="product-mobile-thumbs__img"/);
+  });
+
   it('keeps product detail complete-set and recommendation CTAs on commercial 44px touch floor', () => {
     const css = readFrontend('pages', 'ProductDetail.css');
     expect(css).toMatch(/\.product-complete-set__item \.ant-btn[\s\S]*?min-height:\s*44px/);
     expect(css).toMatch(/\.product-recommendations__content \.ant-btn[\s\S]*?min-height:\s*44px/);
     expect(css).not.toContain('grid-template-columns: 46px minmax(0, 1fr) 40px');
     expect(css).not.toContain('min-width: 40px;\n    padding-inline: 0;');
+  });
+
+  it('keeps product detail mobile price signals visible without horizontal clipping', () => {
+    const css = readFrontend('pages', 'ProductDetail.css');
+    expect(css).toContain('Final mobile detail price-signal guard');
+    expect(css).toMatch(/\.product-price-panel \.product-compact-signals\s*\{[\s\S]*?flex-wrap:\s*wrap;[\s\S]*?overflow-x:\s*visible;[\s\S]*?scroll-snap-type:\s*none;/);
+    expect(css).toMatch(/\.product-price-panel \.product-compact-signals > span\s*\{[\s\S]*?flex:\s*1 1 min\(100%, 132px\);[\s\S]*?white-space:\s*normal;[\s\S]*?overflow-wrap:\s*anywhere;/);
+    expect(css).not.toMatch(/\.product-price-panel \.product-compact-signals\s*\{[\s\S]{0,220}?flex-wrap:\s*nowrap/);
   });
 
   it('keeps support order-select empty on multipath commercial recovery exits', () => {
@@ -710,6 +754,28 @@ describe('commercial UX contracts', () => {
   });
 
 
+  it('keeps storefront accent text on commercial contrast colors', () => {
+    const login = readFrontend('pages', 'Login.css');
+    const register = readFrontend('pages', 'Register.css');
+    const coupon = readFrontend('pages', 'CouponCenter.css');
+    const home = readFrontend('pages', 'Home.css');
+    const navbar = readFrontend('components', 'Navbar.css');
+    const productDetail = readFrontend('pages', 'ProductDetail.css');
+
+    expect(login).toMatch(/--login-accent:\s*#c73719/);
+    expect(login).toMatch(/--login-accent-hot:\s*#cf4220/);
+    expect(register).toMatch(/\.register-page__footer a\s*\{[\s\S]*?color:\s*#c73719/);
+    expect(register).toMatch(/\.register-page__actions \.ant-btn-primary,\s*\.register-page__card \.ant-btn-primary\s*\{[\s\S]*?background:\s*#c73719\s*!important[\s\S]*?border-color:\s*#c73719\s*!important/);
+    expect(coupon).toMatch(/\.coupon-center-page__couponValue\s*\{[\s\S]*?color:\s*#c73719/);
+    expect(coupon).toMatch(/\.coupon-center-page__couponValue\s*\{[\s\S]*?background:\s*#fff7f1;[\s\S]*?color:\s*#c73719\s*!important/);
+    expect(coupon).not.toMatch(/\.coupon-center-page__couponValue[\s\S]{0,220}?color:\s*#ee4d2d/);
+    expect(home).toMatch(/\.shopee-product__stockBadge--ok\s*\{[\s\S]*?color:\s*#237804/);
+    expect(navbar).toMatch(/\.shop-nav__megaButton--active\s*\{[\s\S]*?background:\s*#fff2ee;[\s\S]*?color:\s*#c73719\s*!important/);
+    expect(productDetail).toContain('.product-price-line :where(.commerce-money, .commerce-money *)');
+    expect(productDetail).toMatch(/\.product-price-line,\s*\.product-price-line__current,\s*\.product-price-line :where\(\.commerce-money, \.commerce-money \*\),[\s\S]*?color:\s*#8f2d17\s*!important/);
+  });
+
+
   it('keeps auth password fields on accessible visibility toggles', () => {
     const login = readLoginSurface();
     const register = readRegisterSurface();
@@ -734,6 +800,9 @@ describe('commercial UX contracts', () => {
     expect(tracking).toContain('focusFirstFormError');
     expect(tracking).toContain("rootSelector: '.order-tracking-page__lookupCard'");
     expect(tracking).toContain('onFinishFailed');
+    expect(tracking).toContain('autoComplete="on"');
+    expect(tracking).toContain('enterKeyHint="search"');
+    expect(tracking).not.toContain('autoComplete="off" inputMode="text" maxLength={80}');
     expect(trackingCss).toContain('Commercial order-tracking mobile touch targets');
     expect(trackingCss).toMatch(/\.order-tracking-page \.ant-btn[\s\S]*?min-height:\s*44px/);
     expect(trackingCss).toContain('paymentReturnActions');
@@ -795,6 +864,14 @@ describe('commercial UX contracts', () => {
     expect(banner).toContain('cookie-consent-banner__legal');
     expect(banner).toContain('createPortal(banner, document.body)');
     expect(bannerCss).toContain('Commercial cookie consent mobile touch targets');
+    expect(bannerCss).toMatch(/\.cookie-consent-banner__link\s*\{[^}]*min-height:\s*44px/);
+    expect(bannerCss).toMatch(/@media \(max-width: 780px\)[\s\S]*?\.cookie-consent-banner__link\s*\{[^}]*min-height:\s*44px/);
+    expect(bannerCss).toMatch(/@media \(max-width: 390px\)[\s\S]*?\.cookie-consent-banner__link\s*\{[^}]*min-height:\s*44px/);
+    expect(bannerCss).not.toMatch(/\.cookie-consent-banner__link\s*\{[^}]*min-height:\s*(?:3[0-9]|40)px/);
+    expect(bannerCss).toMatch(/@media \(max-width: 390px\)[\s\S]*?\.cookie-consent-banner__eyebrow\s*\{[^}]*font-size:\s*12px/);
+    expect(bannerCss).toMatch(/@media \(max-width: 390px\)[\s\S]*?\.cookie-consent-banner__text\s*\{[^}]*font-size:\s*12px/);
+    expect(bannerCss).toMatch(/@media \(max-width: 390px\)[\s\S]*?\.cookie-consent-banner__link\s*\{[^}]*font-size:\s*12px/);
+    expect(bannerCss).not.toMatch(/\.cookie-consent-banner__[\w-]+\s*\{[^}]*font-size:\s*(?:10(?:\.5)?|11(?:\.5)?)px/);
     expect(bannerCss).toContain('--shop-z-cookie-consent');
     expect(banner).toContain('shop-cookie-consent-visible');
     expect(banner).toContain('--shop-cookie-consent-clearance');
@@ -805,6 +882,11 @@ describe('commercial UX contracts', () => {
     expect(bannerCss).toContain('cart-page__summary');
     expect(bannerCss).toContain('cart-drawer__footer');
     expect(bannerCss).toContain('checkout-page__submitReview');
+    expect(bannerCss).toContain('PDP and history pages add high-specificity sticky rails later');
+    expect(bannerCss).toContain('body.shop-cookie-consent-visible:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar');
+    expect(bannerCss).toContain('body.shop-cookie-consent-visible.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar');
+    expect(bannerCss).toContain('body.shop-cookie-consent-visible .browsing-history__mobileAction');
+    expect(bannerCss).toMatch(/body\.shop-cookie-consent-visible:not\(\.shop-mobile-app\) \.product-detail-page \.product-summary-card \.product-mobile-buybar,[\s\S]*?body\.shop-cookie-consent-visible \.browsing-history__mobileAction\s*\{[\s\S]*?bottom:\s*var\(--shop-cookie-consent-clearance, 200px\)\s*!important/);
     expect(bannerCss).toMatch(/@media \(max-width: 780px\)[\s\S]*?\.cookie-consent-banner[\s\S]*?bottom:\s*calc\(var\(--shop-mobile-bottom-nav-height, 72px\) \+ 10px/);
     expect(bannerCss).not.toContain('body.shop-cookie-consent-visible .shop-nav__bottomBar');
     expect(bannerCss).toContain('customer-support-widget__button');
@@ -814,7 +896,7 @@ describe('commercial UX contracts', () => {
 
     expect(bannerCss).toMatch(/\.cookie-consent-banner__button\.ant-btn\s*\{[\s\S]*?min-height:\s*44px/);
     expect(bannerCss).toMatch(/\.cookie-consent-banner__button\.ant-btn\s*\{[\s\S]*?min-height:\s*44px/);
-    expect(bannerCss).toMatch(/@media \(max-width: 780px\)[\s\S]*?\.cookie-consent-banner__link\s*\{[\s\S]*?min-height:\s*40px/);
+    expect(bannerCss).toMatch(/@media \(max-width: 780px\)[\s\S]*?\.cookie-consent-banner__link\s*\{[\s\S]*?min-height:\s*44px/);
     expect(bannerCss).toMatch(/@media \(max-width: 780px\)[\s\S]*?\.cookie-consent-banner__legal\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
     expect(bannerCss).not.toMatch(/\.cookie-consent-banner__button\.ant-btn,\s*\.cookie-consent-banner__link\s*\{[\s\S]*?min-height:\s*44px/);
     expect(bannerCss).toMatch(/@media \(max-width: 390px\)[\s\S]*?\.cookie-consent-banner__legal[\s\S]*?display:\s*flex/);
@@ -1229,6 +1311,47 @@ it('keeps home empty category and product rails on multipath commercial recovery
     );
   });
 
+  it('keeps storefront header controls on commercial 44px touch targets', () => {
+    const navCss = readFrontend('components', 'Navbar.css');
+    const searchCss = readFrontend('components', 'ShopSearchField.css');
+    const announcement = navCss.match(/\.shop-nav__announcement\s*\{[\s\S]*?\}/)?.[0] ?? '';
+    const announcementToggle = navCss.match(/\.shop-nav__announcementToggle\s*\{[\s\S]*?\}/)?.[0] ?? '';
+
+    expect(announcement).toContain('min-height: 44px;');
+    expect(announcement).toContain('padding-inline-end: 60px;');
+    expect(announcementToggle).toContain('width: 44px;');
+    expect(announcementToggle).toContain('min-width: 44px;');
+    expect(announcementToggle).toContain('height: 44px;');
+    expect(announcementToggle).toContain('min-height: 44px;');
+    expect(navCss).toMatch(/\.shop-nav__brand\s*\{[\s\S]*?min-height:\s*44px;/);
+    expect(navCss).toMatch(
+      /\.shop-nav__actions \.shop-nav__secondary-action,[\s\S]*?\.shop-nav__actions \.shop-nav__cart-action,[\s\S]*?\.shop-nav__actions \.shop-nav__more-trigger\s*\{[\s\S]*?flex:\s*0 0 44px;[\s\S]*?width:\s*44px;[\s\S]*?min-width:\s*44px;[\s\S]*?height:\s*44px;[\s\S]*?min-height:\s*44px;[\s\S]*?padding:\s*0;/,
+    );
+    expect(searchCss).toMatch(/\.shop-search-field__input\s*\{[\s\S]*?min-height:\s*44px;/);
+    expect(searchCss).toMatch(/\.shop-search-field__submit\s*\{[\s\S]*?min-width:\s*62px;[\s\S]*?min-height:\s*44px;/);
+    expect(navCss).toMatch(/Gate124 shop search densify[\s\S]*?\.shop-nav__search \.shop-search-field\s*\{[\s\S]*?height:\s*44px;[\s\S]*?padding:\s*0;/);
+    expect(navCss).toMatch(/Gate124 shop search densify[\s\S]*?\.shop-nav__search \.shop-search-field__control\s*\{[\s\S]*?height:\s*44px;[\s\S]*?min-height:\s*44px;/);
+    expect(navCss).toMatch(/Gate124 shop search densify[\s\S]*?\.shop-nav__search \.shop-search-field__input\s*\{[\s\S]*?height:\s*44px;[\s\S]*?min-height:\s*44px;/);
+    expect(navCss).toMatch(/Gate124 shop search densify[\s\S]*?\.shop-nav__search \.shop-search-field__submit\s*\{[\s\S]*?height:\s*44px;[\s\S]*?min-height:\s*44px;/);
+    expect(navCss).not.toMatch(/Gate124 shop search densify[\s\S]*?\.shop-nav__search \.shop-search-field__(?:control|submit)\s*\{[\s\S]*?min-height:\s*38px;/);
+  });
+
+  it('keeps storefront shared controls on commercial 44px touch targets', () => {
+    const breadcrumbCss = readFrontend('components', 'ShopBreadcrumb.css');
+    const buttonCss = readFrontend('components', 'ShopButton.css');
+    const inputCss = readFrontend('components', 'ShopInput.css');
+
+    expect(breadcrumbCss).toMatch(/\.shop-breadcrumb__link\s*\{[\s\S]*?min-width:\s*44px;[\s\S]*?min-height:\s*44px;/);
+    expect(buttonCss).toMatch(/\.shop-button--small\s*\{[\s\S]*?min-height:\s*44px;[\s\S]*?min-width:\s*44px;/);
+    expect(buttonCss).toMatch(/\.shop-button--small\.shop-button--iconOnly\s*\{[\s\S]*?width:\s*44px;/);
+    expect(buttonCss).toMatch(/\.shop-button--circle\.shop-button--small\s*\{[\s\S]*?width:\s*44px;[\s\S]*?min-width:\s*44px;/);
+    expect(inputCss).toMatch(/\.shop-input__control\s*\{[\s\S]*?min-height:\s*44px;/);
+    expect(inputCss).toMatch(/\.shop-input__clear,[\s\S]*?\.shop-input__visibility\s*\{[\s\S]*?width:\s*44px;[\s\S]*?min-width:\s*44px;[\s\S]*?min-height:\s*44px;/);
+    expect(inputCss).toMatch(/\.shop-input__visibilityWrap > button\s*\{[\s\S]*?min-width:\s*44px;[\s\S]*?min-height:\s*44px;/);
+    expect(buttonCss).not.toMatch(/\.shop-button--small\s*\{[\s\S]*?min-height:\s*36px/);
+    expect(inputCss).not.toMatch(/\.shop-input__(?:control|clear|visibility|visibilityWrap > button)[\s\S]{0,120}?min-height:\s*(?:28|36|40)px/);
+  });
+
   it('keeps mobile category mega chips on commercial 44px touch targets', () => {
     const css = readFrontend('components', 'Navbar.css');
     expect(css).toContain('category mega chips must stay >=44px');
@@ -1430,6 +1553,13 @@ it('keeps home empty category and product rails on multipath commercial recovery
     expect(petFinderCss).toMatch(
       /Commercial mobile: pet finder labels stay >=12px[\s\S]*?\.pet-finder-page__signal span[\s\S]*?font-size:\s*12px\s*!important/,
     );
+    expect(petFinderCss).toContain('Commercial mobile next-step metadata guard');
+    expect(petFinderCss).toMatch(
+      /Commercial mobile next-step metadata guard[\s\S]*?\.pet-finder-page__nextStepMeta\s*\{[\s\S]*?flex-wrap:\s*wrap;[\s\S]*?overflow:\s*visible;[\s\S]*?mask-image:\s*none/,
+    );
+    expect(petFinderCss).toMatch(
+      /\.pet-finder-page__nextStepMeta \.ant-tag\s*\{[\s\S]*?flex:\s*1 1 min\(100%, 132px\);[\s\S]*?max-width:\s*100%;[\s\S]*?white-space:\s*normal/,
+    );
     expect(historyCss).toContain('Commercial mobile: browsing history labels stay >=12px');
     expect(historyCss).toMatch(
       /Commercial mobile: browsing history labels stay >=12px[\s\S]*?\.browsing-history__assistant-actions span[\s\S]*?font-size:\s*12px\s*!important/,
@@ -1615,6 +1745,7 @@ ${orderActions}`;
     const cart = readFrontend('pages', 'Cart.css');
     const profile = readFrontend('pages', 'Profile.css');
     expect(home).toMatch(/\.shopee-hero__categoryRail button[\s\S]{0,80}?min-height:\s*44px/);
+    expect(home).toMatch(/\.home-btn--text\s*\{[\s\S]*?min-width:\s*44px;[\s\S]*?min-height:\s*44px/);
     expect(home).toMatch(/\.shopee-product__quickActions button[\s\S]{0,80}?height:\s*44px/);
     expect(home).toMatch(/\.shopee-section__header button[\s\S]{0,80}?min-height:\s*44px/);
     expect(list).toMatch(/\.product-list__actionButton\.ant-btn[\s\S]{0,120}?min-height:\s*44px/);

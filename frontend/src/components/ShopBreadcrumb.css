@@ -36,7 +36,9 @@
   align-items: center;
   gap: 4px;
   border: 0;
-  padding: 0;
+  min-width: 44px;
+  min-height: 44px;
+  padding: 0 4px;
   background: transparent;
   color: var(--brand-forest, #124734);
   cursor: pointer;

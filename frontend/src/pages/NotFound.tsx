@@ -1,12 +1,11 @@
 import React from 'react';
 import { ShopIcon, SI } from '../components/ShopIcon';
-
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
-import './NotFound.css';
 import ShopButton from '../components/ShopButton';
+import './NotFound.css';
 
 const NotFound: React.FC = () => {
   const { t } = useLanguage();

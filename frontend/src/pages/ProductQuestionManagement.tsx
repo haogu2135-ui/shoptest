@@ -18,15 +18,15 @@ import {
   QUESTIONS_ANSWER_PERMISSION,
   QUESTIONS_DELETE_PERMISSION,
 } from '../utils/roles';
-import './ProductQuestionManagement.css';
 import ShopButton from '../components/ShopButton';
 import message from '../components/ShopMessage';
-
 import ShopTag from '../components/ShopTag';
 import ShopAlert from '../components/ShopAlert';
 import ShopSpace from '../components/ShopSpace';
 import ShopTypography from '../components/ShopTypography';
 import ShopDivider from '../components/ShopDivider';
+import './ProductQuestionManagement.css';
+
 const Title = ShopTypography.Title;
 const Paragraph = ShopTypography.Paragraph;
 

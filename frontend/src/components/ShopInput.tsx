@@ -1,6 +1,5 @@
 import React, { forwardRef, useId, useState } from 'react';
 import { useLanguage } from '../i18n';
-import './ShopInput.css';
 
 export type ShopInputProps = {
   value?: string;

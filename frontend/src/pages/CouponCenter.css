@@ -157,7 +157,7 @@
 }
 
 .coupon-center-page__heroBadges .anticon {
-  color: #ee4d2d;
+  color: #c73719;
 }
 
 .coupon-center-page__heroStats {
@@ -529,7 +529,7 @@
 }
 
 .coupon-center-page__couponValue {
-  color: #ee4d2d;
+  color: #c73719;
   font-size: 20px;
 }
 
@@ -658,7 +658,7 @@
 }
 
 .coupon-center-page__couponFit strong {
-  color: #ee4d2d;
+  color: #c73719;
   font-size: 13px;
 }
 
@@ -804,7 +804,7 @@
   place-items: center;
   border-radius: 999px;
   background: #fff7f1;
-  color: #ee4d2d;
+  color: #c73719;
   font-size: 21px;
 }
 
@@ -856,7 +856,7 @@
 
 .coupon-claim-section__toolbarIcon {
   grid-row: span 2;
-  color: #ee4d2d;
+  color: #c73719;
   font-size: 17px;
 }
 
@@ -1053,7 +1053,7 @@
   place-items: center;
   border-radius: 999px;
   background: #ffffff;
-  color: #ee4d2d;
+  color: #c73719;
   font-size: 18px;
 }
 
@@ -1801,7 +1801,7 @@
 }
 
 .coupon-wallet__value {
-  color: #ee4d2d;
+  color: #c73719;
   font-weight: 800;
   line-height: 1.45;
   overflow-wrap: anywhere;
@@ -1992,7 +1992,7 @@
 }
 
 .coupon-wallet__fit strong {
-  color: #ee4d2d;
+  color: #c73719;
   font-size: 13px;
 }
 
@@ -2282,7 +2282,7 @@
     flex: 0 0 auto;
     max-width: 45%;
     overflow: hidden;
-    color: #ee4d2d;
+    color: #c73719;
     font-size: 13px;
     font-weight: 900;
     line-height: 1.2;
@@ -2896,7 +2896,7 @@
     padding: 4px 8px;
     border-radius: 8px;
     background: #fff7f1;
-    color: #ee4d2d !important;
+    color: #c73719 !important;
     font-size: 18px;
     line-height: 1.2;
     overflow-wrap: anywhere;

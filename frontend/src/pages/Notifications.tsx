@@ -8,8 +8,6 @@ import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { hasStoredValue } from '../utils/safeStorage';
-import './Notifications.css';
-import '../styles/mobile-page-contrast.css';
 import {
   NOTIFICATION_PAGE_SIZE,
   buildNotificationQuickFilterLabels,
@@ -31,6 +29,7 @@ import {
   type NotificationsActionPlan,
   type NotificationsPanelsProps,
 } from './notificationsPanels';
+import './Notifications.css';
 
 const Notifications: React.FC = () => {
   const [notifications, setNotifications] = useState<AppNotification[]>([]);

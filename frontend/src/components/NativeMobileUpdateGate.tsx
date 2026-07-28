@@ -1,7 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-
 import ShopModal from './ShopModal';
 import { useLanguage } from '../i18n';
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
@@ -22,8 +21,8 @@ import {
   resolveMobileReleaseDownloadUrl,
   type MobileReleaseManifest,
 } from '../utils/mobileUpdate';
-import './NativeMobileUpdateGate.css';
 import ShopButton from './ShopButton';
+import './NativeMobileUpdateGate.css';
 
 const MOBILE_UPDATE_DISMISSED_KEY_PREFIX = 'shop-mobile-update-dismissed';
 

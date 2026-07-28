@@ -25,6 +25,7 @@ const requireDependency = createRequire(__filename);
  *   MERCADO_PAGO_WEBHOOK_SECRET / STRIPE_WEBHOOK_SECRET  local signed probes
  *   SHOPTEST_ORIGIN_PUBLIC_IP  default 161.153.37.250 (CF origin gap diagnosis)
  *   SHOPTEST_ORIGIN_EDGE_BASE / SHOPTEST_ORIGIN_EDGE_HOST  dual origin CWV path
+ *   SHOPTEST_CANONICAL_BASE    default https://petsanything.com
  *
  * Exit:
  *   0 when all required checks pass (production soft-skipped unless required)
@@ -33,9 +34,11 @@ const requireDependency = createRequire(__filename);
 const http = require('http');
 const https = require('https');
 const crypto = require('crypto');
+const net = require('net');
 const { URL } = require('url');
 
 const productionBase = (process.env.SHOPTEST_PRODUCTION_BASE || 'https://pet.686888666.xyz').replace(/\/$/, '');
+const canonicalBase = (process.env.SHOPTEST_CANONICAL_BASE || 'https://petsanything.com').replace(/\/$/, '');
 const productionHostHeader = String(process.env.SHOPTEST_PRODUCTION_HOST || '').trim();
 const productionTlsInsecure = String(process.env.SHOPTEST_PRODUCTION_TLS_INSECURE || '').trim() === '1';
 const localUiBase = (process.env.SHOPTEST_UI_BASE || 'http://127.0.0.1:4187').replace(/\/$/, '');
@@ -53,6 +56,47 @@ const soft = (name, pass, detail = '') => {
   logLine(`${pass ? 'PASS' : 'SOFT'} ${name}${detail ? ` — ${detail}` : ''}`);
 };
 
+function getOriginEdgeBase() {
+  return (process.env.SHOPTEST_ORIGIN_EDGE_BASE || 'https://127.0.0.1').replace(/\/$/, '');
+}
+
+function getOriginEdgeHost() {
+  return process.env.SHOPTEST_ORIGIN_EDGE_HOST
+    || productionHostHeader
+    || 'pet.686888666.xyz';
+}
+
+function originEdgeUrl(pathname = '/') {
+  const normalized = String(pathname || '/').startsWith('/') ? String(pathname || '/') : `/${pathname}`;
+  return `${getOriginEdgeBase()}${normalized}`;
+}
+
+function requestOriginEdge(pathname = '/', options = {}) {
+  return request(originEdgeUrl(pathname), {
+    timeout: options.timeout || 8000,
+    ...options,
+    rejectUnauthorized: false,
+    headers: {
+      Host: getOriginEdgeHost(),
+      ...(options.headers || {}),
+    },
+  });
+}
+
+function resolveTlsServername(...values) {
+  for (const value of values) {
+    let host = String(value || '').trim();
+    if (!host) continue;
+    if (host.startsWith('[')) {
+      host = host.replace(/^\[/, '').replace(/\](?::\d+)?$/, '');
+    } else {
+      host = host.replace(/:\d+$/, '');
+    }
+    if (host && !net.isIP(host)) return host;
+  }
+  return undefined;
+}
+
 function request(urlString, options = {}) {
   return new Promise((resolve) => {
     const url = new URL(urlString);
@@ -61,6 +105,7 @@ function request(urlString, options = {}) {
     if (productionHostHeader && !headers.Host && !headers.host) {
       headers.Host = productionHostHeader;
     }
+    const servername = resolveTlsServername(headers.Host, headers.host, productionHostHeader, url.hostname);
     const rejectUnauthorized = options.rejectUnauthorized != null
       ? options.rejectUnauthorized !== false
       : !productionTlsInsecure;
@@ -71,7 +116,7 @@ function request(urlString, options = {}) {
         headers,
         timeout: options.timeout || 8000,
         rejectUnauthorized,
-        servername: productionHostHeader || url.hostname,
+        ...(servername ? { servername } : {}),
       },
       (res) => {
         const chunks = [];
@@ -491,15 +536,9 @@ async function probePublicCdnShipBar() {
 async function probeOriginEdgeDual() {
   // When public CDN returns 522/timeout, still measure the local origin edge so ship-prep
   // is not blind. Defaults to https://127.0.0.1 with Host pet.686888666.xyz.
-  const originBase = (process.env.SHOPTEST_ORIGIN_EDGE_BASE || 'https://127.0.0.1').replace(/\/$/, '');
-  const originHost = process.env.SHOPTEST_ORIGIN_EDGE_HOST
-    || productionHostHeader
-    || 'pet.686888666.xyz';
-  const home = await request(`${originBase}/`, {
-    timeout: 8000,
-    headers: { Host: originHost },
-    rejectUnauthorized: false,
-  });
+  const originBase = getOriginEdgeBase();
+  const originHost = getOriginEdgeHost();
+  const home = await requestOriginEdge('/', { timeout: 8000 });
   const ok = home.status === 200;
   soft(
     'origin edge dual-stack probe',
@@ -596,13 +635,10 @@ async function probeOriginEdgeDual() {
 async function probeOriginEdgeHtmlSecurityHeaders() {
   // Commercial security: SPA shell must keep CSP + clickjacking/MIME sniffing guards even when
   // location-level Cache-Control headers are present (nginx does not inherit parent add_header).
-  const originIp = process.env.SHOPTEST_ORIGIN_PUBLIC_IP || '161.153.37.250';
-  const originHost = process.env.SHOPTEST_ORIGIN_EDGE_HOST || productionHostHeader || 'pet.686888666.xyz';
+  const originBase = getOriginEdgeBase();
+  const originHost = getOriginEdgeHost();
   try {
-    const home = await request(`http://${originIp}/`, {
-      timeout: 8000,
-      headers: { Host: originHost },
-    });
+    const home = await requestOriginEdge('/', { timeout: 8000 });
     const headers = home.headers || {};
     const csp = String(headers['content-security-policy'] || headers['Content-Security-Policy'] || '');
     const xfo = String(headers['x-frame-options'] || headers['X-Frame-Options'] || '');
@@ -617,7 +653,7 @@ async function probeOriginEdgeHtmlSecurityHeaders() {
     soft(
       'origin edge html security headers',
       ok,
-      `status=${home.status} csp=${csp ? 'present' : 'missing'} xfo=${xfo || 'missing'} xcto=${xcto || 'missing'} perm=${perm || 'missing'}`,
+      `status=${home.status} base=${originBase} host=${originHost} csp=${csp ? 'present' : 'missing'} xfo=${xfo || 'missing'} xcto=${xcto || 'missing'} perm=${perm || 'missing'}`,
     );
   } catch (error) {
     soft(
@@ -630,13 +666,10 @@ async function probeOriginEdgeHtmlSecurityHeaders() {
 
 async function probeOriginEdgeHtmlNoCache() {
   // Commercial deploy safety: SPA shell must not be immutable/long-cached on origin edge.
-  const originIp = process.env.SHOPTEST_ORIGIN_PUBLIC_IP || '161.153.37.250';
-  const originHost = process.env.SHOPTEST_ORIGIN_EDGE_HOST || productionHostHeader || 'pet.686888666.xyz';
+  const originBase = getOriginEdgeBase();
+  const originHost = getOriginEdgeHost();
   try {
-    const home = await request(`http://${originIp}/`, {
-      timeout: 8000,
-      headers: { Host: originHost },
-    });
+    const home = await requestOriginEdge('/', { timeout: 8000 });
     const cache = String((home.headers && (home.headers['cache-control'] || home.headers['Cache-Control'])) || '');
     const ok = home.status === 200
       && /no-cache|no-store|max-age=0/i.test(cache)
@@ -644,7 +677,7 @@ async function probeOriginEdgeHtmlNoCache() {
     soft(
       'origin edge html no-cache',
       ok,
-      `status=${home.status} cache=${cache || 'missing'}`,
+      `status=${home.status} base=${originBase} host=${originHost} cache=${cache || 'missing'}`,
     );
   } catch (error) {
     soft(
@@ -658,8 +691,8 @@ async function probeOriginEdgeHtmlNoCache() {
 async function probeOriginEdgeStaticCache() {
   // Commercial cache contract: CRA hashed /static/** must be 1y immutable on origin edge
   // so Cloudflare and browsers keep repeat-visit payloads off the origin.
-  const originIp = process.env.SHOPTEST_ORIGIN_PUBLIC_IP || '161.153.37.250';
-  const originHost = process.env.SHOPTEST_ORIGIN_EDGE_HOST || productionHostHeader || 'pet.686888666.xyz';
+  const originBase = getOriginEdgeBase();
+  const originHost = getOriginEdgeHost();
   const localBase = localUiBase || 'http://127.0.0.1:4187';
   try {
     const home = await request(`${localBase}/`, { timeout: 8000 });
@@ -669,10 +702,7 @@ async function probeOriginEdgeStaticCache() {
       return;
     }
     const assetPath = `/static/js/${match[1]}`;
-    const originHttp = await request(`http://${originIp}${assetPath}`, {
-      timeout: 8000,
-      headers: { Host: originHost },
-    });
+    const originHttp = await requestOriginEdge(assetPath, { timeout: 8000 });
     const cache = String((originHttp.headers && (originHttp.headers['cache-control'] || originHttp.headers['Cache-Control'])) || '');
     const ok = originHttp.status === 200
       && /max-age=31536000/i.test(cache)
@@ -680,7 +710,7 @@ async function probeOriginEdgeStaticCache() {
     soft(
       'origin edge static long-cache immutable',
       ok,
-      `status=${originHttp.status} cache=${cache || 'missing'} path=${assetPath}`,
+      `status=${originHttp.status} base=${originBase} host=${originHost} cache=${cache || 'missing'} path=${assetPath}`,
     );
   } catch (error) {
     soft(
@@ -695,13 +725,10 @@ async function probeOriginEdgeStaticCache() {
 async function probeOriginEdgePublicAssetHeaders() {
   // Non-hashed public assets (favicon, /assets/*) must not dual-set Cache-Control via expires+add_header,
   // and must still emit commercial security headers after location-level Cache-Control overrides.
-  const originIp = process.env.SHOPTEST_ORIGIN_PUBLIC_IP || '161.153.37.250';
-  const originHost = process.env.SHOPTEST_ORIGIN_EDGE_HOST || productionHostHeader || 'pet.686888666.xyz';
+  const originBase = getOriginEdgeBase();
+  const originHost = getOriginEdgeHost();
   try {
-    const asset = await request(`http://${originIp}/favicon.ico`, {
-      timeout: 8000,
-      headers: { Host: originHost },
-    });
+    const asset = await requestOriginEdge('/favicon.ico', { timeout: 8000 });
     const headers = asset.headers || {};
     const cacheRaw = headers['cache-control'] || headers['Cache-Control'] || '';
     const cacheValues = Array.isArray(cacheRaw) ? cacheRaw : [cacheRaw];
@@ -722,12 +749,12 @@ async function probeOriginEdgePublicAssetHeaders() {
     soft(
       'origin edge public asset single cache',
       cacheOk,
-      `status=${asset.status} cache=${cacheJoined || 'missing'} dual=${dualCache}`,
+      `status=${asset.status} base=${originBase} host=${originHost} cache=${cacheJoined || 'missing'} dual=${dualCache}`,
     );
     soft(
       'origin edge public asset security headers',
       securityOk,
-      `status=${asset.status} csp=${csp ? 'present' : 'missing'} xfo=${xfo || 'missing'} xcto=${xcto || 'missing'}`,
+      `status=${asset.status} base=${originBase} host=${originHost} csp=${csp ? 'present' : 'missing'} xfo=${xfo || 'missing'} xcto=${xcto || 'missing'}`,
     );
   } catch (error) {
     soft(
@@ -745,19 +772,16 @@ async function probeOriginEdgePublicAssetHeaders() {
 
 
 async function probeOriginEdgeSecurityTxt() {
-  const originIp = process.env.SHOPTEST_ORIGIN_PUBLIC_IP || '161.153.37.250';
-  const originHost = process.env.SHOPTEST_ORIGIN_EDGE_HOST || productionHostHeader || 'pet.686888666.xyz';
+  const originBase = getOriginEdgeBase();
+  const originHost = getOriginEdgeHost();
   try {
-    const res = await request(`http://${originIp}/.well-known/security.txt`, {
-      timeout: 8000,
-      headers: { Host: originHost },
-    });
+    const res = await requestOriginEdge('/.well-known/security.txt', { timeout: 8000 });
     const body = String(res.body || '');
     const ok = res.status === 200 && /Contact:/i.test(body) && /Preferred-Languages:/i.test(body);
     soft(
       'origin edge security.txt',
       ok,
-      `status=${res.status} bytes=${body.length}`,
+      `status=${res.status} base=${originBase} host=${originHost} bytes=${body.length}`,
     );
   } catch (error) {
     soft('origin edge security.txt', false, error && error.message ? error.message : String(error));
@@ -765,21 +789,19 @@ async function probeOriginEdgeSecurityTxt() {
 }
 
 async function probeOriginEdgeAbsoluteShellSeo() {
-  const originIp = process.env.SHOPTEST_ORIGIN_PUBLIC_IP || '161.153.37.250';
-  const originHost = process.env.SHOPTEST_ORIGIN_EDGE_HOST || productionHostHeader || 'pet.686888666.xyz';
+  const originBase = getOriginEdgeBase();
+  const originHost = getOriginEdgeHost();
   try {
-    const home = await request(`http://${originIp}/`, {
-      timeout: 8000,
-      headers: { Host: originHost },
-    });
+    const home = await requestOriginEdge('/', { timeout: 8000 });
     const body = String(home.body || '');
+    const escapedCanonicalBase = canonicalBase.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
     const ok = home.status === 200
-      && body.includes('https://pet.686888666.xyz/logo512.png')
-      && /rel=["']canonical["'][^>]*https:\/\/pet\.686888666\.xyz\//i.test(body);
+      && body.includes(`${canonicalBase}/logo512.png`)
+      && new RegExp(`rel=["']canonical["'][^>]*${escapedCanonicalBase}/`, 'i').test(body);
     soft(
       'origin edge absolute shell SEO urls',
       ok,
-      ok ? 'og:image+canonical absolute' : `status=${home.status} absoluteShell=${body.includes('https://pet.686888666.xyz/logo512.png')}`,
+      ok ? `base=${originBase} host=${originHost} canonical=${canonicalBase}` : `status=${home.status} base=${originBase} host=${originHost} canonical=${canonicalBase} absoluteShell=${body.includes(`${canonicalBase}/logo512.png`)}`,
     );
   } catch (error) {
     soft('origin edge absolute shell SEO urls', false, error && error.message ? error.message : String(error));

@@ -1,7 +1,6 @@
 import React, { cloneElement, isValidElement, useEffect, useId, useState } from 'react';
 import { createPortal } from 'react-dom';
 import ShopButton from './ShopButton';
-import './ShopPopconfirm.css';
 
 export type ShopPopconfirmButtonProps = {
   disabled?: boolean;

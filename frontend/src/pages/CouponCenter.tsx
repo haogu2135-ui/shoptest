@@ -32,10 +32,7 @@ import {
   toSafeArray,
 } from '../utils/couponCenter';
 import type { CouponFilter, CouponSort } from '../utils/couponCenter';
-import './CouponCenter.css';
-import '../styles/mobile-page-contrast.css';
 import ShopButton from '../components/ShopButton';
-
 import ShopAlert from '../components/ShopAlert';
 import {
   COUPON_WALLET_STATUS_KEYS,
@@ -52,6 +49,7 @@ import {
   CouponCenterWalletPanel,
   type CouponCenterPanelsProps,
 } from './couponCenterPanels';
+import './CouponCenter.css';
 
 const CouponCenter: React.FC = () => {
   const navigate = useNavigate();

@@ -15,7 +15,6 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
-import './ProductCompare.css';
 import {
   buildCompareDecision,
   getPrice,
@@ -25,6 +24,7 @@ import {
   ProductCompareMainPanels,
   type ProductComparePanelsProps,
 } from './productComparePanels';
+import './ProductCompare.css';
 
 export {
   buildCompareDecision,

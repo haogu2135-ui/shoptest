@@ -41,7 +41,6 @@ import { CartLineItems } from './cartLineItems';
 import { CartSavedPanel } from './cartSavedPanel';
 import { CartBulkReadinessPanel, CartHeroOverview, CartRecentRecoveryPanel } from './cartOverviewPanels';
 import './Cart.css';
-import '../styles/mobile-page-contrast.css';
 
 export { deriveCartCheckoutMetrics } from './cartHelpers';
 

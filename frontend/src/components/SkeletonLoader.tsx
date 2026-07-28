@@ -3,7 +3,6 @@
  * Usage: <SkeletonLoader rows={4} height={120} avatar />
  */
 import React from 'react';
-import './SkeletonLoader.css';
 
 interface SkeletonLoaderProps {
   rows?: number;

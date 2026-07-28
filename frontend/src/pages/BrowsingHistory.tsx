@@ -20,8 +20,6 @@ import {
   PRODUCT_VIEW_PREFERENCES_KEY,
   removeProductViewHistoryItem,
 } from '../utils/productViewPreferences';
-import './BrowsingHistory.css';
-import '../styles/mobile-page-contrast.css';
 import {
   buildBrowsingHistoryActionLabels,
   buildBrowsingHistoryPanelProps,
@@ -40,6 +38,7 @@ import {
   type BrowsingHistoryNextAction,
   type BrowsingHistoryPanelsProps,
 } from './browsingHistoryPanels';
+import './BrowsingHistory.css';
 
 const BrowsingHistory: React.FC = () => {
   const [products, setProducts] = useState<Product[]>([]);

@@ -2,7 +2,6 @@ import React, { useEffect, useState } from 'react';
 import ShopRate from './ShopRate';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
-
 import { ShopTextArea } from './ShopInput';
 import ShopSelect from './ShopSelect';
 import { useNavigate } from 'react-router-dom';
@@ -14,11 +13,10 @@ import { formatSafeDate, formatSafeDateTime } from '../utils/dateFormat';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
-import './ProductReview.css';
-import '../styles/mobile-page-contrast.css';
 import ShopButton from './ShopButton';
 import ShopUpload from './ShopUpload';
 import ShopAvatar from './ShopAvatar';
+import './ProductReview.css';
 
 const MAX_REVIEW_IMAGES = 4;
 const MAX_REVIEW_IMAGE_SIZE_BYTES = 5 * 1024 * 1024;

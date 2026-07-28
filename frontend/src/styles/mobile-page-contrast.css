@@ -1,6 +1,6 @@
 /* Native App page contrast helpers.
-   This file is lazy-loaded by many route chunks, so keep it narrow. Broad
-   visual overrides belong in route CSS or mobile-app.css, not here. */
+   Loaded once from the app entry, so keep it narrow. Broad visual overrides
+   belong in route CSS or mobile-app.css, not here. */
 body.shop-mobile-app {
   --mobile-page-panel: #ffffff;
   --mobile-page-panel-soft: #fbfdfb;

@@ -132,6 +132,10 @@ export const useHomeProductActions = ({
   }, [language, refreshPetGallery, setPetGalleryPhotos, setUploadingPetPhoto, t]);
 
   const handlePetGalleryLike = useCallback(async (item: HomePetGalleryItem) => {
+    if (item.isSample) {
+      announceAccessibleMessage(t('pages.petGallery.sampleSource'), 'info');
+      return;
+    }
     if (!item.photo) {
       if (localPetGalleryLikes.includes(item.key)) {
         announceAccessibleMessage(t('home.petUgcAlreadyLiked'), 'info');

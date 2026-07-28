@@ -1,13 +1,12 @@
 import React, { useMemo } from 'react';
 import { ShopIcon, SI } from '../components/ShopIcon';
-
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import ShopBreadcrumb from '../components/ShopBreadcrumb';
-import './LegalPage.css';
 import ShopButton from '../components/ShopButton';
+import './LegalPage.css';
 
 type LegalDoc = 'privacy' | 'terms';
 

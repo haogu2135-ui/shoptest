@@ -11,11 +11,11 @@ import { loadGuestSupportContext, normalizeGuestSupportContext, saveGuestSupport
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import ShopBreadcrumb from '../components/ShopBreadcrumb';
-import './PaymentInstructions.css';
 import { getPaymentRecoveryState, navigateToCommercialPaymentUrl } from '../utils/paymentRecovery';
-
 import { PaymentInstructionsPanels } from './paymentInstructionsPanels';
 import { PaymentInstructionsStickyBars } from './paymentInstructionsStickyBars';
+import './PaymentInstructions.css';
+
 const PAYMENT_STATUS_POLL_MS = 12000;
 
 const cleanParam = (value: string | null, maxLength = 120) =>

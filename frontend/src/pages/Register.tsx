@@ -10,7 +10,6 @@ import { useDocumentMeta } from '../hooks/useDocumentMeta';
 import { setSessionStorageItem } from '../utils/safeStorage';
 import { getApiErrorDiagnosticText, getApiErrorMessage } from '../utils/apiError';
 import { buildLoginUrl, getPostLoginRedirectTarget } from '../utils/authRedirect';
-import './Register.css';
 import {
   buildRegisterActionLabels,
   buildRegisterPanelProps,
@@ -32,6 +31,7 @@ import {
   type RegisterRecoveryKind,
 } from './registerHelpers';
 import { RegisterMainPanels } from './registerPanels';
+import './Register.css';
 
 const Register: React.FC = () => {
   const navigate = useNavigate();

@@ -21,8 +21,6 @@ import { loadGuestSupportContext, normalizeGuestSupportContext, saveGuestSupport
 import { getApiErrorMessage } from '../utils/apiError';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { isAdminRole } from '../utils/roles';
-import './OrderTracking.css';
-import '../styles/mobile-page-contrast.css';
 import { navigateToCommercialPaymentUrl, getPaymentRecoveryState } from '../utils/paymentRecovery';
 import {
   ORDER_TRACKING_AUTO_REFRESH_MS,
@@ -45,6 +43,7 @@ import {
   OrderTrackingMainPanels,
   type OrderTrackingPanelsProps,
 } from './orderTrackingPanels';
+import './OrderTracking.css';
 
 export { ORDER_TRACKING_AUTO_REFRESH_MS, shouldAutoRefreshTrackedOrder } from './orderTrackingHelpers';
 

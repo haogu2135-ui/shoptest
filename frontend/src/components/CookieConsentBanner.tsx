@@ -1,12 +1,11 @@
 import React, { useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { ShopIcon, SI } from './ShopIcon';
-
 import { Link } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import { acceptCookieConsent, hasCookieConsent } from '../utils/cookieConsent';
-import './CookieConsentBanner.css';
 import ShopButton from './ShopButton';
+import './CookieConsentBanner.css';
 
 const COOKIE_CONSENT_BODY_CLASS = 'shop-cookie-consent-visible';
 const COOKIE_CONSENT_CLEARANCE_VAR = '--shop-cookie-consent-clearance';

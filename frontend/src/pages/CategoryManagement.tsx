@@ -20,12 +20,10 @@ import { imageFallbacks, resolveApiAssetUrl } from '../utils/mediaAssets';
 import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
 import { CATEGORIES_DELETE_PERMISSION, CATEGORIES_WRITE_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
-import './CategoryManagement.css';
 import ShopButton from '../components/ShopButton';
 import ShopProgress from '../components/ShopProgress';
 import ShopTabs from '../components/ShopTabs';
 import message from '../components/ShopMessage';
-
 import ShopTag from '../components/ShopTag';
 import ShopAlert from '../components/ShopAlert';
 import ShopSpace from '../components/ShopSpace';
@@ -33,6 +31,8 @@ import ShopTypography from '../components/ShopTypography';
 import ShopCard from '../components/ShopCard';
 import ShopDivider from '../components/ShopDivider';
 import ShopImage from '../components/ShopImage';
+import './CategoryManagement.css';
+
 const Title = ShopTypography.Title;
 const Text = ShopTypography.Text;
 const categoryImageFallback = imageFallbacks.category;

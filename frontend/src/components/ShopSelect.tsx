@@ -1,6 +1,5 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import './ShopSelect.css';
 
 export type ShopSelectOption = {
   value: string;

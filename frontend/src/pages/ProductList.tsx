@@ -20,9 +20,6 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { loadGuestSupportContext } from '../utils/guestSupportContext';
 import { hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
 import { useNativeBackHandler } from '../utils/nativeBack';
-import './ProductList.css';
-import '../styles/mobile-page-contrast.css';
-
 import {
   PRODUCT_LIST_FILTER_HINT_KEY,
   PRODUCT_LIST_PAGE_SIZE,
@@ -73,6 +70,7 @@ import { useProductListProductActions } from '../hooks/useProductListProductActi
 import { useProductListSessionData } from '../hooks/useProductListSessionData';
 import { useProductListNavigation } from '../hooks/useProductListNavigation';
 import { useProductListDerivedCatalog } from '../hooks/useProductListDerivedCatalog';
+import './ProductList.css';
 
 const ProductList: React.FC = () => {
   const navigate = useNavigate();

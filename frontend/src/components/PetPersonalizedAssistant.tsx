@@ -12,11 +12,10 @@ import { needsOptionSelection } from '../utils/productOptions';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { hasStoredValue } from '../utils/safeStorage';
 import { getApiErrorMessage } from '../utils/apiError';
-import './PetPersonalizedAssistant.css';
-import '../styles/mobile-page-contrast.css';
 import ShopButton from './ShopButton';
 import ShopTag from './ShopTag';
 import ShopAlert from './ShopAlert';
+import './PetPersonalizedAssistant.css';
 
 const isDealProduct = (product: Product) =>
   Boolean(product.activeLimitedTimeDiscount) ||

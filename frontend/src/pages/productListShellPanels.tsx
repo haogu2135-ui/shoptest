@@ -685,7 +685,7 @@ language,
                           <img
                             className="product-list__checkoutPathThumb"
                             src={getOptimizedImageUrl(resolveProductPrimaryImage(product), 96)}
-                            alt=""
+                            alt={productName}
                             width={40}
                             height={40}
                             loading="lazy"

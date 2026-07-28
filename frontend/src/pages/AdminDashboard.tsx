@@ -16,18 +16,18 @@ import PageError from '../components/PageError';
 import { resolveProductImage } from '../utils/productMedia';
 import { isAdminRole } from '../utils/roles';
 import { cancelIdleTask, scheduleIdleTask, type ScheduledIdleTask } from '../utils/idleScheduler';
-import './AdminDashboard.css';
 import ShopButton from '../components/ShopButton';
 import ShopSpin from '../components/ShopSpin';
 import ShopProgress from '../components/ShopProgress';
 import ShopStatistic from '../components/ShopStatistic';
 import ShopAvatar from '../components/ShopAvatar';
 import ShopList from '../components/ShopList';
-
 import ShopTag from '../components/ShopTag';
 import ShopSpace from '../components/ShopSpace';
 import ShopTypography from '../components/ShopTypography';
 import ShopCard from '../components/ShopCard';
+import './AdminDashboard.css';
+
 const Title = ShopTypography.Title;
 
 const statusColors: Record<string, string> = {

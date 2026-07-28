@@ -87,7 +87,6 @@ import { useProductDetailEngagementActions } from '../hooks/useProductDetailEnga
 import { useProductDetailCommunityActions } from '../hooks/useProductDetailCommunityActions';
 import { useProductDetailRecommendationActions } from '../hooks/useProductDetailRecommendationActions';
 import './ProductDetail.css';
-import '../styles/mobile-page-contrast.css';
 
 
 const ProductDetail: React.FC = () => {

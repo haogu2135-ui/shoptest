@@ -17,12 +17,11 @@ import { reportNonBlockingError } from '../utils/nonBlockingError';
 import PageError from '../components/PageError';
 import PageEmpty from '../components/PageEmpty';
 import { dispatchDomEvent } from '../utils/domEvents';
-import './PetFinder.css';
-import '../styles/mobile-page-contrast.css';
 import ShopButton from '../components/ShopButton';
-
 import ShopTag from '../components/ShopTag';
 import ShopAlert from '../components/ShopAlert';
+import './PetFinder.css';
+
 type PetType = 'all' | 'dog' | 'cat' | 'small';
 type NeedType = 'all' | 'play' | 'walk' | 'sleep' | 'smart' | 'groom' | 'food';
 type Priority = 'best' | 'rating' | 'deal' | 'budget';

@@ -807,7 +807,7 @@
 
 .product-price-line {
   font-size: 36px;
-  color: #ee4d2d;
+  color: #c73719;
   font-weight: 800;
   letter-spacing: 0;
   line-height: 1.1;
@@ -2362,7 +2362,7 @@
     align-items: baseline;
     flex-wrap: wrap;
     gap: 6px;
-    color: #ee4d2d !important;
+    color: #c73719 !important;
     font-size: 27px !important;
     line-height: 1.1;
   }
@@ -2372,7 +2372,7 @@
   }
 
   .product-price-line .ant-tag {
-    color: #ee4d2d !important;
+    color: #c73719 !important;
     border-color: #ffd8bf !important;
     background: #fff7f0 !important;
   }
@@ -4868,6 +4868,7 @@
 
 .product-price-line,
 .product-price-line__current,
+.product-price-line :where(.commerce-money, .commerce-money *),
 .product-recommendations__price,
 .product-mobile-buybar__meta strong {
   color: #8f2d17 !important;
@@ -5084,12 +5085,26 @@
 
   .product-summary-card .product-price-panel .product-compact-signals,
   .product-price-panel .product-compact-signals {
+    flex-wrap: wrap;
     width: 100%;
     max-width: 100%;
     margin-right: 0;
     padding-right: 0;
+    overflow-x: visible;
+    overscroll-behavior-inline: auto;
+    scroll-snap-type: none;
     -webkit-mask-image: none;
     mask-image: none;
+  }
+
+  .product-summary-card .product-price-panel .product-compact-signals > span,
+  .product-price-panel .product-compact-signals > span {
+    flex: 1 1 min(100%, 132px);
+    max-width: 100%;
+    justify-content: center;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    scroll-snap-align: none;
   }
 }
 

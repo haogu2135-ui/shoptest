@@ -1,7 +1,6 @@
 import { useNavigate } from 'react-router-dom';
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import message from '../components/ShopMessage';
-
 import ShopSearchField from '../components/ShopSearchField';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import ShopSelect from '../components/ShopSelect';
@@ -33,18 +32,18 @@ import {
   SUPPORT_REOPEN_PERMISSION,
   SUPPORT_REPLY_PERMISSION,
 } from '../utils/roles';
-import './SupportManagement.css';
 import ShopButton from '../components/ShopButton';
 import ShopSpin from '../components/ShopSpin';
 import ShopEmpty from '../components/ShopEmpty';
 import ShopBadge from '../components/ShopBadge';
 import ShopList from '../components/ShopList';
-
 import ShopTag from '../components/ShopTag';
 import ShopAlert from '../components/ShopAlert';
 import ShopSpace from '../components/ShopSpace';
 import ShopTypography from '../components/ShopTypography';
 import ShopCard from '../components/ShopCard';
+import './SupportManagement.css';
+
 const Text = ShopTypography.Text;
 const Title = ShopTypography.Title;
 const SUPPORT_MESSAGE_WINDOW = 80;
@@ -1395,4 +1394,3 @@ const SupportManagement: React.FC = () => {
 };
 
 export default SupportManagement;
-

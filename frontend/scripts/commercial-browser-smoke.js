@@ -162,6 +162,73 @@ async function main() {
     const bodyText = await page.locator('body').innerText();
     check('skip link present', /skip to main content/i.test(bodyText));
 
+    {
+      const samplePage = await browser.newPage({ viewport: { width: 390, height: 844 } });
+      try {
+        await samplePage.addInitScript(() => {
+          try {
+            localStorage.setItem('shop-language', 'en');
+            localStorage.setItem('currency', 'MXN');
+          } catch (error) {
+            void error;
+          }
+        });
+        await samplePage.route('**/*', (route) => {
+          const url = new URL(route.request().url());
+          if (url.pathname === '/api/pet-gallery') {
+            return route.fulfill({ status: 200, contentType: 'application/json', body: '[]' });
+          }
+          if (url.pathname === '/api/pet-gallery/quota') {
+            return route.fulfill({
+              status: 200,
+              contentType: 'application/json',
+              body: JSON.stringify({ dailyLimit: 3, usedToday: 0, remaining: 3, canUpload: true }),
+            });
+          }
+          return route.continue();
+        });
+        await samplePage.goto(`${base}/`, { waitUntil: 'networkidle', timeout: 45000 });
+        await samplePage.locator('.pet-ugc').waitFor({ timeout: 20000 });
+        const sampleState = await samplePage.evaluate(() => {
+          const sampleCards = Array.from(document.querySelectorAll('.pet-ugc__card--sample'));
+          const proofText = Array.from(document.querySelectorAll('.shopee-conversion-highlights, .shopee-story-card'))
+            .map((node) => node.textContent || '')
+            .join(' ')
+            .replace(/\s+/g, ' ')
+            .trim();
+          return {
+            sampleCards: sampleCards.length,
+            sampleBadges: document.querySelectorAll('.pet-ugc__sampleBadge').length,
+            sampleMeta: document.querySelectorAll('.pet-ugc__sampleMeta').length,
+            sampleLikeButtons: sampleCards.reduce((total, card) => total + card.querySelectorAll('.pet-ugc__like').length, 0),
+            realLikeButtons: document.querySelectorAll('.pet-ugc__card:not(.pet-ugc__card--sample) .pet-ugc__like').length,
+            proofText,
+          };
+        });
+        const sampleProofIsZero = /0\+\s*(pet stories|mascotas reales|real pets)|0\s+(stories|historias|个故事)/i
+          .test(sampleState.proofText);
+        check(
+          'homepage sample UGC disclosure',
+          sampleState.sampleCards > 0
+            && sampleState.sampleBadges === sampleState.sampleCards
+            && sampleState.sampleMeta === sampleState.sampleCards
+            && sampleState.sampleLikeButtons === 0
+            && sampleState.realLikeButtons === 0
+            && sampleProofIsZero,
+          JSON.stringify({
+            sampleCards: sampleState.sampleCards,
+            sampleBadges: sampleState.sampleBadges,
+            sampleMeta: sampleState.sampleMeta,
+            sampleLikeButtons: sampleState.sampleLikeButtons,
+            realLikeButtons: sampleState.realLikeButtons,
+            proof: sampleState.proofText.slice(0, 120),
+          }),
+        );
+      } finally {
+        await samplePage.close().catch(() => undefined);
+      }
+    }
+
     const cookieBanner = page.locator('.cookie-consent-banner');
     await cookieBanner.first().waitFor({ state: 'visible', timeout: 8000 }).catch(() => undefined);
     const cookieVisible = await cookieBanner.count();

@@ -1437,7 +1437,7 @@
 
 .shopee-product__stockBadge--ok {
   background: #f6ffed;
-  color: #389e0d;
+  color: #237804;
   border: 1px solid #b7eb8f;
 }
 
@@ -1537,7 +1537,7 @@
   transform: scale(1.04);
 }
 
-.pet-ugc__imageButton > span {
+.pet-ugc__owner {
   position: absolute;
   left: 8px;
   bottom: 8px;
@@ -1548,6 +1548,40 @@
   background: rgba(18, 71, 52, 0.82);
   color: #fff;
   font-size: 12px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pet-ugc__sampleBadge {
+  position: absolute;
+  z-index: 1;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  max-width: calc(100% - 16px);
+  padding: 4px 8px;
+  border: 1px solid rgba(255, 255, 255, 0.82);
+  border-radius: 999px;
+  background: rgba(255, 247, 232, 0.95);
+  color: #6b3a08;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
+  white-space: nowrap;
+}
+
+.pet-ugc__sampleMeta {
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  overflow: hidden;
+  color: #6b3a08;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1.2;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -2556,7 +2590,8 @@
   box-shadow: 0 10px 20px rgba(18, 71, 52, 0.14);
 }
 
-.pet-ugc__imageButton > span,
+.pet-ugc__owner,
+.pet-ugc__sampleBadge,
 .pet-ugc-preview__figure figcaption {
   border-radius: 999px;
   backdrop-filter: blur(10px);
@@ -2752,7 +2787,7 @@
   background: linear-gradient(0deg, rgba(10, 33, 24, 0.58), transparent);
 }
 
-.pet-ugc__imageButton > span {
+.pet-ugc__owner {
   z-index: 1;
   left: 10px;
   bottom: 10px;
@@ -3953,6 +3988,13 @@
     width: 36px;
     height: 36px;
   }
+
+  .pet-ugc__sampleMeta {
+    min-height: 36px;
+    padding: 0 8px;
+    border-radius: 999px;
+    background: #fff7e8;
+  }
 }
 
 @media (max-width: 380px) {
@@ -4347,13 +4389,21 @@
 
 /* Mobile audit fixes: UGC image buttons and like rows should not report as multi-line fields. */
 @media (max-width: 600px) {
-  .pet-ugc__imageButton > span {
+  .pet-ugc__owner {
     left: 8px;
     right: 8px;
     max-width: calc(100% - 16px);
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+  }
+
+  .pet-ugc__sampleBadge {
+    top: 8px;
+    right: 8px;
+    max-width: calc(100% - 16px);
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 
   .pet-ugc__meta {
@@ -4363,6 +4413,7 @@
 
   .pet-ugc__like,
   .pet-ugc__delete,
+  .pet-ugc__sampleMeta,
   .pet-ugc__upload {
     min-width: 0;
     overflow: hidden;
@@ -5633,8 +5684,9 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .shopee-hom
   color: #173f2b;
 }
 .home-btn--text {
-  min-height: 40px;
-  padding-inline: 10px;
+  min-width: 44px;
+  min-height: 44px;
+  padding-inline: 8px;
   background: transparent;
   box-shadow: none;
   color: #124734;

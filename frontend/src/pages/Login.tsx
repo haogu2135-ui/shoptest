@@ -13,7 +13,6 @@ import { getSessionStorageItem, removeSessionStorageItem } from '../utils/safeSt
 import { getApiErrorMessage } from '../utils/apiError';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import type { CartItem } from '../types';
-import './Login.css';
 import {
   apiErrorCode,
   apiErrorData,
@@ -35,6 +34,7 @@ import {
   type PasswordLoginValues,
 } from './loginHelpers';
 import { LoginMainPanels, type LoginPanelsProps } from './loginPanels';
+import './Login.css';
 
 export type {
   AuthRecoveryKind,

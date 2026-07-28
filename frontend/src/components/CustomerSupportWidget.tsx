@@ -22,12 +22,11 @@ import { clearGuestSupportContext, loadGuestSupportContext, normalizeGuestSuppor
 import { useReconnectingWebSocket } from '../hooks/useReconnectingWebSocket';
 import { useNativeBackHandler } from '../utils/nativeBack';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
-import './CustomerSupportWidget.css';
-import '../styles/mobile-page-contrast.css';
 import ShopButton from './ShopButton';
 import ShopAvatar from './ShopAvatar';
 import ShopTag from './ShopTag';
 import ShopAlert from './ShopAlert';
+import './CustomerSupportWidget.css';
 
 const SUPPORT_BUTTON_POSITION_KEY = 'shop-support-button-position';
 const SUPPORT_BUTTON_SIZE = 56;

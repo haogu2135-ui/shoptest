@@ -37,10 +37,9 @@ import { getApiErrorMessage, isAuthExpiredError } from '../utils/apiError';
 import { useNativeBackHandler } from '../utils/nativeBack';
 import ShopDrawer from './ShopDrawer';
 import ShopProgress from './ShopProgress';
-import './CartDrawer.css';
-import '../styles/mobile-page-contrast.css';
 import ShopTag from './ShopTag';
 import ShopAlert from './ShopAlert';
+import './CartDrawer.css';
 
 const AddOnAssistant = React.lazy(() => import('./AddOnAssistant'));
 const PetPersonalizedAssistant = React.lazy(() => import('./PetPersonalizedAssistant'));

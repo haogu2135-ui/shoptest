@@ -31,15 +31,15 @@ import {
 } from '../utils/roles';
 import { buildPaginationItemRender } from '../utils/paginationLabels';
 import { getCouponPayablePercent } from '../utils/couponCenter';
-import './CouponManagement.css';
 import ShopButton from '../components/ShopButton';
 import message from '../components/ShopMessage';
-
 import ShopTag from '../components/ShopTag';
 import ShopAlert from '../components/ShopAlert';
 import ShopSpace from '../components/ShopSpace';
 import ShopTypography from '../components/ShopTypography';
 import ShopCard from '../components/ShopCard';
+import './CouponManagement.css';
+
 const Title = ShopTypography.Title;
 const DEFAULT_COUPON_PAGE_SIZE = 10;
 const validRangeStartInputId = 'coupon-management-valid-range-start';

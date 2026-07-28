@@ -1,5 +1,4 @@
 import React from 'react';
-import './ShopButton.css';
 
 export type ShopButtonType = 'primary' | 'default' | 'dashed' | 'link' | 'text';
 export type ShopButtonSize = 'small' | 'middle' | 'large';

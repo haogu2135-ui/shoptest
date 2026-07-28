@@ -1,5 +1,4 @@
 import React from 'react';
-import './ShopProgress.css';
 
 export type ShopProgressType = 'line' | 'circle' | 'dashboard';
 export type ShopProgressStatus = 'normal' | 'exception' | 'success' | 'active';

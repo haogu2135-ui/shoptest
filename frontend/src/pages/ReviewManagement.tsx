@@ -20,16 +20,16 @@ import {
   REVIEWS_MODERATE_PERMISSION,
   REVIEWS_REPLY_PERMISSION,
 } from '../utils/roles';
-import './ReviewManagement.css';
 import ShopButton from '../components/ShopButton';
 import ShopRate from '../components/ShopRate';
 import message from '../components/ShopMessage';
-
 import ShopTag from '../components/ShopTag';
 import ShopAlert from '../components/ShopAlert';
 import ShopSpace from '../components/ShopSpace';
 import ShopTypography from '../components/ShopTypography';
 import ShopDivider from '../components/ShopDivider';
+import './ReviewManagement.css';
+
 const Title = ShopTypography.Title;
 const Paragraph = ShopTypography.Paragraph;
 const DEFAULT_PAGE_SIZE = 20;

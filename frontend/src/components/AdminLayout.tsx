@@ -25,8 +25,6 @@ import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { isAuthExpiredError } from '../utils/apiError';
 import ErrorBoundary from './ErrorBoundary';
 import SkipToContentLink, { MAIN_CONTENT_ID } from './SkipToContentLink';
-import './AdminLayout.css';
-import '../styles/admin-table-selection.css';
 import ShopButton from './ShopButton';
 import ShopDrawer from './ShopDrawer';
 import ShopSpin from './ShopSpin';
@@ -36,6 +34,8 @@ import ShopAlert from './ShopAlert';
 import ShopSpace from './ShopSpace';
 import ShopTypography from './ShopTypography';
 import message from './ShopMessage';
+import './AdminLayout.css';
+import '../styles/admin-table-selection.css';
 
 const { Header, Sider, Content } = Layout;
 const Title = ShopTypography.Title;

@@ -1,5 +1,4 @@
 import React from 'react';
-import './ShopAlert.css';
 
 export type ShopAlertType = 'success' | 'info' | 'warning' | 'error';
 

@@ -9,10 +9,10 @@ import { getApiErrorDiagnosticText, getApiErrorMessage } from '../utils/apiError
 import { dispatchDomEvent } from '../utils/domEvents';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import type { LogisticsTrackResponse } from '../types';
-import './SeventeenTrackWidget.css';
 import ShopButton from './ShopButton';
 import ShopTag from './ShopTag';
 import ShopAlert from './ShopAlert';
+import './SeventeenTrackWidget.css';
 
 const localeByLanguage = {
   zh: 'zh-CN',

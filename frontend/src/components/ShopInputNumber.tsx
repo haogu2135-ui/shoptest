@@ -1,5 +1,4 @@
 import React, { forwardRef, useId } from 'react';
-import './ShopInput.css';
 
 export type ShopInputNumberProps = {
   value?: number | null;

@@ -1,5 +1,4 @@
 import React from 'react';
-import './ShopTag.css';
 
 export type ShopTagProps = {
   color?: string;

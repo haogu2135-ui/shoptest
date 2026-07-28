@@ -22,6 +22,17 @@ import {
   isNativeMobileApp,
 } from './utils/mobileUpdate';
 import './App.css';
+import './components/ShopInput.css';
+import './components/ShopButton.css';
+import './components/ShopPopconfirm.css';
+import './components/ShopProgress.css';
+import './components/ShopTag.css';
+import './components/ShopAlert.css';
+import './components/PageFeedback.css';
+import './components/ShopSelect.css';
+import './components/ShopCascader.css';
+import './components/SkeletonLoader.css';
+import './styles/mobile-page-contrast.css';
 
 /** Lightweight shell icons — keep ant-design icons package out of the App entry graph. */
 const ShellIcon: React.FC<{ path: string }> = ({ path }) => (

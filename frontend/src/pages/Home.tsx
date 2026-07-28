@@ -18,9 +18,6 @@ import { useHomeProductActions } from '../hooks/useHomeProductActions';
 import { buildWebsiteStructuredData } from '../utils/structuredData';
 import { resolveDefaultSocialImageUrl } from '../utils/documentMeta';
 import type { HomePetGalleryItem } from '../components/HomePetGallery';
-import './Home.css';
-import '../styles/mobile-page-contrast.css';
-
 import {
   DISCOVERY_BATCH_SIZE,
   publicAssetUrl,
@@ -66,6 +63,7 @@ import {
   HomeFlashOffersSection,
   HomeDiscoverySection,
 } from './homeProductPanels';
+import './Home.css';
 
 const LazyHomePetGallery = React.lazy(() => import(/* webpackChunkName: "home-pet-gallery" */ '../components/HomePetGallery'));
 const LazySocialProofToast = React.lazy(() => import(/* webpackChunkName: "social-proof-toast" */ '../components/SocialProofToast'));
@@ -332,6 +330,10 @@ const Home: React.FC = () => {
     () => buildHomePetGalleryItems({ petGalleryPhotos, localPetGalleryLikes }),
     [localPetGalleryLikes, petGalleryPhotos],
   );
+  const petGalleryLiveItemsCount = useMemo(
+    () => petGalleryItems.filter((item) => !item.isSample).length,
+    [petGalleryItems],
+  );
   const heroSpotlights = buildHomeHeroSpotlightDescriptors({
     t,
     personalizedRecommendationSource,
@@ -382,14 +384,14 @@ const Home: React.FC = () => {
     promoProductsCount: promoProducts.length,
     bestSellersCount: bestSellers.length,
     personalizedReadyCount,
-    petGalleryItemsCount: petGalleryItems.length,
+    petGalleryLiveItemsCount,
   });
   const curatedStoryCards = buildHomeStoryCardDescriptors({
     t,
     promoProductsCount: promoProducts.length,
     bestSellersCount: bestSellers.length,
     freeShippingAmountText: formatPrice(market.freeShippingThreshold),
-    petGalleryItemsCount: petGalleryItems.length,
+    petGalleryLiveItemsCount,
   }).map((item) => {
     const action = () => {
       if (item.intent === 'deals') {
@@ -430,7 +432,7 @@ const Home: React.FC = () => {
     return <HomeLoadRecoveryShell homeLanguageClass={homeLanguageClass} navigate={navigate} t={t} />;
   }
 
-  const petGalleryActionLabel = homeSectionActionLabel(t('home.petUgcTitle'), t('nav.petGallery'), petGalleryItems.length);
+  const petGalleryActionLabel = homeSectionActionLabel(t('home.petUgcTitle'), t('nav.petGallery'), petGalleryLiveItemsCount);
 
   return (
     <main className={homeLanguageClass}>

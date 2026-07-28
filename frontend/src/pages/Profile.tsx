@@ -11,13 +11,10 @@ import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { createPaymentMethodDetails, createPaymentMethodOptions } from '../utils/paymentMethods';
 import { useAppConfig } from '../hooks/useAppConfig';
 import { useMarket } from '../hooks/useMarket';
-import './Profile.css';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
-import '../styles/mobile-page-contrast.css';
 import { getPaymentRecoveryState } from '../utils/paymentRecovery';
-
 import {
   PROFILE_AFTER_SALE_STATUSES,
   buildProfileActionLabels,
@@ -56,13 +53,13 @@ import { useProfileAccountActions } from '../hooks/useProfileAccountActions';
 import { useProfileOrderActions } from '../hooks/useProfileOrderActions';
 import { useProfileSessionData } from '../hooks/useProfileSessionData';
 import { useProfilePaymentReturn } from '../hooks/useProfilePaymentReturn';
-
 import {
   ProfileAuthGateShell,
   ProfileLoadingShell,
   ProfileMainShell,
   type ProfileMainShellProps,
 } from './profileShellPanels';
+import './Profile.css';
 
 const Profile: React.FC = () => {
   const navigate = useNavigate();

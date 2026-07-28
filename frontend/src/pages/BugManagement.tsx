@@ -24,7 +24,6 @@ import {
 } from '../utils/roles';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { buildPaginationItemRender } from '../utils/paginationLabels';
-import './BugManagement.css';
 import ShopButton from '../components/ShopButton';
 import ShopTooltip from '../components/ShopTooltip';
 import ShopSkeleton from '../components/ShopSkeleton';
@@ -32,11 +31,12 @@ import ShopUpload from '../components/ShopUpload';
 import ShopSpin from '../components/ShopSpin';
 import ShopStatistic from '../components/ShopStatistic';
 import message from '../components/ShopMessage';
-
 import ShopTag from '../components/ShopTag';
 import ShopAlert from '../components/ShopAlert';
 import ShopSpace from '../components/ShopSpace';
 import ShopTypography from '../components/ShopTypography';
+import './BugManagement.css';
+
 const TextLink = ShopTypography.Link;
 const Paragraph = ShopTypography.Paragraph;
 const Text = ShopTypography.Text;

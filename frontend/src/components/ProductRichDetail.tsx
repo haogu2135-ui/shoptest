@@ -4,7 +4,6 @@ import { useLanguage } from '../i18n';
 import { buildResponsiveImageSrcSet, normalizePersistentImageUrl, resolveApiAssetUrl } from '../utils/mediaAssets';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import './ProductRichDetail.css';
-import '../styles/mobile-page-contrast.css';
 
 type ProductRichDetailProps = {
   detailContent?: ProductDetailBlock[] | string | null;

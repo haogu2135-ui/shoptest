@@ -15,8 +15,6 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getApiErrorMessage } from '../utils/apiError';
-import './StockAlerts.css';
-import '../styles/mobile-page-contrast.css';
 import {
   buildStockAlertAssistantSubtitle,
   buildStockAlertMobileNextActionStatus,
@@ -33,6 +31,7 @@ import {
   type StockAlertsNextAction,
   type StockAlertsPanelsProps,
 } from './stockAlertsPanels';
+import './StockAlerts.css';
 
 const StockAlerts: React.FC = () => {
   const navigate = useNavigate();

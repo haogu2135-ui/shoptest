@@ -13,10 +13,9 @@ import { needsOptionSelection } from '../utils/productOptions';
 import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import { getApiErrorMessage } from '../utils/apiError';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
-import './AddOnAssistant.css';
-import '../styles/mobile-page-contrast.css';
 import ShopButton from './ShopButton';
 import ShopAlert from './ShopAlert';
+import './AddOnAssistant.css';
 
 const getAddOnPrice = (product: Product) => Number(product.effectivePrice ?? product.price ?? 0);
 const ADD_ON_CACHE_TTL_MS = 2 * 60 * 1000;

@@ -7,7 +7,6 @@ import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
-import './Login.css';
 import {
   authApiErrorCode,
   buildForgotPasswordActionLabels,
@@ -22,6 +21,7 @@ import {
   type ForgotPasswordForm,
 } from './forgotPasswordHelpers';
 import { ForgotPasswordMainPanels } from './forgotPasswordPanels';
+import './Login.css';
 
 const ForgotPassword: React.FC = () => {
   const [loading, setLoading] = useState(false);

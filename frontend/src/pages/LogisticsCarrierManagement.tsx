@@ -19,16 +19,16 @@ import {
   getEffectiveRole,
   hasAdminPermission,
 } from '../utils/roles';
-import './LogisticsCarrierManagement.css';
 import ShopButton from '../components/ShopButton';
 import ShopProgress from '../components/ShopProgress';
 import message from '../components/ShopMessage';
-
 import ShopTag from '../components/ShopTag';
 import ShopAlert from '../components/ShopAlert';
 import ShopSpace from '../components/ShopSpace';
 import ShopTypography from '../components/ShopTypography';
 import ShopCard from '../components/ShopCard';
+import './LogisticsCarrierManagement.css';
+
 const Title = ShopTypography.Title;
 const Text = ShopTypography.Text;
 

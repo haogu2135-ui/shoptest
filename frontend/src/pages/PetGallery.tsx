@@ -18,11 +18,10 @@ import { dispatchDomEvent } from '../utils/domEvents';
 import PageEmpty from '../components/PageEmpty';
 import { isSupportedPetGalleryImageFile } from '../utils/petGalleryUpload';
 import { getLocalStorageItem, hasStoredValue, setLocalStorageItem } from '../utils/safeStorage';
-import './PetGallery.css';
-import '../styles/mobile-page-contrast.css';
 import ShopButton from '../components/ShopButton';
-
 import ShopAlert from '../components/ShopAlert';
+import './PetGallery.css';
+
 const PET_GALLERY_MAX_FILE_SIZE = 5 * 1024 * 1024;
 const PET_GALLERY_LOCAL_LIKES_KEY = 'shop-pet-gallery-local-likes';
 const petGalleryImageFallback = imageFallbacks.media;

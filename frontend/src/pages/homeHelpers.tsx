@@ -362,9 +362,10 @@ export const buildHomePetGalleryItems = (params: {
     .filter((item) => !existingImages.has(item.image) && !existingLabels.has(item.label.toLowerCase()))
     .map((item) => ({
       ...item,
-      likeCount: item.likeCount + (params.localPetGalleryLikes.includes(item.key) ? 1 : 0),
-      likedByMe: params.localPetGalleryLikes.includes(item.key),
+      likeCount: 0,
+      likedByMe: false,
       canDelete: false,
+      isSample: true,
     }));
   return [...photoItems, ...fallbackItems]
     .sort((left, right) => right.likeCount - left.likeCount || left.label.localeCompare(right.label))
@@ -483,7 +484,7 @@ export const buildHomeConversionHighlightDescriptors = (params: {
   promoProductsCount: number;
   bestSellersCount: number;
   personalizedReadyCount: number;
-  petGalleryItemsCount: number;
+  petGalleryLiveItemsCount: number;
 }): HomeConversionHighlightDescriptor[] => [
   {
     key: 'deals',
@@ -497,7 +498,7 @@ export const buildHomeConversionHighlightDescriptors = (params: {
   },
   {
     key: 'community',
-    value: `${params.petGalleryItemsCount}+`,
+    value: `${params.petGalleryLiveItemsCount}+`,
     label: params.t('home.petUgcTitle'),
   },
 ];
@@ -507,7 +508,7 @@ export const buildHomeStoryCardDescriptors = (params: {
   promoProductsCount: number;
   bestSellersCount: number;
   freeShippingAmountText: string;
-  petGalleryItemsCount: number;
+  petGalleryLiveItemsCount: number;
 }): HomeStoryCardDescriptor[] => [
   {
     key: 'starter',
@@ -528,7 +529,7 @@ export const buildHomeStoryCardDescriptors = (params: {
   {
     key: 'ugc',
     title: params.t('home.petUgcTitle'),
-    summary: params.t('home.petUgcStoriesSummary', { count: params.petGalleryItemsCount }),
+    summary: params.t('home.petUgcStoriesSummary', { count: params.petGalleryLiveItemsCount }),
     actionLabel: params.t('nav.petGallery'),
     iconKey: 'camera',
     intent: 'pet-gallery',

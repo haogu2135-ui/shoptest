@@ -50,13 +50,11 @@ import {
   getEffectiveRole,
   hasAdminPermission,
 } from '../utils/roles';
-import './ProductManagement.css';
 import ShopButton from '../components/ShopButton';
 import ShopTooltip from '../components/ShopTooltip';
 import ShopUpload from '../components/ShopUpload';
 import ShopTabs from '../components/ShopTabs';
 import message from '../components/ShopMessage';
-
 import ShopTag from '../components/ShopTag';
 import ShopAlert from '../components/ShopAlert';
 import ShopSpace from '../components/ShopSpace';
@@ -64,6 +62,8 @@ import ShopTypography from '../components/ShopTypography';
 import ShopCard from '../components/ShopCard';
 import ShopDivider from '../components/ShopDivider';
 import ShopImage from '../components/ShopImage';
+import './ProductManagement.css';
+
 const Title = ShopTypography.Title;
 const Text = ShopTypography.Text;
 const productAdminImageFallback = productImageFallback;

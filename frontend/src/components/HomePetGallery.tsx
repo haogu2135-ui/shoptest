@@ -17,6 +17,7 @@ export type HomePetGalleryItem = {
   likeCount: number;
   likedByMe: boolean;
   canDelete: boolean;
+  isSample?: boolean;
   photo?: PetGalleryPhotoPublic;
 };
 
@@ -93,12 +94,15 @@ const HomePetGallery: React.FC<HomePetGalleryProps> = ({
           const photo = item.photo;
           const likeActionLabel = `${t('home.petUgcLikes', { count: item.likeCount })}: ${item.label}`;
           const deleteActionLabel = `${t('home.petUgcDelete')}: ${item.label}`;
+          const previewActionLabel = item.isSample
+            ? `${t('pages.petGallery.preview')}: ${item.label} (${t('pages.petGallery.sampleBadge')})`
+            : `${t('home.petUgcTitle')} ${item.label}`;
           return (
-            <div key={item.key} className="pet-ugc__card">
+            <div key={item.key} className={item.isSample ? 'pet-ugc__card pet-ugc__card--sample' : 'pet-ugc__card'}>
               <button
                 className="pet-ugc__imageButton"
                 type="button"
-                aria-label={`${t('home.petUgcTitle')} ${item.label}`}
+                aria-label={previewActionLabel}
                 onClick={() => onPreviewItem(item)}
               >
                 <img
@@ -112,20 +116,25 @@ const HomePetGallery: React.FC<HomePetGalleryProps> = ({
                   decoding="async"
                   onError={applyPetGalleryImageFallback}
                 />
-                <span>{item.label}</span>
+                <span className="pet-ugc__owner">{item.label}</span>
+                {item.isSample ? <span className="pet-ugc__sampleBadge">{t('pages.petGallery.sampleBadge')}</span> : null}
               </button>
               <div className="pet-ugc__meta">
-                <button
-                  type="button"
-                  className={item.likedByMe ? 'pet-ugc__like pet-ugc__like--active' : 'pet-ugc__like'}
-                  aria-pressed={item.likedByMe}
-                  aria-label={likeActionLabel}
-                  title={likeActionLabel}
-                  onClick={() => onLike(item)}
-                >
-                  {item.likedByMe ? <ShopIcon path={SI.heartFill} /> : <ShopIcon path={SI.heart} />}
-                  {t('home.petUgcLikes', { count: item.likeCount })}
-                </button>
+                {item.isSample ? (
+                  <span className="pet-ugc__sampleMeta"><ShopIcon path={SI.camera} /> {t('pages.petGallery.sampleSource')}</span>
+                ) : (
+                  <button
+                    type="button"
+                    className={item.likedByMe ? 'pet-ugc__like pet-ugc__like--active' : 'pet-ugc__like'}
+                    aria-pressed={item.likedByMe}
+                    aria-label={likeActionLabel}
+                    title={likeActionLabel}
+                    onClick={() => onLike(item)}
+                  >
+                    {item.likedByMe ? <ShopIcon path={SI.heartFill} /> : <ShopIcon path={SI.heart} />}
+                    {t('home.petUgcLikes', { count: item.likeCount })}
+                  </button>
+                )}
                 {item.canDelete && photo ? (
                   <ShopPopconfirm
                     rootClassName='shop-mobile-popup-layer shopee-home-popconfirm'

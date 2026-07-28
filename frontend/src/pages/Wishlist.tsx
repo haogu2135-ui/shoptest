@@ -12,8 +12,6 @@ import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { hasStoredValue } from '../utils/safeStorage';
 import { allSettledWithConcurrency } from '../utils/asyncBatch';
 import { getApiErrorMessage } from '../utils/apiError';
-import './Wishlist.css';
-import '../styles/mobile-page-contrast.css';
 import {
   buildWishlistActionLabels,
   buildWishlistPanelProps,
@@ -34,6 +32,7 @@ import {
   type WishlistAction,
   type WishlistPanelsProps,
 } from './wishlistPanels';
+import './Wishlist.css';
 
 export {
   WISHLIST_LOGIN_REQUIRED_MESSAGE_KEY,

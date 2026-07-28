@@ -170,7 +170,7 @@
 }
 
 .register-page__brand {
-  color: #ee4d2d;
+  color: #c73719;
   font-size: 28px;
   font-weight: 800;
   line-height: 1;
@@ -216,7 +216,7 @@
 
 .register-page__footer a {
   margin-left: 6px;
-  color: #ee4d2d;
+  color: #c73719;
   font-weight: 700;
 }
 
@@ -332,8 +332,8 @@
 .register-page__actions .ant-btn-primary,
 .register-page__card .ant-btn-primary {
   border: 0;
-  background: linear-gradient(135deg, #ff7048, #ee4d2d);
-  box-shadow: 0 14px 28px rgba(238, 77, 45, 0.22);
+  background: linear-gradient(135deg, #cf4220, #c73719);
+  box-shadow: 0 14px 28px rgba(199, 55, 25, 0.22);
 }
 
 .register-page__card {
@@ -1027,8 +1027,8 @@
 
 .register-page__actions .ant-btn-primary,
 .register-page__card .ant-btn-primary {
-  background: #ee4d2d !important;
-  border-color: #ee4d2d !important;
+  background: #c73719 !important;
+  border-color: #c73719 !important;
 }
 
 @media (min-width: 861px) {

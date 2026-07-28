@@ -12,9 +12,7 @@ import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { getApiErrorMessage } from '../utils/apiError';
 import { NOTIFICATIONS_BROADCAST_PERMISSION, getEffectiveRole, hasAdminPermission } from '../utils/roles';
-import './NotificationManagement.css';
 import ShopButton from '../components/ShopButton';
-
 import ShopTag from '../components/ShopTag';
 import ShopAlert from '../components/ShopAlert';
 import ShopSpace from '../components/ShopSpace';
@@ -22,6 +20,8 @@ import ShopTypography from '../components/ShopTypography';
 import ShopCard from '../components/ShopCard';
 import ShopDivider from '../components/ShopDivider';
 import message from '../components/ShopMessage';
+import './NotificationManagement.css';
+
 const Title = ShopTypography.Title;
 const Text = ShopTypography.Text;
 

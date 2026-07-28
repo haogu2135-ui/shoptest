@@ -9,11 +9,10 @@ import { createPaymentMethodOptions, filterPaymentChannelsForMarket, PaymentMeth
 import { useMarket } from '../hooks/useMarket';
 import { getApiErrorMessage } from '../utils/apiError';
 import type { PaymentChannel } from '../types';
-import './Payment.css';
-import '../styles/mobile-page-contrast.css';
 import { navigateToCommercialPaymentUrl } from '../utils/paymentRecovery';
 import ShopTag from './ShopTag';
 import ShopAlert from './ShopAlert';
+import './Payment.css';
 
 const getDefaultPaymentMethod = (channels: PaymentChannel[], currency: string) => {
     const marketChannels = filterPaymentChannelsForMarket(channels, { currency });

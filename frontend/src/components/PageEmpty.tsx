@@ -1,7 +1,5 @@
 import React from 'react';
 import { ShopIcon, SI } from './ShopIcon';
-
-import './PageFeedback.css';
 import ShopButton from './ShopButton';
 
 export type PageEmptyAction = {

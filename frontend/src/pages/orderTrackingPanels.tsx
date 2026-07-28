@@ -339,7 +339,15 @@ export const OrderTrackingMainPanels: React.FC<OrderTrackingPanelsProps> = ({
           onValuesChange={() => setPrefillNoticeVisible(false)}
         >
           <Form.Item name="orderNo" label={t('pages.orderTracking.orderNo')} rules={[{ required: true, message: t('pages.orderTracking.orderNoRequired') }]}>
-            <ShopInput placeholder={t('pages.orderTracking.orderNoPlaceholder')} autoComplete="off" inputMode="text" maxLength={80} />
+            <ShopInput
+              placeholder={t('pages.orderTracking.orderNoPlaceholder')}
+              autoComplete="on"
+              inputMode="text"
+              enterKeyHint="search"
+              maxLength={80}
+              aria-label={t('pages.orderTracking.orderNo')}
+              title={t('pages.orderTracking.orderNo')}
+            />
           </Form.Item>
           <Form.Item name="email" label={t('pages.orderTracking.email')} rules={[{ required: true, message: t('pages.orderTracking.emailRequired') }, { type: 'email', message: t('pages.auth.emailInvalid') }]}>
             <ShopInput

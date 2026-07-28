@@ -12,10 +12,10 @@ import type { ProductDetailBlock } from '../types';
 import { useLanguage } from '../i18n';
 import { imageFallbacks } from '../utils/mediaAssets';
 import { canEmbedVideoUrl, isDirectVideo, isHttpMediaUrl, resolveRichMediaUrl, toEmbeddableVideoUrl } from './ProductRichDetail';
-import './ProductRichDetailEditor.css';
 import ShopButton from './ShopButton';
 import ShopSelect from './ShopSelect';
 import ShopImage from './ShopImage';
+import './ProductRichDetailEditor.css';
 
 type ProductRichDetailEditorProps = {
   value?: ProductDetailBlock[];

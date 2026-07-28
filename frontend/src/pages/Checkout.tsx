@@ -88,12 +88,11 @@ import {
   type CheckoutMessageType,
   type CheckoutPendingOrderSnapshot,
 } from '../utils/checkoutHelpers';
-import './Checkout.css';
-import '../styles/mobile-page-contrast.css';
 import {
   focusFirstCheckoutValidationError,
   scrollCheckoutFieldIntoMobileView,
 } from '../utils/checkoutDom';
+import './Checkout.css';
 
 export {
   buildCheckoutValidationAnnouncement,
