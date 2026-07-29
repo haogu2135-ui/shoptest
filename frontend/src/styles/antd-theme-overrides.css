@@ -936,7 +936,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
   .shop-app-shell .ant-layout-content {
     min-width: 0;
     max-width: 100vw;
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .ant-drawer-content-wrapper {
@@ -1037,7 +1037,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
 /* Final mobile shared control pass */
 @media (max-width: 720px) {
   .shop-app-shell .ant-layout-content {
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .ant-card,
@@ -1098,7 +1098,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
     .shop-nav
   ) {
     max-width: 100%;
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   :where(
@@ -1659,7 +1659,7 @@ body:has(.ant-modal-root .ant-modal-wrap:not([style*="display: none"])) .app-sup
 
   .shop-app-shell :where(.cart-page, .checkout-page, .profile-page, .order-tracking-page, .coupon-center-page, .product-detail-page, .product-list-page) {
     padding-bottom: max(var(--shop-mobile-bottom-rail), env(safe-area-inset-bottom, 0px)) !important;
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .shop-app-shell :where(.ant-card, .ant-card-body, .ant-list, .ant-list-item, .ant-list-item-meta, .ant-list-item-meta-content, .ant-form, .ant-form-item, .ant-form-item-control-input-content, .ant-space, .ant-space-item) {

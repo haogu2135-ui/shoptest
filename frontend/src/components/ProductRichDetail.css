@@ -154,7 +154,7 @@
   .product-rich-detail {
     width: 100%;
     max-width: 100%;
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .product-rich-detail__text,
@@ -196,7 +196,7 @@
 /* Final mobile rich-detail media stability pass */
 @media (max-width: 640px) {
   .product-rich-detail__figure {
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .product-rich-detail__figure img,

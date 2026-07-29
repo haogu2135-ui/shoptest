@@ -1154,7 +1154,7 @@
 
   .pet-gallery-page {
     max-width: 100%;
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .pet-gallery-hero,

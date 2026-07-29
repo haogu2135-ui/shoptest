@@ -760,7 +760,7 @@
 
   .pet-finder-page {
     max-width: 100%;
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .pet-finder-page__layout,
@@ -1328,7 +1328,7 @@
    in the native WebView after this lazy stylesheet loads. */
 @media (max-width: 780px) {
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .pet-finder-page {
-    overflow-x: clip !important;
+    overflow-x: hidden !important;
     padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 130px + env(safe-area-inset-bottom, 0px)) !important;
   }
 

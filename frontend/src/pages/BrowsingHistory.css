@@ -1162,7 +1162,7 @@
   }
 
   .browsing-history {
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .browsing-history__hero,
@@ -1577,7 +1577,7 @@
   }
 
   .browsing-history {
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .browsing-history__tools,

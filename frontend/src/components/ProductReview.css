@@ -354,7 +354,7 @@
 
   .product-review {
     max-width: 100%;
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .product-review__composer,

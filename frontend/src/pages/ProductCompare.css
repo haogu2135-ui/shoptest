@@ -1015,7 +1015,7 @@
     width: min(100% - 12px, 1200px);
     padding: 10px 0 16px;
     max-width: 100%;
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .product-compare-page > .ant-card > .ant-card-body {
@@ -1245,7 +1245,7 @@
 /* Mobile compare table comfort pass */
 @media (max-width: 600px) {
   .product-compare-page {
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .product-compare__toolbar,

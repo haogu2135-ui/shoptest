@@ -2393,7 +2393,7 @@
   .profile-page {
     width: min(100% - 12px, 1080px);
     padding-inline: 0;
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .profile-overview,
@@ -2802,7 +2802,7 @@
   }
 
   .profile-page {
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .profile-tabs__nav {

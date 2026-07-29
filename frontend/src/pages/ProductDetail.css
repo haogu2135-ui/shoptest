@@ -4256,7 +4256,7 @@
   }
 
   .product-mobile-buybar {
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .product-mobile-buybar__meta strong,
@@ -4542,7 +4542,7 @@
   }
 
   .product-detail-page {
-    overflow-x: clip;
+    overflow-x: hidden;
     padding-bottom: calc(126px + env(safe-area-inset-bottom));
   }
 
@@ -5647,7 +5647,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page {
     padding-bottom: calc(158px + env(safe-area-inset-bottom, 0px)) !important;
     scroll-padding-bottom: calc(172px + env(safe-area-inset-bottom, 0px)) !important;
-    overflow-x: clip !important;
+    overflow-x: hidden !important;
   }
 
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar {

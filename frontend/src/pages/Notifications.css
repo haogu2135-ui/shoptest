@@ -774,7 +774,7 @@
 
   .notifications-page {
     width: min(100% - 12px, 800px);
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .notifications-page__header,

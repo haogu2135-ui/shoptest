@@ -4193,7 +4193,7 @@
 
   .coupon-center-page {
     width: min(100% - 14px, 1100px);
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .coupon-center-page__hero,
@@ -4762,7 +4762,7 @@
   }
 
   .coupon-center-page {
-    overflow-x: clip;
+    overflow-x: hidden;
     padding-top: 8px;
     padding-bottom: calc(96px + env(safe-area-inset-bottom));
   }

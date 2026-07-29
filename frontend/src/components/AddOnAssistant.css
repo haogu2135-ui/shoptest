@@ -336,7 +336,7 @@
 
   .add-on-assistant {
     max-width: 100%;
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .add-on-assistant__header,

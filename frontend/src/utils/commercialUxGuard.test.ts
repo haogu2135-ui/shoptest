@@ -721,6 +721,21 @@ describe('commercial UX contracts', () => {
   });
 
 
+  it('keeps global storefront mobile shells on WebView-safe horizontal overflow', () => {
+    const globalCss = readFrontend('index.css');
+    const antdTheme = readFrontend('styles', 'antd-theme-overrides.css');
+
+    expect(globalCss).not.toContain('overflow-x: clip');
+    expect(globalCss).toMatch(/Final mobile viewport guard:[\s\S]*?html,\s*body,\s*#root\s*\{[\s\S]*?overflow-x:\s*hidden;/);
+    expect(globalCss).toMatch(/Android UI global closure[\s\S]*?html,\s*body,\s*#root\s*\{[\s\S]*?overflow-x:\s*hidden;/);
+    expect(antdTheme).not.toContain('overflow-x: clip');
+    expect(antdTheme).toMatch(/Final global mobile surface pass[\s\S]*?\.shop-app-shell \.ant-layout-content\s*\{[\s\S]*?overflow-x:\s*hidden;/);
+    expect(antdTheme).toMatch(/Final mobile shared control pass[\s\S]*?\.shop-app-shell \.ant-layout-content\s*\{[\s\S]*?overflow-x:\s*hidden;/);
+    expect(antdTheme).toMatch(/Storefront mobile and tablet resilience pass[\s\S]*?\.shop-nav[\s\S]*?\)\s*\{[\s\S]*?overflow-x:\s*hidden;/);
+    expect(antdTheme).toMatch(/Final storefront mobile safety net[\s\S]*?\.shop-app-shell :where\(\.cart-page,[\s\S]*?\)\s*\{[\s\S]*?overflow-x:\s*hidden;/);
+  });
+
+
   it('keeps admin table and cart mobile quantity controls on commercial touch targets', () => {
     const adminTable = readFrontend('styles', 'admin-table-selection.css');
     const adminLayout = readFrontend('components', 'AdminLayout.css');
@@ -1849,12 +1864,17 @@ ${orderActions}`;
 
   it('keeps login auth conversion rails commercially tappable at >=44px', () => {
     const login = readFrontend('pages', 'Login.css');
+    const register = readFrontend('pages', 'Register.css');
     expect(login).toMatch(/\.shopee-login-codeButton[\s\S]{0,120}?height:\s*44px/);
     expect(login).toMatch(/\.shopee-login-quickLinks (?:a|button)[\s\S]{0,80}?min-height:\s*44px|\.shopee-login-quickLinks a,[\s\S]{0,80}?min-height:\s*44px/);
     expect(login).toMatch(/\.shopee-login-links a,[\s\S]{0,80}?min-height:\s*44px|\.shopee-login-links a,\s*\.shopee-login-links button[\s\S]{0,60}?min-height:\s*44px/);
     expect(login).toMatch(/\.shopee-login-tabs__tab[\s\S]{0,80}?min-height:\s*44px/);
     expect(login).toMatch(/\.shopee-login-tabs__tab[\s\S]{0,60}?min-height:\s*44px/);
     expect(login).not.toMatch(/\.shopee-login-codeButton[\s\S]{0,80}?height:\s*(?:3[0-9]|4[0-3])px/);
+    expect(login).not.toContain('overflow-x: clip');
+    expect(register).not.toContain('overflow-x: clip');
+    expect(login).toMatch(/Commercial login mobile touch targets[\s\S]*?\.shopee-login-card \.ant-input,[\s\S]*?font-size:\s*16px/);
+    expect(register).toMatch(/\.register-page \.shop-input__control\s*\{[\s\S]*?font-size:\s*16px/);
   });
 
   it('keeps footer and coupon conversion rails commercially tappable at >=44px', () => {
@@ -1900,18 +1920,40 @@ ${orderActions}`;
 
 
   it('keeps high-traffic catalog/PDP/home storefront residual fonts >=12px', () => {
-    const files = [
+    const highTrafficCssFiles = [
       ['pages', 'ProductDetail.css'],
       ['pages', 'ProductList.css'],
       ['pages', 'Home.css'],
       ['pages', 'Wishlist.css'],
       ['pages', 'CouponCenter.css'],
+      ['pages', 'Profile.css'],
+      ['pages', 'OrderTracking.css'],
+      ['pages', 'BrowsingHistory.css'],
+      ['pages', 'Notifications.css'],
+      ['pages', 'PetFinder.css'],
+      ['pages', 'ProductCompare.css'],
+      ['pages', 'PetGallery.css'],
+      ['components', 'CustomerSupportWidget.css'],
+      ['components', 'SeventeenTrackWidget.css'],
+      ['components', 'ProductReview.css'],
+      ['components', 'ProductRichDetail.css'],
+      ['components', 'PetPersonalizedAssistant.css'],
+      ['components', 'AddOnAssistant.css'],
+      ['components', 'SkeletonLoader.css'],
       ['mobile-app.css'],
     ];
-    for (const parts of files) {
+    for (const parts of highTrafficCssFiles) {
       const css = readFrontend(...parts);
       expect(css).not.toMatch(/font-size:\s*(?:9|10|11)px/);
+      expect(css).not.toContain('overflow-x: clip');
     }
+
+    const homeCss = readFrontend('pages', 'Home.css');
+    const listCss = readFrontend('pages', 'ProductList.css');
+    const detailCss = readFrontend('pages', 'ProductDetail.css');
+    expect(homeCss).toMatch(/body\.shop-mobile-app \.shop-app-shell \.shopee-home\s*\{[\s\S]*?overflow-x:\s*hidden\s*!important/);
+    expect(listCss).toMatch(/\.shop-app-shell--product-list \.product-list\s*\{[\s\S]*?overflow-x:\s*hidden\s*!important/);
+    expect(detailCss).toMatch(/\.shop-app-shell--product-detail \.product-detail-page\s*\{[\s\S]*?overflow-x:\s*hidden\s*!important/);
   });
 
 

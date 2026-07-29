@@ -507,7 +507,7 @@
 
   .pet-personalized-assistant {
     max-width: 100%;
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .pet-personalized-assistant__header,

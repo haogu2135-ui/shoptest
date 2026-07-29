@@ -2,7 +2,7 @@
   width: min(1200px, calc(100% - 24px));
   margin: 0 auto;
   padding: 24px 0;
-  overflow-x: clip;
+  overflow-x: hidden;
   overflow-y: visible;
 }
 
@@ -4250,7 +4250,7 @@
    clipping after the lazy route stylesheet loads. */
 @media (max-width: 780px) {
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-list .product-list {
-    overflow-x: clip !important;
+    overflow-x: hidden !important;
     padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 116px + env(safe-area-inset-bottom, 0px)) !important;
   }
 

@@ -386,7 +386,7 @@
   .stats-strip-skeleton,
   .skeleton--detail {
     max-width: 100%;
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .skeleton__row,

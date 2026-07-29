@@ -796,7 +796,7 @@
 
   .order-tracking-page {
     max-width: 100%;
-    overflow-x: clip;
+    overflow-x: hidden;
   }
 
   .order-tracking-page .ant-card,
@@ -1188,7 +1188,7 @@
   }
 
   .order-tracking-page {
-    overflow-x: clip;
+    overflow-x: hidden;
     padding-bottom: calc(96px + env(safe-area-inset-bottom));
   }
 
