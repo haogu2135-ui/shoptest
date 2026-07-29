@@ -10,6 +10,7 @@ import path from 'path';
 type LocaleTree = typeof en;
 const es = {
   ...esStorefront,
+  adminLayout: esAdminPages.adminLayout,
   pages: {
     ...esStorefront.pages,
     ...esAdminPages.pages,

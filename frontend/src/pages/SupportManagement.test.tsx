@@ -119,7 +119,7 @@ describe('SupportManagement', () => {
     const replyInput = await screen.findByRole('textbox', { name: /Write a reply/i }, { timeout: 6000 });
     expect(replyInput).toBeInTheDocument();
     expect(replyInput).toBeDisabled();
-    expect(screen.getAllByText('No admin permission').length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/^(No admin permission|Sin permiso de administración)$/).length).toBeGreaterThan(0);
 
     await waitFor(() => expect(mockGetMessages).toHaveBeenCalledWith(42, { limit: 80 }));
   });

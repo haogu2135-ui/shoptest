@@ -76,14 +76,15 @@ describe('cart timer cleanup source contracts', () => {
 
   it('keeps cart async mutation continuations guarded after unmount', () => {
     const cartSource = readSourceFile('../pages/Cart.tsx');
+    const cartSessionDataSource = readSourceFile('../hooks/useCartSessionData.ts');
     const cartMutationsSource = readSourceFile('../hooks/useCartItemMutations.ts');
-    const cartSurface = `${cartSource}\n${cartMutationsSource}`;
+    const cartSurface = `${cartSource}\n${cartSessionDataSource}\n${cartMutationsSource}`;
     const cartDrawerSource = readSourceFile('../components/CartDrawer.tsx');
 
     expect(cartSurface).toContain('if (!mountedRef.current) return;');
-    expect(cartSource).toContain('if (mountedRef.current) setLoading(false);');
+    expect(cartSessionDataSource).toContain('if (isCurrentCartSnapshotRequest(requestId)) setLoading(false);');
     expect(cartMutationsSource).toContain('if (mountedRef.current) setRestoringSaved(false);');
-    expect(cartSource).toMatch(/const fetchCartItems = useCallback\(async \(\) => \{\s+if \(!mountedRef\.current\) return;\s+const authenticated/);
+    expect(cartSessionDataSource).toMatch(/const fetchCartItems = useCallback\(async \(\) => \{\s+if \(!mountedRef\.current\) return;\s+const authenticated/);
     expect(cartMutationsSource).toMatch(/await cartApi\.removeItem\(item\.id\);\s+if \(!mountedRef\.current\) return;/);
     expect(cartMutationsSource).toMatch(/await cartApi\.removeItems\(normalizedIds\);\s+if \(!mountedRef\.current\) return;/);
     expect(cartMutationsSource).toMatch(/await cartApi\.getItems\(0\);\s+if \(!mountedRef\.current\) return;/);
@@ -93,11 +94,12 @@ describe('cart timer cleanup source contracts', () => {
   });
 
   it('does not refetch cart contents only because the UI language changed', () => {
-    const cartSource = readSourceFile('../pages/Cart.tsx');
-    const fetchCartItemsBlock = cartSource.match(/const fetchCartItems = useCallback\([\s\S]*?\}, \[([^\]]*)\]\);/);
+    const sessionDataSource = readSourceFile('../hooks/useCartSessionData.ts');
+    const fetchCartItemsBlock = sessionDataSource.match(/const fetchCartItems = useCallback\([\s\S]*?\}, \[([^\]]*)\]\);/);
     const fetchCartItemsDeps = (fetchCartItemsBlock?.[1] || '').split(',').map((dependency) => dependency.trim()).filter(Boolean);
 
-    expect(cartSource).toContain('cartFetchErrorFallbackRef');
+    expect(sessionDataSource).toContain('cartFetchErrorFallbackRef');
+    expect(sessionDataSource).toContain('cartFetchErrorLanguageRef');
     expect(fetchCartItemsDeps).not.toContain('language');
     expect(fetchCartItemsDeps).not.toContain('t');
   });

@@ -113,6 +113,13 @@ describe('commercial ops contracts', () => {
     expect(diagnose).toContain('Wrong/stale origin IP is the most common 522 cause');
     expect(diagnose).toContain('rapid4cloud');
     expect(diagnose).toContain('SHOPTEST_REQUIRE_PRODUCTION=1');
+    expect(diagnose).toContain('edge_port_80=${edge_port_80_status}');
+    expect(diagnose).toContain('edge_port_443=${edge_port_443_status}');
+    expect(diagnose).toContain('blocked-by-input-rule');
+    expect(diagnose).toContain('scripts/open-shoptest-edge-ports.sh');
+    expect(diagnose).toContain('grep -Eq');
+    expect(diagnose).not.toContain('rg -q');
+    expect(diagnose).toContain("'^-A INPUT .*-j (REJECT|DROP)( |$)'");
   });
 
   it('keeps checkout pure helpers modularized for commercial maintainability', () => {

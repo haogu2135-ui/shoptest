@@ -15,8 +15,14 @@ const readProductDetailSurface = () => [
   readFrontend('pages', 'productDetailShell.tsx'),
 ].join('\n');
 
+const readProductListSurface = () => [
+  readFrontend('pages', 'ProductList.tsx'),
+  readFrontend('pages', 'productListShellPanels.tsx'),
+].join('\n');
+
 const readProfileSurface = () => [
   readFrontend('pages', 'Profile.tsx'),
+  readFrontend('pages', 'profileShellPanels.tsx'),
   readFrontend('pages', 'profileOrdersPanel.tsx'),
   readFrontend('pages', 'profileAddressesPanel.tsx'),
   readFrontend('pages', 'profilePetsPanel.tsx'),
@@ -30,7 +36,7 @@ const readProfileSurface = () => [
 describe('commercial SEO contracts', () => {
   it('keeps storefront pages on document meta + structured data utilities', () => {
     const home = readFrontend('pages', 'Home.tsx');
-    const productList = readFrontend('pages', 'ProductList.tsx');
+    const productList = readProductListSurface();
     const productDetail = readFrontend('pages', 'ProductDetail.tsx');
     const couponCenter = readFrontend('pages', 'CouponCenter.tsx');
     const indexHtml = fs.readFileSync(path.join(__dirname, '..', '..', 'public', 'index.html'), 'utf8');

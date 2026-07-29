@@ -159,7 +159,7 @@ describe('BugManagement mobile modal guards', () => {
     expect(columnsEnd).toBeGreaterThan(columnsStart);
     expect(pageSource).not.toContain('const columns: ColumnsType<AdminBugReport> = [');
     expect(columnsSource).toContain("title: tx('bug', 'Bug')");
-    expect(columnsSource).toContain('<Space wrap className="bug-management__rowActions">');
+    expect(columnsSource).toContain('<ShopSpace wrap className="bug-management__rowActions">');
     expect(columnsSource).toContain("openStatusEditor(bug, 'scan')");
     expect(columnsSource).toContain('withPermissionTooltip(');
     expect(columnsSource).toContain('], [');
@@ -170,7 +170,7 @@ describe('BugManagement mobile modal guards', () => {
   });
 
   it('keeps BUG row cards and actions responsive at tablet and short-landscape widths', () => {
-    expect(pageSource).toContain('<Space wrap className="bug-management__rowActions">');
+    expect(pageSource).toContain('<ShopSpace wrap className="bug-management__rowActions">');
 
     const f2718ResidualStart = cssSource.indexOf('/* F2718/F2320 residual');
     const f2718ResidualCss = cssSource.slice(f2718ResidualStart);
@@ -254,7 +254,11 @@ describe('BugManagement mobile modal guards', () => {
   });
 
   it('renders BUG page and attachment URLs as safe clickable references', () => {
-    expect(pageSource).toContain('const { Link: TextLink, Paragraph, Text, Title } = Typography;');
+    expect(pageSource).toContain("import ShopTypography from '../components/ShopTypography';");
+    expect(pageSource).toContain('const TextLink = ShopTypography.Link;');
+    expect(pageSource).toContain('const Paragraph = ShopTypography.Paragraph;');
+    expect(pageSource).toContain('const Text = ShopTypography.Text;');
+    expect(pageSource).toContain('const Title = ShopTypography.Title;');
     expect(pageSource).toContain('const resolveBugReferenceHref = (value?: string) => {');
     expect(pageSource).toContain("normalized.startsWith('/') && !normalized.startsWith('//') && !normalized.includes('\\\\')");
     expect(pageSource).toContain("parsed.origin === browserOrigin");

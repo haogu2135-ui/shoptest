@@ -7,6 +7,10 @@ import { cartApi, wishlistApi } from '../api';
 import { hasStoredValue } from '../utils/safeStorage';
 import Wishlist from './Wishlist';
 
+const mockTranslate = (key: string, params?: Record<string, unknown>) => (
+  params && Object.keys(params).length > 0 ? `${key}:${JSON.stringify(params)}` : key
+);
+
 const readWishlistSource = () => [
   fs.readFileSync(path.resolve(__dirname, 'Wishlist.tsx'), 'utf8'),
   fs.readFileSync(path.resolve(__dirname, 'wishlistHelpers.ts'), 'utf8'),
@@ -26,9 +30,7 @@ jest.mock('../api', () => ({
 jest.mock('../i18n', () => ({
   useLanguage: () => ({
     language: 'en',
-    t: (key: string, params?: Record<string, unknown>) => (
-      params && Object.keys(params).length > 0 ? `${key}:${JSON.stringify(params)}` : key
-    ),
+    t: mockTranslate,
   }),
 }));
 

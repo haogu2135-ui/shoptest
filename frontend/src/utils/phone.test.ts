@@ -42,12 +42,16 @@ describe('phone utilities', () => {
   it('keeps Checkout and Profile on the shared phone helpers', () => {
     const checkoutSource = readSource('../pages/Checkout.tsx');
     const profileSource = readSource('../pages/Profile.tsx');
+    const checkoutHelpersSource = readSource('checkoutHelpers.ts');
+    const profileHelpersSource = readSource('profileHelpers.ts');
 
-    [checkoutSource, profileSource].forEach((source) => {
-      expect(source).toContain("from '../utils/phone'");
+    [checkoutHelpersSource, profileHelpersSource].forEach((source) => {
+      expect(source).toContain("from './phone'");
       expect(source).toContain('isLikelyPhoneNumber');
       expect(source).toContain('normalizeLikelyPhoneNumber');
       expect(source).toContain('normalizePhoneNumber');
+    });
+    [checkoutSource, profileSource].forEach((source) => {
       expect(source).not.toContain('const checkoutPhonePattern');
       expect(source).not.toContain('const profilePhonePattern');
       expect(source).not.toContain('const stripProfileControlChars');

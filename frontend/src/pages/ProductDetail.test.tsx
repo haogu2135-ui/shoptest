@@ -534,7 +534,9 @@ describe('ProductDetail loading state', () => {
       name: 'pages.productDetail.imageThumb',
     })[0];
     expect(firstThumb.tagName).toBe('BUTTON');
-    expect(firstThumb.querySelector('img')).not.toHaveAttribute('role');
+    expect(firstThumb.querySelector('img')).toHaveAttribute('role', 'presentation');
+    expect(firstThumb.querySelector('img')).toHaveAttribute('aria-hidden', 'true');
+    expect(firstThumb.querySelector('img')).toHaveAttribute('alt', '');
 
     fireEvent.keyDown(firstThumb, { key: 'ArrowLeft' });
 

@@ -9,6 +9,41 @@ ORIGIN_IP="${SHOPTEST_ORIGIN_PUBLIC_IP:-161.153.37.250}"
 # (often https://127.0.0.1 for origin-edge TLS-insecure CWV).
 PUBLIC_URL="${SHOPTEST_PUBLIC_CDN_BASE:-https://${DOMAIN}}"
 
+input_firewall_rules=""
+input_firewall_policy="unavailable"
+edge_port_80_status="unavailable"
+edge_port_443_status="unavailable"
+
+classify_input_port() {
+  local port="$1"
+  if grep -Eq -- "--dport ${port} .*-j ACCEPT" <<<"${input_firewall_rules}"; then
+    echo "explicit-allow"
+    return
+  fi
+  if [[ "${input_firewall_policy}" == "ACCEPT" ]] \
+    && ! grep -Eq -- '^-A INPUT .*-j (REJECT|DROP)( |$)' <<<"${input_firewall_rules}"; then
+    echo "default-policy-allow"
+    return
+  fi
+  if grep -Eq -- '^-A INPUT .*-j (REJECT|DROP)( |$)' <<<"${input_firewall_rules}"; then
+    echo "blocked-by-input-rule"
+    return
+  fi
+  if [[ "${input_firewall_policy}" == "DROP" || "${input_firewall_policy}" == "REJECT" ]]; then
+    echo "blocked-by-input-policy"
+    return
+  fi
+  echo "no-explicit-allow-rule"
+}
+
+if command -v iptables >/dev/null 2>&1; then
+  input_firewall_rules="$(iptables -S INPUT 2>/dev/null || true)"
+  input_firewall_policy="$(awk '$1 == "-P" && $2 == "INPUT" { print $3; exit }' <<<"${input_firewall_rules}")"
+  input_firewall_policy="${input_firewall_policy:-unknown}"
+  edge_port_80_status="$(classify_input_port 80)"
+  edge_port_443_status="$(classify_input_port 443)"
+fi
+
 echo "== ShopMX Cloudflare origin diagnosis =="
 echo "domain=${DOMAIN}"
 echo "origin_ip=${ORIGIN_IP}"
@@ -52,7 +87,7 @@ else
 fi
 # Detect wrong-product bodies if public somehow returns 200 to a foreign stack.
 if [[ "${public_code:-0}" == "200" && -s /tmp/shopmx-cf-home.body ]]; then
-  if ! rg -qi 'ShopMX|shop-frontend|main\.[a-f0-9]+\.js|pet essentials|lang="es-MX"' /tmp/shopmx-cf-home.body; then
+  if ! grep -Eqi 'ShopMX|shop-frontend|main\.[a-f0-9]+\.js|pet essentials|lang="es-MX"' /tmp/shopmx-cf-home.body; then
     body_hint="$(head -c 120 /tmp/shopmx-cf-home.body | tr '\n' ' ')"
     echo "public_body_not_shopmx=1 preview=${body_hint}"
     public_code="200-wrong-origin"
@@ -64,24 +99,29 @@ echo
 
 echo "-- host listeners / iptables --"
 ss -ltn 2>/dev/null | awk 'NR==1 || /:80 |:443 /' || true
-if command -v iptables >/dev/null 2>&1; then
-  iptables -S INPUT 2>/dev/null | rg 'dport (80|443)|REJECT|DROP' || true
-fi
+echo "input_firewall_policy=${input_firewall_policy}"
+echo "edge_port_80=${edge_port_80_status}"
+echo "edge_port_443=${edge_port_443_status}"
+printf '%s\n' "${input_firewall_rules}" | grep -E 'dport (80|443)|REJECT|DROP' || true
 echo
 
 if [[ "${http_code:-0}" == "200" || "${https_code:-0}" == "200" ]]; then
   if [[ "${public_code:-0}" != "200" ]]; then
     case "${public_code:-000}" in
       522)
+        firewall_note="Host firewall policy is ${input_firewall_policy}; 80=${edge_port_80_status}; 443=${edge_port_443_status}."
+        if [[ "${edge_port_80_status}" == blocked-* || "${edge_port_443_status}" == blocked-* ]]; then
+          firewall_note="Host firewall is blocking an edge port. Run scripts/open-shoptest-edge-ports.sh and persist the equivalent rules before investigating Cloudflare settings."
+        fi
         cat <<MSG
 RESULT: Origin is healthy on ${ORIGIN_IP}, but Cloudflare returns 522 (connection timed out to origin).
-NOTE: Host iptables accepts NEW 80/443 and origin serves ShopMX on bare IP. When public port checks also show 80/443 open, prefer CF dashboard origin misconfig over OCI Security List.
+NOTE: ${firewall_note}
 ACTION:
   1) Cloudflare DNS A for ${DOMAIN} must point to ${ORIGIN_IP} (proxied / orange cloud). Wrong/stale origin IP is the most common 522 cause when origin direct is healthy.
-  2) SSL/TLS mode: Full (self-signed origin cert present) — avoid Full Strict until a publicly trusted origin cert is installed; Flexible only if origin HTTP is intended.
-  3) Disable Authenticated Origin Pulls unless origin mTLS is configured.
-  4) Confirm no Cloudflare Workers/Spectrum/Load Balancer pool points at a dead/foreign origin (e.g. rapid4cloud).
-  5) Optional: re-check OCI NSG only if external multiprobes show 80/443 closed to the public internet.
+  2) Confirm host firewall and OCI NSG/Security List accept TCP 80 and 443 before changing Cloudflare settings.
+  3) SSL/TLS mode: Full (self-signed origin cert present) — avoid Full Strict until a publicly trusted origin cert is installed; Flexible only if origin HTTP is intended.
+  4) Disable Authenticated Origin Pulls unless origin mTLS is configured.
+  5) Confirm no Cloudflare Workers/Spectrum/Load Balancer pool points at a dead/foreign origin (e.g. rapid4cloud).
   6) After fix: SHOPTEST_REQUIRE_PRODUCTION=1 npm --prefix frontend run test:commercial-production-readiness
 MSG
         ;;

@@ -542,8 +542,9 @@ describe('commercial UX contracts', () => {
   it('keeps commerce thumbnails on accessible image semantics', () => {
     const productList = readProductListSurface();
     const productDetail = readProductDetailSurface();
-    expect(productList).toMatch(/className="product-list__checkoutPathThumb"[\s\S]*?alt=\{productName\}/);
-    expect(productList).not.toMatch(/className="product-list__checkoutPathThumb"[\s\S]{0,180}?alt=""/);
+    expect(productList).toMatch(/className="product-list__checkoutPathItem"[\s\S]*?aria-label=\{`\$\{t\('pages\.productList\.viewPick'\)\}: \$\{productName\}`\}/);
+    expect(productList).toMatch(/className="product-list__checkoutPathThumb"[\s\S]*?alt=""/);
+    expect(productList).not.toMatch(/className="product-list__checkoutPathThumb"[\s\S]{0,180}?alt=\{productName\}/);
     expect(productDetail).toMatch(/alt=""[\s\S]*?aria-hidden="true"[\s\S]*?role="presentation"[\s\S]*?className="product-detail-thumbs__img"/);
     expect(productDetail).toMatch(/alt=\{getGalleryImageLabel\(index\)\}[\s\S]*?className="product-mobile-thumbs__img"/);
   });
