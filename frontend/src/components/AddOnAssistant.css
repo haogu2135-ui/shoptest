@@ -224,7 +224,7 @@
   }
 
   .add-on-assistant__item {
-    grid-template-columns: 46px minmax(0, 1fr) 34px;
+    grid-template-columns: 46px minmax(0, 1fr) 44px;
     gap: 8px;
     padding: 8px;
     border-radius: 14px;
@@ -255,8 +255,8 @@
 
   .add-on-assistant__item .ant-btn {
     grid-column: auto;
-    width: 34px;
-    min-width: 34px;
+    width: 44px;
+    min-width: 44px;
     min-height: 44px;
     padding: 0;
     border-radius: 999px;
@@ -269,7 +269,7 @@
 
 @media (max-width: 360px) {
   .add-on-assistant__item {
-    grid-template-columns: 42px minmax(0, 1fr) 32px;
+    grid-template-columns: 42px minmax(0, 1fr) 44px;
     gap: 7px;
   }
 
@@ -279,8 +279,8 @@
   }
 
   .add-on-assistant__item .ant-btn {
-    width: 32px;
-    min-width: 32px;
+    width: 44px;
+    min-width: 44px;
     min-height: 44px;
   }
 }

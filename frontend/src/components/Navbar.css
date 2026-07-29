@@ -1658,7 +1658,7 @@
   }
 
   .shop-nav__search .shop-search-field__input {
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .shop-nav__search .shop-search-field__submit {
@@ -2430,7 +2430,7 @@
 
   .shop-nav__search .shop-search-field__input {
     min-width: 0;
-    font-size: 14px;
+    font-size: 16px;
   }
 
   .shop-nav__mega {
@@ -3784,6 +3784,7 @@ body .shop-nav__dropdown-popup.shop-dropdown__popup {
 .shop-nav__search .shop-search-field__input {
   height: 44px;
   min-height: 44px;
+  font-size: 16px;
 }
 .shop-nav__search .shop-search-field__submit:hover,
 .shop-nav__search .shop-search-field__submit:focus-visible {

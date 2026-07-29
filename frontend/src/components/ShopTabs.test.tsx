@@ -1,6 +1,10 @@
+import fs from 'fs';
+import path from 'path';
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import ShopTabs from './ShopTabs';
+
+const cssSource = fs.readFileSync(path.resolve(__dirname, 'ShopTabs.css'), 'utf8');
 
 describe('ShopTabs', () => {
   it('switches panels and keeps dual ant-tabs classes', () => {
@@ -16,6 +20,11 @@ describe('ShopTabs', () => {
     expect(screen.getByText('Panel A')).toBeInTheDocument();
     fireEvent.click(screen.getByRole('tab', { name: 'Beta' }));
     expect(screen.getByText('Panel B')).toBeInTheDocument();
+  });
+
+  it('keeps tab triggers on a commercial touch target', () => {
+    expect(cssSource).toMatch(/\.shop-tabs__tab\s*\{[^}]*min-height:\s*44px/);
+    expect(cssSource).not.toMatch(/\.shop-tabs__tab\s*\{[^}]*min-height:\s*(?:3[0-9]|4[0-3])px/);
   });
 });
 
@@ -39,4 +48,3 @@ describe('ShopTabs', () => {
     expect(screen.getByRole('tab', { name: 'Beta' })).toHaveFocus();
     jest.useRealTimers();
   });
-

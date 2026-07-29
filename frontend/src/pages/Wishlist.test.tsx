@@ -145,6 +145,16 @@ describe('Wishlist mobile action layout', () => {
     expect(fixCss).toMatch(/@media \(max-width:\s*860px\) and \(max-height:\s*430px\)[\s\S]*?\.wishlist-page\.wishlist-page--withMobileAction \.wishlist-page__mobileAction\s*\{[\s\S]*?position:\s*static\s*!important;/);
     expect(fixCss).not.toMatch(/F3443:[\s\S]*?\.wishlist-page__mobileAction\s*\{[^}]*bottom:\s*0\s*!important/);
   });
+
+  it('keeps compact remove actions on a commercial mobile touch target', () => {
+    const css = readWishlistCss();
+
+    expect(css).toMatch(/@media \(max-width:\s*640px\)[\s\S]*?\.wishlist-page__actions\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*44px/);
+    expect(css).toMatch(/@media \(max-width:\s*360px\)[\s\S]*?\.wishlist-page__actions\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*44px/);
+    expect(css).toMatch(/Final mobile\/App touch-target guard[\s\S]*?\.wishlist-page__removeAction\.ant-btn\s*\{[^}]*width:\s*44px;[^}]*min-width:\s*44px/);
+    expect(css).not.toMatch(/\.wishlist-page__removeAction\.ant-btn\s*\{[^}]*?(?:width|min-width):\s*(?:3[0-9]|4[0-3])px/);
+    expect(css).not.toMatch(/\.wishlist-page__actions\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*(?:3[0-9]|4[0-3])px/);
+  });
 });
 
 describe('Wishlist async lifecycle', () => {

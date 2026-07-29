@@ -44,6 +44,23 @@ describe('CartDrawer mobile overlay and trust-row contracts', () => {
     });
   });
 
+  it('keeps compact mobile delete actions on a commercial touch target', () => {
+    const css = readCartDrawerCss();
+    const deleteButtonRules = Array.from(
+      css.matchAll(/\.cart-drawer__itemAction--delete\.ant-btn\s*\{(?<rules>[^}]*)\}/g),
+      (match) => match.groups?.rules ?? '',
+    ).filter((rules) => /width\s*:/.test(rules));
+
+    expect(css).toMatch(/@media \(max-width:\s*520px\)[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*44px/);
+    expect(css).toMatch(/@media \(max-width:\s*360px\)[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*44px/);
+    expect(deleteButtonRules.length).toBeGreaterThanOrEqual(2);
+    deleteButtonRules.forEach((rules) => {
+      expect(rules).toMatch(/width:\s*44px(?:\s*!important)?;/);
+      expect(rules).toMatch(/min-width:\s*44px(?:\s*!important)?;/);
+      expect(rules).not.toMatch(/(?:width|min-width):\s*(?:3[0-9]|4[0-3])px/);
+    });
+  });
+
   it('keeps stale authenticated cart snapshots non-mutating until refresh succeeds', () => {
     const source = readCartDrawerSource();
 

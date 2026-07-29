@@ -201,6 +201,8 @@ describe('ProductList quick-add mobile overlay contracts', () => {
     expect(fixCss).toMatch(/\.product-list__previewModalRoot \.shop-modal__mask\s*\{[^}]*z-index:\s*9500\s*!important;[^}]*background:/);
     expect(fixCss).toMatch(/\.product-list__previewModalRoot \.shop-modal__wrap\s*\{[^}]*z-index:\s*9501\s*!important;/);
     expect(fixCss).toMatch(/body\.shop-mobile-app \.product-list__previewModalRoot \.shop-modal__mask\s*\{[^}]*z-index:\s*9900\s*!important;/);
+    expect(css).toMatch(/\.product-list__previewModal \.shop-modal__close\s*\{[^}]*?width:\s*44px;[^}]*?min-width:\s*44px;[^}]*?height:\s*44px;[^}]*?min-height:\s*44px;/);
+    expect(css).not.toMatch(/\.product-list__previewModal \.shop-modal__close\s*\{[^}]*?\n\s*(?:width|height):\s*(?:3[0-9]|4[0-3])px/);
   });
 
   it('treats the mobile filter drawer as the active overlay above rails', () => {

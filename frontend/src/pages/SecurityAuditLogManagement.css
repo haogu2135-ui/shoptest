@@ -735,7 +735,7 @@
   }
 
   .audit-log-page .ant-picker-input > input {
-    font-size: 12px;
+    font-size: 16px;
   }
 }
 
@@ -849,6 +849,10 @@
   .audit-log-page__retention .ant-input-number,
   .audit-log-page__retention .ant-btn {
     min-height: 44px;
+  }
+
+  .audit-log-page :where(input, textarea, .ant-input, .ant-picker-input > input, .ant-input-number-input) {
+    font-size: 16px !important;
   }
 }
 

@@ -1,6 +1,10 @@
+import fs from 'fs';
+import path from 'path';
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import ShopImage from './ShopImage';
+
+const cssSource = fs.readFileSync(path.resolve(__dirname, 'ShopImage.css'), 'utf8');
 
 describe('ShopImage', () => {
   it('renders dual ant-image classes and alt text', () => {
@@ -18,5 +22,10 @@ describe('ShopImage', () => {
     const img = screen.getByAltText('Broken') as HTMLImageElement;
     fireEvent.error(img);
     expect(img.getAttribute('src')).toContain('fallback.png');
+  });
+
+  it('keeps the preview close control on a commercial touch target', () => {
+    expect(cssSource).toMatch(/\.shop-image-preview__close\s*\{[^}]*width:\s*44px;[^}]*min-width:\s*44px;[^}]*height:\s*44px;[^}]*min-height:\s*44px/);
+    expect(cssSource).not.toMatch(/\.shop-image-preview__close\s*\{[^}]*?(?:width|height|min-width|min-height):\s*(?:3[0-9]|4[0-3])px/);
   });
 });

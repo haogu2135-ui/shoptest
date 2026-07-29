@@ -1,6 +1,10 @@
+import fs from 'fs';
+import path from 'path';
 import React from 'react';
 import { fireEvent, render, screen } from '@testing-library/react';
 import ShopMultiSelect from './ShopMultiSelect';
+
+const cssSource = fs.readFileSync(path.resolve(__dirname, 'ShopMultiSelect.css'), 'utf8');
 
 describe('ShopMultiSelect', () => {
   it('toggles multiple options and emits string arrays', () => {
@@ -62,5 +66,10 @@ describe('ShopMultiSelect', () => {
     );
     fireEvent.change(screen.getByRole('searchbox', { name: 'Find user' }), { target: { value: 'zed' } });
     expect(onSearch).toHaveBeenCalledWith('zed');
+  });
+
+  it('keeps selected chips on commercial touch targets', () => {
+    expect(cssSource).toMatch(/\.shop-multi-select__chip\s*\{[^}]*min-height:\s*44px/);
+    expect(cssSource).not.toMatch(/\.shop-multi-select__chip\s*\{[^}]*min-height:\s*(?:3[0-9]|4[0-3])px/);
   });
 });

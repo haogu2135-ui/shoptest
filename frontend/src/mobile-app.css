@@ -180,7 +180,7 @@ body.shop-mobile-app .shop-nav__search .shop-search-field__control {
 }
 
 body.shop-mobile-app .shop-nav__search .shop-search-field__input {
-  font-size: 15px;
+  font-size: 16px;
 }
 
 body.shop-mobile-app .shop-nav__search .shop-search-field__submit,
@@ -966,7 +966,7 @@ body.shop-mobile-app .shop-nav__search .shop-search-field__control {
 
 body.shop-mobile-app .shop-nav__search .shop-search-field__input {
   color: var(--app-ink);
-  font-size: 15px;
+  font-size: 16px;
 }
 
 body.shop-mobile-app .shop-nav__search .shop-search-field__submit {
@@ -5987,7 +5987,7 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__search .shop-sea
 body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__search .shop-search-field__input {
   color: var(--app-polish-ink) !important;
   -webkit-text-fill-color: var(--app-polish-ink) !important;
-  font-size: 15px !important;
+  font-size: 16px !important;
 }
 
 body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__search .shop-search-field__submit {

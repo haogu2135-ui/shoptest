@@ -499,6 +499,7 @@ textarea.config-center__editor {
   .config-center__contentItem textarea.config-center__editor {
     display: block;
     box-sizing: border-box;
+    font-size: 16px !important;
     overflow-x: auto;
     overflow-y: auto;
     white-space: pre-wrap;

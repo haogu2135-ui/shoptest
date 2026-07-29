@@ -27,8 +27,10 @@ describe('LogManagement mobile RangePicker guards', () => {
   it('pins the mobile/tablet log export calendar inside the visible viewport', () => {
     const f3532Start = cssSource.indexOf('/* F3532');
     const f3532Css = cssSource.slice(f3532Start);
+    const mobileCss = cssSource.slice(cssSource.indexOf('@media (max-width: 720px)'));
 
     expect(f3532Start).toBeGreaterThanOrEqual(0);
+    expect(mobileCss).toMatch(/\.log-management__download \.ant-picker-input input\s*\{[\s\S]*?font-size:\s*16px;/);
     expect(f3532Css).toMatch(/@media \(max-width:\s*900px\),\s*\(max-height:\s*640px\)\s*\{[\s\S]*?\.log-management__download > div\[role="group"\]:first-child\s*\{[\s\S]*?overflow-x:\s*visible;/);
     expect(f3532Css).toMatch(/\.log-management__download \.ant-picker-range\s*\{[\s\S]*?width:\s*100%;[\s\S]*?min-width:\s*0;[\s\S]*?max-width:\s*100%;/);
     expect(f3532Css).toMatch(/body \.log-management__rangePopup\.shop-mobile-popup-layer\.ant-picker-dropdown\s*\{[\s\S]*?position:\s*fixed\s*!important;[\s\S]*?top:\s*max\(12px,\s*env\(safe-area-inset-top,\s*0px\)\)\s*!important;[\s\S]*?bottom:\s*auto\s*!important;[\s\S]*?left:\s*max\(8px,\s*env\(safe-area-inset-left,\s*0px\)\)\s*!important;/);

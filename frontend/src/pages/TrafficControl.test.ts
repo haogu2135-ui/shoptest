@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 const pageSource = fs.readFileSync(path.join(__dirname, 'TrafficControl.tsx'), 'utf8');
+const cssSource = fs.readFileSync(path.join(__dirname, 'TrafficControl.css'), 'utf8');
 
 describe('TrafficControl source guards', () => {
   it('keeps traffic-control API error handling typed without broad any usage', () => {
@@ -24,5 +25,16 @@ describe('TrafficControl source guards', () => {
     expect(pageSource).toContain('{loadError && !status ? null : <div className="traffic-control__grid">');
     expect(pageSource).toContain("{loadError && !status ? null : <ShopCard title={<span><ThunderboltOutlined /> {t('pages.trafficControl.circuitBreakers')}</span>}");
     expect(pageSource).toContain('<ShopButton size="small" type="primary" onClick={loadStatus} loading={loading}>');
+  });
+
+  it('keeps traffic-control mobile admin controls on commercial touch targets', () => {
+    const marker = 'Commercial mobile/App traffic-control touch-target guard';
+    const guardStart = cssSource.indexOf(marker);
+    const touchTargetGuard = cssSource.slice(guardStart);
+
+    expect(guardStart).toBeGreaterThanOrEqual(0);
+    expect(touchTargetGuard).toMatch(/@media \(max-width:\s*720px\)/);
+    expect(touchTargetGuard).toMatch(/\.traffic-control \.ant-btn,[^}]*\.traffic-control \.ant-input,[^}]*\.traffic-control \.ant-input-affix-wrapper,[^}]*\.traffic-control \.ant-select-selector\s*\{[^}]*min-height:\s*44px/);
+    expect(touchTargetGuard).not.toMatch(/min-height:\s*(?:3[0-9]|4[0-3])px/);
   });
 });

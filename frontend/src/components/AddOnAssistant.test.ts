@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 const source = fs.readFileSync(path.join(__dirname, 'AddOnAssistant.tsx'), 'utf8');
+const cssSource = fs.readFileSync(path.join(__dirname, 'AddOnAssistant.css'), 'utf8');
 
 describe('AddOnAssistant type-safety guards', () => {
   it('keeps add-on render failures isolated behind a local error boundary', () => {
@@ -60,5 +61,13 @@ describe('AddOnAssistant type-safety guards', () => {
     expect(loadingSource).toContain("aria-label={`${t('pages.addOnAssistant.title')}: ${t('common.loading')}`}");
     expect(loadingSource).toContain('add-on-assistant__skeleton');
     expect(loadingSource).not.toMatch(/\bSkeleton\b/);
+  });
+
+  it('keeps mobile quick-add actions on commercial touch targets', () => {
+    expect(cssSource).toMatch(/@media \(max-width:\s*520px\)[\s\S]*?\.add-on-assistant__item\s*\{[^}]*grid-template-columns:\s*46px minmax\(0,\s*1fr\) 44px/);
+    expect(cssSource).toMatch(/@media \(max-width:\s*520px\)[\s\S]*?\.add-on-assistant__item \.ant-btn\s*\{[^}]*width:\s*44px;[^}]*min-width:\s*44px;[^}]*min-height:\s*44px/);
+    expect(cssSource).toMatch(/@media \(max-width:\s*360px\)[\s\S]*?\.add-on-assistant__item\s*\{[^}]*grid-template-columns:\s*42px minmax\(0,\s*1fr\) 44px/);
+    expect(cssSource).not.toMatch(/\.add-on-assistant__item \.ant-btn\s*\{[^}]*?(?:width|min-width):\s*(?:3[0-9]|4[0-3])px/);
+    expect(cssSource).not.toMatch(/grid-template-columns:\s*(?:46|42)px minmax\(0,\s*1fr\) (?:3[0-9]|4[0-3])px/);
   });
 });

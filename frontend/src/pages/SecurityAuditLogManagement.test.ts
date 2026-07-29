@@ -83,5 +83,7 @@ describe('SecurityAuditLogManagement mobile filter layout guards', () => {
     expect(pageSource).not.toMatch(/<RangePicker\b/);
     expect(pageSource).not.toMatch(/import \{[^}]*\bDatePicker\b[^}]*\} from 'antd'/);
     expect(pageSource).not.toContain('getPopupContainer={() => document.body}');
+    expect(cssSource).toMatch(/\.audit-log-page :where\(input, textarea, \.ant-input, \.ant-picker-input > input, \.ant-input-number-input\)\s*\{[\s\S]*?font-size:\s*16px\s*!important/);
+    expect(cssSource).not.toMatch(/\.audit-log-page \.ant-picker-input > input\s*\{[\s\S]{0,80}?font-size:\s*(?:1[0-5]|[0-9])px/);
   });
 });

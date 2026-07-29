@@ -1099,7 +1099,7 @@
 @media (max-width: 520px) {
   .cart-drawer__item .ant-list-item-action {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 42px;
+    grid-template-columns: minmax(0, 1fr) 44px;
     gap: 8px;
     align-items: stretch;
     width: 100%;
@@ -1114,8 +1114,8 @@
   }
 
   .cart-drawer__itemAction--delete.ant-btn {
-    width: 42px;
-    min-width: 42px;
+    width: 44px;
+    min-width: 44px;
     padding-inline: 0;
   }
 
@@ -1199,13 +1199,13 @@
   }
 
   .cart-drawer__item .ant-list-item-action {
-    grid-template-columns: minmax(0, 1fr) 38px;
+    grid-template-columns: minmax(0, 1fr) 44px;
     gap: 6px;
   }
 
   .cart-drawer__itemAction--delete.ant-btn {
-    width: 38px;
-    min-width: 38px;
+    width: 44px;
+    min-width: 44px;
   }
 
   .cart-drawer__footer {

@@ -168,7 +168,7 @@
   }
 
   .traffic-control .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
     white-space: normal;
   }
 }
@@ -316,5 +316,15 @@
 @media (max-width: 380px) {
   .traffic-control__stats {
     grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+/* Commercial mobile/App traffic-control touch-target guard */
+@media (max-width: 720px) {
+  .traffic-control .ant-btn,
+  .traffic-control .ant-input,
+  .traffic-control .ant-input-affix-wrapper,
+  .traffic-control .ant-select-selector {
+    min-height: 44px;
   }
 }
