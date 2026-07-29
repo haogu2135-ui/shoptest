@@ -362,8 +362,12 @@ describe('commercial UX contracts', () => {
     expect(app).toContain("navigate('/products')");
     expect(app).toContain("getElementById(MAIN_CONTENT_ID)");
     expect(app).toContain('preventScroll: true');
+    expect(app).toContain('shop-shell-btn--small');
+    expect(app).toContain('shop-api-error-banner__dismiss');
     expect(appCss).toContain('shop-connectivity-banner__actions');
-    expect(appCss).toMatch(/shop-connectivity-banner__actions[\s\S]*?min-height:\s*44px/);
+    expect(appCss).toMatch(/\.shop-shell-btn--small\s*\{[^}]*min-height:\s*44px/);
+    expect(appCss).toMatch(/\.shop-api-error-banner__dismiss\s*\{[^}]*min-height:\s*44px/);
+    expect(appCss).not.toMatch(/\.(?:shop-shell-btn--small|shop-api-error-banner__dismiss)\s*\{[^}]*min-height:\s*(?:3[0-9]|4[0-3])px/);
   });
 
   it('keeps coupon catalog fallback on multipath commercial recovery exits', () => {
@@ -729,10 +733,18 @@ describe('commercial UX contracts', () => {
 
     expect(adminTable).toContain('Commercial admin table action touch targets');
     expect(adminTable).toContain('min-height: 44px !important');
-    expect(adminLayout).toContain('min-height: 44px');
+    expect(adminLayout).toMatch(/@media \(max-width:\s*991px\)[\s\S]*?\.admin-layout__menu\.ant-menu-dark \.ant-menu-item\s*\{[^}]*min-height:\s*44px/);
+    expect(adminLayout).toMatch(/@media \(max-width:\s*991px\)[\s\S]*?\.admin-layout__storeLink,\s*\.admin-layout__header \.ant-btn\s*\{[^}]*min-height:\s*44px/);
+    expect(adminLayout).toMatch(/@media \(max-width:\s*720px\)[\s\S]*?\.admin-layout__content \.ant-modal-footer \.ant-btn\s*\{[^}]*min-height:\s*44px/);
+    expect(adminLayout).toMatch(/@media \(max-width:\s*560px\)[\s\S]*?\.admin-layout__header \.ant-btn,\s*\.admin-layout__storeLink\s*\{[^}]*min-height:\s*44px/);
     expect(cart).toContain('.cart-page__mobileItemBottom .cart-page__quantityStepper .ant-btn');
     expect(cart).toMatch(/\.cart-page__mobileItemBottom \.cart-page__quantityStepper \.ant-btn[\s\S]*?min-height:\s*48px/);
     expect(cart).toMatch(/\.cart-page__mobileItemCommerce \.cart-page__quantityStepper:not\(\.cart-page__quantityStepper--unavailable\)[\s\S]*?grid-template-columns:\s*48px minmax\(48px, 56px\) 48px/);
+    expect(cart).toMatch(/\.cart-page__mobileItemBottom \.ant-btn-dangerous\s*\{[^}]*?width:\s*44px;[^}]*?min-width:\s*44px/);
+    expect(cart).not.toMatch(/\.cart-page__mobileItemBottom \.ant-btn-dangerous\s*\{[^}]*?(?:width|min-width):\s*(?:3[0-9]|4[0-3])px/);
+    expect(cart).not.toMatch(/\.cart-page__mobileItemBottom\s*\{[^}]*grid-template-columns:[^;}]*(?:36|38|40)px/);
+    expect(cart).not.toContain('overflow-x: clip');
+    expect(cart).toMatch(/Mobile cart control stability pass[\s\S]*?\.cart-page\s*\{[\s\S]*?overflow-x:\s*hidden;/);
     expect(login).toContain('Commercial login mobile touch targets');
     expect(login).toContain('min-height: 44px !important');
     expect(petGalleryManagement).toMatch(/\.pet-gallery-management-page__deletePopconfirm\.shop-mobile-popup-layer \.ant-popconfirm-buttons \.ant-btn[\s\S]*?min-height:\s*44px/);
@@ -1921,6 +1933,34 @@ ${orderActions}`;
     expect(profile).toContain('handleRovingTablistKeyDown');
     expect(profile).toContain('aria-orientation="horizontal"');
     expect(shopTabs).toContain('handleRovingTablistKeyDown');
+  });
+
+
+  it('keeps shared storefront image, tabs, multi-select, and add-on controls on commercial touch targets', () => {
+    const addOnAssistantCss = readFrontend('components', 'AddOnAssistant.css');
+    const richEditorCss = readFrontend('components', 'ProductRichDetailEditor.css');
+    const shopImageCss = readFrontend('components', 'ShopImage.css');
+    const shopTabsCss = readFrontend('components', 'ShopTabs.css');
+    const shopMultiSelectCss = readFrontend('components', 'ShopMultiSelect.css');
+
+    expect(addOnAssistantCss).toMatch(/@media \(max-width:\s*520px\)[\s\S]*?\.add-on-assistant__item\s*\{[^}]*grid-template-columns:\s*46px minmax\(0,\s*1fr\) 44px/);
+    expect(addOnAssistantCss).toMatch(/@media \(max-width:\s*520px\)[\s\S]*?\.add-on-assistant__item \.ant-btn\s*\{[^}]*width:\s*44px;[^}]*min-width:\s*44px;[^}]*min-height:\s*44px/);
+    expect(addOnAssistantCss).toMatch(/@media \(max-width:\s*360px\)[\s\S]*?\.add-on-assistant__item\s*\{[^}]*grid-template-columns:\s*42px minmax\(0,\s*1fr\) 44px/);
+    expect(addOnAssistantCss).not.toMatch(/\.add-on-assistant__item \.ant-btn\s*\{[^}]*?(?:width|min-width):\s*(?:3[0-9]|4[0-3])px/);
+
+    expect(richEditorCss).toMatch(/@media \(max-width:\s*640px\)[\s\S]*?\.product-rich-detail-editor__toolbar \.ant-btn\s*\{[^}]*min-height:\s*44px/);
+    expect(richEditorCss).toMatch(/@media \(max-width:\s*640px\)[\s\S]*?\.product-rich-detail-editor__blockActions \.ant-btn\s*\{[^}]*min-height:\s*44px/);
+    expect(richEditorCss).toMatch(/@media \(max-width:\s*640px\)[\s\S]*?\.product-rich-detail-editor__typeSelect \.ant-select-selector\s*\{[^}]*min-height:\s*44px/);
+    expect(richEditorCss).not.toMatch(/\.product-rich-detail-editor__(?:toolbar|blockActions|typeSelect)[\s\S]{0,120}?min-height:\s*(?:3[0-9]|4[0-3])px/);
+
+    expect(shopImageCss).toMatch(/\.shop-image-preview__close\s*\{[^}]*width:\s*44px;[^}]*min-width:\s*44px;[^}]*height:\s*44px;[^}]*min-height:\s*44px/);
+    expect(shopImageCss).not.toMatch(/\.shop-image-preview__close\s*\{[^}]*?(?:width|height|min-width|min-height):\s*(?:3[0-9]|4[0-3])px/);
+
+    expect(shopTabsCss).toMatch(/\.shop-tabs__tab\s*\{[^}]*min-height:\s*44px/);
+    expect(shopTabsCss).not.toMatch(/\.shop-tabs__tab\s*\{[^}]*min-height:\s*(?:3[0-9]|4[0-3])px/);
+
+    expect(shopMultiSelectCss).toMatch(/\.shop-multi-select__chip\s*\{[^}]*min-height:\s*44px/);
+    expect(shopMultiSelectCss).not.toMatch(/\.shop-multi-select__chip\s*\{[^}]*min-height:\s*(?:3[0-9]|4[0-3])px/);
   });
 
 

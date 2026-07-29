@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 const source = fs.readFileSync(path.join(__dirname, 'ProductRichDetailEditor.tsx'), 'utf8');
+const cssSource = fs.readFileSync(path.join(__dirname, 'ProductRichDetailEditor.css'), 'utf8');
 
 describe('ProductRichDetailEditor admin content contract', () => {
   it('keeps add, edit, reorder, and delete controls labelled for operators', () => {
@@ -35,6 +36,13 @@ describe('ProductRichDetailEditor admin content contract', () => {
     expect(source).toContain('ShopTextArea');
     expect(source).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
     expect(source).not.toMatch(/const \{ TextArea \} = Input|<TextArea\b|<Input\b/);
+  });
+
+  it('keeps mobile editor toolbar controls on commercial touch targets', () => {
+    expect(cssSource).toMatch(/@media \(max-width:\s*640px\)[\s\S]*?\.product-rich-detail-editor__toolbar \.ant-btn\s*\{[^}]*min-height:\s*44px/);
+    expect(cssSource).toMatch(/@media \(max-width:\s*640px\)[\s\S]*?\.product-rich-detail-editor__blockActions \.ant-btn\s*\{[^}]*min-height:\s*44px/);
+    expect(cssSource).toMatch(/@media \(max-width:\s*640px\)[\s\S]*?\.product-rich-detail-editor__typeSelect \.ant-select-selector\s*\{[^}]*min-height:\s*44px/);
+    expect(cssSource).not.toMatch(/\.product-rich-detail-editor__(?:toolbar|blockActions|typeSelect)[\s\S]{0,120}?min-height:\s*(?:3[0-9]|4[0-3])px/);
   });
 
 });

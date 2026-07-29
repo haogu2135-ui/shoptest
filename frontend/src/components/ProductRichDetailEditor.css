@@ -107,7 +107,7 @@
   }
 
   .product-rich-detail-editor__toolbar .ant-btn {
-    min-height: 38px;
+    min-height: 44px;
     padding-inline: 8px;
   }
 
@@ -138,7 +138,7 @@
 
   .product-rich-detail-editor__blockActions .ant-btn {
     width: 100%;
-    min-height: 34px;
+    min-height: 44px;
   }
 
   .product-rich-detail-editor__videoPreview {
@@ -194,7 +194,7 @@
   .product-rich-detail-editor__toolbar .ant-btn,
   .product-rich-detail-editor__blockActions .ant-btn,
   .product-rich-detail-editor__typeSelect .ant-select-selector {
-    min-height: 40px;
+    min-height: 44px;
     -webkit-tap-highlight-color: transparent;
     touch-action: manipulation;
   }

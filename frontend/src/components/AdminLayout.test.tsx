@@ -133,6 +133,16 @@ describe('AdminLayout visibility-aware polling', () => {
     expect(css).toContain('@media (max-width: 991px) {\n  .admin-layout__sider.ant-layout-sider {\n    position: sticky;\n    top: 0;\n    height: 100vh;\n    z-index: 40;');
   });
 
+  it('keeps mobile admin shell controls on commercial touch targets', () => {
+    const css = readAdminLayoutCssSource();
+
+    expect(css).toMatch(/@media \(max-width:\s*991px\)[\s\S]*?\.admin-layout__menu\.ant-menu-dark \.ant-menu-item\s*\{[^}]*min-height:\s*44px/);
+    expect(css).toMatch(/@media \(max-width:\s*991px\)[\s\S]*?\.admin-layout__storeLink,\s*\.admin-layout__header \.ant-btn\s*\{[^}]*min-height:\s*44px/);
+    expect(css).toMatch(/@media \(max-width:\s*720px\)[\s\S]*?\.admin-layout__content \.ant-modal-footer \.ant-btn\s*\{[^}]*min-height:\s*44px/);
+    expect(css).toMatch(/@media \(max-width:\s*560px\)[\s\S]*?\.admin-layout__header \.ant-btn,\s*\.admin-layout__storeLink\s*\{[^}]*min-height:\s*44px/);
+    expect(css).not.toMatch(/\.admin-layout__(?:storeLink|header|content|menu)[\s\S]{0,120}?min-height:\s*(?:3[0-9]|4[0-3])px/);
+  });
+
   it('does not poll support unread counts while the admin tab is hidden', () => {
     const source = readAdminLayoutSource();
 

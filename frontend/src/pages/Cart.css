@@ -2007,6 +2007,7 @@
   .cart-page__mobileItemBottom .ant-btn-dangerous {
     grid-column: 2;
     width: 46px;
+    min-width: 44px;
     justify-self: end;
   }
 
@@ -2081,7 +2082,8 @@
   }
 
   .cart-page__mobileItemBottom .ant-btn-dangerous {
-    width: 40px;
+    width: 44px;
+    min-width: 44px;
   }
 }
 
@@ -2220,8 +2222,8 @@
 
   .cart-page__mobileItemBottom .ant-btn-dangerous {
     grid-column: 2;
-    width: 38px;
-    min-width: 38px;
+    width: 44px;
+    min-width: 44px;
     padding-inline: 0;
   }
 
@@ -2305,7 +2307,7 @@
   }
 
   .cart-page__mobileItemBottom {
-    grid-template-columns: minmax(0, 112px) minmax(0, 1fr) minmax(38px, auto);
+    grid-template-columns: minmax(0, 112px) minmax(0, 1fr) minmax(44px, auto);
     align-items: center;
     gap: 8px;
   }
@@ -2334,8 +2336,8 @@
 
   .cart-page__mobileItemBottom .ant-btn-dangerous {
     grid-column: 3;
-    width: 40px;
-    min-width: 40px;
+    width: 44px;
+    min-width: 44px;
     padding: 0;
     background: #fff5f3;
   }
@@ -2387,7 +2389,7 @@
   }
 
   .cart-page__mobileItemBottom {
-    grid-template-columns: minmax(0, 100px) minmax(0, 1fr) 38px;
+    grid-template-columns: minmax(0, 100px) minmax(0, 1fr) 44px;
     gap: 7px;
   }
 
@@ -2556,7 +2558,7 @@
   }
 
   .cart-page {
-    overflow-x: clip;
+    overflow-x: hidden;
     padding-bottom: calc(116px + env(safe-area-inset-bottom));
   }
 
@@ -2611,13 +2613,13 @@
 
 @media (max-width: 360px) {
   .cart-page__mobileItemBottom {
-    grid-template-columns: minmax(0, 92px) minmax(0, 1fr) 36px;
+    grid-template-columns: minmax(0, 92px) minmax(0, 1fr) 44px;
     gap: 6px;
   }
 
   .cart-page__mobileItemBottom .ant-btn-dangerous {
-    width: 36px;
-    min-width: 36px;
+    width: 44px;
+    min-width: 44px;
   }
 
   .cart-page__summaryFooter {
@@ -2707,7 +2709,7 @@
 @media (max-width: 640px) {
   .cart-page__mobileItemBottom {
     display: grid !important;
-    grid-template-columns: minmax(82px, 96px) minmax(0, 1fr) 40px !important;
+    grid-template-columns: minmax(82px, 96px) minmax(0, 1fr) 44px !important;
     align-items: center;
     gap: 8px;
   }
@@ -2738,15 +2740,15 @@
 
   .cart-page__mobileItemBottom .ant-btn-dangerous {
     grid-column: 3 !important;
-    width: 40px;
-    min-width: 40px;
+    width: 44px;
+    min-width: 44px;
     padding-inline: 0;
   }
 }
 
 @media (max-width: 380px) {
   .cart-page__mobileItemBottom {
-    grid-template-columns: minmax(76px, 88px) minmax(0, 1fr) 38px !important;
+    grid-template-columns: minmax(76px, 88px) minmax(0, 1fr) 44px !important;
     gap: 6px;
   }
 

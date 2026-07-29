@@ -22,6 +22,10 @@ Legend: OPEN / FIXED / WONTFIX / REGRESSED
 - Commercial UI follow-up: `TrafficControl` mobile/App admin buttons, inputs, affix wrappers, and select controls now keep a 44px touch floor instead of inheriting the previous 38px mobile button target.
 - Commercial UI follow-up: `CartDrawer` compact mobile delete actions now reserve a 44px grid column and 44px button width at both 520px and 360px breakpoints instead of shrinking to 42px/38px.
 - Commercial UI follow-up: `Wishlist` compact remove actions now keep 44px action columns and 44px button widths across 640px and 360px breakpoints instead of falling back to 42px/38px.
+- Commercial UI follow-up: Shared storefront controls now keep commercial touch targets: `AddOnAssistant` quick-add buttons, `ShopImage` preview close, `ShopTabs` triggers, and `ShopMultiSelect` chips no longer ship 32px-40px hit areas.
+- Commercial UI follow-up: `AdminLayout` mobile shell controls now keep a 44px floor for menu items, store links, header buttons, and modal footer actions instead of 38px-40px targets.
+- Commercial UI follow-up: `ProductRichDetailEditor` mobile toolbar, block action buttons, and type selector now use 44px touch targets instead of legacy 34px-40px editor controls.
+- Commercial UI follow-up: Shell recovery controls now keep commercial touch targets: connectivity banner small buttons and API error dismiss actions no longer drop to 36px hit areas.
 - Regression coverage: Extended `FrontendTypeSafetySourceGuard.test.ts`, `Checkout.test.tsx`, `ShopPopconfirm.test.tsx`, `commercialUxGuard.test.ts`, and adjacent admin mobile CSS guards to reject these regressions.
 - Verification: Bounded targeted Jest suites passed for checkout/popconfirm/source type safety, commercial UX/nav/admin mobile guards, coupon center, auth/profile, and support/order tracking slices. A narrow bounded TypeScript check over `ShopPopconfirm.tsx` and `CheckoutMainShell.tsx` passed; full-project `tsc` hit the bounded runner's default heap limit and was not rerun with higher memory.
 

@@ -72,7 +72,7 @@
 }
 
 .admin-layout__menu.ant-menu-dark .ant-menu-item {
-  min-height: 42px;
+  min-height: 44px;
   margin-inline: 0;
   margin-block: 4px;
   border-radius: 8px;
@@ -274,7 +274,7 @@
   }
 
   .admin-layout__menu.ant-menu-dark .ant-menu-item {
-    min-height: 40px;
+    min-height: 44px;
     margin-block: 3px;
   }
 }
@@ -446,7 +446,7 @@
   }
 
   .admin-layout__menu.ant-menu-dark .ant-menu-item {
-    min-height: 38px;
+    min-height: 44px;
     margin-block: 2px;
     border-radius: 8px;
   }
@@ -459,7 +459,7 @@
 
   .admin-layout__storeLink,
   .admin-layout__header .ant-btn {
-    min-height: 40px;
+    min-height: 44px;
   }
 
   .admin-layout__content.ant-layout-content {
@@ -558,7 +558,7 @@
 
   .admin-layout__content .ant-modal-footer .ant-btn {
     flex: 1 1 128px;
-    min-height: 38px;
+    min-height: 44px;
     margin-inline-start: 0;
   }
 }
@@ -570,7 +570,7 @@
 
   .admin-layout__header .ant-btn,
   .admin-layout__storeLink {
-    min-height: 38px;
+    min-height: 44px;
     padding-inline: 10px;
   }
 

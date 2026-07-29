@@ -896,6 +896,20 @@ describe('cart to checkout flows', () => {
     expect(css).toMatch(/\.cart-page__quantityInput[\s\S]*?height:\s*48px\s*!important/);
   });
 
+  it('keeps mobile cart delete controls commercially tappable and WebView-safe', () => {
+    const css = fs.readFileSync(path.resolve(__dirname, 'Cart.css'), 'utf8');
+    const deleteButtonBlocks = css.match(/\.cart-page__mobileItemBottom \.ant-btn-dangerous\s*\{[^}]*\}/g) ?? [];
+
+    expect(deleteButtonBlocks.length).toBeGreaterThan(0);
+    for (const block of deleteButtonBlocks) {
+      expect(block).not.toMatch(/(?:width|min-width):\s*(?:3[0-9]|4[0-3])px/);
+    }
+    expect(css).toMatch(/\.cart-page__mobileItemBottom \.ant-btn-dangerous\s*\{[^}]*?width:\s*44px;[^}]*?min-width:\s*44px/);
+    expect(css).not.toMatch(/\.cart-page__mobileItemBottom\s*\{[^}]*grid-template-columns:[^;}]*(?:36|38|40)px/);
+    expect(css).not.toContain('overflow-x: clip');
+    expect(css).toMatch(/Mobile cart control stability pass[\s\S]*?\.cart-page\s*\{[\s\S]*?overflow-x:\s*hidden;/);
+  });
+
   it('keeps cart surface color rules defined once', () => {
     const css = fs.readFileSync(path.resolve(__dirname, 'Cart.css'), 'utf8');
 

@@ -1352,7 +1352,7 @@ body.shop-mobile-app .shop-connectivity-banner {
 
 .shop-api-error-banner__dismiss {
   flex-shrink: 0;
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 12px;
   border: 1px solid currentColor;
   border-radius: 999px;
@@ -1424,7 +1424,7 @@ body.shop-mobile-app .shop-api-error-banner {
   touch-action: manipulation;
 }
 .shop-shell-btn--small {
-  min-height: 36px;
+  min-height: 44px;
   padding: 0 10px;
 }
 .shop-shell-btn--primary {
