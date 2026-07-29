@@ -3,6 +3,14 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import ShopPopconfirm from './ShopPopconfirm';
 
 describe('ShopPopconfirm', () => {
+  it('keeps trigger cloning typed without broad any casts', () => {
+    const source = require('fs').readFileSync(require('path').resolve(__dirname, 'ShopPopconfirm.tsx'), 'utf8') as string;
+
+    expect(source).toContain('type ShopPopconfirmTriggerProps = {');
+    expect(source).not.toContain('React.ReactElement<any>');
+    expect(source).not.toContain('children as React.ReactElement<any>');
+  });
+
   it('opens commercial confirm chrome and runs onConfirm', () => {
     const onConfirm = jest.fn();
     render(

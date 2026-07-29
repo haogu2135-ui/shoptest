@@ -1630,6 +1630,11 @@
   .order-tracking-page__assuranceActions .ant-btn {
     min-height: 44px !important;
   }
+
+  .order-tracking-page :where(input, textarea, .ant-input, .ant-input-affix-wrapper input),
+  .order-tracking-page__returnModal :where(input, textarea, .ant-input, .ant-input-affix-wrapper input) {
+    font-size: 16px !important;
+  }
 }
 
 

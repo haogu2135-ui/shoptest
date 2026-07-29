@@ -2641,7 +2641,7 @@
 
   .coupon-claim-section__search .ant-input {
     min-width: 0;
-    font-size: 13px;
+    font-size: 16px;
   }
 
   .coupon-claim-section__filters {
@@ -5070,6 +5070,11 @@
   .coupon-claim-section__sort .shop-select__value {
     height: 44px !important;
     line-height: 44px !important;
+  }
+
+  .coupon-claim-section__search .ant-input,
+  .coupon-claim-section__search.ant-input-affix-wrapper .ant-input {
+    font-size: 16px !important;
   }
 
   .coupon-claim-section__search .ant-input-prefix,

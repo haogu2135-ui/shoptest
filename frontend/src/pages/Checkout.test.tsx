@@ -859,6 +859,8 @@ describe('Checkout payment availability', () => {
     expect(source).toContain('React.useRef<CheckoutFormSnapshot | null>(null)');
     expect(source).toContain('useState<CheckoutFormSnapshot>');
     expect(source).toContain('React.useRef<CheckoutFormSnapshot>');
+    expect(readCheckoutMainShellSource()).toContain('export type CheckoutMainShellProps = {');
+    expect(readCheckoutMainShellSource()).not.toContain('CheckoutMainShellProps = Record<string, any>');
     expect(orderActions).not.toContain('buildAddress = (values: any)');
     expect(orderActions).not.toContain('buildRecipientPayload = (values: any)');
     expect(orderActions).not.toContain('handleSubmit = async (values: any)');
@@ -1102,6 +1104,14 @@ describe('Checkout payment availability', () => {
     expect(fixCss).toMatch(/\.checkout-page__mobilePayBar\s*\{[^}]*grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important;/);
     expect(fixCss).toMatch(/\.checkout-page__mobilePayBar \.ant-btn\s*\{[^}]*width:\s*100%\s*!important;[^}]*white-space:\s*normal\s*!important;/);
     expect(fixCss).toMatch(/\.checkout-page__mobilePayBar \.ant-btn > span:not\(\.anticon\):not\(\.ant-btn-icon\)\s*\{[^}]*overflow:\s*visible\s*!important;[^}]*text-overflow:\s*clip\s*!important;[^}]*white-space:\s*normal\s*!important;/);
+  });
+
+  it('keeps checkout mobile overflow clipping compatible with older WebViews', () => {
+    const checkoutCss = readCheckoutCssSource();
+    const finalClosureCss = checkoutCss.slice(checkoutCss.indexOf('Final checkout mobile closure:'));
+
+    expect(checkoutCss).not.toContain('overflow-x: clip');
+    expect(finalClosureCss).toMatch(/\.checkout-page\s*\{[^}]*overflow-x:\s*hidden;/);
   });
 
   it('locks mobile checkout pay CTA text fill against App contrast overrides', () => {

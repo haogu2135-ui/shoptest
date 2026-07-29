@@ -701,6 +701,8 @@ describe('commercial UX contracts', () => {
     expect(checkout).toContain("navigate('/cart')");
     expect(checkoutCss).toContain('paymentUnavailableActions');
     expect(checkoutCss).toMatch(/paymentUnavailableActions[\s\S]*?min-height:\s*44px/);
+    expect(checkoutCss).not.toContain('overflow-x: clip');
+    expect(checkoutCss).toMatch(/Final checkout mobile closure:[\s\S]*?\.checkout-page\s*\{[\s\S]*?overflow-x:\s*hidden;/);
     expect(coupons).toContain('pages.coupons.emptyWalletHint');
     expect(coupons).toContain('pages.coupons.loginToClaim');
     expect(coupons).toContain("navigate('/cart')");
@@ -720,7 +722,8 @@ describe('commercial UX contracts', () => {
     expect(adminTable).toContain('min-height: 44px !important');
     expect(adminLayout).toContain('min-height: 44px');
     expect(cart).toContain('.cart-page__mobileItemBottom .cart-page__quantityStepper .ant-btn');
-    expect(cart).toMatch(/\.cart-page__mobileItemBottom \.cart-page__quantityStepper \.ant-btn[\s\S]*?min-height:\s*44px/);
+    expect(cart).toMatch(/\.cart-page__mobileItemBottom \.cart-page__quantityStepper \.ant-btn[\s\S]*?min-height:\s*48px/);
+    expect(cart).toMatch(/\.cart-page__mobileItemCommerce \.cart-page__quantityStepper:not\(\.cart-page__quantityStepper--unavailable\)[\s\S]*?grid-template-columns:\s*48px minmax\(48px, 56px\) 48px/);
     expect(login).toContain('Commercial login mobile touch targets');
     expect(login).toContain('min-height: 44px !important');
   });
@@ -739,13 +742,18 @@ describe('commercial UX contracts', () => {
     expect(supportCss).toMatch(/customer-support-widget__recoveryActions[\s\S]*?min-height:\s*44px/);
   });
 
-  it('keeps register and support surfaces on commercial mobile touch targets with readable secondary text', () => {
+  it('keeps auth, profile, and support surfaces on commercial mobile touch targets with readable text', () => {
+    const login = readFrontend('pages', 'Login.css');
     const register = readFrontend('pages', 'Register.css');
+    const profile = readFrontend('pages', 'Profile.css');
     const support = readFrontend('components', 'CustomerSupportWidget.css');
     const antdTheme = readFrontend('styles', 'antd-theme-overrides.css');
 
+    expect(login).toMatch(/\.shopee-login-form :where\(\.ant-input, \.ant-input-affix-wrapper input, \.ant-input-group-addon \.ant-btn\)\s*\{[\s\S]*?font-size:\s*16px\s*!important/);
     expect(register).toContain('Commercial register mobile touch targets');
     expect(register).toContain('min-height: 44px !important');
+    expect(register).toMatch(/\.register-page__card :where\(input, textarea, \.ant-input, \.ant-input-affix-wrapper input\)\s*\{[\s\S]*?font-size:\s*16px\s*!important/);
+    expect(profile).toMatch(/\.profile-mobile-safe-modal :where\(input, textarea, \.ant-input, \.ant-input-affix-wrapper input, \.ant-input-number-input\)\s*\{[\s\S]*?font-size:\s*16px\s*!important/);
     expect(support).toContain('Commercial support mobile touch targets');
     expect(support).toContain('customer-support-widget__headerClose.ant-btn');
     expect(support).toContain('min-height: 44px !important');
@@ -806,6 +814,9 @@ describe('commercial UX contracts', () => {
     expect(tracking).not.toContain('autoComplete="off" inputMode="text" maxLength={80}');
     expect(trackingCss).toContain('Commercial order-tracking mobile touch targets');
     expect(trackingCss).toMatch(/\.order-tracking-page \.ant-btn[\s\S]*?min-height:\s*44px/);
+    expect(trackingCss).toMatch(
+      /Commercial order-tracking mobile touch targets[\s\S]*?\.order-tracking-page :where\(input, textarea, \.ant-input, \.ant-input-affix-wrapper input\),[\s\S]*?\.order-tracking-page__returnModal :where\(input, textarea, \.ant-input, \.ant-input-affix-wrapper input\)\s*\{[\s\S]*?font-size:\s*16px\s*!important/
+    );
     expect(trackingCss).toContain('paymentReturnActions');
     expect(trackingCss).toMatch(/paymentReturnActions[\s\S]*?min-height:\s*44px/);
     expect(tracking).toContain('data-order-tracking-payment-return-recovery');
@@ -1346,10 +1357,13 @@ it('keeps home empty category and product rails on multipath commercial recovery
     expect(buttonCss).toMatch(/\.shop-button--small\s*\{[\s\S]*?min-height:\s*44px;[\s\S]*?min-width:\s*44px;/);
     expect(buttonCss).toMatch(/\.shop-button--small\.shop-button--iconOnly\s*\{[\s\S]*?width:\s*44px;/);
     expect(buttonCss).toMatch(/\.shop-button--circle\.shop-button--small\s*\{[\s\S]*?width:\s*44px;[\s\S]*?min-width:\s*44px;/);
+    expect(buttonCss).toMatch(/Commercial disabled state:[\s\S]*?\.shop-button:disabled,[\s\S]*?opacity:\s*1;/);
+    expect(buttonCss).toMatch(/\.shop-button\.shop-button--primary:disabled,[\s\S]*?background:\s*#eef5f0;[\s\S]*?color:\s*#53645b;/);
     expect(inputCss).toMatch(/\.shop-input__control\s*\{[\s\S]*?min-height:\s*44px;/);
     expect(inputCss).toMatch(/\.shop-input__clear,[\s\S]*?\.shop-input__visibility\s*\{[\s\S]*?width:\s*44px;[\s\S]*?min-width:\s*44px;[\s\S]*?min-height:\s*44px;/);
     expect(inputCss).toMatch(/\.shop-input__visibilityWrap > button\s*\{[\s\S]*?min-width:\s*44px;[\s\S]*?min-height:\s*44px;/);
     expect(buttonCss).not.toMatch(/\.shop-button--small\s*\{[\s\S]*?min-height:\s*36px/);
+    expect(buttonCss).not.toMatch(/\.shop-button:disabled,[\s\S]{0,120}?opacity:\s*0\.(?:4|5|6)/);
     expect(inputCss).not.toMatch(/\.shop-input__(?:control|clear|visibility|visibilityWrap > button)[\s\S]{0,120}?min-height:\s*(?:28|36|40)px/);
   });
 
@@ -1507,6 +1521,16 @@ it('keeps home empty category and product rails on multipath commercial recovery
     // Residual floor must not re-collapse below the Android UI closure 44px floor.
     expect(supportCss).not.toMatch(
       /support panel quick replies\/tags\/meta stay >=12px[\s\S]*?min-height:\s*3[0-9]px\s*!important/
+    );
+  });
+
+  it('keeps support composer inputs at iOS-safe 16px on mobile and short landscape', () => {
+    const supportCss = readFrontend('components', 'CustomerSupportWidget.css');
+    expect(supportCss).toMatch(
+      /@media \(max-width:\s*780px\), \(max-width:\s*900px\) and \(max-height:\s*430px\)[\s\S]*?\.customer-support-widget__messageInput \.ant-input,[\s\S]*?\.customer-support-widget__composer \.ant-input-textarea textarea\s*\{[\s\S]*?font-size:\s*16px\s*!important/
+    );
+    expect(supportCss).not.toMatch(
+      /\.customer-support-widget__messageInput \.ant-input\s*\{[\s\S]{0,140}?font-size:\s*(?:[0-9]|1[0-5])px/
     );
   });
 
@@ -1757,7 +1781,8 @@ ${orderActions}`;
     expect(list).not.toMatch(/\.product-list__actionButton\.ant-btn[\s\S]{0,80}?height:\s*(?:3[0-9]|4[0-3])px/);
     expect(list).toMatch(/\.product-list__mobileDiscoveryButton[\s\S]{0,80}?min-height:\s*44px/);
     expect(list).toMatch(/\.product-list__categoryButton[\s\S]{0,60}?min-height:\s*44px/);
-    expect(cart).toMatch(/\.cart-page__quantityStepper \.ant-btn[\s\S]{0,80}?height:\s*44px/);
+    expect(cart).toMatch(/\.cart-page__quantityStepper \.ant-btn[\s\S]{0,80}?height:\s*48px/);
+    expect(cart).not.toMatch(/\.cart-page__mobileItemBottom \.cart-page__quantityStepper \.ant-btn[\s\S]{0,160}?min-height:\s*44px/);
     expect(profile).toMatch(/\.profile-tabs__tab[\s\S]{0,60}?min-height:\s*44px/);
     expect(profile).toMatch(/\.profile-payment-modal__methodSelect[\s\S]{0,80}?min-height:\s*44px/);
   });
@@ -1796,6 +1821,8 @@ ${orderActions}`;
     expect(appCss).toMatch(/\.shop-footer__columns a,\s*\.shop-footer__columns button[\s\S]{0,80}?min-height:\s*44px/);
     expect(antdTheme).toMatch(/\.support-order-select-popup \.ant-select-item[\s\S]{0,60}?min-height:\s*44px/);
     expect(couponCss).toMatch(/\.coupon-claim-section__search \.ant-input[\s\S]{0,120}?height:\s*44px/);
+    expect(couponCss).toMatch(/\.coupon-claim-section__search \.ant-input\s*\{[\s\S]{0,80}?font-size:\s*16px/);
+    expect(couponCss).toMatch(/\.coupon-claim-section__search \.ant-input,\s*\.coupon-claim-section__search\.ant-input-affix-wrapper \.ant-input\s*\{[\s\S]{0,120}?font-size:\s*16px\s*!important/);
     expect(couponCss).toMatch(/\.coupon-center-page__quickNav button[\s\S]{0,100}?min-height:\s*44px/);
     expect(couponCss).not.toMatch(/\.coupon-center-page__quickNav button[\s\S]{0,80}?height:\s*(?:3[0-9]|4[0-3])px/);
   });
@@ -1897,7 +1924,8 @@ ${orderActions}`;
     expect(productList).toContain('openMobileFilterDrawer');
     expect(productList).toContain('pages.productList.mobileFilterHint');
     expect(css).toContain('product-list__filterHint');
-    expect(css).toMatch(/product-list__filterHintDismiss[\s\S]*?min-height:\s*32px/);
+    expect(css).toMatch(/product-list__filterHintDismiss[\s\S]*?min-height:\s*44px/);
+    expect(css).toMatch(/product-list__filterHintDismiss[\s\S]*?color:\s*#ffffff/);
     expect(css).toMatch(/\.product-list__filterHint[\s\S]*?position:\s*absolute/);
     expect(css).toMatch(/product-list__filterHintText[\s\S]*?-webkit-line-clamp:\s*3/);
     expect(css).toContain('empty catalog first-screen densify');

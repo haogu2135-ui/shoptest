@@ -30,6 +30,10 @@ describe('frontend production source type-safety guard', () => {
         /catch \([^)]*: any\)/,
         /\.catch\(\([^)]*: any\)/,
         /useRef<any>/,
+        /ReactElement<\s*any\s*>/,
+        /Record<\s*string\s*,\s*any\s*>/,
+        /Array<\s*any\s*>/,
+        /Promise<\s*any\s*>/,
         /\b[A-Za-z_$][\w$]*\??: any\b/,
         /any\[\]/,
       ];

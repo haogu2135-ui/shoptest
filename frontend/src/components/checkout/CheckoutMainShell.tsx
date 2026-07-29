@@ -1,15 +1,35 @@
 import React, { useMemo } from 'react';
 import { Form } from 'antd';
+import type { FormInstance } from 'antd/es/form';
+import type { NavigateFunction } from 'react-router-dom';
 import ShopBreadcrumb from '../ShopBreadcrumb';
 import ShopModal from '../ShopModal';
 import ShopConfirm from '../ShopConfirm';
 import ShopButton from '../ShopButton';
 import { ShopIcon, SI } from '../ShopIcon';
 import { conversionConfig } from '../../utils/conversionConfig';
-import { normalizeCheckoutPostalCode, type CheckoutValidationField } from '../../utils/checkoutHelpers';
-import { productImageFallback as checkoutImageFallback, resolveProductImage as resolveCheckoutImage } from '../../utils/productMedia';
 import {
+  normalizeCheckoutPostalCode,
+  type CheckoutCouponOpportunity,
+  type CheckoutCouponSelectOption,
+  type CheckoutFormSnapshot,
+  type CheckoutFormValues,
+  type CheckoutMoneyFormatter,
+  type CheckoutTranslationFn,
+  type CheckoutValidationField,
+} from '../../utils/checkoutHelpers';
+import type { CartBenefitTarget } from '../../utils/cartBenefits';
+import type { PaymentMethodDetail } from '../../utils/paymentMethods';
+import { productImageFallback as checkoutImageFallback, resolveProductImage as resolveCheckoutImage } from '../../utils/productMedia';
+import type { Language } from '../../i18n';
+import type { CartItem, CouponQuote, OrderCustomer, ProductPublic as Product, UserAddress, UserCoupon } from '../../types';
+import type { ShopCascaderOption } from '../ShopCascader';
+import {
+  type CheckoutCoachItem,
+  type CheckoutDeliveryPromiseView,
   CheckoutHeroSection,
+  type CheckoutHighlightCard,
+  type CheckoutReadinessItem,
   CheckoutSummaryStrip,
   CheckoutConfirmationBand,
   CheckoutTrustBar,
@@ -25,8 +45,124 @@ import {
   CheckoutCouponAndSummarySection,
 } from './CheckoutFormSections';
 
+type CheckoutRequiredNextAction = { key: string; text: string };
+type CheckoutStatusAnnouncement = { id: number; text: string };
+type CheckoutAutoSelectedQuoteRef = React.MutableRefObject<{ cartKey: string; couponId: number } | null>;
+
 /** Ready-to-pay checkout form shell: hero, rails, items, address/coupon form, sticky pay. */
-export type CheckoutMainShellProps = Record<string, any>;
+export type CheckoutMainShellProps = {
+  language: Language;
+  t: CheckoutTranslationFn;
+  checkoutHeroHighlights: CheckoutHighlightCard[];
+  checkoutSummaryCards: CheckoutHighlightCard[];
+  checkoutBlockingAction: CheckoutRequiredNextAction | null;
+  checkoutNextAction: CheckoutRequiredNextAction | null;
+  checkoutReadinessScore: number;
+  checkoutItemCount: number;
+  payableAmountText: string;
+  shippingQuoteReady: boolean;
+  selectedPaymentDetail?: PaymentMethodDetail;
+  submitting: boolean;
+  checkoutSubmitDisabled: boolean;
+  checkoutConfirmationActionLabel: string;
+  checkoutSubmitActionLabel: string;
+  checkoutSubmitTooltip: string;
+  checkoutNextActionLabel: string;
+  shippingFeeText: string;
+  handleCheckoutNextAction: () => void;
+  form: FormInstance<CheckoutFormValues>;
+  paymentMethodsAvailable: boolean;
+  paymentChannelsError: string | null;
+  paymentUnavailableRecoveryActions: React.ReactNode;
+  paymentMethodDetails: PaymentMethodDetail[];
+  watchedPaymentMethod?: string;
+  recommendedPaymentMethod?: string | null;
+  selectCheckoutPaymentMethod: (methodValue: string) => void;
+  handlePaymentMethodKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>, methodValue: string) => void;
+  freeShippingRemaining: number;
+  freeShippingPercent: number;
+  formatMoney: CheckoutMoneyFormatter;
+  deliveryPromise: CheckoutDeliveryPromiseView;
+  giftEligible: boolean;
+  giftUnlocked: boolean;
+  giftRemaining: number;
+  giftProgress: number;
+  giftName: string;
+  giftCelebrationOpen: boolean;
+  setGiftCelebrationOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  giftConfirmActionLabel: string;
+  rollbackConfirmOpen: boolean;
+  cancelingPayment: boolean;
+  createdOrder: OrderCustomer | null;
+  handleRollbackConfirm: () => void | Promise<void>;
+  setRollbackConfirmOpen: React.Dispatch<React.SetStateAction<boolean>>;
+  supportPanelOpen: boolean;
+  handleSupportPanelToggle: (event: React.SyntheticEvent<HTMLDetailsElement>) => void;
+  savingsCoachItems: CheckoutCoachItem[];
+  addOnTarget: CartBenefitTarget | null;
+  cartItems: CartItem[];
+  checkoutSavingsAddOnsActionLabel: string;
+  scrollToAddOns: () => void;
+  addSuggestedProduct: (product: Product) => Promise<void>;
+  couponOpportunity: CheckoutCouponOpportunity | null;
+  couponOpportunityActionLabel: string;
+  handleCouponOpportunityAction: () => void;
+  checkoutReadinessItems: CheckoutReadinessItem[];
+  checkoutReadinessActionLabel: string;
+  checkoutCoachActionLabel: string;
+  checkoutCartItemName: (item: Pick<CartItem, 'productId' | 'productName'>) => string;
+  navigate: NavigateFunction;
+  checkoutFormSnapshot: CheckoutFormSnapshot;
+  handleSubmit: (values: CheckoutFormValues) => void | Promise<void>;
+  closeCheckoutRegionCascader: () => void;
+  updateCheckoutValidationAnnouncement: (fields: CheckoutValidationField[]) => void;
+  focusFirstCheckoutValidationError: (fields: CheckoutValidationField[]) => void;
+  mergeCheckoutFormSnapshot: (updates: CheckoutFormSnapshot, preserveHydratedValues?: boolean) => void;
+  handleCheckoutFormFocusCapture: React.FocusEventHandler<HTMLElement>;
+  handleCheckoutFormPointerDownCapture: React.PointerEventHandler<HTMLElement>;
+  checkoutStatusAnnouncement: CheckoutStatusAnnouncement | null;
+  checkoutValidationAnnouncement: string;
+  isGuestCheckout: boolean;
+  renderCheckoutFieldErrorExtra: (fieldName: string) => React.ReactNode;
+  addresses: UserAddress[];
+  addressLoadFailed: boolean;
+  selectedAddressId: number | 'new';
+  checkoutAddressGroupLabel: string;
+  regionOptions: ShopCascaderOption[];
+  regionOptionsLoading: boolean;
+  checkoutRegionInputLabel: string;
+  checkoutRegionCascaderOpen: boolean;
+  setCheckoutReloadKey: React.Dispatch<React.SetStateAction<number>>;
+  setSelectedAddressId: React.Dispatch<React.SetStateAction<number | 'new'>>;
+  handleCheckoutAddressKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>, addressId: number | 'new') => void;
+  loadCheckoutRegionOptions: () => void | Promise<void>;
+  setCheckoutRegionCascaderVisibility: (open: boolean) => void;
+  handleCheckoutPhoneBlur: React.FocusEventHandler<HTMLInputElement>;
+  cartTotal: number;
+  discountAmount: number;
+  checkoutCouponSelectLabel: string;
+  checkoutCouponSelectOptions: CheckoutCouponSelectOption[];
+  selectedUserCouponId: number | null;
+  couponSelectionErrorMessage: string | null;
+  selectedCoupon?: UserCoupon | null;
+  selectedIsBestCoupon: boolean;
+  couponQuote: CouponQuote | null;
+  availableCoupons: UserCoupon[];
+  calculateCouponDiscount: (coupon: UserCoupon) => number;
+  shippingPolicyText: string;
+  shippingQuotePending: boolean;
+  shippingQuoteUnavailable: boolean;
+  shippingQuoteFallbackActive: boolean;
+  shippingQuoteAlertDescription?: string | null;
+  couponAutoSelectedQuoteRef: CheckoutAutoSelectedQuoteRef;
+  setCouponManuallyChanged: React.Dispatch<React.SetStateAction<boolean>>;
+  setCouponQuoteErrorMessage: React.Dispatch<React.SetStateAction<string | null>>;
+  setCouponSelectionErrorMessage: React.Dispatch<React.SetStateAction<string | null>>;
+  setSelectedUserCouponId: React.Dispatch<React.SetStateAction<number | null>>;
+  paymentChannelsLoading: boolean;
+  reloadPaymentChannels: () => void;
+  openSupport: () => void;
+};
 
 export const CheckoutMainShell: React.FC<CheckoutMainShellProps> = (props) => {
   const {
@@ -307,13 +443,13 @@ export const CheckoutMainShell: React.FC<CheckoutMainShellProps> = (props) => {
         layout="vertical"
         initialValues={checkoutFormSnapshot}
         onFinish={handleSubmit}
-        onFinishFailed={(info: { errorFields?: CheckoutValidationField[] }) => {
+        onFinishFailed={(info: { errorFields: CheckoutValidationField[] }) => {
           closeCheckoutRegionCascader();
           updateCheckoutValidationAnnouncement(info.errorFields);
-          focusFirstCheckoutValidationError(info.errorFields as CheckoutValidationField[]);
+          focusFirstCheckoutValidationError(info.errorFields);
         }}
         onFieldsChange={(_: unknown, allFields: CheckoutValidationField[]) => updateCheckoutValidationAnnouncement(allFields)}
-        onValuesChange={(changedValues: Record<string, unknown>) => {
+        onValuesChange={(changedValues: CheckoutFormSnapshot) => {
           mergeCheckoutFormSnapshot(changedValues, true);
         }}
         onFocusCapture={handleCheckoutFormFocusCapture}
@@ -381,7 +517,7 @@ export const CheckoutMainShell: React.FC<CheckoutMainShellProps> = (props) => {
           couponSelectionErrorMessage={couponSelectionErrorMessage}
           selectedCouponName={selectedCoupon?.couponName}
           selectedIsBestCoupon={selectedIsBestCoupon}
-          showCouponRulesNotMet={Boolean(couponQuote && availableCoupons.length > 0 && !availableCoupons.some((coupon: unknown) => calculateCouponDiscount(coupon) > 0))}
+          showCouponRulesNotMet={Boolean(couponQuote && availableCoupons.length > 0 && !availableCoupons.some((coupon) => calculateCouponDiscount(coupon) > 0))}
           shippingQuoteReady={shippingQuoteReady}
           shippingFeeText={shippingFeeText}
           shippingPolicyText={shippingPolicyText}

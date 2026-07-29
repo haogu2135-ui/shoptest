@@ -3796,6 +3796,10 @@
   .profile-mobile-safe-modal .ant-modal-footer .ant-btn {
     min-height: 44px !important;
   }
+
+  .profile-mobile-safe-modal :where(input, textarea, .ant-input, .ant-input-affix-wrapper input, .ant-input-number-input) {
+    font-size: 16px !important;
+  }
 }
 
 

@@ -36,6 +36,20 @@ describe('ShopButton', () => {
     expect(onClick).not.toHaveBeenCalled();
   });
 
+  it('marks disabled primary buttons with stable state classes', () => {
+    render(
+      <ShopButton type="primary" disabled ariaLabel="Use coupon">
+        Use coupon
+      </ShopButton>,
+    );
+
+    const button = screen.getByRole('button', { name: 'Use coupon' });
+    expect(button).toBeDisabled();
+    expect(button).toHaveClass('shop-button--primary');
+    expect(button).toHaveClass('shop-button--disabled');
+    expect(button).toHaveClass('ant-btn-primary');
+  });
+
   it('supports htmlType submit and block layout', () => {
     render(
       <ShopButton htmlType="submit" block className="checkout-submit" aria-label="Place order">

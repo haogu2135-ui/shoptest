@@ -8,6 +8,11 @@ export type ShopPopconfirmButtonProps = {
   title?: string;
 };
 
+type ShopPopconfirmTriggerProps = {
+  disabled?: boolean;
+  onClick?: (event: React.MouseEvent) => void;
+};
+
 export type ShopPopconfirmProps = {
   title: React.ReactNode;
   description?: React.ReactNode;
@@ -17,7 +22,7 @@ export type ShopPopconfirmProps = {
   okButtonProps?: ShopPopconfirmButtonProps & { danger?: boolean };
   cancelButtonProps?: ShopPopconfirmButtonProps;
   disabled?: boolean;
-  children: React.ReactElement;
+  children: React.ReactElement<ShopPopconfirmTriggerProps>;
   rootClassName?: string;
   className?: string;
   okDanger?: boolean;
@@ -50,9 +55,9 @@ const ShopPopconfirm: React.FC<ShopPopconfirmProps> = ({
   }, [open]);
 
   const trigger = isValidElement(children)
-    ? cloneElement(children as React.ReactElement<any>, {
+    ? cloneElement(children, {
         onClick: (event: React.MouseEvent) => {
-          const childProps = children.props as { onClick?: (e: React.MouseEvent) => void; disabled?: boolean };
+          const childProps = children.props;
           childProps.onClick?.(event);
           if (disabled || childProps.disabled || event.defaultPrevented) return;
           setOpen(true);

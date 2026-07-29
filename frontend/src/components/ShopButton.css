@@ -108,10 +108,43 @@
   width: 44px;
 }
 
+/* Commercial disabled state: keep CTA copy readable instead of relying on opacity. */
 .shop-button:disabled,
 .shop-button--disabled {
-  opacity: 0.55;
+  opacity: 1;
   cursor: not-allowed;
+}
+
+.shop-button:disabled,
+.shop-button--disabled,
+.shop-button.shop-button--default:disabled,
+.shop-button.shop-button--default.shop-button--disabled,
+.shop-button.shop-button--dashed:disabled,
+.shop-button.shop-button--dashed.shop-button--disabled,
+.shop-button.shop-button--primary:disabled,
+.shop-button.shop-button--primary.shop-button--disabled {
+  border-color: #cbd9cf;
+  background: #eef5f0;
+  color: #53645b;
+  box-shadow: none;
+}
+
+.shop-button.shop-button--link:disabled,
+.shop-button.shop-button--link.shop-button--disabled,
+.shop-button.shop-button--text:disabled,
+.shop-button.shop-button--text.shop-button--disabled {
+  border-color: transparent;
+  background: transparent;
+  color: #53645b;
+  box-shadow: none;
+}
+
+.shop-button.shop-button--danger:disabled,
+.shop-button.shop-button--danger.shop-button--disabled {
+  border-color: #e0cbc6;
+  background: #f8efed;
+  color: #7a4f46;
+  box-shadow: none;
 }
 
 .shop-button:focus-visible {

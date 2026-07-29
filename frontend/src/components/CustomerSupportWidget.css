@@ -1860,7 +1860,7 @@
   .customer-support-widget__messageInput .ant-input {
     min-height: 52px !important;
     border-radius: 10px;
-    font-size: 12px;
+    font-size: 16px;
     line-height: 1.45;
   }
 
@@ -2883,6 +2883,7 @@ body .customer-support-widget__orderModalRoot .customer-support-widget__orderMod
 
   .customer-support-widget__messageInput .ant-input,
   .customer-support-widget__composer .ant-input-textarea textarea {
+    font-size: 16px !important;
     max-height: 96px;
     overflow-y: auto;
   }
