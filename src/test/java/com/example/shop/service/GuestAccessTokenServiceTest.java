@@ -42,8 +42,11 @@ class GuestAccessTokenServiceTest {
     @Test
     void signatureTamperingAndWrongTokenTypeAreRejected() {
         String token = service.issue("SO202608160001", "guest@example.com");
-        String tampered = token.substring(0, token.length() - 1)
-                + (token.endsWith("a") ? "b" : "a");
+        int signatureStart = token.lastIndexOf('.') + 1;
+        char signatureLead = token.charAt(signatureStart);
+        String tampered = token.substring(0, signatureStart)
+                + (signatureLead == 'a' ? 'b' : 'a')
+                + token.substring(signatureStart + 1);
 
         assertNull(service.validate(tampered));
         assertNull(service.validate("not-a-jwt"));

@@ -26,14 +26,14 @@ class LogisticsControllerGuestTransportTest {
         request.setOrderNo("SO202605260001");
         LogisticsTrackResponse expected = new LogisticsTrackResponse();
 
-        when(logisticsService.track("1Z999", "UPS", 42L, "guest@example.com", "SO202605260001", null))
+        when(logisticsService.track("1Z999", "UPS", 42L, "guest@example.com", "SO202605260001", null, null))
                 .thenReturn(expected);
 
         ResponseEntity<?> response = controller.trackWithGuestAccess(request, null);
 
         assertEquals(200, response.getStatusCodeValue());
         assertSame(expected, response.getBody());
-        verify(logisticsService).track("1Z999", "UPS", 42L, "guest@example.com", "SO202605260001", null);
+        verify(logisticsService).track("1Z999", "UPS", 42L, "guest@example.com", "SO202605260001", null, null);
     }
 
     @Test

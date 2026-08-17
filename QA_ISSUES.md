@@ -1,10 +1,15 @@
 # QA Issue Tracker -- shoptest
 
-Last updated: 2026-08-16 23:31 UTC - Maintainer SEC-NEW-010 order-bound guest access token | Total: 3245 issues
+Last updated: 2026-08-17 03:36 UTC - Maintainer guest-token cross-surface behavior regression | Total: 3245 issues
 
 Legend: OPEN / FIXED / WONTFIX / REGRESSED
 
 ---
+
+### Maintainer Update (2026-08-17 03:36 UTC)
+
+- **SEC-NEW-010 REGRESSION_COVERAGE_EXPANDED**: Added real behavior coverage for the order-bound guest token beyond order tracking. Payment creation accepts a valid token without an email and payment sync accepts the token from `X-Guest-Access-Token` when the body has no email or token; forged tokens are rejected before payment mutation. Guest support session creation accepts a valid token without an email and rejects forged tokens before session creation. Logistics tracking now has service-level coverage for valid token-only visibility and forged-token rejection.
+- Verification: the adjacent bounded Maven Surefire slice passed 44/44 across guest-token behavior, token service, order access, credential transport, logistics transport/service, payment response, and support response tests, with zero failures, errors, or skips. The bounded Maven lifecycle test-compile was attempted twice but exceeded the host's default resource budget before completing; changed production sources compiled successfully during those attempts. `git diff --check` passed and no Maven/Javac/Surefire process remains.
 
 ## Summary
 

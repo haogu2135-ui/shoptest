@@ -1,6 +1,7 @@
 package com.example.shop.service;
 
 import com.example.shop.dto.LogisticsTrackResponse;
+import com.example.shop.entity.Order;
 import com.example.shop.repository.OrderRepository;
 import com.example.shop.security.UserDetailsImpl;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,13 +23,22 @@ class LogisticsServiceTest {
     private LogisticsService service;
     private RuntimeConfigService runtimeConfig;
     private AdminRoleService adminRoleService;
+    private OrderRepository orderRepository;
+    private OrderService orderService;
+    private GuestAccessTokenService guestAccessTokenService;
 
     @BeforeEach
     void setUp() {
         service = new LogisticsService();
         runtimeConfig = mock(RuntimeConfigService.class);
         adminRoleService = mock(AdminRoleService.class);
-        ReflectionTestUtils.setField(service, "orderRepository", mock(OrderRepository.class));
+        orderRepository = mock(OrderRepository.class);
+        orderService = mock(OrderService.class);
+        guestAccessTokenService = new GuestAccessTokenService(runtimeConfig,
+                "guest-access-test-secret-012345678901234567890123456789");
+        ReflectionTestUtils.setField(service, "orderRepository", orderRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "guestAccessTokenService", guestAccessTokenService);
         ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
         ReflectionTestUtils.setField(service, "adminRoleService", adminRoleService);
         when(runtimeConfig.getInt("logistics.tracking-number-max-chars", 120)).thenReturn(16);
@@ -120,6 +130,43 @@ class LogisticsServiceTest {
         LogisticsTrackResponse response = service.track("TN123", "DHL", null, null, null, adminAuthentication());
 
         assertEquals("TRACKING_UNAVAILABLE", response.getStatus());
+    }
+
+    @Test
+    void orderBoundTokenAllowsTrackingWithoutGuestEmail() {
+        Order order = guestOrder();
+        String token = guestAccessTokenService.issue(order.getOrderNo(), order.getContactEmail());
+        when(orderRepository.findById(order.getId())).thenReturn(order);
+        when(orderService.isGuestOrder(order)).thenReturn(true);
+        when(orderService.guestOrderEmailFingerprintValue(order)).thenReturn(order.getContactEmail());
+
+        LogisticsTrackResponse response = service.track(
+                "TN123", "DHL", order.getId(), null, order.getOrderNo(), token, null);
+
+        assertEquals("TRACKING_UNAVAILABLE", response.getStatus());
+    }
+
+    @Test
+    void forgedOrderBoundTokenIsRejectedBeforeTrackingProviderCall() {
+        Order order = guestOrder();
+        when(orderRepository.findById(order.getId())).thenReturn(order);
+        when(orderService.isGuestOrder(order)).thenReturn(true);
+        when(orderService.guestOrderEmailFingerprintValue(order)).thenReturn(order.getContactEmail());
+
+        ResponseStatusException exception = assertThrows(ResponseStatusException.class, () -> service.track(
+                "TN123", "DHL", order.getId(), null, order.getOrderNo(), "forged-token", null));
+
+        assertEquals(403, exception.getStatus().value());
+    }
+
+    private Order guestOrder() {
+        Order order = new Order();
+        order.setId(42L);
+        order.setUserId(7L);
+        order.setOrderNo("SO202608170001");
+        order.setContactEmail("guest@example.com");
+        order.setGuestOrder(true);
+        return order;
     }
 
     private Authentication adminAuthentication() {
