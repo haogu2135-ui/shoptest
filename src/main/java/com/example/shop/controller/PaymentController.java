@@ -12,6 +12,8 @@ import com.example.shop.entity.Payment;
 import com.example.shop.security.SecurityUtils;
 import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.AdminRoleService;
+import com.example.shop.service.GuestAccessRateLimitService;
+import com.example.shop.service.GuestAccessTokenService;
 import com.example.shop.service.IpBlacklistService;
 import com.example.shop.service.OrderService;
 import com.example.shop.service.PaymentChannelRecommendationService;
@@ -19,6 +21,7 @@ import com.example.shop.service.PaymentService;
 import com.example.shop.service.PaymentWebhookEvidenceService;
 import com.example.shop.service.SecurityAuditLogService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
@@ -44,6 +47,10 @@ public class PaymentController {
     private final PaymentChannelRecommendationService paymentChannelRecommendationService;
     private final IpBlacklistService ipBlacklistService;
     private final AdminRoleService adminRoleService;
+    @Autowired
+    private GuestAccessRateLimitService guestAccessRateLimitService;
+    @Autowired(required = false)
+    private GuestAccessTokenService guestAccessTokenService;
 
     @GetMapping("/channels")
     public List<PaymentChannelResponse> channels(HttpServletRequest request) {
@@ -71,7 +78,8 @@ public class PaymentController {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Payment request is required");
         }
         try {
-            assertCanCreatePayment(request, authentication);
+            assertGuestAccessAllowed("payment-create", request.getOrderNo(), request.getGuestEmail(), httpRequest);
+            assertCanCreatePayment(request, authentication, httpRequest);
             Payment payment = paymentService.createPayment(request);
             auditLogService.record("PAYMENT_CREATE", "SUCCESS", authentication, "PAYMENT", payment.getId(), httpRequest,
                     "Payment created",
@@ -86,6 +94,7 @@ public class PaymentController {
             auditLogService.record("PAYMENT_CREATE", "FAILURE", authentication, "ORDER", request.getOrderId(), httpRequest,
                     reasonOf(e), "channel=" + request.getChannel());
             recordPaymentBlacklistFailureIfSuspicious(httpRequest, e);
+            recordGuestAccessFailureIfCredentialRejection("payment-create", request.getOrderNo(), request.getGuestEmail(), httpRequest, e);
             throw e;
         }
     }
@@ -144,7 +153,11 @@ public class PaymentController {
                                          Authentication authentication,
                                          HttpServletRequest request) {
         try {
-            assertCanOperatePayment(id, authentication, body != null ? body.get("guestEmail") : null, body != null ? body.get("orderNo") : null);
+            String guestEmail = body != null ? body.get("guestEmail") : null;
+            String orderNo = body != null ? body.get("orderNo") : null;
+            String guestAccessToken = body != null ? body.get("guestAccessToken") : null;
+            assertGuestAccessAllowed("payment-sync", orderNo, guestEmail, request);
+            assertCanOperatePayment(id, authentication, guestEmail, orderNo, guestAccessToken, request);
             Payment payment = paymentService.syncPayment(id);
             auditLogService.record("PAYMENT_SYNC", "SUCCESS", authentication, "PAYMENT", id, request,
                     "Payment state synced", payment.getOrderNo());
@@ -158,6 +171,10 @@ public class PaymentController {
             auditLogService.record("PAYMENT_SYNC", "FAILURE", authentication, "PAYMENT", id, request,
                     reasonOf(e), null);
             recordPaymentBlacklistFailureIfSuspicious(request, e);
+            recordGuestAccessFailureIfCredentialRejection("payment-sync",
+                    body != null ? body.get("orderNo") : null,
+                    body != null ? body.get("guestEmail") : null,
+                    request, e);
             throw e;
         }
     }
@@ -278,7 +295,7 @@ public class PaymentController {
                                                                             @Valid @RequestBody(required = false) GuestOrderAccessRequest body,
                                                                             HttpServletRequest request) {
         GuestOrderAccessRequest access = requireGuestAccessRequest(body);
-        assertCanSeeGuestOrder(orderId, access.getGuestEmail(), access.getOrderNo(), request);
+        assertCanSeeGuestOrder(orderId, access.getGuestEmail(), access.getOrderNo(), access.getGuestAccessToken(), request);
         return ResponseEntity.ok(paymentService.findStoredByOrderId(orderId).stream()
                 .map(this::customerPaymentResponse)
                 .collect(Collectors.toList()));
@@ -297,7 +314,7 @@ public class PaymentController {
                                                                             @Valid @RequestBody(required = false) GuestOrderAccessRequest body,
                                                                             HttpServletRequest request) {
         GuestOrderAccessRequest access = requireGuestAccessRequest(body);
-        assertCanSeeGuestOrder(orderId, access.getGuestEmail(), access.getOrderNo(), request);
+        assertCanSeeGuestOrder(orderId, access.getGuestEmail(), access.getOrderNo(), access.getGuestAccessToken(), request);
         Payment payment = paymentService.findStoredLatestByOrderId(orderId);
         return payment != null ? ResponseEntity.ok(customerPaymentResponse(payment)) : ResponseEntity.notFound().build();
     }
@@ -318,22 +335,27 @@ public class PaymentController {
         if (order == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
-        assertCanOperateOrder(order, authentication, guestEmail, orderNo, "Payment is not available for this order");
+        assertCanOperateOrder(order, authentication, guestEmail, orderNo, null,
+                "Payment is not available for this order", null);
     }
 
-    private void assertCanSeeGuestOrder(Long orderId, String guestEmail, String orderNo, HttpServletRequest request) {
+    private void assertCanSeeGuestOrder(Long orderId, String guestEmail, String orderNo,
+                                        String bodyToken, HttpServletRequest request) {
+        assertGuestAccessAllowed("payment-read", orderNo, guestEmail, request);
         Order order = orderService.getOrderById(orderId);
         if (order == null) {
+            recordGuestAccessFailure("payment-read", orderNo, guestEmail, request);
             ipBlacklistService.recordPaymentFailure(request, "guest-payment order not found");
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
-        if (!guestOrderAccessMatches(order, guestEmail, orderNo)) {
+        if (!guestOrderAccessMatches(order, guestEmail, orderNo, bodyToken, request)) {
+            recordGuestAccessFailure("payment-read", orderNo, guestEmail, request);
             ipBlacklistService.recordPaymentFailure(request, "guest-payment credentials failed");
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Guest payment access is not available for this order");
         }
     }
 
-    private void assertCanCreatePayment(PaymentCreateRequest request, Authentication authentication) {
+    private void assertCanCreatePayment(PaymentCreateRequest request, Authentication authentication, HttpServletRequest httpRequest) {
         if (request == null || request.getOrderId() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order is required");
         }
@@ -341,10 +363,12 @@ public class PaymentController {
         if (order == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
-        assertCanOperateOrder(order, authentication, request.getGuestEmail(), request.getOrderNo(), "Payment is not available for this order");
+        assertCanOperateOrder(order, authentication, request.getGuestEmail(), request.getOrderNo(),
+                request.getGuestAccessToken(), "Payment is not available for this order", httpRequest);
     }
 
-    private void assertCanOperatePayment(Long paymentId, Authentication authentication, String guestEmail, String orderNo) {
+    private void assertCanOperatePayment(Long paymentId, Authentication authentication, String guestEmail, String orderNo,
+                                         String guestAccessToken, HttpServletRequest httpRequest) {
         Payment payment = paymentService.findById(paymentId);
         if (payment == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Payment not found");
@@ -353,7 +377,8 @@ public class PaymentController {
         if (order == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
-        assertCanOperateOrder(order, authentication, guestEmail, orderNo, "Payment operation is not available for this order");
+        assertCanOperateOrder(order, authentication, guestEmail, orderNo, guestAccessToken,
+                "Payment operation is not available for this order", httpRequest);
     }
 
     private void assertAdminPaymentSimulation(Authentication authentication) {
@@ -366,8 +391,9 @@ public class PaymentController {
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Payment simulation permission required");
     }
 
-    private void assertCanOperateOrder(Order order, Authentication authentication, String guestEmail, String orderNo, String forbiddenMessage) {
-        if (guestOrderAccessMatches(order, guestEmail, orderNo)) {
+    private void assertCanOperateOrder(Order order, Authentication authentication, String guestEmail, String orderNo,
+                                       String bodyToken, String forbiddenMessage, HttpServletRequest request) {
+        if (guestOrderAccessMatches(order, guestEmail, orderNo, bodyToken, request)) {
             return;
         }
         if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
@@ -383,6 +409,20 @@ public class PaymentController {
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, forbiddenMessage);
     }
 
+    private boolean guestOrderAccessMatches(Order order, String email, String orderNo,
+                                            String bodyToken, HttpServletRequest request) {
+        String token = bodyToken != null && !bodyToken.trim().isEmpty()
+                ? bodyToken
+                : request == null ? null : request.getHeader(GuestAccessTokenService.HEADER_NAME);
+        if (token != null && !token.trim().isEmpty() && guestAccessTokenService != null) {
+            String orderEmail = orderService.guestOrderEmailFingerprintValue(order);
+            return order != null && orderService.isGuestOrder(order)
+                    && guestAccessTokenService.matchesFingerprint(token, order.getOrderNo(),
+                    guestAccessTokenService.fingerprint(orderEmail));
+        }
+        return guestOrderAccessMatches(order, email, orderNo);
+    }
+
     private void assertAdminOrderPaymentAccess(UserDetailsImpl user, String forbiddenMessage) {
         if (adminRoleService.canAccess(user.getId(), "/admin/orders")
                 && adminRoleService.hasPermission(user.getId(), AdminRoleService.ORDER_PAYMENT_PERMISSION)) {
@@ -393,6 +433,29 @@ public class PaymentController {
 
     private boolean guestOrderAccessMatches(Order order, String email, String orderNo) {
         return orderService.guestOrderAccessMatches(order, email, orderNo);
+    }
+
+    private void assertGuestAccessAllowed(String scope, String orderNo, String email, HttpServletRequest request) {
+        if (guestAccessRateLimitService != null) {
+            guestAccessRateLimitService.assertAllowed(scope, orderNo, email, request);
+        }
+    }
+
+    private void recordGuestAccessFailure(String scope, String orderNo, String email, HttpServletRequest request) {
+        if (guestAccessRateLimitService != null) {
+            guestAccessRateLimitService.recordFailure(scope, orderNo, email, request);
+        }
+    }
+
+    private void recordGuestAccessFailureIfCredentialRejection(String scope,
+                                                                String orderNo,
+                                                                String email,
+                                                                HttpServletRequest request,
+                                                                ResponseStatusException exception) {
+        if (exception != null && (exception.getStatus() == HttpStatus.FORBIDDEN
+                || exception.getStatus() == HttpStatus.NOT_FOUND)) {
+            recordGuestAccessFailure(scope, orderNo, email, request);
+        }
     }
 
     private PaymentResponse paymentResponse(Payment payment) {

@@ -429,18 +429,23 @@ export const orderApi = {
         const normalizedId = toPathId(id);
         const credentials = guestParams(guestEmail, orderNo);
         return credentials
-            ? api.post<OrderCustomer>(`/orders/guest/${normalizedId}`, credentials, anonymousRequestConfig())
+            ? api.post<OrderCustomer>(`/orders/guest/${normalizedId}`, credentials, guestRequestConfig(guestEmail, orderNo))
             : api.get<OrderCustomer>(`/orders/${normalizedId}`);
     },
     getByUser: (_userId: number) => api.get<OrderCustomer[]>('/orders/me').then(withArrayData),
     getMine: () => api.get<OrderCustomer[]>('/orders/me').then(withArrayData),
-    track: (orderNo: string, email: string, options?: ApiRequestOptions) => {
+    track: (orderNo: string, email = '', options?: ApiRequestOptions) => {
         const normalizedOrderNo = normalizeOrderTrackingNumber(orderNo);
         const normalizedEmail = normalizeEmailParam(email) || '';
-        if (!normalizedOrderNo || !normalizedEmail) {
+        const credentials = guestParams(normalizedEmail, normalizedOrderNo);
+        if (!normalizedOrderNo || !credentials) {
             return Promise.reject(new Error('Order number and email are required'));
         }
-        const cacheKey = `${normalizedOrderNo}:${normalizedEmail}`;
+        const guestAccessToken = (credentials as { guestAccessToken?: string }).guestAccessToken;
+        const trackCredentials = guestAccessToken
+            ? { orderNo: normalizedOrderNo, guestAccessToken }
+            : { orderNo: normalizedOrderNo, email: normalizedEmail };
+        const cacheKey = `${normalizedOrderNo}:${guestAccessToken ? 'token' : normalizedEmail}`;
         if (!options?.bypassCache && !options?.signal) {
             const cached = orderTrackCache.get(cacheKey);
             if (cached && cached.expiresAt > Date.now()) {
@@ -449,10 +454,7 @@ export const orderApi = {
             const pending = orderTrackRequests.get(cacheKey);
             if (pending) return pending;
         }
-        const request = api.post<OrderTrackResult>('/orders/track', {
-            orderNo: normalizedOrderNo,
-            email: normalizedEmail,
-        }, anonymousRequestConfig(undefined, options))
+        const request = api.post<OrderTrackResult>('/orders/track', trackCredentials, anonymousRequestConfig(undefined, options))
             .then((response) => {
                 setTimedCacheEntry(orderTrackCache, cacheKey, {
                     response,
@@ -531,7 +533,7 @@ export const orderApi = {
         if (pending) return pending;
         const credentials = guestParams(guestEmail, orderNo);
         const rawRequest = credentials
-            ? api.post<OrderItemCustomer[]>(`/orders/guest/${normalizedOrderId}/items`, credentials, anonymousRequestConfig())
+            ? api.post<OrderItemCustomer[]>(`/orders/guest/${normalizedOrderId}/items`, credentials, guestRequestConfig(guestEmail, orderNo))
             : api.get<OrderItemCustomer[]>(`/orders/${normalizedOrderId}/items`);
         const request = rawRequest
             .then((response) => {
@@ -600,14 +602,14 @@ export const paymentApi = {
         const normalizedId = toPathId(orderId);
         const credentials = guestParams(guestEmail, orderNo);
         return credentials
-            ? api.post<PaymentCustomer[]>(`/payments/guest/order/${normalizedId}`, credentials, anonymousRequestConfig()).then(withArrayData)
+            ? api.post<PaymentCustomer[]>(`/payments/guest/order/${normalizedId}`, credentials, guestRequestConfig(guestEmail, orderNo)).then(withArrayData)
             : api.get<PaymentCustomer[]>(`/payments/order/${normalizedId}`, { params: undefined }).then(withArrayData);
     },
     getLatestByOrder: (orderId: number, guestEmail?: string, orderNo?: string, options?: ApiRequestOptions) => {
         const normalizedId = toPathId(orderId);
         const credentials = guestParams(guestEmail, orderNo);
         return credentials
-            ? api.post<PaymentCustomer>(`/payments/guest/order/${normalizedId}/latest`, credentials, anonymousRequestConfig({}, options))
+            ? api.post<PaymentCustomer>(`/payments/guest/order/${normalizedId}/latest`, credentials, guestRequestConfig(guestEmail, orderNo, withRequestOptions({}, options)))
             : api.get<PaymentCustomer>(`/payments/order/${normalizedId}/latest`, withRequestOptions({ params: undefined }, options));
     },
 };
@@ -942,7 +944,7 @@ export const logisticsApi = {
         const requestConfig = { params, allowAnonymousRetry: false } as AuthRetryConfig;
         return cachedGet(logisticsTrackCache, logisticsTrackRequests, cacheKey, LOGISTICS_TRACK_CACHE_MS, () =>
             credentials
-                ? api.post<LogisticsTrackResponse>('/logistics/track', params, anonymousRequestConfig())
+                ? api.post<LogisticsTrackResponse>('/logistics/track', params, guestRequestConfig(guestEmail, orderNo))
                 : api.get<LogisticsTrackResponse>('/logistics/track', requestConfig));
     },
 };
@@ -965,28 +967,23 @@ export const supportApi = {
     closeSession: (sessionId: number) => api.put<SupportSessionCustomer>(`/support/sessions/${toPathId(sessionId)}/close`),
     getUnreadCount: () => api.get<{ count: number }>('/support/unread-count'),
     getGuestSession: (orderNo: string, email: string) => api.post<SupportSessionCustomer>('/support/guest/session/lookup', {
-        orderNo: normalizeOrderTrackingNumber(orderNo),
-        guestEmail: normalizeEmailParam(email) || '',
-    }, anonymousRequestConfig()),
+        ...(guestParams(email, orderNo) || { orderNo: normalizeOrderTrackingNumber(orderNo) }),
+    }, guestRequestConfig(email, orderNo)),
     createGuestSession: (orderNo: string, email: string) => api.post<SupportSessionCustomer>('/support/guest/session', {
-        orderNo: normalizeOrderTrackingNumber(orderNo),
-        guestEmail: normalizeEmailParam(email) || '',
-    }, anonymousRequestConfig()),
+        ...(guestParams(email, orderNo) || { orderNo: normalizeOrderTrackingNumber(orderNo) }),
+    }, guestRequestConfig(email, orderNo)),
     getGuestMessages: (sessionId: number, orderNo: string, email: string, options?: SupportMessageQuery) =>
         api.post<SupportMessageCustomer[]>(`/support/guest/sessions/${toPathId(sessionId)}/messages`, {
-            orderNo: normalizeOrderTrackingNumber(orderNo),
-            guestEmail: normalizeEmailParam(email) || '',
+            ...(guestParams(email, orderNo) || { orderNo: normalizeOrderTrackingNumber(orderNo) }),
             ...normalizeSupportMessageParams(options),
-        }, anonymousRequestConfig()),
+        }, guestRequestConfig(email, orderNo)),
     sendGuestMessage: (content: string, orderNo: string, email: string, sessionId?: number) =>
         api.post<{ message: SupportMessageCustomer; session: SupportSessionCustomer }>('/support/guest/messages', {
             content: normalizeSupportMessageContent(content),
             sessionId: normalizePositiveInt(sessionId) || undefined,
-            orderNo: normalizeOrderTrackingNumber(orderNo),
-            guestEmail: normalizeEmailParam(email) || '',
-        }, anonymousRequestConfig()),
+            ...(guestParams(email, orderNo) || { orderNo: normalizeOrderTrackingNumber(orderNo) }),
+        }, guestRequestConfig(email, orderNo)),
     markGuestRead: (sessionId: number, orderNo: string, email: string) => api.put(`/support/guest/sessions/${toPathId(sessionId)}/read`, {
-        orderNo: normalizeOrderTrackingNumber(orderNo),
-        guestEmail: normalizeEmailParam(email) || '',
-    }, anonymousRequestConfig()),
+        ...(guestParams(email, orderNo) || { orderNo: normalizeOrderTrackingNumber(orderNo) }),
+    }, guestRequestConfig(email, orderNo)),
 };

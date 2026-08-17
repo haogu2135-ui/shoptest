@@ -6,6 +6,7 @@ import com.example.shop.entity.Order;
 import com.example.shop.repository.OrderRepository;
 import com.example.shop.security.SecurityUtils;
 import com.example.shop.security.UserDetailsImpl;
+import com.example.shop.service.GuestAccessTokenService;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
@@ -58,6 +59,8 @@ public class LogisticsService {
     private CircuitBreakerService circuitBreakerService;
     @Autowired
     private AdminRoleService adminRoleService;
+    @Autowired
+    private GuestAccessTokenService guestAccessTokenService;
 
     @Autowired
     public void setRestTemplate(RestTemplate restTemplate) {
@@ -75,9 +78,15 @@ public class LogisticsService {
     }
 
     public LogisticsTrackResponse track(String trackingNumber, String carrier, Long orderId,
-                                        String guestEmail, String orderNo, Authentication authentication) {
-        Order order = resolveVisibleOrder(orderId, guestEmail, orderNo, authentication);
+                                        String guestEmail, String orderNo, String guestAccessToken,
+                                        Authentication authentication) {
+        Order order = resolveVisibleOrder(orderId, guestEmail, orderNo, guestAccessToken, authentication);
         return trackInternal(trackingNumber, carrier, orderId, order);
+    }
+
+    public LogisticsTrackResponse track(String trackingNumber, String carrier, Long orderId,
+                                        String guestEmail, String orderNo, Authentication authentication) {
+        return track(trackingNumber, carrier, orderId, guestEmail, orderNo, null, authentication);
     }
 
     private LogisticsTrackResponse trackInternal(String trackingNumber, String carrier, Long orderId, Order visibleOrder) {
@@ -108,7 +117,8 @@ public class LogisticsService {
         return unavailableTrack(normalizedTrackingNumber, normalizedCarrier);
     }
 
-    private Order resolveVisibleOrder(Long orderId, String guestEmail, String orderNo, Authentication authentication) {
+    private Order resolveVisibleOrder(Long orderId, String guestEmail, String orderNo, String guestAccessToken,
+                                      Authentication authentication) {
         if (orderId == null) {
             requireOperationalTrackingPermission(authentication);
             return null;
@@ -120,7 +130,7 @@ public class LogisticsService {
         if (order == null) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
-        if (guestOrderAccessMatches(order, guestEmail, orderNo)) {
+        if (guestOrderAccessMatches(order, guestEmail, orderNo, guestAccessToken)) {
             return order;
         }
         if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
@@ -134,6 +144,16 @@ public class LogisticsService {
             }
         }
         throw new ResponseStatusException(org.springframework.http.HttpStatus.FORBIDDEN, "Tracking access denied");
+    }
+
+    private boolean guestOrderAccessMatches(Order order, String guestEmail, String orderNo, String guestAccessToken) {
+        if (guestAccessToken != null && !guestAccessToken.trim().isEmpty() && guestAccessTokenService != null) {
+            String orderEmail = orderService.guestOrderEmailFingerprintValue(order);
+            return orderService.isGuestOrder(order)
+                    && guestAccessTokenService.matchesFingerprint(guestAccessToken, order.getOrderNo(),
+                    guestAccessTokenService.fingerprint(orderEmail));
+        }
+        return orderService.guestOrderAccessMatches(order, guestEmail, orderNo);
     }
 
     private void requireOperationalTrackingPermission(Authentication authentication) {

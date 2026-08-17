@@ -11,4 +11,12 @@ public class OrderTrackResponse {
     private List<OrderItemCustomerResponse> items;
     private boolean detailsRestricted;
     private String restrictionReason;
+    private String guestAccessToken;
+
+    public OrderTrackResponse(OrderCustomerResponse order,
+                               List<OrderItemCustomerResponse> items,
+                               boolean detailsRestricted,
+                               String restrictionReason) {
+        this(order, items, detailsRestricted, restrictionReason, null);
+    }
 }

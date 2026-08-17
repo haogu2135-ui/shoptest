@@ -7,6 +7,7 @@ const GUEST_SUPPORT_CONTEXT_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 export type GuestSupportContext = {
   orderNo: string;
   email: string;
+  accessToken?: string;
 };
 
 type StoredGuestSupportContext = GuestSupportContext & {
@@ -21,10 +22,13 @@ const cleanText = (value: unknown, maxLength = 160) =>
 
 export const normalizeGuestSupportContext = (value: unknown): GuestSupportContext | null => {
   if (!value || typeof value !== 'object') return null;
-  const detail = value as { orderNo?: unknown; email?: unknown; guestOrderNo?: unknown; guestEmail?: unknown };
+  const detail = value as { orderNo?: unknown; email?: unknown; guestOrderNo?: unknown; guestEmail?: unknown; accessToken?: unknown; guestAccessToken?: unknown };
   const orderNo = cleanText(detail.guestOrderNo || detail.orderNo, 100);
   const email = cleanText(detail.guestEmail || detail.email, 180).toLowerCase();
-  return orderNo && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) ? { orderNo, email } : null;
+  const accessToken = cleanText(detail.guestAccessToken || detail.accessToken, 2048);
+  return orderNo && (email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || accessToken)
+    ? { orderNo, email, ...(accessToken ? { accessToken } : {}) }
+    : null;
 };
 
 export const saveGuestSupportContext = (context: GuestSupportContext | null) => {

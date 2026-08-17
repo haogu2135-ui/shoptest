@@ -1288,6 +1288,15 @@ public class OrderService {
         return enrichReturnInfo(findTrackableOrder(orderNo, email));
     }
 
+    /** Resolves a guest order after a signed guest token has already authenticated it. */
+    @Transactional(rollbackFor = Exception.class, readOnly = true)
+    public Order getTrackableGuestOrderByOrderNo(String orderNo) {
+        if (orderNo == null || orderNo.trim().isEmpty()) {
+            throw new IllegalArgumentException("Order number is required");
+        }
+        return enrichReturnInfo(orderRepository.findByOrderNo(orderNo.trim()));
+    }
+
     @Transactional(rollbackFor = Exception.class, readOnly = true)
     public OrderTrackResponse trackOrder(String orderNo, String email) {
         Order order = enrichReturnInfo(findTrackableOrder(orderNo, email));
@@ -1372,6 +1381,15 @@ public class OrderService {
                 extractGuestEmail(order.getShippingAddress()));
         String normalizedEmail = normalizeEmail(email);
         return guestEmail != null && guestEmail.equals(normalizedEmail);
+    }
+
+    public String guestOrderEmailFingerprintValue(Order order) {
+        if (order == null) {
+            return null;
+        }
+        return firstNonBlank(
+                normalizeEmail(order.getContactEmail()),
+                extractGuestEmail(order.getShippingAddress()));
     }
 
     /**

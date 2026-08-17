@@ -848,6 +848,7 @@ export interface OrderTrackResult {
     items: OrderItemCustomer[];
     detailsRestricted?: boolean;
     restrictionReason?: string;
+    guestAccessToken?: string;
 }
 
 export interface AdminOrderPage {

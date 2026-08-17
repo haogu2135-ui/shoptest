@@ -166,6 +166,7 @@ public class SecurityConfig {
                 RequestCorrelationFilter.REQUEST_ID_HEADER,
                 RequestCorrelationFilter.CORRELATION_ID_HEADER,
                 "X-Bootstrap-Token",
+                "X-Guest-Access-Token",
                 "Idempotency-Key"));
         configuration.setExposedHeaders(Arrays.asList(
                 RequestCorrelationFilter.REQUEST_ID_HEADER,

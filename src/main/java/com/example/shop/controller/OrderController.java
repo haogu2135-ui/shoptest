@@ -16,6 +16,8 @@ import com.example.shop.entity.Payment;
 import com.example.shop.security.SecurityUtils;
 import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.AdminRoleService;
+import com.example.shop.service.GuestAccessRateLimitService;
+import com.example.shop.service.GuestAccessTokenService;
 import com.example.shop.service.OrderItemService;
 import com.example.shop.service.OrderService;
 import com.example.shop.service.IpBlacklistService;
@@ -57,6 +59,10 @@ public class OrderController {
     private RuntimeConfigService runtimeConfig;
     @Autowired(required = false)
     private PaymentChannelConfig paymentChannelConfig;
+    @Autowired
+    private GuestAccessRateLimitService guestAccessRateLimitService;
+    @Autowired(required = false)
+    private GuestAccessTokenService guestAccessTokenService;
 
     @PostMapping
     public ResponseEntity<?> createOrder(Authentication authentication) {
@@ -110,8 +116,28 @@ public class OrderController {
         if (body == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Order tracking payload is required");
         }
-        OrderTrackResponse response = orderService.trackOrder(body.getOrderNo(), body.getEmail());
-        return ResponseEntity.ok(toCustomerOrderTrack(response));
+        assertGuestAccessAllowed("order-track", body.getOrderNo(), body.getEmail(), request);
+        try {
+            OrderTrackResponse response;
+            if (hasText(body.getGuestAccessToken())) {
+                Order order = resolveTokenGuestOrder(body.getOrderNo(), body.getGuestAccessToken());
+                response = toGuestOrderTrack(order);
+                response.setGuestAccessToken(body.getGuestAccessToken().trim());
+            } else {
+                if (!hasText(body.getEmail())) {
+                    throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Email or guest access token is required");
+                }
+                response = orderService.trackOrder(body.getOrderNo(), body.getEmail());
+                if (response != null && response.getOrder() != null && guestAccessTokenService != null
+                        && !response.isDetailsRestricted()) {
+                    response.setGuestAccessToken(guestAccessTokenService.issue(body.getOrderNo(), body.getEmail()));
+                }
+            }
+            return ResponseEntity.ok(toCustomerOrderTrack(response));
+        } catch (IllegalArgumentException ex) {
+            recordGuestAccessFailure("order-track", body.getOrderNo(), body.getEmail(), request);
+            throw ex;
+        }
     }
 
     @GetMapping("/me")
@@ -163,7 +189,7 @@ public class OrderController {
         if (body == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Guest order access payload is required");
         }
-        return ResponseEntity.ok(toCustomerOrder(requireGuestVisibleOrder(id, body.getGuestEmail(), body.getOrderNo(), request)));
+        return ResponseEntity.ok(toCustomerOrder(requireGuestVisibleOrder(id, body.getGuestEmail(), body.getOrderNo(), body.getGuestAccessToken(), request)));
     }
 
     @PutMapping("/{id}")
@@ -218,7 +244,7 @@ public class OrderController {
         if (body == null) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Guest order access payload is required");
         }
-        requireGuestVisibleOrder(id, body.getGuestEmail(), body.getOrderNo(), request);
+        requireGuestVisibleOrder(id, body.getGuestEmail(), body.getOrderNo(), body.getGuestAccessToken(), request);
         return ResponseEntity.ok(toCustomerOrderItems(orderItemService.getOrderItemsByOrderId(id)));
     }
 
@@ -248,9 +274,11 @@ public class OrderController {
                                                   Authentication authentication,
                                                   HttpServletRequest request,
                                                   boolean allowGuestCredentials) {
+        assertGuestMutationAllowed(body, allowGuestCredentials, request);
         try {
             Order order = orderService.getOrderById(id);
             if (order == null) {
+                recordGuestMutationFailure(body, allowGuestCredentials, request);
                 recordGuestOrderOperationFailure(allowGuestCredentials, request, "guest-order not found");
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
             }
@@ -342,9 +370,11 @@ public class OrderController {
                                                      HttpServletRequest request) {
         Order order = null;
         String previousStatus = null;
+        assertGuestMutationAllowed(body, allowGuestCredentials, request);
         try {
             order = orderService.getOrderById(id);
             if (order == null) {
+                recordGuestMutationFailure(body, allowGuestCredentials, request);
                 recordGuestOrderOperationFailure(allowGuestCredentials, request, "guest-order not found");
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
             }
@@ -390,9 +420,11 @@ public class OrderController {
                                                   HttpServletRequest request,
                                                   boolean allowGuestCredentials) {
         String reason = body != null ? body.get("reason") : null;
+        assertGuestMutationAllowed(body, allowGuestCredentials, request);
         try {
             Order order = orderService.getOrderById(id);
             if (order == null) {
+                recordGuestMutationFailure(body, allowGuestCredentials, request);
                 recordGuestOrderOperationFailure(allowGuestCredentials, request, "guest-order not found");
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
             }
@@ -439,9 +471,11 @@ public class OrderController {
                                                            HttpServletRequest request,
                                                            boolean allowGuestCredentials) {
         String returnTrackingNumber = body != null ? body.get("returnTrackingNumber") : null;
+        assertGuestMutationAllowed(body, allowGuestCredentials, request);
         try {
             Order order = orderService.getOrderById(id);
             if (order == null) {
+                recordGuestMutationFailure(body, allowGuestCredentials, request);
                 recordGuestOrderOperationFailure(allowGuestCredentials, request, "guest-order not found");
                 throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
             }
@@ -488,16 +522,60 @@ public class OrderController {
     }
 
     private Order requireGuestVisibleOrder(Long id, String guestEmail, String orderNo, HttpServletRequest request) {
+        return requireGuestVisibleOrder(id, guestEmail, orderNo, null, request);
+    }
+
+    private Order requireGuestVisibleOrder(Long id, String guestEmail, String orderNo,
+                                           String bodyToken, HttpServletRequest request) {
+        assertGuestAccessAllowed("order-read", orderNo, guestEmail, request);
         Order order = orderService.getOrderById(id);
         if (order == null) {
+            recordGuestAccessFailure("order-read", orderNo, guestEmail, request);
             ipBlacklistService.recordLoginFailure(request, "guest-order not found");
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Order not found");
         }
-        if (!guestOrderAccessMatches(order, guestEmail, orderNo)) {
+        if (!guestOrderAccessMatches(order, guestEmail, orderNo, bodyToken, request)) {
+            recordGuestAccessFailure("order-read", orderNo, guestEmail, request);
             ipBlacklistService.recordLoginFailure(request, "guest-order credentials failed");
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Guest order access is not available for this order");
         }
         return order;
+    }
+
+    private Order resolveTokenGuestOrder(String orderNo, String token) {
+        if (guestAccessTokenService == null) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Guest access token is unavailable");
+        }
+        GuestAccessTokenService.Access access = guestAccessTokenService.validate(token);
+        if (access == null || !access.getOrderNo().equalsIgnoreCase(orderNo == null ? "" : orderNo.trim())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Invalid or expired guest access token");
+        }
+        Order order = orderService.getTrackableGuestOrderByOrderNo(access.getOrderNo());
+        if (order == null || !orderService.isGuestOrder(order)
+                || !guestAccessTokenService.matchesFingerprint(token, order.getOrderNo(),
+                guestAccessTokenService.fingerprint(orderService.guestOrderEmailFingerprintValue(order)))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Guest access token is not valid for this order");
+        }
+        return order;
+    }
+
+    private OrderTrackResponse toGuestOrderTrack(Order order) {
+        return new OrderTrackResponse(
+                toCustomerOrder(order),
+                orderItemService.getOrderItemsByOrderId(order.getId()).stream()
+                        .map(this::toCustomerOrderItem)
+                        .collect(Collectors.toList()),
+                false,
+                null,
+                null);
+    }
+
+    private OrderItemCustomerResponse toCustomerOrderItem(OrderItem item) {
+        return OrderItemCustomerResponse.from(item);
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.trim().isEmpty();
     }
 
     private void assertCanCancelOrder(Order order, Authentication authentication, String guestEmail, String orderNo, HttpServletRequest request) {
@@ -518,7 +596,7 @@ public class OrderController {
                                        HttpServletRequest request,
                                        String adminPermission,
                                        boolean allowLegacyAdminAction) {
-        if (guestOrderAccessMatches(order, guestEmail, orderNo)) {
+        if (guestOrderAccessMatches(order, guestEmail, orderNo, null, request)) {
             return null;
         }
         if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
@@ -531,6 +609,9 @@ public class OrderController {
                 return order.getUserId();
             }
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, forbiddenMessage);
+        }
+        if (hasGuestCredentials(guestEmail, orderNo)) {
+            recordGuestAccessFailure("order-mutation", orderNo, guestEmail, request);
         }
         recordGuestOrderOperationFailure(true, request, "guest-order operation credentials failed");
         throw new ResponseStatusException(HttpStatus.FORBIDDEN, forbiddenMessage);
@@ -698,6 +779,58 @@ public class OrderController {
 
     private boolean guestOrderAccessMatches(Order order, String email, String orderNo) {
         return orderService.guestOrderAccessMatches(order, email, orderNo);
+    }
+
+    private boolean guestOrderAccessMatches(Order order, String email, String orderNo,
+                                            String bodyToken, HttpServletRequest request) {
+        String token = hasText(bodyToken)
+                ? bodyToken
+                : request == null ? null : request.getHeader(GuestAccessTokenService.HEADER_NAME);
+        if (hasText(token) && guestAccessTokenService != null) {
+            String orderEmail = orderService.guestOrderEmailFingerprintValue(order);
+            return order != null && orderService.isGuestOrder(order)
+                    && guestAccessTokenService.matchesFingerprint(token, order.getOrderNo(),
+                    guestAccessTokenService.fingerprint(orderEmail));
+        }
+        return guestOrderAccessMatches(order, email, orderNo);
+    }
+
+    private boolean hasGuestCredentials(String email, String orderNo) {
+        return email != null && !email.trim().isEmpty() && orderNo != null && !orderNo.trim().isEmpty();
+    }
+
+    private void assertGuestAccessAllowed(String scope, String orderNo, String email, HttpServletRequest request) {
+        if (guestAccessRateLimitService != null) {
+            guestAccessRateLimitService.assertAllowed(scope, orderNo, email, request);
+        }
+    }
+
+    private void recordGuestAccessFailure(String scope, String orderNo, String email, HttpServletRequest request) {
+        if (guestAccessRateLimitService != null) {
+            guestAccessRateLimitService.recordFailure(scope, orderNo, email, request);
+        }
+    }
+
+    private void assertGuestMutationAllowed(Map<String, String> body,
+                                            boolean allowGuestCredentials,
+                                            HttpServletRequest request) {
+        if (allowGuestCredentials) {
+            assertGuestAccessAllowed("order-mutation",
+                    guestBodyValue(body, "orderNo", true),
+                    guestBodyValue(body, "guestEmail", true),
+                    request);
+        }
+    }
+
+    private void recordGuestMutationFailure(Map<String, String> body,
+                                            boolean allowGuestCredentials,
+                                            HttpServletRequest request) {
+        if (allowGuestCredentials) {
+            recordGuestAccessFailure("order-mutation",
+                    guestBodyValue(body, "orderNo", true),
+                    guestBodyValue(body, "guestEmail", true),
+                    request);
+        }
     }
 
     private List<OrderCustomerResponse> toCustomerOrders(List<Order> orders) {

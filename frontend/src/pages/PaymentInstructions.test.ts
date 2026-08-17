@@ -9,6 +9,8 @@ const pageSource = [
 const pageShellSource = fs.readFileSync(path.join(__dirname, 'PaymentInstructions.tsx'), 'utf8');
 const cssSource = fs.readFileSync(path.join(__dirname, 'PaymentInstructions.css'), 'utf8');
 const appSource = fs.readFileSync(path.join(__dirname, '../App.tsx'), 'utf8');
+const checkoutSource = fs.readFileSync(path.join(__dirname, 'Checkout.tsx'), 'utf8');
+const orderTrackingPanelsSource = fs.readFileSync(path.join(__dirname, 'orderTrackingPanels.tsx'), 'utf8');
 const mobileAppCssSource = fs.readFileSync(path.join(__dirname, '../mobile-app.css'), 'utf8');
 
 describe('PaymentInstructions step readability guards', () => {
@@ -134,6 +136,18 @@ describe('PaymentInstructions step readability guards', () => {
     expect(cssSource).toContain('.payment-instructions-page__guestEmailGate');
     expect(cssSource).toContain('.payment-instructions-page__guestEmailForm');
     expect(cssSource).toMatch(/payment-instructions-page__guestEmailForm[\s\S]*?min-height:\s*44px/);
+  });
+
+  it('keeps guest email out of internal payment-instructions URLs', () => {
+    const expectedPath = 'navigate(`/payment/${encodeURIComponent(String(createdOrder.orderNo || createdOrder.id))}`)';
+    expect(checkoutSource).toContain(expectedPath);
+    expect(orderTrackingPanelsSource).toContain('navigate(`/payment/${encodeURIComponent(String(order.orderNo || order.id))}`)');
+    expect(checkoutSource).not.toContain('guestEmail=${encodeURIComponent(guestPaymentEmail)}');
+    expect(orderTrackingPanelsSource).not.toContain('const emailQuery =');
+    expect(orderTrackingPanelsSource).not.toContain('?guestEmail=');
+    // Legacy return links remain readable but are removed from the address bar immediately.
+    expect(pageShellSource).toContain('sanitized.delete(\'guestEmail\')');
+    expect(pageShellSource).toContain('sanitized.delete(\'email\')');
   });
 
 });

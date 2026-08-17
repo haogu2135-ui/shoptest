@@ -37,6 +37,7 @@ public class WebConfig implements WebMvcConfigurer {
                         RequestCorrelationFilter.REQUEST_ID_HEADER,
                         RequestCorrelationFilter.CORRELATION_ID_HEADER,
                         "X-Bootstrap-Token",
+                        "X-Guest-Access-Token",
                         "Idempotency-Key").toArray(new String[0]))
                 .exposedHeaders(RequestCorrelationFilter.REQUEST_ID_HEADER)
                 .allowCredentials(true)

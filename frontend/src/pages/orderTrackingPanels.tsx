@@ -521,8 +521,7 @@ export const OrderTrackingMainPanels: React.FC<OrderTrackingPanelsProps> = ({
                     aria-label={trackActionLabel(t('pages.paymentInstructions.title'))}
                     title={trackActionLabel(t('pages.paymentInstructions.title'))}
                     onClick={() => {
-                      const emailQuery = trackedEmail ? `?guestEmail=${encodeURIComponent(trackedEmail)}` : '';
-                      navigate(`/payment/${encodeURIComponent(String(order.orderNo || order.id))}${emailQuery}`);
+                      navigate(`/payment/${encodeURIComponent(String(order.orderNo || order.id))}`);
                     }}
                   >
                     {t('pages.paymentInstructions.title')}

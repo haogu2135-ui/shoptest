@@ -24,4 +24,7 @@ public class PaymentCreateRequest {
     @Email
     @Size(max = 120)
     private String guestEmail;
+
+    @Size(max = 2048)
+    private String guestAccessToken;
 }

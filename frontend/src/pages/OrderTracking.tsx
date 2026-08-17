@@ -195,7 +195,12 @@ const OrderTracking: React.FC = () => {
       if (!isCurrentTrackRequest()) {
         return;
       }
-      setTrackedEmail(normalizedEmail);
+      const accessToken = String(res.data.guestAccessToken || '').trim();
+      const knownEmail = normalizedEmail || loadGuestSupportContext()?.email || '';
+      if (res.data.order?.orderNo && accessToken) {
+        saveGuestSupportContext({ orderNo: res.data.order.orderNo, email: knownEmail, accessToken });
+      }
+      setTrackedEmail(knownEmail);
       setOrder(res.data.order);
       setItems(res.data.items || []);
       setDetailsRestricted(res.data.detailsRestricted === true);

@@ -10,7 +10,6 @@ import javax.validation.constraints.Size;
 
 @Data
 public class GuestSupportMessagesRequest {
-    @NotBlank
     @Email
     @Size(max = 120)
     private String guestEmail;
@@ -25,4 +24,7 @@ public class GuestSupportMessagesRequest {
 
     @Positive
     private Long afterId;
+
+    @Size(max = 2048)
+    private String guestAccessToken;
 }

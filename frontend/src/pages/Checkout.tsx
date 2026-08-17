@@ -913,7 +913,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
           onBackHome: () => navigate('/'),
           onSimulatePayment: simulatePayment,
           onOpenSupport: openSupport,
-          onOpenPaymentInstructions: () => navigate(`/payment/${encodeURIComponent(String(createdOrder.orderNo || createdOrder.id))}${guestPaymentEmail ? `?guestEmail=${encodeURIComponent(guestPaymentEmail)}` : ''}`),
+          onOpenPaymentInstructions: () => navigate(`/payment/${encodeURIComponent(String(createdOrder.orderNo || createdOrder.id))}`),
         })}
       />
     );

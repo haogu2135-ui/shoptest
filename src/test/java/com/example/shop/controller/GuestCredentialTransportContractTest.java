@@ -16,7 +16,8 @@ class GuestCredentialTransportContractTest {
         String logisticsController = Files.readString(Path.of("src/main/java/com/example/shop/controller/LogisticsController.java"));
         String supportController = Files.readString(Path.of("src/main/java/com/example/shop/controller/SupportController.java"));
         String securityConfig = Files.readString(Path.of("src/main/java/com/example/shop/config/SecurityConfig.java"));
-        String apiClient = Files.readString(Path.of("frontend/src/api/index.ts"));
+        String apiClient = Files.readString(Path.of("frontend/src/api/storefront.ts"));
+        String apiCore = Files.readString(Path.of("frontend/src/api/core.ts"));
 
         assertTrue(orderController.contains("@PostMapping(\"/guest/{id}\")"));
         assertTrue(orderController.contains("@PostMapping(\"/guest/{id}/items\")"));
@@ -56,11 +57,14 @@ class GuestCredentialTransportContractTest {
         assertTrue(securityConfig.contains(".antMatchers(HttpMethod.POST, \"/orders/guest/*\", \"/orders/guest/**\")"));
 
         assertTrue(apiClient.contains("api.post<OrderTrackResult>('/orders/track'"));
-        assertTrue(apiClient.contains("api.post<OrderCustomer>(`/orders/guest/${normalizedId}`, credentials, anonymousRequestConfig())"));
-        assertTrue(apiClient.contains("api.post<OrderItemCustomer[]>(`/orders/guest/${normalizedOrderId}/items`, credentials, anonymousRequestConfig())"));
-        assertTrue(apiClient.contains("api.post<PaymentCustomer[]>(`/payments/guest/order/${normalizedId}`, credentials, anonymousRequestConfig())"));
-        assertTrue(apiClient.contains("api.post<PaymentCustomer>(`/payments/guest/order/${normalizedId}/latest`, credentials, anonymousRequestConfig("));
-        assertTrue(apiClient.contains("anonymousRequestConfig({}, options)") || apiClient.contains("anonymousRequestConfig())"));
+        assertTrue(apiClient.contains("api.post<OrderCustomer>(`/orders/guest/${normalizedId}`, credentials, guestRequestConfig(guestEmail, orderNo))"));
+        assertTrue(apiClient.contains("api.post<OrderItemCustomer[]>(`/orders/guest/${normalizedOrderId}/items`, credentials, guestRequestConfig(guestEmail, orderNo))"));
+        assertTrue(apiClient.contains("api.post<PaymentCustomer[]>(`/payments/guest/order/${normalizedId}`, credentials, guestRequestConfig(guestEmail, orderNo))"));
+        assertTrue(apiClient.contains("api.post<PaymentCustomer>(`/payments/guest/order/${normalizedId}/latest`, credentials, guestRequestConfig("));
+        assertTrue(apiCore.contains("'X-Guest-Access-Token': accessToken"));
+        assertTrue(apiCore.contains("guestAccessToken: accessToken"));
+        assertTrue(apiClient.contains("guestRequestConfig(email, orderNo)"));
+        assertTrue(apiClient.contains("withRequestOptions({}, options)"));
         assertFalse(apiClient.contains("api.get<OrderTrackResult>('/orders/track'"));
         assertFalse(apiClient.contains("api.get<OrderCustomer>(`/orders/guest/${normalizedId}`"));
         assertFalse(apiClient.contains("api.get<OrderItemCustomer[]>(`/orders/guest/${normalizedOrderId}/items`"));

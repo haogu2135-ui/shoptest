@@ -8,6 +8,7 @@ import com.example.shop.entity.Order;
 import com.example.shop.entity.OrderItem;
 import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.IpBlacklistService;
+import com.example.shop.service.GuestAccessRateLimitService;
 import com.example.shop.service.OrderItemService;
 import com.example.shop.service.OrderService;
 import com.example.shop.service.SecurityAuditLogService;
@@ -17,6 +18,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
@@ -148,6 +150,22 @@ class OrderControllerGuestAfterSaleAccessTest {
                 Map.of("guestEmail", "mia@example.com", "orderNo", "SO202605260999", "reason", "Too small"),
                 new MockHttpServletRequest("POST", "/orders/guest/42/return")
         ));
+    }
+
+    @Test
+    void guestMutationWithUnknownOrderCountsTowardSharedCredentialLimit() {
+        GuestAccessRateLimitService limiter = mock(GuestAccessRateLimitService.class);
+        ReflectionTestUtils.setField(controller, "guestAccessRateLimitService", limiter);
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/orders/guest/999/return");
+
+        assertThrows(ResponseStatusException.class, () -> controller.returnGuestOrder(
+                999L,
+                Map.of("guestEmail", "mia@example.com", "orderNo", "SO202605260999", "reason", "Too small"),
+                request
+        ));
+
+        verify(limiter).assertAllowed("order-mutation", "SO202605260999", "mia@example.com", request);
+        verify(limiter).recordFailure("order-mutation", "SO202605260999", "mia@example.com", request);
     }
 
     @Test

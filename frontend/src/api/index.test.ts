@@ -1705,6 +1705,46 @@ const { adminApi } = require('./admin');
     }));
   });
 
+  it('uses a current guest access token and falls back to email after token expiry', async () => {
+    const { orderApi, paymentApi } = require('./index');
+    const orderNo = 'SO202608160001';
+    const currentToken = createJwt(Math.floor(Date.now() / 1000) + 120);
+    window.localStorage.setItem('shop-guest-support-context', JSON.stringify({
+      orderNo,
+      email: 'guest@example.com',
+      accessToken: currentToken,
+      savedAt: Date.now(),
+    }));
+
+    await orderApi.track(orderNo, 'guest@example.com');
+    await orderApi.cancel(8, 'guest@example.com', orderNo);
+    await paymentApi.getByOrder(8, 'guest@example.com', orderNo);
+
+    expect(mockPost.mock.calls[0][1]).toEqual({ orderNo, guestAccessToken: currentToken });
+    expect(mockPost.mock.calls[1][1]).toEqual({ orderNo, guestAccessToken: currentToken });
+    expect(mockPost.mock.calls[1][2]).toEqual(expect.objectContaining({
+      headers: expect.objectContaining({ 'X-Guest-Access-Token': currentToken }),
+      skipAuthHeader: true,
+      skipAuthRedirect: true,
+    }));
+    expect(mockPost.mock.calls[2][1]).toEqual({ orderNo, guestAccessToken: currentToken });
+    expect(mockPost.mock.calls[2][2]).toEqual(expect.objectContaining({
+      headers: expect.objectContaining({ 'X-Guest-Access-Token': currentToken }),
+    }));
+
+    mockPost.mockClear();
+    window.localStorage.setItem('shop-guest-support-context', JSON.stringify({
+      orderNo,
+      email: 'guest@example.com',
+      accessToken: createJwt(Math.floor(Date.now() / 1000) - 60),
+      savedAt: Date.now(),
+    }));
+
+    await orderApi.track(orderNo, 'guest@example.com', { bypassCache: true });
+
+    expect(mockPost.mock.calls[0][1]).toEqual({ orderNo, email: 'guest@example.com' });
+  });
+
   it('keeps cart specs, guest checkout items, and review comments within backend limits', async () => {
     const { cartApi, orderApi, reviewApi } = require('./index');
     const oversizedSpecs = 's'.repeat(1200);

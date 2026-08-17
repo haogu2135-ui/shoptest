@@ -13,6 +13,7 @@ import { ensureLanguagePack } from '../i18n';
 import { resolveApiBaseUrl, resolveSupportWebSocketUrl } from '../utils/runtimeConfig';
 import { getEffectiveRole } from '../utils/roles';
 import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
+import { loadGuestSupportContext } from '../utils/guestSupportContext';
 import { cachedGet, cachedTypedGet, setBoundedMapEntry, setTimedCacheEntry } from './cache';
 
 export const api = axios.create({
@@ -113,7 +114,7 @@ const getJwtExpiryMs = (token: string) => {
         const parsed = JSON.parse(atob(paddedPayload));
         const expiresAtSeconds = Number(parsed?.exp);
         return Number.isFinite(expiresAtSeconds) && expiresAtSeconds > 0 ? expiresAtSeconds * 1000 : null;
-    } catch (_error) {
+    } catch {
         return null;
     }
 };
@@ -517,15 +518,54 @@ export const checkoutIdempotencyConfig = (options?: CheckoutRequestOptions): Axi
         : undefined;
 };
 
-export const hasGuestCredentials = (email?: string, orderNo?: string) => Boolean(normalizeEmailParam(email) && normalizeOrderTrackingNumber(orderNo || ''));
+const isUsableGuestAccessToken = (token: string) => {
+    try {
+        if (typeof window === 'undefined' || typeof window.atob !== 'function') return false;
+        const segments = token.split('.');
+        if (segments.length !== 3) return false;
+        const payload = segments[1].replace(/-/g, '+').replace(/_/g, '/');
+        const padded = payload.padEnd(Math.ceil(payload.length / 4) * 4, '=');
+        const claims = JSON.parse(window.atob(padded)) as { exp?: unknown };
+        const expiresAtSeconds = Number(claims.exp);
+        return Number.isFinite(expiresAtSeconds) && expiresAtSeconds > Math.floor(Date.now() / 1000) + 5;
+    } catch (_error) {
+        return false;
+    }
+};
 
-export const guestParams = (email?: string, orderNo?: string) => hasGuestCredentials(email, orderNo)
-    ? { guestEmail: normalizeEmailParam(email), orderNo: normalizeOrderTrackingNumber(orderNo || '') }
-    : undefined;
+const guestAccessTokenForOrder = (orderNo?: string) => {
+    const normalizedOrderNo = normalizeOrderTrackingNumber(orderNo || '');
+    if (!normalizedOrderNo) return '';
+    const context = loadGuestSupportContext();
+    const accessToken = context?.orderNo.toUpperCase() === normalizedOrderNo.toUpperCase()
+        ? String(context.accessToken || '').trim()
+        : '';
+    return accessToken && isUsableGuestAccessToken(accessToken) ? accessToken : '';
+};
 
-export const guestRequestConfig = (email?: string, orderNo?: string, config: AxiosRequestConfig = {}) => hasGuestCredentials(email, orderNo)
-    ? anonymousRequestConfig(config)
-    : config;
+export const hasGuestCredentials = (email?: string, orderNo?: string) => {
+    const normalizedOrderNo = normalizeOrderTrackingNumber(orderNo || '');
+    return Boolean(normalizedOrderNo && (normalizeEmailParam(email) || guestAccessTokenForOrder(normalizedOrderNo)));
+};
+
+export const guestParams = (email?: string, orderNo?: string) => {
+    const normalizedOrderNo = normalizeOrderTrackingNumber(orderNo || '');
+    if (!normalizedOrderNo) return undefined;
+    const accessToken = guestAccessTokenForOrder(normalizedOrderNo);
+    return accessToken
+        ? { guestAccessToken: accessToken, orderNo: normalizedOrderNo }
+        : normalizeEmailParam(email)
+            ? { guestEmail: normalizeEmailParam(email), orderNo: normalizedOrderNo }
+            : undefined;
+};
+
+export const guestRequestConfig = (email?: string, orderNo?: string, config: AxiosRequestConfig = {}) => {
+    if (!hasGuestCredentials(email, orderNo)) return config;
+    const accessToken = guestAccessTokenForOrder(orderNo);
+    return anonymousRequestConfig(accessToken
+        ? { ...config, headers: { ...(config.headers || {}), 'X-Guest-Access-Token': accessToken } }
+        : config);
+};
 
 export const guestOrderPath = (id: number, email?: string, orderNo?: string) => {
     const normalizedId = toPathId(id);
@@ -1816,4 +1856,3 @@ export const normalizeAdminSupportSessionParams = (input?: string | AdminSupport
         size: normalizeBoundedPositiveInt(options.size, 20, 50),
     };
 };
-

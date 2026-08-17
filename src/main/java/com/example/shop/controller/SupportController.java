@@ -21,7 +21,10 @@ import com.example.shop.service.IpBlacklistService;
 import com.example.shop.service.PetBirthdayCouponService;
 import com.example.shop.service.SecurityAuditLogService;
 import com.example.shop.service.SupportWebSocketTicketService;
+import com.example.shop.service.GuestAccessRateLimitService;
+import com.example.shop.service.GuestAccessTokenService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -48,6 +51,10 @@ public class SupportController {
     private final IpBlacklistService ipBlacklistService;
     private final SecurityAuditLogService auditLogService;
     private final SupportWebSocketTicketService supportWebSocketTicketService;
+    @Autowired
+    private GuestAccessRateLimitService guestAccessRateLimitService;
+    @Autowired(required = false)
+    private GuestAccessTokenService guestAccessTokenService;
 
     @GetMapping({"/support", "/support/"})
     public Map<String, Object> supportInfo(Authentication authentication) {
@@ -530,14 +537,29 @@ public class SupportController {
     }
 
     private Order requireGuestOrder(String orderNo, String email, HttpServletRequest request) {
+        assertGuestAccessAllowed("support", orderNo, email, request);
         try {
+            String accessToken = request == null ? null : request.getHeader(GuestAccessTokenService.HEADER_NAME);
+            if (accessToken != null && !accessToken.trim().isEmpty() && guestAccessTokenService != null) {
+                Order tokenOrder = orderService.getTrackableGuestOrderByOrderNo(orderNo);
+                String orderEmail = orderService.guestOrderEmailFingerprintValue(tokenOrder);
+                if (tokenOrder != null && isGuestSupportOrder(tokenOrder)
+                        && guestAccessTokenService.matchesFingerprint(accessToken, tokenOrder.getOrderNo(),
+                        guestAccessTokenService.fingerprint(orderEmail))) {
+                    return tokenOrder;
+                }
+                recordGuestAccessFailure("support", orderNo, email, request);
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Support is not available for this order");
+            }
             Order order = orderService.getTrackableOrderForInternalUse(orderNo, email);
             if (order == null || order.getUserId() == null || !isGuestSupportOrder(order)) {
+                recordGuestAccessFailure("support", orderNo, email, request);
                 ipBlacklistService.recordLoginFailure(request, "guest-support order rejected");
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Support is not available for this order");
             }
             return order;
         } catch (IllegalArgumentException e) {
+            recordGuestAccessFailure("support", orderNo, email, request);
             ipBlacklistService.recordLoginFailure(request, "guest-support credentials failed");
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Support is not available for this order");
         }
@@ -580,6 +602,18 @@ public class SupportController {
             return null;
         }
         return "guest-order:" + order.getOrderNo().trim().toLowerCase(java.util.Locale.ROOT);
+    }
+
+    private void assertGuestAccessAllowed(String scope, String orderNo, String email, HttpServletRequest request) {
+        if (guestAccessRateLimitService != null) {
+            guestAccessRateLimitService.assertAllowed(scope, orderNo, email, request);
+        }
+    }
+
+    private void recordGuestAccessFailure(String scope, String orderNo, String email, HttpServletRequest request) {
+        if (guestAccessRateLimitService != null) {
+            guestAccessRateLimitService.recordFailure(scope, orderNo, email, request);
+        }
     }
 
     private Long currentUserId() {

@@ -8,7 +8,6 @@ import javax.validation.constraints.Size;
 
 @Data
 public class GuestOrderAccessRequest {
-    @NotBlank
     @Email
     @Size(max = 120)
     private String guestEmail;
@@ -16,4 +15,7 @@ public class GuestOrderAccessRequest {
     @NotBlank
     @Size(max = 64)
     private String orderNo;
+
+    @Size(max = 2048)
+    private String guestAccessToken;
 }

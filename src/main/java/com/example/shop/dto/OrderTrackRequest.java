@@ -12,8 +12,10 @@ public class OrderTrackRequest {
     @Size(max = 64)
     private String orderNo;
 
-    @NotBlank
     @Email
     @Size(max = 120)
     private String email;
+
+    @Size(max = 2048)
+    private String guestAccessToken;
 }

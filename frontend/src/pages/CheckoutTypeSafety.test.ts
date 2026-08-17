@@ -56,4 +56,10 @@ describe('Checkout type-safety guards', () => {
     expect(helpers).toContain('export const buildCheckoutOrderActionContext');
   });
 
+  it('keeps guest email out of payment-instructions navigation URLs', () => {
+    expect(source).toContain("onOpenPaymentInstructions: () => navigate(`/payment/${encodeURIComponent(String(createdOrder.orderNo || createdOrder.id))}`)");
+    expect(source).not.toContain('guestEmail=${encodeURIComponent(guestPaymentEmail)}');
+    expect(source).not.toContain('?guestEmail=');
+  });
+
 });

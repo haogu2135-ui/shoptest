@@ -42,6 +42,7 @@ class SecurityConfigCorsTest {
         assertTrue(allowedHeaders.contains(RequestCorrelationFilter.REQUEST_ID_HEADER));
         assertTrue(allowedHeaders.contains(RequestCorrelationFilter.CORRELATION_ID_HEADER));
         assertTrue(allowedHeaders.contains("X-Bootstrap-Token"));
+        assertTrue(allowedHeaders.contains("X-Guest-Access-Token"));
     }
 
     @Test
@@ -57,6 +58,7 @@ class SecurityConfigCorsTest {
         assertTrue(source.contains("RequestCorrelationFilter.REQUEST_ID_HEADER"));
         assertTrue(source.contains("RequestCorrelationFilter.CORRELATION_ID_HEADER"));
         assertTrue(source.contains("\"X-Bootstrap-Token\""));
+        assertTrue(source.contains("\"X-Guest-Access-Token\""));
         assertTrue(source.contains("\"Idempotency-Key\""));
         assertTrue(source.contains(".allowCredentials(true)"));
     }
@@ -145,7 +147,7 @@ class SecurityConfigCorsTest {
         String jwtFilter = java.nio.file.Files.readString(
                 java.nio.file.Paths.get("src/main/java/com/example/shop/security/JwtAuthenticationFilter.java"));
         String apiClient = java.nio.file.Files.readString(
-                java.nio.file.Paths.get("frontend/src/api/index.ts"));
+                java.nio.file.Paths.get("frontend/src/api/core.ts"));
 
         assertTrue(security.contains(".csrf().disable()"));
         assertTrue(security.contains("SessionCreationPolicy.STATELESS"));
@@ -211,8 +213,8 @@ class SecurityConfigCorsTest {
         assertTrue(security.contains(".anyRequest().authenticated()"));
 
         assertTrue(orderController.contains("requireGuestVisibleOrder"));
-        assertTrue(orderController.contains("guestOrderAccessMatches(order, guestEmail, orderNo)"));
-        assertTrue(paymentController.contains("assertCanCreatePayment(request, authentication)"));
+        assertTrue(orderController.contains("guestOrderAccessMatches(order, email, orderNo)"));
+        assertTrue(paymentController.contains("assertCanCreatePayment(request, authentication, httpRequest)"));
         assertTrue(paymentController.contains("assertCanOperatePayment(id, authentication"));
         assertTrue(paymentController.contains("assertAdminPaymentSimulation(authentication)"));
         assertTrue(userController.contains("@RequestHeader(value = \"X-Bootstrap-Token\""));

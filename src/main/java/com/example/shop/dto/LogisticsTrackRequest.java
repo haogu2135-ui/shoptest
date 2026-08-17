@@ -17,7 +17,6 @@ public class LogisticsTrackRequest {
 
     private Long orderId;
 
-    @NotBlank
     @Email
     @Size(max = 120)
     private String guestEmail;
@@ -25,4 +24,7 @@ public class LogisticsTrackRequest {
     @NotBlank
     @Size(max = 64)
     private String orderNo;
+
+    @Size(max = 2048)
+    private String guestAccessToken;
 }

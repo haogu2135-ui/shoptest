@@ -1935,10 +1935,8 @@ public class PaymentService {
         if (!guestOrder && order != null && order.getId() != null) {
             url = appendQueryParam(url, "orderId", String.valueOf(order.getId()));
         }
-        // Guest email enables track-order auto-lookup; FE strips it into local guest context after load.
-        if (guestOrder) {
-            url = appendQueryParam(url, "guestEmail", guestEmailForOrder(order));
-        }
+        // Never place guest PII in provider return URLs. The storefront restores
+        // same-device access from its local guest context and prompts otherwise.
         // Keep tab=orders for registered recovery when profile is the landing page.
         if (!guestOrder && urlContainsPath(url, "/profile")) {
             url = appendQueryParam(url, "tab", "orders");

@@ -329,7 +329,9 @@ describe('OrderTracking auto refresh', () => {
     expect(summarySource.indexOf("{canShowFullTrackingDetails ? (")).toBeLessThan(summarySource.indexOf("{t('pages.orderTracking.createdAt')}"));
     expect(summarySource).toContain('canShowFullTrackingDetails && order.trackingCarrierName');
     expect(summarySource).toContain('canShowFullTrackingDetails && order.returnDeadline');
-    expect(source).toContain('navigate(`/payment/${encodeURIComponent(String(order.orderNo || order.id))}${emailQuery}`)');
+    expect(source).toContain('navigate(`/payment/${encodeURIComponent(String(order.orderNo || order.id))}`)');
+    expect(source).not.toContain('const emailQuery =');
+    expect(source).not.toContain('?guestEmail=');
   });
 
   it('prefills URL tracking parameters without auto-submitting an order lookup', () => {
