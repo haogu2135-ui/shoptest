@@ -1,0 +1,212 @@
+.inventory-page {
+  min-width: 0;
+  overflow-x: hidden;
+}
+
+.inventory-page,
+.inventory-page .ant-card,
+.inventory-page .ant-btn,
+.inventory-page .ant-table,
+.inventory-page .ant-typography {
+  font-family: 'Avenir Next', 'Manrope', 'Segoe UI Variable', sans-serif;
+}
+
+.inventory-page__intro {
+  margin-bottom: 16px;
+}
+
+.inventory-page__intro .ant-space {
+  width: 100%;
+}
+
+.inventory-page__alert,
+.inventory-page__loadingState {
+  margin-bottom: 16px;
+}
+
+.inventory-page__loadingState .ant-card-body {
+  min-height: 120px;
+}
+
+.inventory-page__keywordInput {
+  width: 240px;
+  max-width: 100%;
+}
+
+.inventory-page__categoryFilter,
+.inventory-page__levelFilter {
+  min-width: 180px;
+  max-width: 100%;
+}
+
+/* Stock posture summary */
+.inventory-page__health {
+  display: grid;
+  grid-template-columns: minmax(240px, 1.2fr) 116px minmax(320px, 1.8fr);
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 16px;
+  padding: 18px;
+  border: 1px solid #e4ebe4;
+  border-radius: 8px;
+  background: linear-gradient(135deg, #ffffff 0%, #f8fcf9 100%);
+}
+
+.inventory-page__healthCopy {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.inventory-page__eyebrow {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: #52796f;
+}
+
+.inventory-page__score {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  text-align: center;
+}
+
+.inventory-page__healthGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(132px, 1fr));
+  gap: 12px;
+  min-width: 0;
+}
+
+.inventory-page__healthItem {
+  display: grid;
+  grid-template-rows: auto auto auto;
+  gap: 2px;
+  padding: 12px;
+  border: 1px solid #e8efe8;
+  border-radius: 8px;
+  background: #ffffff;
+  min-width: 0;
+}
+
+.inventory-page__healthItem strong {
+  font-size: 20px;
+  line-height: 1.2;
+}
+
+.inventory-page__healthItem span {
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.62);
+}
+
+.inventory-page__healthItem.is-ok .anticon {
+  color: #2f855a;
+}
+
+.inventory-page__healthItem.is-risk .anticon {
+  color: #d97706;
+}
+
+.inventory-page__healthItem.is-critical .anticon {
+  color: #c53030;
+}
+
+/* Table */
+.inventory-page__table {
+  background: #ffffff;
+}
+
+.inventory-page__product {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.inventory-page__product strong {
+  overflow-wrap: anywhere;
+}
+
+/* Adjustment modal */
+.inventory-page__preview {
+  margin-top: 4px;
+  padding: 12px;
+  border: 1px solid #e8efe8;
+  border-radius: 8px;
+  background: #f8fcf9;
+}
+
+.inventory-page__previewResult {
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.inventory-page__amountInput {
+  width: 100%;
+}
+
+.inventory-page__auditHint {
+  display: block;
+  margin-top: 8px;
+  font-size: 13px;
+  color: rgba(0, 0, 0, 0.62);
+}
+
+@media (max-width: 1100px) {
+  .inventory-page__health {
+    grid-template-columns: minmax(0, 1fr) 116px;
+  }
+
+  .inventory-page__healthGrid {
+    grid-column: 1 / -1;
+  }
+}
+
+@media (max-width: 720px) {
+  .inventory-page__health {
+    grid-template-columns: minmax(0, 1fr);
+    padding: 14px;
+  }
+
+  .inventory-page__score {
+    flex-direction: row;
+    justify-content: flex-start;
+    gap: 12px;
+  }
+
+  .inventory-page__keywordInput,
+  .inventory-page__categoryFilter,
+  .inventory-page__levelFilter {
+    width: 100%;
+    min-width: 0;
+  }
+
+  /* Commercial mobile/App inventory touch-target guard */
+  .inventory-page .ant-btn,
+  .inventory-page .ant-input,
+  .inventory-page .ant-input-affix-wrapper,
+  .inventory-page .ant-input-number,
+  .inventory-page .ant-select-selector {
+    min-height: 44px;
+  }
+
+  /* Keep focused text at 16px so iOS/WebView does not zoom the admin shell. */
+  .inventory-page .ant-input,
+  .inventory-page .ant-input-number-input {
+    font-size: 16px;
+  }
+}
+
+@media (max-width: 480px) {
+  .inventory-page__healthGrid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .inventory-page__healthItem strong {
+    font-size: 18px;
+  }
+}

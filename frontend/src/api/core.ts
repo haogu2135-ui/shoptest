@@ -114,7 +114,7 @@ const getJwtExpiryMs = (token: string) => {
         const parsed = JSON.parse(atob(paddedPayload));
         const expiresAtSeconds = Number(parsed?.exp);
         return Number.isFinite(expiresAtSeconds) && expiresAtSeconds > 0 ? expiresAtSeconds * 1000 : null;
-    } catch {
+    } catch (_error) {
         return null;
     }
 };

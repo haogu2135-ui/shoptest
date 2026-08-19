@@ -234,7 +234,10 @@ describe('Login CSS contracts', () => {
     expect(css).toContain('@media (max-width: 430px)');
     expect(css).toContain('@media (max-width: 360px)');
     expect(css).toContain('grid-template-columns: 1fr;');
-    expect(css).toContain('overflow-x: clip;');
+    // WebView-safe containment: `clip` is banned across storefront CSS because it
+    // is unsupported in older Android WebViews, so the narrow rails use `hidden`.
+    expect(css).toContain('overflow-x: hidden;');
+    expect(css).not.toContain('overflow-x: clip;');
     expect(css).toContain('grid-template-columns: minmax(0, 1fr) 70px;');
   });
 
