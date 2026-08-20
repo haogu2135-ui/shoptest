@@ -990,7 +990,8 @@ async function probeLocalWebhookContracts() {
   }
 
   // Commercial evidence journal: signed accepts persisted in the backend security audit trail.
-  // PROVIDER_LIKE (non-loopback / known provider UA) is the ship-bar bar for real traffic.
+  // PROVIDER_LIKE requires a public client IP resolved through the trusted-proxy policy;
+  // the user-agent class is informational and cannot promote local traffic.
   try {
     const evidence = await request(`${localUiBase}/api/payments/webhook-evidence`, { timeout: 6000 });
     let payload = {};
