@@ -550,6 +550,16 @@ export interface AdminProductPage {
     hasPrevious?: boolean;
 }
 
+export interface AdminInventorySummary {
+    totalProducts: number;
+    outOfStock: number;
+    critical: number;
+    low: number;
+    healthy: number;
+    totalUnits: number;
+    score: number;
+}
+
 export interface ProductPublic {
     id: number;
     name: string;

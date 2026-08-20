@@ -32,74 +32,20 @@ import ShopSpace from '../components/ShopSpace';
 import ShopTag from '../components/ShopTag';
 import ShopTypography from '../components/ShopTypography';
 import message from '../components/ShopMessage';
+import {
+  EMPTY_INVENTORY_HEALTH,
+  LOW_STOCK_THRESHOLD,
+  getStockLevel,
+  normalizeInventorySummary,
+  resolveAdjustedStock,
+} from './inventoryManagementHelpers';
+import type { InventoryHealth, StockAdjustMode, StockLevel } from './inventoryManagementHelpers';
 import './InventoryManagement.css';
 
 const Title = ShopTypography.Title;
 const Text = ShopTypography.Text;
 
-/** Mirrors the backend dashboard low-stock rule (`stock < 10`). */
-export const LOW_STOCK_THRESHOLD = 10;
-/** Stock at or below this level is treated as an imminent stockout. */
-export const CRITICAL_STOCK_THRESHOLD = 5;
-
-export type StockLevel = 'out' | 'critical' | 'low' | 'healthy';
-export type StockAdjustMode = 'set' | 'increase' | 'decrease';
-
 const INVENTORY_PAGE_SIZE = 20;
-
-export const getStockLevel = (stock?: number | null): StockLevel => {
-  const safeStock = Number(stock ?? 0);
-  const normalized = Number.isFinite(safeStock) ? Math.max(0, Math.trunc(safeStock)) : 0;
-  if (normalized <= 0) return 'out';
-  if (normalized <= CRITICAL_STOCK_THRESHOLD) return 'critical';
-  if (normalized < LOW_STOCK_THRESHOLD) return 'low';
-  return 'healthy';
-};
-
-export const resolveAdjustedStock = (
-  currentStock: number | null | undefined,
-  mode: StockAdjustMode,
-  amount: number | null | undefined,
-): number => {
-  const safeCurrent = Math.max(0, Math.trunc(Number(currentStock ?? 0) || 0));
-  const safeAmount = Math.max(0, Math.trunc(Number(amount ?? 0) || 0));
-  if (mode === 'set') return safeAmount;
-  if (mode === 'increase') return safeCurrent + safeAmount;
-  return Math.max(0, safeCurrent - safeAmount);
-};
-
-export type InventoryHealth = {
-  outOfStock: number;
-  critical: number;
-  low: number;
-  healthy: number;
-  totalUnits: number;
-  score: number;
-};
-
-export const deriveInventoryHealth = (products: Product[]): InventoryHealth => {
-  const rows = Array.isArray(products) ? products : [];
-  const counts = rows.reduce(
-    (acc, product) => {
-      acc[getStockLevel(product.stock)] += 1;
-      acc.totalUnits += Math.max(0, Math.trunc(Number(product.stock ?? 0) || 0));
-      return acc;
-    },
-    { out: 0, critical: 0, low: 0, healthy: 0, totalUnits: 0 },
-  );
-  const score = rows.length === 0
-    ? 100
-    : Math.max(0, Math.round(((counts.healthy + counts.low * 0.5) / rows.length) * 100));
-
-  return {
-    outOfStock: counts.out,
-    critical: counts.critical,
-    low: counts.low,
-    healthy: counts.healthy,
-    totalUnits: counts.totalUnits,
-    score,
-  };
-};
 
 type StockAdjustFormValues = {
   mode: StockAdjustMode;
@@ -119,6 +65,7 @@ const InventoryManagement: React.FC = () => {
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
   const [products, setProducts] = useState<Product[]>([]);
+  const [health, setHealth] = useState<InventoryHealth>(EMPTY_INVENTORY_HEALTH);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(INVENTORY_PAGE_SIZE);
@@ -128,7 +75,7 @@ const InventoryManagement: React.FC = () => {
   const [keyword, setKeyword] = useState('');
   const [categoryId, setCategoryId] = useState<number | undefined>();
   const [levelFilter, setLevelFilter] = useState<StockLevel | 'all'>('all');
-  const [categories, setCategories] = useState<Array<{ value: number; label: string }>>([]);
+  const [categories, setCategories] = useState<Array<{ value: string; label: string }>>([]);
   const [adjustTarget, setAdjustTarget] = useState<Product | null>(null);
   const [saving, setSaving] = useState(false);
   const [currentRole, setCurrentRole] = useState('');
@@ -151,15 +98,19 @@ const InventoryManagement: React.FC = () => {
   const fetchInventory = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await adminApi.getProducts({
-        keyword: debouncedKeyword || undefined,
-        categoryId,
-        page: Math.max(0, page - 1),
-        size: pageSize,
-        sort: 'lowstock',
-      });
-      setProducts(response.data.items);
-      setTotal(response.data.total);
+      const [productsResponse, summaryResponse] = await Promise.all([
+        adminApi.getProducts({
+          keyword: debouncedKeyword || undefined,
+          categoryId,
+          page: Math.max(0, page - 1),
+          size: pageSize,
+          sort: 'lowstock',
+        }),
+        adminApi.getInventorySummary(),
+      ]);
+      setProducts(productsResponse.data.items);
+      setTotal(productsResponse.data.total);
+      setHealth(normalizeInventorySummary(summaryResponse.data));
       setLoadError(null);
       setSnapshotLoaded(true);
     } catch (error: unknown) {
@@ -197,7 +148,7 @@ const InventoryManagement: React.FC = () => {
       .then((response) => {
         if (disposed) return;
         setCategories(response.data.map((category) => ({
-          value: Number(category.id),
+          value: String(category.id),
           label: String(category.name || '').trim() || `#${category.id}`,
         })));
       })
@@ -210,7 +161,6 @@ const InventoryManagement: React.FC = () => {
     };
   }, []);
 
-  const health = useMemo(() => deriveInventoryHealth(products), [products]);
   const visibleProducts = useMemo(
     () => (levelFilter === 'all' ? products : products.filter((product) => getStockLevel(product.stock) === levelFilter)),
     [levelFilter, products],
@@ -376,7 +326,7 @@ const InventoryManagement: React.FC = () => {
               <ShopSelect
                 allowClear
                 showSearch
-                value={categoryId}
+                value={categoryId == null ? undefined : String(categoryId)}
                 onChange={(value) => {
                   setCategoryId(value ? Number(value) : undefined);
                   setPage(1);

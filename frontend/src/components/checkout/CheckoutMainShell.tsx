@@ -135,7 +135,7 @@ export type CheckoutMainShellProps = {
   setCheckoutReloadKey: React.Dispatch<React.SetStateAction<number>>;
   setSelectedAddressId: React.Dispatch<React.SetStateAction<number | 'new'>>;
   handleCheckoutAddressKeyDown: (event: React.KeyboardEvent<HTMLButtonElement>, addressId: number | 'new') => void;
-  loadCheckoutRegionOptions: () => void | Promise<void>;
+  loadCheckoutRegionOptions: () => void | Promise<unknown>;
   setCheckoutRegionCascaderVisibility: (open: boolean) => void;
   handleCheckoutPhoneBlur: React.FocusEventHandler<HTMLInputElement>;
   cartTotal: number;

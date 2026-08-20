@@ -49,6 +49,7 @@ const requireProduction = String(process.env.SHOPTEST_REQUIRE_PRODUCTION || '').
 const requireCommercialShip = String(process.env.SHOPTEST_REQUIRE_COMMERCIAL_SHIP || '').trim() === '1';
 const results = [];
 const COMMERCIAL_SHIP_SOFT_GATES = new Set([
+  'canonical production host reachable',
   'production host reachable',
   'production products api',
   'production payment channels',
@@ -173,6 +174,58 @@ function request(urlString, options = {}) {
     if (options.body) req.write(options.body);
     req.end();
   });
+}
+
+function looksLikeShopStorefront(body) {
+  return /ShopMX|shop-frontend|main\.[a-f0-9]+\.js|Pet Store|pet essentials/i.test(
+    String(body || ''),
+  );
+}
+
+async function probeCanonicalProductionHost() {
+  let canonicalUrl;
+  try {
+    canonicalUrl = new URL(canonicalBase);
+  } catch (error) {
+    soft('canonical production DNS', false, `invalid SHOPTEST_CANONICAL_BASE=${canonicalBase}`);
+    soft('canonical production host reachable', false, `invalid SHOPTEST_CANONICAL_BASE=${canonicalBase}`);
+    return;
+  }
+
+  const canonicalHost = canonicalUrl.hostname;
+  let dnsDetail = 'no-records';
+  let dnsOk = false;
+  try {
+    const dns = require('dns').promises;
+    const records = await dns.lookup(canonicalHost, { all: true });
+    dnsOk = records.length > 0;
+    dnsDetail = records.map((item) => `${item.address}/${item.family}`).join(', ') || 'no-records';
+  } catch (error) {
+    dnsDetail = error && error.message ? error.message : String(error);
+  }
+  soft('canonical production DNS', dnsOk, `host=${canonicalHost} ${dnsDetail}`);
+
+  if (canonicalUrl.protocol !== 'https:') {
+    soft(
+      'canonical production host reachable',
+      false,
+      `canonical URL must use https: ${canonicalBase}`,
+    );
+    return;
+  }
+
+  const home = await request(`${canonicalBase}/`, {
+    timeout: 20000,
+    headers: { Host: canonicalHost },
+    rejectUnauthorized: true,
+  });
+  const storefront = looksLikeShopStorefront(home.body);
+  const ok = dnsOk && home.status === 200 && !home.error && storefront;
+  const bodyHint = String(home.body || '').slice(0, 100).replace(/\s+/g, ' ');
+  const detail = ok
+    ? `status=200 host=${canonicalHost} trustedTls=true storefront=ok`
+    : `status=${home.status || 0} host=${canonicalHost} trustedTls=${home.error ? 'failed' : 'ok'} storefront=${storefront ? 'ok' : 'missing'}${home.error ? ` error=${home.error}` : ''}${bodyHint ? ` body=${bodyHint}` : ''}`;
+  soft('canonical production host reachable', ok, detail);
 }
 
 function signStripeWebhook(rawBody, secret) {
@@ -471,9 +524,7 @@ async function probePublicCdnShipBar() {
     locationHost = '';
   }
   const bodyHint = String(home.body || '').slice(0, 160).replace(/\s+/g, ' ');
-  const looksLikeShopmx = /ShopMX|shop-frontend|main\.[a-f0-9]+\.js|Pet Store|pet essentials/i.test(
-    String(home.body || ''),
-  );
+  const looksLikeShopmx = looksLikeShopStorefront(home.body);
   const foreignRedirect = Boolean(
     locationHost
     && locationHost !== publicHost
@@ -717,12 +768,15 @@ async function probeOriginEdgeStaticCache() {
   // so Cloudflare and browsers keep repeat-visit payloads off the origin.
   const originBase = getOriginEdgeBase();
   const originHost = getOriginEdgeHost();
-  const localBase = localUiBase || 'http://127.0.0.1:4187';
   try {
-    const home = await request(`${localBase}/`, { timeout: 8000 });
+    const home = await requestOriginEdge('/', { timeout: 8000 });
     const match = String(home.body || '').match(/static\/js\/(main\.[a-f0-9]+\.js)/i);
     if (!match) {
-      soft('origin edge static long-cache immutable', false, 'main hashed js not found in local UI html');
+      soft(
+        'origin edge static long-cache immutable',
+        false,
+        `main hashed js not found in origin html status=${home.status} base=${originBase} host=${originHost}`,
+      );
       return;
     }
     const assetPath = `/static/js/${match[1]}`;
@@ -935,7 +989,7 @@ async function probeLocalWebhookContracts() {
     soft('local mercado webhook accepts signed payload contract', false, 'MERCADO_PAGO_WEBHOOK_SECRET not set');
   }
 
-  // Commercial evidence journal: signed accepts recorded by backend PaymentWebhookEvidenceService.
+  // Commercial evidence journal: signed accepts persisted in the backend security audit trail.
   // PROVIDER_LIKE (non-loopback / known provider UA) is the ship-bar bar for real traffic.
   try {
     const evidence = await request(`${localUiBase}/api/payments/webhook-evidence`, { timeout: 6000 });
@@ -945,12 +999,16 @@ async function probeLocalWebhookContracts() {
     } catch (_) {
       payload = {};
     }
-    const providerLike = Boolean(payload.anyProviderLikeSuccess);
+    const persistentEvidence = payload.available === true
+      && payload.evidenceStore === 'PERSISTENT_AUDIT_LOG';
+    const providerLike = persistentEvidence && Boolean(payload.anyProviderLikeSuccess);
     const stripeCount = Number(payload.stripe && payload.stripe.successCount) || 0;
     const mercadoCount = Number(payload.mercadoPago && payload.mercadoPago.successCount) || 0;
     const detail = providerLike
       ? `provider-like delivery recorded stripe=${stripeCount} mercado=${mercadoCount}`
-      : `no provider-like delivery yet (local signed ok: stripe=${stripeCount} mercado=${mercadoCount}); requires live Stripe/Mercado dashboard deliveries against production webhook URLs with real secrets`;
+      : !persistentEvidence
+        ? `persistent webhook evidence unavailable store=${payload.evidenceStore || 'missing'} available=${payload.available}; deploy restart-safe audit evidence before accepting provider proof`
+        : `no provider-like delivery yet (local signed ok: stripe=${stripeCount} mercado=${mercadoCount}); requires live Stripe/Mercado dashboard deliveries against production webhook URLs with real secrets`;
     soft('real provider webhook traffic evidence', providerLike, detail);
   } catch (error) {
     soft(
@@ -1075,6 +1133,7 @@ async function main() {
   logLine(`requireCommercialShip=${requireCommercialShip}`);
   logLine(`productionHost=${productionHostHeader || '(url-host)'} tlsInsecure=${productionTlsInsecure}`);
 
+  await probeCanonicalProductionHost();
   await probeProduction();
   await probePublicCdnShipBar();
   await probeOriginEdgeDual();
@@ -1128,7 +1187,8 @@ async function main() {
     const softish = getSoftGaps();
     const commercialShipGaps = getCommercialShipGaps();
     const shipBar = [
-      'public production host CWV (pet domain via CDN)',
+      'canonical production DNS + trusted TLS + storefront',
+      'public production host CWV',
       'real provider webhook traffic',
       'real-device APK/WebView E2E',
     ];

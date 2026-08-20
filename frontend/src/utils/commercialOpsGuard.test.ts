@@ -67,11 +67,16 @@ describe('commercial ops contracts', () => {
     expect(production).toContain('SHOPTEST_REQUIRE_PRODUCTION');
     expect(production).toContain('SHOPTEST_REQUIRE_COMMERCIAL_SHIP');
     expect(production).toContain('COMMERCIAL_SHIP_SOFT_GATES');
+    expect(production).toContain('canonical production host reachable');
+    expect(production).toContain('canonical production DNS');
+    expect(production).toContain('trustedTls=true');
+    expect(production).toContain('probeCanonicalProductionHost');
     expect(production).toContain('production host reachable');
     expect(production).toContain('production DNS A records');
     expect(production).toContain('production DNS AAAA records');
     expect(production).toContain('cloudflare origin gap diagnosis');
     expect(production).toContain('probeOriginEdgeDual');
+    expect(production).toContain("const home = await requestOriginEdge('/', { timeout: 8000 });");
     expect(production).toContain('origin edge CWV measurement');
     expect(production).toContain('SHOPTEST_PRODUCTION_HOST');
     expect(production).toContain('measureProductionCwv');
@@ -81,6 +86,8 @@ describe('commercial ops contracts', () => {
     expect(production).toContain('local stripe webhook rejects bad signature');
     expect(production).toContain('local mercado webhook rejects bad signature');
     expect(production).toContain('real provider webhook traffic evidence');
+    expect(production).toContain('PERSISTENT_AUDIT_LOG');
+    expect(production).toContain('persistent webhook evidence unavailable');
     expect(production).toContain('real-device mobile E2E evidence');
     expect(production).toContain('validateDeviceE2eEvidence');
     expect(production).toContain('device evidence sha256 mismatch with current mobile-version.json');
@@ -120,6 +127,35 @@ describe('commercial ops contracts', () => {
     expect(diagnose).toContain('grep -Eq');
     expect(diagnose).not.toContain('rg -q');
     expect(diagnose).toContain("'^-A INPUT .*-j (REJECT|DROP)( |$)'");
+  });
+
+  it('keeps edge firewall changes explicit, persistent, and Cloudflare-scoped', () => {
+    const firewall = fs.readFileSync(
+      path.join(__dirname, '..', '..', '..', 'scripts', 'open-shoptest-edge-ports.sh'),
+      'utf8',
+    );
+    const nginx = fs.readFileSync(
+      path.join(__dirname, '..', '..', '..', 'deploy', 'nginx', 'shoptest-edge.conf.template'),
+      'utf8',
+    );
+    expect(firewall).toContain('mode="check"');
+    expect(firewall).toContain('scope="cloudflare"');
+    expect(firewall).toContain('--apply');
+    expect(firewall).toContain('--persist');
+    expect(firewall).toContain('comment_prefix="shoptest-edge"');
+    expect(firewall).toContain('rule_comment="${comment_prefix}-${scope}"');
+    expect(firewall).toContain('iptables-restore');
+    expect(firewall).toContain('requires root');
+
+    const firewallCidrs = Array.from(
+      firewall.matchAll(/^\s{2}([0-9a-f:.]+\/\d+)$/gmi),
+      (match) => match[1].toLowerCase(),
+    ).sort();
+    const nginxCidrs = Array.from(
+      nginx.matchAll(/^set_real_ip_from\s+([^;]+);$/gmi),
+      (match) => match[1].toLowerCase(),
+    ).sort();
+    expect(firewallCidrs).toEqual(nginxCidrs);
   });
 
   it('keeps checkout pure helpers modularized for commercial maintainability', () => {

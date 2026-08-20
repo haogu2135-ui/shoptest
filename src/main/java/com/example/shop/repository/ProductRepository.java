@@ -76,6 +76,14 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
             + " sum(case when p.stock is not null and p.stock < 10 then 1 else 0 end) as lowStockProducts"
             + " from Product p")
     ProductDashboardCounts countDashboardProductCounts();
+    @Query("select count(p) as totalProducts,"
+            + " sum(case when p.stock is null or p.stock <= 0 then 1 else 0 end) as outOfStock,"
+            + " sum(case when p.stock between 1 and 5 then 1 else 0 end) as critical,"
+            + " sum(case when p.stock between 6 and 9 then 1 else 0 end) as low,"
+            + " sum(case when p.stock >= 10 then 1 else 0 end) as healthy,"
+            + " sum(case when p.stock is null or p.stock < 0 then 0 else p.stock end) as totalUnits"
+            + " from Product p")
+    ProductInventorySummary getInventorySummary();
     @Query("select count(p) from Product p where upper(coalesce(p.status, '')) = 'ACTIVE'")
     long countActiveProducts();
     @Query("select p.categoryId, count(p) from Product p where p.categoryId in :categoryIds"
@@ -128,5 +136,14 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
         Long getInactiveProducts();
         Long getPendingProducts();
         Long getLowStockProducts();
+    }
+
+    interface ProductInventorySummary {
+        Long getTotalProducts();
+        Long getOutOfStock();
+        Long getCritical();
+        Long getLow();
+        Long getHealthy();
+        Long getTotalUnits();
     }
 }

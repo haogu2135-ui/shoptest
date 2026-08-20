@@ -54,4 +54,28 @@
         ORDER BY created_at DESC, id DESC
         LIMIT #{limit}
     </select>
+
+    <select id="countWebhookSuccess" resultType="long">
+        SELECT COUNT(*)
+        FROM security_audit_logs
+        WHERE action = #{action}
+          AND result = 'SUCCESS'
+    </select>
+
+    <select id="findLatestWebhookSuccess" resultMap="securityAuditLogMap">
+        SELECT *
+        FROM security_audit_logs
+        WHERE action = #{action}
+          AND result = 'SUCCESS'
+        ORDER BY created_at DESC, id DESC
+        LIMIT 1
+    </select>
+
+    <select id="countProviderLikeWebhookSuccess" resultType="long">
+        SELECT COUNT(*)
+        FROM security_audit_logs
+        WHERE action IN ('STRIPE_WEBHOOK', 'MERCADO_PAGO_WEBHOOK')
+          AND result = 'SUCCESS'
+          AND metadata LIKE '%sourceClass=PROVIDER_LIKE%'
+    </select>
 </mapper>

@@ -231,12 +231,10 @@ public class PaymentController {
         }
         try {
             Payment payment = paymentService.handleStripeWebhook(payload, signatureHeader);
+            String evidenceMetadata = webhookEvidenceService.sourceMetadata(request);
             auditLogService.record("STRIPE_WEBHOOK", "SUCCESS", null, null, null,
                     "PAYMENT", payment != null ? payment.getId() : null, request,
-                    "Stripe webhook accepted", null);
-            if (webhookEvidenceService != null) {
-                webhookEvidenceService.recordSuccess(PaymentWebhookEvidenceService.CHANNEL_STRIPE, request);
-            }
+                    "Stripe webhook accepted", evidenceMetadata);
             return ResponseEntity.ok(Map.of("received", true));
         } catch (IllegalArgumentException e) {
             auditLogService.record("STRIPE_WEBHOOK", "FAILURE", null, null, null, "PAYMENT", null, request, e.getMessage(), null);
@@ -265,12 +263,10 @@ public class PaymentController {
                     requestIdHeader,
                     firstNonBlank(topic, type),
                     firstNonBlank(dataId, dataIdAlt));
+            String evidenceMetadata = webhookEvidenceService.sourceMetadata(request);
             auditLogService.record("MERCADO_PAGO_WEBHOOK", "SUCCESS", null, null, null,
                     "PAYMENT", payment != null ? payment.getId() : null, request,
-                    "Mercado Pago webhook accepted", null);
-            if (webhookEvidenceService != null) {
-                webhookEvidenceService.recordSuccess(PaymentWebhookEvidenceService.CHANNEL_MERCADO, request);
-            }
+                    "Mercado Pago webhook accepted", evidenceMetadata);
             return ResponseEntity.ok(Map.of("received", true));
         } catch (IllegalArgumentException e) {
             auditLogService.record("MERCADO_PAGO_WEBHOOK", "FAILURE", null, null, null, "PAYMENT", null, request, e.getMessage(), null);

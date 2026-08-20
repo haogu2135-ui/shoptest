@@ -15,11 +15,7 @@ import {
 } from '../utils/checkoutHelpers';
 import { scrollCheckoutElementIntoView } from '../utils/checkoutDom';
 import { useNativeBackHandler } from '../utils/nativeBack';
-
-type PaymentMethodDetail = {
-  value: string;
-  title: string;
-};
+import type { PaymentMethodDetail } from '../utils/paymentMethods';
 
 type UseCheckoutConversionCoachParams = {
   addOnTarget: CartBenefitTarget | null;

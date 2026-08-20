@@ -1,6 +1,7 @@
 package com.example.shop.service.impl;
 
 import com.example.shop.dto.ProductImportResult;
+import com.example.shop.dto.ProductInventorySummaryResponse;
 import com.example.shop.dto.ProductListQuery;
 import com.example.shop.entity.Category;
 import com.example.shop.entity.PetProfile;
@@ -782,6 +783,19 @@ public class ProductServiceImpl implements ProductService {
         summary.put("pendingProducts", dashboardCount(counts == null ? null : counts.getPendingProducts()));
         summary.put("lowStockProducts", dashboardCount(counts == null ? null : counts.getLowStockProducts()));
         return summary;
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public ProductInventorySummaryResponse getInventorySummary() {
+        ProductRepository.ProductInventorySummary summary = productRepository.getInventorySummary();
+        return ProductInventorySummaryResponse.of(
+                summary == null ? null : summary.getTotalProducts(),
+                summary == null ? null : summary.getOutOfStock(),
+                summary == null ? null : summary.getCritical(),
+                summary == null ? null : summary.getLow(),
+                summary == null ? null : summary.getHealthy(),
+                summary == null ? null : summary.getTotalUnits());
     }
 
     private long dashboardCount(Long value) {

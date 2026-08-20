@@ -18,4 +18,10 @@ public interface SecurityAuditLogMapper {
                                   @Param("startAt") LocalDateTime startAt,
                                   @Param("endAt") LocalDateTime endAt,
                                   @Param("limit") int limit);
+
+    long countWebhookSuccess(@Param("action") String action);
+
+    SecurityAuditLog findLatestWebhookSuccess(@Param("action") String action);
+
+    long countProviderLikeWebhookSuccess();
 }

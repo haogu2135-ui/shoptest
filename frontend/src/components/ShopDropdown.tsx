@@ -169,12 +169,14 @@ const ShopDropdown: React.FC<ShopDropdownProps> = ({
     ref: (node: HTMLElement | null) => {
       triggerRef.current = node;
       if (typeof childRef === 'function') childRef(node);
-      else if (childRef && typeof childRef === 'object') childRef.current = node;
+      else if (childRef && typeof childRef === 'object') {
+        (childRef as React.MutableRefObject<HTMLElement | null>).current = node;
+      }
     },
     'aria-haspopup': child.props['aria-haspopup'] || 'menu',
     'aria-expanded': typeof child.props['aria-expanded'] === 'boolean' ? child.props['aria-expanded'] : resolvedOpen,
     'aria-controls': resolvedOpen ? menuId : child.props['aria-controls'],
-    onClick: (event: React.MouseEvent) => {
+    onClick: (event: React.MouseEvent<HTMLElement>) => {
       child.props.onClick?.(event);
       if (disabled || event.defaultPrevented) return;
       setOpen(!resolvedOpen);

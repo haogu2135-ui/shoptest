@@ -7,6 +7,7 @@ import type {
   AdminUserPage,
   Product,
   AdminProductPage,
+  AdminInventorySummary,
   Category,
   Brand,
   Order,
@@ -420,6 +421,7 @@ export const adminApi = {
                 sort: normalizeTextParam(params.sort, 80) || undefined,
             } : undefined,
         }).then(normalizeProductAdminPageResponse),
+    getInventorySummary: () => api.get<AdminInventorySummary>('/admin/products/inventory-summary'),
     createProduct: (product: ProductMutationPayload) =>
         api.post<Product>('/admin/products', normalizeProductPayload(product)).finally(() => clearProductCache()),
     updateProduct: (id: number, product: ProductMutationPayload) =>

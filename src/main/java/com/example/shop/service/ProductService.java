@@ -6,6 +6,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.example.shop.dto.ProductImportResult;
+import com.example.shop.dto.ProductInventorySummaryResponse;
 
 import java.util.List;
 import java.util.Map;
@@ -42,6 +43,7 @@ public interface ProductService {
     long countPendingReviewProducts();
     long countLowStockProducts();
     Map<String, Long> countDashboardProductSummary();
+    ProductInventorySummaryResponse getInventorySummary();
     List<Product> findLowStockProducts(int limit);
     ProductImportResult previewImportCsv(MultipartFile file);
     ProductImportResult importCsv(MultipartFile file);

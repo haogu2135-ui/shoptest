@@ -14,6 +14,7 @@ import com.example.shop.dto.ProductAdminPageResponse;
 import com.example.shop.dto.ProductImportHistoryEntry;
 import com.example.shop.dto.ProductQuestionAdminSummaryResponse;
 import com.example.shop.dto.ProductImportResult;
+import com.example.shop.dto.ProductInventorySummaryResponse;
 import com.example.shop.dto.ProductListQuery;
 import com.example.shop.dto.ProductUrlImportPreview;
 import com.example.shop.dto.ProductUrlImportRequest;
@@ -160,6 +161,11 @@ public class AdminController {
                 result.getTotalElements(),
                 result.getNumber(),
                 result.getSize()));
+    }
+
+    @GetMapping("/products/inventory-summary")
+    public ResponseEntity<ProductInventorySummaryResponse> getProductInventorySummary() {
+        return ResponseEntity.ok(productService.getInventorySummary());
     }
 
     @GetMapping("/products/categories/options")

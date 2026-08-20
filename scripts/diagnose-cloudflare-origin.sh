@@ -111,7 +111,7 @@ if [[ "${http_code:-0}" == "200" || "${https_code:-0}" == "200" ]]; then
       522)
         firewall_note="Host firewall policy is ${input_firewall_policy}; 80=${edge_port_80_status}; 443=${edge_port_443_status}."
         if [[ "${edge_port_80_status}" == blocked-* || "${edge_port_443_status}" == blocked-* ]]; then
-          firewall_note="Host firewall is blocking an edge port. Run scripts/open-shoptest-edge-ports.sh and persist the equivalent rules before investigating Cloudflare settings."
+          firewall_note="Host firewall is blocking an edge port. After authorization, run scripts/open-shoptest-edge-ports.sh --apply --scope cloudflare --persist before investigating Cloudflare settings."
         fi
         cat <<MSG
 RESULT: Origin is healthy on ${ORIGIN_IP}, but Cloudflare returns 522 (connection timed out to origin).
@@ -176,7 +176,7 @@ fi
 cat <<MSG
 RESULT: Origin IP ${ORIGIN_IP} is not serving ${DOMAIN} on 80/443 from this host path.
 ACTION:
-  1) scripts/open-shoptest-edge-ports.sh
+  1) After authorization: scripts/open-shoptest-edge-ports.sh --apply --scope cloudflare --persist
   2) Ensure nginx edge container is up (deploy/docker-compose.frontend-edge.host.yml)
   3) Open OCI Security List / NSG ingress TCP 80 and 443 from 0.0.0.0/0 (or Cloudflare IP ranges)
   4) Temporary public probes: scripts/start-commercial-public-tunnel.sh
