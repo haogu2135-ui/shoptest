@@ -6307,6 +6307,17 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
     font-weight: 900 !important;
     line-height: 1.15 !important;
   }
+
+  /* The older mobile text pass targets every child span with dark copy. Keep
+     the final CTA label and icon tied to the button's contrast-safe color. */
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__cart :where(.ant-btn-icon, .anticon, .shop-button__label, svg, svg *),
+  body:not(.shop-mobile-app) .product-detail-page .product-summary-card .product-mobile-buybar__buy :where(.ant-btn-icon, .anticon, .shop-button__label, svg, svg *),
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__cart :where(.ant-btn-icon, .anticon, .shop-button__label, svg, svg *),
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__buy :where(.ant-btn-icon, .anticon, .shop-button__label, svg, svg *) {
+    color: inherit !important;
+    -webkit-text-fill-color: currentColor !important;
+    fill: currentColor !important;
+  }
 }
 
 /* A-23: short landscape cannot afford the two-row purchase dock or stacked

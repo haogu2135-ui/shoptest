@@ -84,6 +84,49 @@ async function dismissCookie(page) {
   }
 }
 
+async function measureCookieConsentLayout(page) {
+  return page.evaluate(() => {
+    const rectFor = (element) => {
+      if (!element) return null;
+      const rect = element.getBoundingClientRect();
+      return {
+        top: rect.top,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height,
+      };
+    };
+    const banner = document.querySelector('.cookie-consent-banner');
+    const links = Array.from(document.querySelectorAll('.cookie-consent-banner__link'));
+    const buttons = Array.from(document.querySelectorAll('.cookie-consent-banner__button'));
+    const heroActions = Array.from(document.querySelectorAll('.shopee-hero__actions .home-btn'));
+    const bottomBar = document.querySelector('.shop-nav__bottomBar');
+    const bannerRect = rectFor(banner);
+    const bottomBarRect = rectFor(bottomBar);
+    const linkRects = links.map(rectFor);
+    const buttonRects = buttons.map(rectFor);
+    const heroActionRects = heroActions.map(rectFor).filter(Boolean);
+    const overlap = (first, second) => Boolean(
+      first && second
+      && first.bottom > second.top + 1
+      && first.top < second.bottom - 1,
+    );
+    return {
+      banner: bannerRect,
+      bottomBar: bottomBarRect,
+      links: linkRects,
+      buttons: buttonRects,
+      heroActions: heroActionRects,
+      legalLinksSameRow: linkRects.length === 2 && Math.abs(linkRects[0].top - linkRects[1].top) <= 1,
+      bannerOverlapsBottomBar: overlap(bannerRect, bottomBarRect),
+      heroActionOverlapsBanner: heroActionRects.some((rect) => overlap(rect, bannerRect)),
+      minLinkHeight: linkRects.length ? Math.min(...linkRects.map((rect) => rect.height)) : 0,
+      minButtonHeight: buttonRects.length ? Math.min(...buttonRects.map((rect) => rect.height)) : 0,
+      horizontalOverflow: document.documentElement.scrollWidth > window.innerWidth,
+    };
+  });
+}
+
 async function measurePrimaryTouchTargets(page) {
   return page.evaluate(() => {
     const selectors = [
@@ -219,6 +262,33 @@ async function main() {
           String(response.status()),
         );
         await page.waitForSelector('#root', { timeout: 20000 }).catch(() => undefined);
+        if (route.path === '/') {
+          const cookieLayout = await measureCookieConsentLayout(page);
+          check(
+            `${viewport.name} / cookie consent legal links stay on one row`,
+            cookieLayout.legalLinksSameRow,
+            `links=${cookieLayout.links.length}`,
+          );
+          check(
+            `${viewport.name} / cookie consent touch targets >=44px`,
+            cookieLayout.minLinkHeight >= 44 && cookieLayout.minButtonHeight >= 44,
+            `links=${Math.round(cookieLayout.minLinkHeight)} buttons=${Math.round(cookieLayout.minButtonHeight)}`,
+          );
+          check(
+            `${viewport.name} / cookie consent clear of bottom nav`,
+            !cookieLayout.bannerOverlapsBottomBar,
+            `bannerBottom=${Math.round(cookieLayout.banner?.bottom || 0)} navTop=${Math.round(cookieLayout.bottomBar?.top || 0)}`,
+          );
+          check(
+            `${viewport.name} / cookie consent clear of home hero actions`,
+            !cookieLayout.heroActionOverlapsBanner,
+            `heroActions=${cookieLayout.heroActions.length} bannerTop=${Math.round(cookieLayout.banner?.top || 0)}`,
+          );
+          check(
+            `${viewport.name} / cookie consent no horizontal overflow`,
+            !cookieLayout.horizontalOverflow,
+          );
+        }
         await dismissCookie(page);
         // Re-assert native shell class after SPA mount.
         await page.evaluate(() => {

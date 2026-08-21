@@ -419,15 +419,14 @@ describe('Navbar Android app download entry', () => {
     expect(f3358Css).toMatch(/\.shop-nav__mega button,[\s\S]*?\.shop-nav__megaButton\s*\{[\s\S]*?white-space:\s*nowrap\s*!important;/);
   });
 
-  it('wraps Spanish mobile-web category rail labels instead of clipping them', () => {
+  it('keeps the Spanish mobile-web category rail on one horizontal scroll row', () => {
     const css = readNavbarCss();
-    const fixCss = css.slice(css.indexOf('/* UI-20260608-04'));
+    const railCss = css.slice(css.indexOf('F2710: mobile category navigation needs an explicit horizontal-scroll affordance.'));
 
-    expect(fixCss).toContain('@media (min-width: 341px) and (max-width: 430px)');
-    expect(fixCss).toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav\.shop-nav--es \.shop-nav__mega\s*\{[\s\S]*?display:\s*grid\s*!important;[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;[\s\S]*?overflow:\s*visible\s*!important;/);
-    expect(fixCss).toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav\.shop-nav--es \.shop-nav__mega::after\s*\{[\s\S]*?content:\s*none\s*!important;[\s\S]*?display:\s*none\s*!important;/);
-    expect(fixCss).toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav\.shop-nav--es \.shop-nav__mega button,[\s\S]*?body:not\(\.shop-mobile-app\) \.shop-nav\.shop-nav--es \.shop-nav__megaButton\s*\{[\s\S]*?min-height:\s*44px\s*!important;[\s\S]*?white-space:\s*normal\s*!important;[\s\S]*?overflow-wrap:\s*break-word\s*!important;/);
-    expect(fixCss).toMatch(/@media \(max-width:\s*340px\)\s*\{[\s\S]*?body:not\(\.shop-mobile-app\) \.shop-nav\.shop-nav--es \.shop-nav__mega\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important;/);
+    expect(railCss).toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav \.shop-nav__mega\s*\{[\s\S]*?display:\s*flex\s*!important;[\s\S]*?flex-wrap:\s*nowrap\s*!important;[\s\S]*?overflow-x:\s*auto\s*!important;/);
+    expect(railCss).toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav \.shop-nav__mega::after\s*\{[\s\S]*?content:\s*'>'\s*!important;[\s\S]*?position:\s*sticky\s*!important;/);
+    expect(railCss).toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav \.shop-nav__megaButton\s*\{[\s\S]*?flex:\s*0 0 auto\s*!important;[\s\S]*?min-width:\s*max-content\s*!important;[\s\S]*?white-space/);
+    expect(railCss).not.toContain('grid-template-columns: repeat(2');
   });
 
   it('shows a mobile category rail overflow affordance while preserving scroll focus padding', () => {
@@ -439,11 +438,10 @@ describe('Navbar Android app download entry', () => {
     expect(source).toContain("{ key: 'smart-devices', label: t('nav.petNav.smartDevices')");
     expect(source).toContain("{ key: 'pet-finder', label: t('nav.petFinder')");
     expect(source).toContain("{ key: 'pet-gallery', label: t('nav.petGallery')");
-    expect(f2710Start).toBeGreaterThan(css.lastIndexOf('UI-20260608-04: mobile-web Spanish category labels should be readable'));
-    expect(f2710Css).toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav:not\(\.shop-nav--es\) \.shop-nav__mega\s*\{[\s\S]*?overflow-x:\s*auto\s*!important;[\s\S]*?scroll-padding-inline:\s*0 44px\s*!important;[\s\S]*?scroll-snap-type:\s*x proximity\s*!important;/);
-    expect(f2710Css).toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav:not\(\.shop-nav--es\) \.shop-nav__mega::after\s*\{[\s\S]*?content:\s*'>'\s*!important;[\s\S]*?position:\s*sticky\s*!important;[\s\S]*?right:\s*0\s*!important;/);
-    expect(f2710Css).toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav:not\(\.shop-nav--es\) \.shop-nav__megaButton\s*\{[\s\S]*?min-width:\s*max-content\s*!important;[\s\S]*?scroll-margin-inline:\s*0 44px\s*!important;/);
-    expect(f2710Css).not.toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav\.shop-nav--es \.shop-nav__mega::after/);
+    expect(f2710Start).toBeGreaterThan(-1);
+    expect(f2710Css).toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav \.shop-nav__mega\s*\{[\s\S]*?overflow-x:\s*auto\s*!important;[\s\S]*?scroll-padding-inline:\s*0 44px\s*!important;[\s\S]*?scroll-snap-type:\s*x proximity\s*!important;/);
+    expect(f2710Css).toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav \.shop-nav__mega::after\s*\{[\s\S]*?content:\s*'>'\s*!important;[\s\S]*?position:\s*sticky\s*!important;[\s\S]*?right:\s*0\s*!important;/);
+    expect(f2710Css).toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav \.shop-nav__megaButton\s*\{[\s\S]*?min-width:\s*max-content\s*!important;[\s\S]*?scroll-margin-inline:\s*0 44px\s*!important;/);
   });
 
   it('keeps More dropdown menus scrollable inside short landscape viewports', () => {
@@ -613,6 +611,17 @@ describe('Navbar Android app download entry', () => {
     expect(taskNavCss).toMatch(/\.shop-app-shell--product-detail \.shop-nav__brandCopy small[\s\S]*?display:\s*none;/);
     expect(taskNavCss).not.toContain('.shop-app-shell--home .shop-nav__search');
     expect(taskNavCss).not.toContain('.shop-app-shell--product-list .shop-nav__mega');
+  });
+
+  it('does not let generic mobile link hit areas reopen the hidden guest login CTA', () => {
+    const css = readNavbarCss();
+    const mobileGuard = css.slice(css.indexOf('Final mobile Web navbar touch-target guard'));
+    const finalTouchGuard = css.slice(css.indexOf('COMMERCIAL_TOUCH_TARGET_44_V1'));
+
+    expect(mobileGuard).toContain('.shop-nav__mobile-auth:not(.shop-nav__mobile-auth--primary)');
+    expect(mobileGuard).toContain('a[aria-label]:not(.shop-nav__mobile-auth)');
+    expect(finalTouchGuard).toContain('a[aria-label]:not(.shop-nav__mobile-auth)');
+    expect(css).toContain('.shop-nav__mobile-auth--primary .shop-nav__mobile-authText');
   });
 
   it('hides the floating bottom navigation on cart task pages', () => {

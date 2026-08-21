@@ -868,6 +868,17 @@ describe('Checkout payment availability', () => {
     expect(source).not.toContain('useState<Record<string, any>>');
   });
 
+  it('keeps a manually dismissed checkout support panel closed across coaching recalculations', () => {
+    const conversionCoach = readCheckoutConversionCoachSource();
+
+    expect(conversionCoach).toContain('const supportPanelDismissedRef = React.useRef(false);');
+    expect(conversionCoach).toContain('if (supportPanelDismissedRef.current) return;');
+    expect(conversionCoach).toContain('supportPanelDismissedRef.current = true;');
+    expect(conversionCoach).not.toContain('supportPanelDismissedKeyRef');
+    expect(conversionCoach).not.toContain('supportPanelAutoOpenKey');
+    expect(conversionCoach).not.toContain('SUPPORT_PANEL_DISMISS_SUPPRESS_MS');
+  });
+
   it('keeps hoisted mock factories free of optional-parameter syntax', () => {
     const source = readCheckoutTestSource();
     const hoistedMocksSource = source.slice(0, source.indexOf('describe('));

@@ -263,6 +263,17 @@ describe('ProductDetail mobile buybar layout contract', () => {
     expect(finalCss).toMatch(/product-mobile-buybar__cart,[\s\S]*?product-mobile-buybar__buy[\s\S]*?min-height:\s*52px\s*!important;/);
   });
 
+  it('keeps mobile buybar labels and icons tied to the CTA contrast color', () => {
+    const css = readProductDetailCss();
+    const finalCss = css.slice(css.lastIndexOf('UI audit 2026-06-09: final mobile buybar authority'));
+
+    expect(finalCss).toContain('.product-mobile-buybar__cart :where(.ant-btn-icon, .anticon, .shop-button__label, svg, svg *)');
+    expect(finalCss).toContain('.product-mobile-buybar__buy :where(.ant-btn-icon, .anticon, .shop-button__label, svg, svg *)');
+    expect(finalCss).toContain('color: inherit !important;');
+    expect(finalCss).toContain('-webkit-text-fill-color: currentColor !important;');
+    expect(finalCss).toContain('fill: currentColor !important;');
+  });
+
   it('keeps short landscape purchase actions compact and free of secondary dock meta', () => {
     const css = readProductDetailCss();
     const landscapeStart = css.lastIndexOf('A-23: short landscape cannot afford');

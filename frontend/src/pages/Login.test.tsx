@@ -250,7 +250,7 @@ describe('Login CSS contracts', () => {
 
     expect(css).toContain('--login-brand: #124734;');
     expect(css).toContain('--login-accent: #c73719;');
-    expect(css).toContain("url('/assets/home/hero-dogs.webp')");
+    expect(css).toContain('var(--shop-home-hero-dogs)');
     expect(css).not.toContain('data:image/svg+xml');
     expect(cssWithoutTokenDefinitions).not.toMatch(/#[0-9a-f]{3,8}\b/i);
     expect(cssWithoutTokenDefinitions).not.toMatch(/rgba?\(\s*\d/);

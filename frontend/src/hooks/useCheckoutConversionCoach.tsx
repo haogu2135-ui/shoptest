@@ -9,7 +9,6 @@ import {
   pickCheckoutNextAction,
   resolveCheckoutNextActionLabelKey,
   scoreCheckoutReadiness,
-  SUPPORT_PANEL_DISMISS_SUPPRESS_MS,
   type CheckoutMoneyFormatter,
   type CheckoutTranslationFn,
 } from '../utils/checkoutHelpers';
@@ -83,8 +82,9 @@ export const useCheckoutConversionCoach = ({
   t,
   watchedPaymentMethod,
 }: UseCheckoutConversionCoachParams) => {
-  const supportPanelDismissedKeyRef = React.useRef<string | null>(null);
-  const supportPanelDismissedUntilRef = React.useRef(0);
+  // A manual close applies to the current checkout session, even when quote or
+  // cart state changes and recalculates the coaching content.
+  const supportPanelDismissedRef = React.useRef(false);
 
   const nextCouponUnlock = useMemo(
     () => findNextCheckoutCouponUnlock(availableCoupons, cartTotal),
@@ -206,57 +206,33 @@ export const useCheckoutConversionCoach = ({
   const checkoutBlockingAction = pickCheckoutNextAction(checkoutReadinessItems, { blockingOnly: true });
   const needsCheckoutSupport = Boolean(addOnTarget || couponOpportunity || checkoutNextAction);
 
-  const supportPanelAutoOpenKey = useMemo(() => {
-    if (!needsCheckoutSupport) return '';
-    return [
-      checkoutNextAction?.key || 'ready',
-      addOnTarget ? `${addOnTarget.reason}:${Math.round(addOnTarget.remainingAmount * 100)}` : 'no-addon',
-      couponOpportunity ? `${couponOpportunity.type}:${selectedCoupon?.id || nextCouponUnlock?.coupon?.id || 'coupon'}` : 'no-coupon',
-    ].join('|');
-  }, [
-    addOnTarget,
-    checkoutNextAction?.key,
-    couponOpportunity,
-    needsCheckoutSupport,
-    nextCouponUnlock?.coupon?.id,
-    selectedCoupon?.id,
-  ]);
-
   useEffect(() => {
     if (!needsCheckoutSupport) {
-      supportPanelDismissedKeyRef.current = null;
+      supportPanelDismissedRef.current = false;
       return;
     }
-    if (supportPanelDismissedUntilRef.current > Date.now()) {
-      return;
-    }
-    if (supportPanelDismissedKeyRef.current === supportPanelAutoOpenKey) {
-      return;
-    }
+    if (supportPanelDismissedRef.current) return;
     setSupportPanelOpen(true);
-  }, [needsCheckoutSupport, setSupportPanelOpen, supportPanelAutoOpenKey]);
+  }, [needsCheckoutSupport, setSupportPanelOpen]);
 
   const handleSupportPanelToggle = useCallback((event: React.SyntheticEvent<HTMLDetailsElement>) => {
     const nextOpen = event.currentTarget.open;
     setSupportPanelOpen(nextOpen);
     if (nextOpen) {
-      supportPanelDismissedKeyRef.current = null;
-      supportPanelDismissedUntilRef.current = 0;
+      supportPanelDismissedRef.current = false;
       return;
     }
-    supportPanelDismissedKeyRef.current = supportPanelAutoOpenKey || null;
-    supportPanelDismissedUntilRef.current = Date.now() + SUPPORT_PANEL_DISMISS_SUPPRESS_MS;
-  }, [setSupportPanelOpen, supportPanelAutoOpenKey]);
+    supportPanelDismissedRef.current = true;
+  }, [setSupportPanelOpen]);
 
   const closeSupportPanelForNativeBack = useCallback(() => {
     if (giftCelebrationOpen || !supportPanelOpen) {
       return false;
     }
-    supportPanelDismissedKeyRef.current = supportPanelAutoOpenKey || null;
-    supportPanelDismissedUntilRef.current = Date.now() + SUPPORT_PANEL_DISMISS_SUPPRESS_MS;
+    supportPanelDismissedRef.current = true;
     setSupportPanelOpen(false);
     return true;
-  }, [giftCelebrationOpen, setSupportPanelOpen, supportPanelAutoOpenKey, supportPanelOpen]);
+  }, [giftCelebrationOpen, setSupportPanelOpen, supportPanelOpen]);
 
   useNativeBackHandler(supportPanelOpen, closeSupportPanelForNativeBack);
 

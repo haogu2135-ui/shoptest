@@ -184,26 +184,29 @@
     -webkit-line-clamp: 2;
   }
 
-  /* Inline legal links save a full chip-row on narrow phones while preserving 44px targets. */
+  /* Keep both legal destinations in one 44px row on narrow phones. */
   .cookie-consent-banner__legal {
     display: flex;
-    flex-wrap: wrap;
-    gap: 0 8px;
+    flex-wrap: nowrap;
+    gap: 4px;
     align-items: center;
+    white-space: nowrap;
   }
 
   .cookie-consent-banner__link {
     justify-content: flex-start;
+    flex: 0 1 auto;
     min-height: 44px;
     padding: 0;
     border-radius: 0;
     background: transparent;
     font-size: 12px;
     text-align: left;
+    white-space: nowrap;
   }
 
   .cookie-consent-banner__separator {
-    display: inline;
+    display: none;
   }
 
   .cookie-consent-banner__actions {

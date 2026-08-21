@@ -328,7 +328,6 @@ export const CHECKOUT_IDEMPOTENCY_KEY = 'checkoutIdempotencyKey';
 export const CHECKOUT_PENDING_ORDER_KEY = 'checkoutPendingOrder';
 export const CHECKOUT_GUEST_DRAFT_KEY = 'checkoutGuestDraft';
 export const CHECKOUT_PAYMENT_POLL_MAX_MS = 30 * 60 * 1000;
-export const SUPPORT_PANEL_DISMISS_SUPPRESS_MS = 30 * 1000;
 export const CHECKOUT_GUEST_DRAFT_SAVE_DELAY_MS = 500;
 
 export type CheckoutPaymentPollResult = {

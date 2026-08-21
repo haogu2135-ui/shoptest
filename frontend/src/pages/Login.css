@@ -93,7 +93,7 @@
   padding: 46px;
   background:
     linear-gradient(90deg, rgba(var(--login-brand-rgb), 0.95), rgba(var(--login-brand-rgb), 0.58)),
-    url('/assets/home/hero-dogs.webp');
+    var(--shop-home-hero-dogs);
   background-position: center;
   background-size: cover;
   color: var(--login-surface);

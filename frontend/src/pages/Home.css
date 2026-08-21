@@ -5778,3 +5778,30 @@ body .shopee-home-popconfirm.shop-popconfirm {
   height: 22px;
   border-radius: 6px;
 }
+
+/* Keep first-visit consent and the primary home actions usable on short phones. */
+@media (max-width: 390px) and (max-height: 620px) {
+  body.shop-cookie-consent-visible.shop-cookie-consent-visible .shop-app-shell--home .shopee-home .shopee-hero__authActions {
+    display: none !important;
+  }
+
+  body.shop-cookie-consent-visible.shop-cookie-consent-visible .shop-app-shell--home .shopee-home .shopee-hero__main > div {
+    width: 100% !important;
+    max-width: 100% !important;
+    transform: translateY(-12px);
+  }
+
+  body.shop-cookie-consent-visible.shop-cookie-consent-visible .shop-app-shell--home .shopee-home .shopee-hero h1 {
+    max-width: 100% !important;
+    font-size: 22px !important;
+  }
+
+  body.shop-cookie-consent-visible.shop-cookie-consent-visible .shop-app-shell--home .shopee-home .shopee-hero p,
+  body.shop-cookie-consent-visible.shop-cookie-consent-visible .shop-app-shell--home .shopee-home .shopee-hero__actions {
+    margin-top: 0 !important;
+  }
+
+  body.shop-cookie-consent-visible.shop-cookie-consent-visible .shop-app-shell--home .shopee-home .shopee-hero p {
+    margin-bottom: 0 !important;
+  }
+}
