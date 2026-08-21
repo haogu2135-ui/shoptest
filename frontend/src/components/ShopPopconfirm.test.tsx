@@ -47,4 +47,11 @@ describe('ShopPopconfirm', () => {
     expect(onConfirm).not.toHaveBeenCalled();
     expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument();
   });
+
+  it('allows long confirmation identities to wrap in the mobile panel', () => {
+    const css = require('fs').readFileSync(require('path').resolve(__dirname, 'ShopPopconfirm.css'), 'utf8') as string;
+
+    expect(css).toMatch(/\.shop-popconfirm__panel\s*\{[\s\S]*?min-width:\s*0;/);
+    expect(css).toMatch(/\.shop-popconfirm__title,[\s\S]*?\.shop-popconfirm__description\s*\{[\s\S]*?min-width:\s*0;[\s\S]*?overflow-wrap:\s*anywhere;[\s\S]*?word-break:\s*break-word;/);
+  });
 });

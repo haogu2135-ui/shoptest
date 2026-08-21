@@ -2045,3 +2045,74 @@
 .support-management__orderDetailStack {
   width: 100%;
 }
+
+/* Keep mobile support status chips in the conversation column. */
+@media (max-width: 560px) {
+  .support-management__replyReadinessChips {
+    display: flex;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    flex-wrap: wrap;
+    justify-content: flex-start;
+    margin-inline: 0;
+    padding: 0;
+    overflow: visible;
+    -webkit-overflow-scrolling: auto;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+
+  .support-management__replyReadinessChip {
+    flex: 0 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+    overflow-wrap: anywhere;
+  }
+}
+
+/* Keep order detail list rows shrinkable beside long product names and prices. */
+.support-management__orderModal .shop-modal__body,
+.support-management__orderModal .support-management__orderDetailStack,
+.support-management__orderModal .ant-list,
+.support-management__orderModal .ant-list-items,
+.support-management__orderModal .ant-list-item,
+.support-management__orderModal .ant-list-item-meta,
+.support-management__orderModal .ant-list-item-meta-content,
+.support-management__orderModal .ant-list-item-meta-title,
+.support-management__orderModal .ant-list-item-meta-description {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.support-management__orderModal .ant-list-item {
+  gap: 8px;
+  align-items: flex-start;
+}
+
+.support-management__orderModal .ant-list-item-meta {
+  flex: 1 1 auto;
+}
+
+.support-management__orderModal .ant-list-item-meta-title,
+.support-management__orderModal .ant-list-item-meta-description {
+  overflow-wrap: anywhere;
+}
+
+.support-management__orderModal .shop-list,
+.support-management__orderModal .shop-list__items,
+.support-management__orderModal .shop-list__item,
+.support-management__orderModal .shop-list__itemMain,
+.support-management__orderModal .shop-list__meta,
+.support-management__orderModal .shop-list__metaContent {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.support-management__orderModal .support-management__orderItemTotal {
+  flex: 0 1 auto;
+  min-width: 0;
+  max-width: 100%;
+}

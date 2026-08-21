@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-21T09:05:56.246Z",
+  "generatedAt": "2026-08-21T16:19:44.477Z",
   "baseUrl": "http://127.0.0.1:4200",
   "viewports": [
     {
@@ -284,18 +284,6 @@
               "scrollWidth": 345,
               "clientWidth": 226,
               "overflowX": "hidden"
-            },
-            {
-              "selector": "span.shop-button__label",
-              "text": "Essential only",
-              "top": 447.875,
-              "left": 36,
-              "right": 140,
-              "width": 104,
-              "overflowRight": -180,
-              "scrollWidth": 112,
-              "clientWidth": 104,
-              "overflowX": "hidden"
             }
           ],
           "formErrors": [],
@@ -564,18 +552,6 @@
               "overflowRight": -73.296875,
               "scrollWidth": 345,
               "clientWidth": 226,
-              "overflowX": "hidden"
-            },
-            {
-              "selector": "span.shop-button__label",
-              "text": "Essential only",
-              "top": 447.875,
-              "left": 36,
-              "right": 140,
-              "width": 104,
-              "overflowRight": -180,
-              "scrollWidth": 112,
-              "clientWidth": 104,
               "overflowX": "hidden"
             }
           ],
@@ -858,18 +834,6 @@
               "scrollWidth": 345,
               "clientWidth": 226,
               "overflowX": "hidden"
-            },
-            {
-              "selector": "span.shop-button__label",
-              "text": "Essential only",
-              "top": 447.875,
-              "left": 36,
-              "right": 140,
-              "width": 104,
-              "overflowRight": -180,
-              "scrollWidth": 112,
-              "clientWidth": 104,
-              "overflowX": "hidden"
             }
           ],
           "formErrors": [],
@@ -1150,18 +1114,6 @@
               "overflowRight": -73.296875,
               "scrollWidth": 345,
               "clientWidth": 226,
-              "overflowX": "hidden"
-            },
-            {
-              "selector": "span.shop-button__label",
-              "text": "Essential only",
-              "top": 447.875,
-              "left": 36,
-              "right": 140,
-              "width": 104,
-              "overflowRight": -180,
-              "scrollWidth": 112,
-              "clientWidth": 104,
               "overflowX": "hidden"
             }
           ],
@@ -1467,18 +1419,6 @@
               "overflowRight": -73.296875,
               "scrollWidth": 345,
               "clientWidth": 226,
-              "overflowX": "hidden"
-            },
-            {
-              "selector": "span.shop-button__label",
-              "text": "Essential only",
-              "top": 447.875,
-              "left": 36,
-              "right": 140,
-              "width": 104,
-              "overflowRight": -180,
-              "scrollWidth": 112,
-              "clientWidth": 104,
               "overflowX": "hidden"
             }
           ],

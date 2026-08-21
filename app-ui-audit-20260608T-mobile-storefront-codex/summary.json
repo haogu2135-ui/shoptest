@@ -1,12 +1,12 @@
 {
-  "generatedAt": "2026-08-21T08:50:13.132Z",
+  "generatedAt": "2026-08-21T16:22:56.920Z",
   "baseUrl": "http://127.0.0.1:4200",
   "viewportCount": 3,
   "routeStateCount": 69,
   "issueStateCount": 0,
   "issueCounts": {},
   "consoleMessageCount": 0,
-  "networkFailureCount": 7,
+  "networkFailureCount": 0,
   "routeErrorCount": 0,
   "routeErrors": [],
   "topIssues": []

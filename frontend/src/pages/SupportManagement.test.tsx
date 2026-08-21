@@ -260,4 +260,15 @@ describe('SupportManagement', () => {
     expect(f3535Css).toMatch(/body \.support-management__popconfirm\.shop-mobile-popup-layer \.ant-popconfirm-title,[\s\S]*?body \.support-management__popconfirm\.shop-mobile-popup-layer \.ant-popconfirm-description\s*\{[\s\S]*?white-space:\s*normal;[\s\S]*?overflow-wrap:\s*anywhere;[\s\S]*?word-break:\s*break-word;/);
     expect(f3535Css).toMatch(/body \.support-management__popconfirm\.shop-mobile-popup-layer \.ant-popconfirm-buttons\s*\{[\s\S]*?display:\s*flex;[\s\S]*?flex-wrap:\s*wrap;[\s\S]*?gap:\s*8px;/);
   });
+
+  it('keeps mobile readiness chips and order detail rows inside their columns', () => {
+    const css = fs.readFileSync(path.resolve(__dirname, 'SupportManagement.css'), 'utf8');
+
+    expect(css).toMatch(/@media \(max-width:\s*560px\)\s*\{[\s\S]*?\.support-management__replyReadinessChips\s*\{[\s\S]*?width:\s*100%;[\s\S]*?min-width:\s*0;[\s\S]*?flex-wrap:\s*wrap;[\s\S]*?overflow:\s*visible;[\s\S]*?mask-image:\s*none;/);
+    expect(css).toMatch(/\.support-management__replyReadinessChip\s*\{[\s\S]*?min-width:\s*0;[\s\S]*?max-width:\s*100%;[\s\S]*?white-space:\s*normal;[\s\S]*?overflow-wrap:\s*anywhere;/);
+    expect(css).toMatch(/\.support-management__orderModal \.ant-list-item-meta\s*\{[\s\S]*?flex:\s*1 1 auto;/);
+    expect(css).toContain('.support-management__orderModal .shop-list__itemMain,');
+    expect(css).toMatch(/\.support-management__orderModal \.shop-list__metaContent\s*\{[\s\S]*?width:\s*100%;[\s\S]*?min-width:\s*0;[\s\S]*?max-width:\s*100%;/);
+    expect(css).toMatch(/\.support-management__orderModal \.support-management__orderItemTotal\s*\{[\s\S]*?flex:\s*0 1 auto;[\s\S]*?min-width:\s*0;/);
+  });
 });
