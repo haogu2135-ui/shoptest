@@ -172,6 +172,12 @@ async function installMocks(page) {
     body: JSON.stringify({ count: 7 }),
   }));
 
+  await page.route('**/api/support/websocket-ticket', (route) => route.fulfill({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify({ ticket: 'ui-audit-support-ticket' }),
+  }));
+
   await page.route('**/api/admin/support/**', async (route) => {
     const url = new URL(route.request().url());
     const method = route.request().method();
@@ -389,8 +395,8 @@ async function collectMetrics(page, state) {
         replyReadiness: rectOf('.support-management__replyReadiness'),
         textarea: rectOf('.support-management__textarea textarea, .support-management textarea'),
         composerActions: rectOf('.support-management__composerActions'),
-        modal: rectOf('.support-management__orderModal .ant-modal-content'),
-        popup: rectOf('.ant-popover:not(.ant-popover-hidden), .ant-select-dropdown:not(.ant-select-dropdown-hidden)'),
+        modal: rectOf('.support-management__orderModal.shop-modal__panel'),
+        popup: rectOf('.shop-popconfirm.shop-mobile-popup-layer, .shop-select__popup'),
       },
       visibleRatios: {
         conversationPane: visibleRatioOf('.support-management__conversationPane'),
@@ -398,8 +404,8 @@ async function collectMetrics(page, state) {
         messagesPane: visibleRatioOf('.support-management__messagesPane'),
         orderWorkflow: visibleRatioOf('.support-management__orderWorkflow'),
         composer: visibleRatioOf('.support-management__composer'),
-        modal: visibleRatioOf('.support-management__orderModal .ant-modal-content'),
-        popup: visibleRatioOf('.ant-popover:not(.ant-popover-hidden), .ant-select-dropdown:not(.ant-select-dropdown-hidden)'),
+        modal: visibleRatioOf('.support-management__orderModal.shop-modal__panel'),
+        popup: visibleRatioOf('.shop-popconfirm.shop-mobile-popup-layer, .shop-select__popup'),
       },
       buttons,
       overflowEls,
@@ -408,8 +414,8 @@ async function collectMetrics(page, state) {
         centerHit('.support-management__conversationHeader button'),
         centerHit('.support-management__orderLink'),
         centerHit('.support-management__composer button'),
-        centerHit('.support-management__orderModal .ant-modal-close'),
-        centerHit('.ant-popover:not(.ant-popover-hidden) .ant-popconfirm-buttons .ant-btn-primary'),
+        centerHit('.support-management__orderModal .shop-modal__close'),
+        centerHit('.shop-popconfirm.shop-mobile-popup-layer .shop-popconfirm__actions .ant-btn-primary'),
       ],
     };
   }, state);
@@ -435,13 +441,35 @@ async function run() {
       localStorage.setItem('role', 'SUPER_ADMIN');
     });
     const consoleMessages = [];
+    const pageErrors = [];
+    const failedRequests = [];
+    const failedResponses = [];
     page.on('console', (msg) => {
       if (['error', 'warning'].includes(msg.type())) {
         consoleMessages.push({ type: msg.type(), text: msg.text() });
       }
     });
+    page.on('pageerror', (error) => pageErrors.push(String(error?.message || error)));
+    page.on('requestfailed', (request) => failedRequests.push({ url: request.url(), failure: request.failure()?.errorText || 'unknown' }));
+    page.on('response', (response) => {
+      if (response.status() >= 400) failedResponses.push({ url: response.url(), status: response.status(), method: response.request().method() });
+    });
     await page.goto(`${baseUrl}/admin/support`, { waitUntil: 'networkidle' });
-    await waitForPage(page);
+    try {
+      await waitForPage(page);
+    } catch (error) {
+      console.error(JSON.stringify({
+        viewport: viewport.name,
+        url: page.url(),
+        bodyText: (await page.locator('body').innerText().catch(() => '')).slice(0, 1200),
+        consoleMessages,
+        pageErrors,
+        failedRequests,
+        failedResponses,
+        error: String(error?.message || error),
+      }, null, 2));
+      throw error;
+    }
     const states = [];
     states.push(await capture(page, viewport.name, 'top-unselected'));
 
@@ -470,18 +498,18 @@ async function run() {
     const closeButton = page.locator('.support-management__conversationHeader button').filter({ hasText: /Close|关闭|Cerrar/ }).first();
     if (await closeButton.count()) {
       await closeButton.click();
-      await page.waitForSelector('.ant-popover:not(.ant-popover-hidden)', { timeout: 5000 }).catch(() => undefined);
+      await page.waitForSelector('.shop-popconfirm.shop-mobile-popup-layer', { timeout: 5000 }).catch(() => undefined);
       await page.waitForTimeout(250);
       states.push(await capture(page, viewport.name, 'close-popconfirm'));
       await page.keyboard.press('Escape').catch(() => undefined);
     }
 
     await page.locator('.support-management__orderLink').first().click().catch(() => undefined);
-    await page.waitForSelector('.support-management__orderModal .ant-modal-content', { timeout: 5000 }).catch(() => undefined);
+    await page.waitForSelector('.support-management__orderModal.shop-modal__panel', { timeout: 5000 }).catch(() => undefined);
     await page.waitForTimeout(400);
     states.push(await capture(page, viewport.name, 'order-modal'));
 
-    report.push({ viewport, url: page.url(), consoleMessages, states });
+    report.push({ viewport, url: page.url(), consoleMessages, pageErrors, failedRequests, failedResponses, states });
     await fs.promises.writeFile(path.join(outDir, `${viewport.name}.json`), JSON.stringify(report[report.length - 1], null, 2));
     await page.close();
   }
