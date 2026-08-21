@@ -1,7 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import ShopImage from './ShopImage';
 
 const cssSource = fs.readFileSync(path.resolve(__dirname, 'ShopImage.css'), 'utf8');
@@ -22,6 +22,27 @@ describe('ShopImage', () => {
     const img = screen.getByAltText('Broken') as HTMLImageElement;
     fireEvent.error(img);
     expect(img.getAttribute('src')).toContain('fallback.png');
+  });
+
+  it('keeps image preview focus trapped and restores focus after closing', async () => {
+    const { container } = render(
+      <ShopImage src="https://example.com/preview.png" alt="Product preview" />,
+    );
+    const image = screen.getByRole('button', { name: 'Product preview' });
+    image.focus();
+    fireEvent.keyDown(image, { key: 'Enter' });
+
+    const dialog = await screen.findByRole('dialog', { name: 'Product preview' });
+    const close = screen.getByRole('button', { name: 'Close' });
+    await waitFor(() => expect(close).toHaveFocus());
+
+    const previewImage = container.querySelector('.shop-image-preview__img') as HTMLImageElement;
+    fireEvent.click(previewImage);
+    expect(dialog).toBeInTheDocument();
+
+    fireEvent.keyDown(window, { key: 'Escape' });
+    await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Product preview' })).not.toBeInTheDocument());
+    expect(image).toHaveFocus();
   });
 
   it('keeps the preview close control on a commercial touch target', () => {

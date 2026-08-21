@@ -2131,6 +2131,20 @@
   }
 }
 
+/* Keep the first catalog viewport focused: the result-context chips and
+   instructional hint can return after the user scrolls, while the hero and
+   filter controls stay clear of the native bottom rail. */
+@media (max-width: 780px) {
+  .shop-app-shell--product-list:not(.shop-app-shell--scrolled) .product-list__activeContextBar,
+  .shop-app-shell--product-list:not(.shop-app-shell--scrolled) .product-list__filterHint,
+  body.shop-mobile-app .shop-app-shell--product-list:not(.shop-app-shell--scrolled) .product-list__activeContextBar,
+  body.shop-mobile-app .shop-app-shell--product-list:not(.shop-app-shell--scrolled) .product-list__filterHint {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+}
+
 .product-list__previewTrigger.ant-btn {
   backdrop-filter: blur(10px);
 }

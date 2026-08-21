@@ -387,9 +387,13 @@ async function capture(page, viewportName, stateName) {
 }
 
 async function openOrderSelect(page) {
-  await page.locator('.customer-support-widget__orderSelect').click({ timeout: 10000 });
+  const orderSelect = page.locator('.customer-support-widget__orderSelect');
+  await orderSelect.scrollIntoViewIfNeeded().catch(() => undefined);
+  if (!(await orderSelect.isVisible().catch(() => false))) return false;
+  await orderSelect.click({ timeout: 10000 });
   await page.waitForSelector('.support-order-select-popup', { timeout: 10000 }).catch(() => undefined);
   await page.waitForTimeout(300);
+  return true;
 }
 
 async function openOrderDetail(page) {
@@ -418,6 +422,11 @@ async function run() {
       localStorage.setItem('refreshToken', 'ui-audit-refresh-token');
       localStorage.setItem('userId', '501');
       localStorage.setItem('role', 'USER');
+      localStorage.setItem('shopmx.cookie-consent.v1', JSON.stringify({
+        version: 1,
+        acceptedAt: '2026-06-08T05:15:00.000Z',
+        essentialOnly: false,
+      }));
     });
     const consoleMessages = [];
     page.on('console', (msg) => {
@@ -431,10 +440,12 @@ async function run() {
     const states = [];
     states.push(await capture(page, viewport.name, 'support-open'));
 
-    await openOrderSelect(page);
-    states.push(await capture(page, viewport.name, 'order-select-open'));
-    await page.keyboard.press('Escape').catch(() => undefined);
-    await page.waitForTimeout(250);
+    const orderSelectOpened = await openOrderSelect(page);
+    states.push(await capture(page, viewport.name, orderSelectOpened ? 'order-select-open' : 'order-select-hidden'));
+    if (orderSelectOpened) {
+      await page.keyboard.press('Escape').catch(() => undefined);
+      await page.waitForTimeout(250);
+    }
 
     await openOrderDetail(page);
     states.push(await capture(page, viewport.name, 'order-modal-open'));

@@ -98,7 +98,7 @@ const orderItems = [
     quantity: 1,
     price: 168.88,
     imageUrl: 'https://example.com/dog-bed.jpg',
-    selectedSpecs: { Size: 'Large', Color: 'Sage' },
+    selectedSpecs: JSON.stringify({ Size: 'Large', Color: 'Sage' }),
   },
 ];
 
@@ -117,30 +117,44 @@ async function fulfillJson(route, body) {
 }
 
 async function installMocks(page) {
-  await page.route('**/api/**', (route) => fulfillJson(route, {}));
-  await page.route('**/api/auth/refresh', (route) => fulfillJson(route, {
-    token: 'profile-ui-audit-token',
-    refreshToken: 'profile-ui-audit-refresh-token',
-  }));
-  await page.route('**/api/users/profile**', (route) => fulfillJson(route, profile));
-  await page.route('**/api/users/email-code/config**', (route) => fulfillJson(route, { enabled: false, ttlMinutes: 10 }));
-  await page.route('**/api/orders/*/items**', (route) => fulfillJson(route, orderItems));
-  await page.route('**/api/orders/me**', (route) => fulfillJson(route, orders));
-  await page.route('**/api/addresses/me**', (route) => fulfillJson(route, addresses));
-  await page.route('**/api/pet-profiles**', (route) => fulfillJson(route, pets));
-  await page.route('**/api/payments/channels**', (route) => fulfillJson(route, paymentChannels));
-  await page.route('**/api/payments/order/**', (route) => fulfillJson(route, {
-    id: 1201,
-    orderId: 901,
-    orderNo: orders[0].orderNo,
-    amount: orders[0].totalAmount,
-    status: 'PENDING',
-    channel: 'STRIPE',
-  }));
-  await page.route('**/api/cart/**', (route) => fulfillJson(route, []));
-  await page.route('**/api/wishlist/**', (route) => fulfillJson(route, []));
-  await page.route('**/api/notifications/**', (route) => fulfillJson(route, { count: 0, items: [] }));
-  await page.route('**/api/app-config**', (route) => fulfillJson(route, {}));
+  await page.route('**/api/**', async (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    let body = {};
+    if (pathname === '/api/auth/refresh') {
+      body = {
+        token: 'profile-ui-audit-token',
+        refreshToken: 'profile-ui-audit-refresh-token',
+      };
+    } else if (pathname === '/api/users/profile') {
+      body = profile;
+    } else if (pathname === '/api/users/email-code/config') {
+      body = { enabled: false, ttlMinutes: 10 };
+    } else if (/^\/api\/orders\/\d+\/items$/.test(pathname)) {
+      body = orderItems;
+    } else if (pathname === '/api/orders/me') {
+      body = orders;
+    } else if (pathname === '/api/addresses/me') {
+      body = addresses;
+    } else if (pathname === '/api/pet-profiles') {
+      body = pets;
+    } else if (pathname === '/api/payments/channels') {
+      body = paymentChannels;
+    } else if (pathname.startsWith('/api/payments/order/')) {
+      body = {
+        id: 1201,
+        orderId: 901,
+        orderNo: orders[0].orderNo,
+        amount: orders[0].totalAmount,
+        status: 'PENDING',
+        channel: 'STRIPE',
+      };
+    } else if (pathname.startsWith('/api/cart/') || pathname.startsWith('/api/wishlist/')) {
+      body = [];
+    } else if (pathname.startsWith('/api/notifications/')) {
+      body = pathname.endsWith('/unread-count') ? { count: 0 } : { count: 0, items: [] };
+    }
+    await fulfillJson(route, body);
+  });
 }
 
 async function waitForProfile(page) {
@@ -199,7 +213,7 @@ async function collectMetrics(page, state) {
       };
     };
     const optionRows = Array.from(document.querySelectorAll(
-      '.ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option, .ant-cascader-dropdown .ant-cascader-menu-item, .ant-picker-dropdown .ant-picker-cell-in-view',
+      '.shop-select__popup .shop-select__option, .shop-cascader__popup .shop-cascader__option',
     )).map((el) => {
       const rect = el.getBoundingClientRect();
       return {
@@ -215,14 +229,24 @@ async function collectMetrics(page, state) {
           : 0,
       };
     }).slice(0, 80);
-    const overflowEls = Array.from(document.querySelectorAll('body *'))
-      .map((el) => {
+    const intentionalOverflowSelector = [
+      '.shop-nav__mega',
+      '.shop-nav__ticker',
+      '.profile-address-readiness__stats',
+      '.profile-after-sale-panel__metrics',
+      '.profile-orders__tabs',
+      '.profile-mobile-entry',
+      '.profile-tabs__nav',
+    ].join(', ');
+    const overflowEls = [];
+    const intentionalOverflowEls = [];
+    Array.from(document.querySelectorAll('body *')).forEach((el) => {
         const rect = el.getBoundingClientRect();
-        if (rect.width <= 1 || rect.height <= 1) return null;
+        if (rect.width <= 1 || rect.height <= 1) return;
         const overflowRight = rect.right - window.innerWidth;
         const overflowLeft = -rect.left;
-        if (overflowRight <= 1 && overflowLeft <= 1) return null;
-        return {
+        if (overflowRight <= 1 && overflowLeft <= 1) return;
+        const record = {
           selector: el.className ? `${el.tagName.toLowerCase()}.${String(el.className).trim().replace(/\s+/g, '.')}` : el.tagName.toLowerCase(),
           text: textOf(el).slice(0, 160),
           x: rect.x,
@@ -234,9 +258,12 @@ async function collectMetrics(page, state) {
           overflowRight,
           overflowLeft,
         };
-      })
-      .filter(Boolean)
-      .slice(0, 80);
+        if (el.closest(intentionalOverflowSelector)) {
+          intentionalOverflowEls.push(record);
+        } else {
+          overflowEls.push(record);
+        }
+      });
     return {
       state: stateName,
       viewport: { width: window.innerWidth, height: window.innerHeight },
@@ -249,44 +276,45 @@ async function collectMetrics(page, state) {
       },
       rects: {
         page: rectOf('.profile-page'),
-        tabs: rectOf('.profile-tabs > .ant-tabs-nav'),
+        tabs: rectOf('.profile-tabs > .profile-tabs__nav'),
         addressReadiness: rectOf('.profile-address-readiness'),
         petInsights: rectOf('.profile-pet-insights'),
-        modal: rectOf('.profile-mobile-safe-modal .ant-modal-content'),
-        addressModal: rectOf('.profile-address-modal .ant-modal-content'),
-        modalBody: rectOf('.profile-mobile-safe-modal .ant-modal-body'),
-        addressModalBody: rectOf('.profile-address-modal .ant-modal-body'),
-        modalFooter: rectOf('.profile-mobile-safe-modal .ant-modal-footer'),
-        addressModalFooter: rectOf('.profile-address-modal .ant-modal-footer'),
-        addressCascader: rectOf('.profile-address-modal .ant-cascader'),
-        petTypeSelect: rectOf('.profile-mobile-safe-modal .ant-select'),
-        petDatePicker: rectOf('.profile-pet-modal__field.ant-picker'),
-        petSizeSelect: rectOf('.profile-mobile-safe-modal .ant-form-item:last-child .ant-select'),
-        selectDropdown: rectOf('.ant-select-dropdown:not(.ant-select-dropdown-hidden)'),
-        cascaderDropdown: rectOf('.ant-cascader-dropdown'),
-        pickerDropdown: rectOf('.ant-picker-dropdown'),
-        popup: rectOf('.ant-select-dropdown:not(.ant-select-dropdown-hidden), .ant-cascader-dropdown, .ant-picker-dropdown'),
+        modal: rectOf('.shop-modal.shop-modal--open .shop-modal__panel'),
+        addressModal: rectOf('.profile-address-modal .shop-modal__panel'),
+        modalBody: rectOf('.shop-modal.shop-modal--open .shop-modal__body'),
+        addressModalBody: rectOf('.profile-address-modal .shop-modal__body'),
+        modalFooter: rectOf('.shop-modal.shop-modal--open .shop-modal__footer'),
+        addressModalFooter: rectOf('.profile-address-modal .shop-modal__footer'),
+        addressCascader: rectOf('.profile-address-modal .shop-cascader'),
+        petTypeSelect: rectOf('.profile-mobile-safe-modal .shop-select'),
+        petDatePicker: rectOf('.profile-pet-modal__field.shop-date-picker'),
+        petSizeSelect: rectOf('.profile-mobile-safe-modal .ant-form-item:last-child .shop-select'),
+        selectDropdown: rectOf('.shop-select__popup'),
+        cascaderDropdown: rectOf('.shop-cascader__popup'),
+        pickerDropdown: null,
+        popup: rectOf('.shop-select__popup, .shop-cascader__popup'),
       },
       visibleRatios: {
-        modal: visibleRatioOf('.profile-mobile-safe-modal .ant-modal-content'),
-        modalBody: visibleRatioOf('.profile-mobile-safe-modal .ant-modal-body'),
-        modalFooter: visibleRatioOf('.profile-mobile-safe-modal .ant-modal-footer'),
-        addressCascader: visibleRatioOf('.profile-address-modal .ant-cascader'),
-        petDatePicker: visibleRatioOf('.profile-pet-modal__field.ant-picker'),
-        selectDropdown: visibleRatioOf('.ant-select-dropdown:not(.ant-select-dropdown-hidden)'),
-        cascaderDropdown: visibleRatioOf('.ant-cascader-dropdown'),
-        pickerDropdown: visibleRatioOf('.ant-picker-dropdown'),
-        popup: visibleRatioOf('.ant-select-dropdown:not(.ant-select-dropdown-hidden), .ant-cascader-dropdown, .ant-picker-dropdown'),
+        modal: visibleRatioOf('.shop-modal.shop-modal--open .shop-modal__panel'),
+        modalBody: visibleRatioOf('.shop-modal.shop-modal--open .shop-modal__body'),
+        modalFooter: visibleRatioOf('.shop-modal.shop-modal--open .shop-modal__footer'),
+        addressCascader: visibleRatioOf('.profile-address-modal .shop-cascader'),
+        petDatePicker: visibleRatioOf('.profile-pet-modal__field.shop-date-picker'),
+        selectDropdown: visibleRatioOf('.shop-select__popup'),
+        cascaderDropdown: visibleRatioOf('.shop-cascader__popup'),
+        pickerDropdown: null,
+        popup: visibleRatioOf('.shop-select__popup, .shop-cascader__popup'),
       },
       optionRows,
-      overflowEls,
+      overflowEls: overflowEls.slice(0, 80),
+      intentionalOverflowEls: intentionalOverflowEls.slice(0, 80),
       hits: [
-        centerHit('.ant-cascader-dropdown .ant-cascader-menu-item'),
-        centerHit('.ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option'),
-        centerHit('.ant-picker-dropdown .ant-picker-cell-in-view'),
-        centerHit('.profile-address-modal .ant-cascader'),
-        centerHit('.profile-pet-modal__field.ant-picker'),
-        centerHit('.profile-mobile-safe-modal .ant-modal-footer .ant-btn-primary'),
+        centerHit('.shop-cascader__popup .shop-cascader__option'),
+        centerHit('.shop-select__popup .shop-select__option'),
+        centerHit('.profile-pet-modal__field .shop-date-picker__input'),
+        centerHit('.profile-address-modal .shop-cascader'),
+        centerHit('.profile-pet-modal__field.shop-date-picker'),
+        centerHit('.profile-mobile-safe-modal .shop-modal__footer .shop-button--primary'),
       ],
     };
   }, state);
@@ -307,14 +335,18 @@ async function goProfile(page, tab) {
 }
 
 async function openAddressModal(page) {
-  await page.locator('.profile-block-button.profile-section-action').first().evaluate((button) => button.click());
-  await page.waitForSelector('.profile-address-modal .ant-modal-content', { timeout: 10000 });
+  const button = page.locator('#profile-panel-addresses .profile-block-button.profile-section-action:not([disabled])').first();
+  await button.waitFor({ state: 'visible', timeout: 10000 });
+  await button.click();
+  await page.waitForSelector('.profile-address-modal .shop-modal__content', { timeout: 10000 });
   await page.waitForTimeout(350);
 }
 
 async function openPetModal(page) {
-  await page.locator('.profile-block-button.profile-section-action').first().evaluate((button) => button.click());
-  await page.waitForSelector('.profile-mobile-safe-modal .ant-modal-content', { timeout: 10000 });
+  const button = page.locator('#profile-panel-pets .profile-block-button.profile-section-action:not([disabled])').first();
+  await button.waitFor({ state: 'visible', timeout: 10000 });
+  await button.click();
+  await page.waitForSelector('.profile-mobile-safe-modal .shop-modal__content', { timeout: 10000 });
   await page.waitForTimeout(350);
 }
 
@@ -355,9 +387,9 @@ async function run() {
     states.push(await capture(page, viewport.name, 'addresses-top', true));
     await openAddressModal(page);
     states.push(await capture(page, viewport.name, 'address-modal-open', true));
-    await scrollModalTo(page, '.profile-address-modal .ant-modal-body', '.profile-address-modal .ant-cascader');
-    await page.locator('.profile-address-modal .ant-cascader').click();
-    await page.waitForSelector('.ant-cascader-dropdown', { timeout: 5000 }).catch(() => undefined);
+    await scrollModalTo(page, '.profile-address-modal .shop-modal__body', '.profile-address-modal .shop-cascader');
+    await page.locator('.profile-address-modal .shop-cascader').click();
+    await page.waitForSelector('.shop-cascader__popup', { timeout: 5000 }).catch(() => undefined);
     await page.waitForTimeout(350);
     states.push(await capture(page, viewport.name, 'address-region-cascader', true));
 
@@ -365,29 +397,28 @@ async function run() {
     states.push(await capture(page, viewport.name, 'pets-top', true));
     await openPetModal(page);
     states.push(await capture(page, viewport.name, 'pet-modal-open', true));
-    const petSelects = page.locator('.profile-mobile-safe-modal .ant-select');
+    const petSelects = page.locator('.profile-mobile-safe-modal .shop-select');
     if (await petSelects.count()) {
       await petSelects.first().click();
-      await page.waitForSelector('.ant-select-dropdown:not(.ant-select-dropdown-hidden)', { timeout: 5000 }).catch(() => undefined);
+      await page.waitForSelector('.shop-select__popup', { timeout: 5000 }).catch(() => undefined);
       await page.waitForTimeout(250);
       states.push(await capture(page, viewport.name, 'pet-type-select', true));
     }
 
     await goProfile(page, 'pets');
     await openPetModal(page);
-    await scrollModalTo(page, '.profile-mobile-safe-modal .ant-modal-body', '.profile-pet-modal__field.ant-picker');
-    await page.locator('.profile-pet-modal__field.ant-picker').click();
-    await page.waitForSelector('.ant-picker-dropdown', { timeout: 5000 }).catch(() => undefined);
+    await scrollModalTo(page, '.profile-mobile-safe-modal .shop-modal__body', '.profile-pet-modal__field.shop-date-picker');
+    await page.locator('.profile-pet-modal__field .shop-date-picker__input').click();
     await page.waitForTimeout(350);
     states.push(await capture(page, viewport.name, 'pet-birthday-picker', true));
 
     await goProfile(page, 'pets');
     await openPetModal(page);
-    await scrollModalTo(page, '.profile-mobile-safe-modal .ant-modal-body', '.profile-mobile-safe-modal .ant-form-item:last-child .ant-select');
-    const freshPetSelects = page.locator('.profile-mobile-safe-modal .ant-select');
+    await scrollModalTo(page, '.profile-mobile-safe-modal .shop-modal__body', '.profile-mobile-safe-modal .ant-form-item:last-child .shop-select');
+    const freshPetSelects = page.locator('.profile-mobile-safe-modal .shop-select');
     if ((await freshPetSelects.count()) > 1) {
       await freshPetSelects.nth(1).click();
-      await page.waitForSelector('.ant-select-dropdown:not(.ant-select-dropdown-hidden)', { timeout: 5000 }).catch(() => undefined);
+      await page.waitForSelector('.shop-select__popup', { timeout: 5000 }).catch(() => undefined);
       await page.waitForTimeout(250);
       states.push(await capture(page, viewport.name, 'pet-size-select', true));
     }

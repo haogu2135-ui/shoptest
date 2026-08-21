@@ -339,7 +339,7 @@ async function collectMetrics(page, state) {
           : 0,
       };
     });
-    const modalTables = Array.from(document.querySelectorAll('.ant-modal-content .ant-table-wrapper, .ant-modal-content .ant-table-content')).map((el) => {
+    const modalTables = Array.from(document.querySelectorAll('.shop-modal__content .ant-table-wrapper, .shop-modal__content .ant-table-content')).map((el) => {
       const rect = el.getBoundingClientRect();
       return {
         selector: el.className ? `${el.tagName.toLowerCase()}.${String(el.className).trim().replace(/\s+/g, '.')}` : el.tagName.toLowerCase(),
@@ -373,32 +373,32 @@ async function collectMetrics(page, state) {
         table: rectOf('.order-management-page__table'),
         tableContent: rectOf('.order-management-page__table .ant-table-content'),
         mainActionCell: rectOf('.order-management-page__table .ant-table-row:first-child .order-management-page__actions'),
-        detailModal: rectOf('.order-management-page__detailModal .ant-modal-content'),
-        detailBody: rectOf('.order-management-page__detailModal .ant-modal-body'),
-        refundModal: rectOf('.order-management-page__refundModal .ant-modal-content'),
-        refundBody: rectOf('.order-management-page__refundModal .ant-modal-body'),
-        shippingModal: rectOf('.order-management-page__shippingModal .ant-modal-content'),
-        popup: rectOf('.ant-select-dropdown:not(.ant-select-dropdown-hidden), .ant-modal-confirm'),
+        detailModal: rectOf('.order-management-page__detailModal.shop-modal__panel'),
+        detailBody: rectOf('.order-management-page__detailModal .shop-modal__body'),
+        refundModal: rectOf('.order-management-page__refundModal.shop-modal__panel'),
+        refundBody: rectOf('.order-management-page__refundModal .shop-modal__body'),
+        shippingModal: rectOf('.order-management-page__shippingModal.shop-modal__panel'),
+        popup: rectOf('.shop-select__popup, .shop-modal.shop-mobile-popup-layer'),
       },
       visibleRatios: {
         summaryGrid: visibleRatioOf('.order-management-page__summaryGrid'),
         table: visibleRatioOf('.order-management-page__table'),
         mainActionCell: visibleRatioOf('.order-management-page__table .ant-table-row:first-child .order-management-page__actions'),
-        detailModal: visibleRatioOf('.order-management-page__detailModal .ant-modal-content'),
-        refundModal: visibleRatioOf('.order-management-page__refundModal .ant-modal-content'),
-        shippingModal: visibleRatioOf('.order-management-page__shippingModal .ant-modal-content'),
-        popup: visibleRatioOf('.ant-select-dropdown:not(.ant-select-dropdown-hidden), .ant-modal-confirm'),
+        detailModal: visibleRatioOf('.order-management-page__detailModal.shop-modal__panel'),
+        refundModal: visibleRatioOf('.order-management-page__refundModal.shop-modal__panel'),
+        shippingModal: visibleRatioOf('.order-management-page__shippingModal.shop-modal__panel'),
+        popup: visibleRatioOf('.shop-select__popup, .shop-modal.shop-mobile-popup-layer'),
       },
       summaryCards,
       modalTables,
       overflowEls,
       hits: [
         centerHit('.order-management-page__table .ant-table-row:first-child .order-management-page__actions button'),
-        centerHit('.order-management-page__detailModal .ant-modal-close'),
-        centerHit('.order-management-page__refundModal .ant-modal-footer .ant-btn-primary'),
+        centerHit('.order-management-page__detailModal .shop-modal__close'),
+        centerHit('.order-management-page__refundModal .shop-modal__footer .ant-btn-primary'),
         centerHit('.order-management-page__refundModal .ant-table-wrapper'),
-        centerHit('.order-management-page__shippingModal .ant-modal-footer .ant-btn-primary'),
-        centerHit('.ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option'),
+        centerHit('.order-management-page__shippingModal .shop-modal__footer .ant-btn-primary'),
+        centerHit('.shop-select__popup .shop-select__option'),
       ],
     };
   }, state);
@@ -414,7 +414,7 @@ async function capture(page, viewportName, stateName) {
 async function closeAnyModal(page) {
   await page.keyboard.press('Escape').catch(() => undefined);
   await page.waitForTimeout(250);
-  await page.locator('.ant-modal-close').last().click({ timeout: 1000 }).catch(() => undefined);
+  await page.locator('.shop-modal__close').last().click({ timeout: 1000 }).catch(() => undefined);
   await page.waitForTimeout(250);
 }
 
@@ -444,15 +444,15 @@ async function run() {
     await scrollMainTableToActions(page);
     states.push(await capture(page, viewport.name, 'table-actions'));
 
-    await page.locator('.order-management-page__actions button').filter({ hasText: /Items|商品|Artículos/i }).first().click();
-    await page.waitForSelector('.order-management-page__detailModal .ant-modal-content', { timeout: 10000 });
+    await page.locator('.order-management-page__actions button').first().click();
+    await page.waitForSelector('.order-management-page__detailModal.shop-modal__panel', { timeout: 10000 });
     await page.waitForTimeout(500);
     states.push(await capture(page, viewport.name, 'detail-modal'));
     await closeAnyModal(page);
 
     await scrollMainTableToActions(page);
     await page.locator('.order-management-page__actions button').filter({ hasText: /Refund now|退款|Reembolsar/i }).first().click();
-    await page.waitForSelector('.order-management-page__refundModal .ant-modal-content', { timeout: 10000 });
+    await page.waitForSelector('.order-management-page__refundModal.shop-modal__panel', { timeout: 10000 });
     await page.waitForTimeout(500);
     states.push(await capture(page, viewport.name, 'refund-modal'));
     await closeAnyModal(page);
@@ -461,7 +461,7 @@ async function run() {
     const transition = page.locator('.order-management-page__transitionSelect').first();
     if (await transition.count()) {
       await transition.click();
-      await page.waitForSelector('.ant-select-dropdown:not(.ant-select-dropdown-hidden)', { timeout: 5000 }).catch(() => undefined);
+      await page.waitForSelector('.shop-select__popup', { timeout: 5000 }).catch(() => undefined);
       await page.waitForTimeout(300);
       states.push(await capture(page, viewport.name, 'transition-dropdown'));
       await page.keyboard.press('Escape').catch(() => undefined);

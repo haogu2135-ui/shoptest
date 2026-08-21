@@ -258,7 +258,7 @@ const PetFinder: React.FC = () => {
               </div>
             </div>
             <div className="pet-finder-page__finderControls">
-              <div className="pet-finder-page__control pet-finder-page__budgetControl">
+              <div className="pet-finder-page__control">
                 <span className="pet-finder-page__text pet-finder-page__text--strong">{t('pages.petFinder.petType')}</span>
                 <ShopSelect
                   value={petType}
@@ -284,7 +284,7 @@ const PetFinder: React.FC = () => {
                   options={(['all', 'play', 'walk', 'sleep', 'smart', 'groom', 'food'] as NeedType[]).map((value) => ({ value, label: t(`pages.petFinder.needs.${value}`) }))}
                 />
               </div>
-              <div className="pet-finder-page__control">
+              <div className="pet-finder-page__control pet-finder-page__budgetControl">
                 <span className="pet-finder-page__text pet-finder-page__text--strong">{t('pages.petFinder.budget')}</span>
                 <ShopRangeSlider
                   className="pet-finder-page__budgetSlider"

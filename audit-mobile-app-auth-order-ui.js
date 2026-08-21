@@ -86,6 +86,11 @@ async function installMocks(page) {
     };
     localStorage.setItem('shop-language', 'en');
     localStorage.setItem('currency', 'USD');
+    localStorage.setItem('shopmx.cookie-consent.v1', JSON.stringify({
+      version: 1,
+      acceptedAt: '2026-08-21T09:15:00.000Z',
+      essentialOnly: false,
+    }));
     localStorage.removeItem('token');
     localStorage.removeItem('refreshToken');
     localStorage.removeItem('userId');
@@ -427,7 +432,7 @@ async function collectSnapshot(page, viewport, stateName) {
         registerActions: rectOf('.register-page__actions'),
         orderTrackingPage: rectOf('.order-tracking-page'),
         orderLookupCard: rectOf('.order-tracking-page__lookupCard'),
-        orderResultStack: rectOf('.order-tracking-page__resultStack'),
+        orderResultStack: rectOf('.order-tracking-page__journey'),
         orderNextAction: rectOf('.order-tracking-page__nextAction'),
         orderSteps: rectOf('.order-tracking-page__steps'),
         orderItem: rectOf('.order-tracking-page__item'),
@@ -440,7 +445,7 @@ async function collectSnapshot(page, viewport, stateName) {
         firstVisibleButton: rectForElement(firstVisibleButton),
       },
       counts: {
-        paymentResult: document.querySelectorAll('.order-tracking-page__resultStack').length,
+        paymentResult: document.querySelectorAll('.order-tracking-page__journey').length,
         visibleModals: Array.from(document.querySelectorAll('.ant-modal-content')).filter(visible).length,
         formErrors: formErrors.length,
       },
@@ -568,7 +573,7 @@ async function runOrderStates(page, viewport, snapshots) {
   await fillFirstVisible(page, ['.order-tracking-page__lookupForm input[maxlength="80"]', '.order-tracking-page__lookupForm input[autocomplete="off"]'], trackedOrder.orderNo);
   await fillFirstVisible(page, ['.order-tracking-page__lookupForm input[autocomplete="email"]'], 'customer@example.com');
   await clickFirstVisible(page, ['.order-tracking-page__lookupButton']);
-  await page.waitForSelector('.order-tracking-page__resultStack', { state: 'visible', timeout: 15000 });
+  await page.waitForSelector('.order-tracking-page__journey', { state: 'visible', timeout: 15000 });
   await page.waitForTimeout(1000);
   await capture(page, viewport, 'order-tracking-result-top', snapshots);
 

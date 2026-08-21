@@ -90,6 +90,13 @@ describe('OrderManagement modal evidence guards', () => {
     expect(pageSource).toContain('order-management-page__refundReasonPresets');
   });
 
+  it('keeps refund reason presets inside narrow modal widths', () => {
+    expect(cssSource).toMatch(/\.order-management-page__refundReasonPresets\s*\{[\s\S]*?width:\s*100%;[\s\S]*?min-width:\s*0;/);
+    expect(cssSource).toMatch(/\.order-management-page__refundReasonPresets > \.shop-space\s*\{[\s\S]*?display:\s*flex;[\s\S]*?width:\s*100%;[\s\S]*?min-width:\s*0;/);
+    expect(cssSource).toMatch(/\.order-management-page__refundReasonPresets > \.shop-space > \.shop-space__item\s*\{[\s\S]*?width:\s*100%;[\s\S]*?min-width:\s*0;/);
+    expect(cssSource).toMatch(/\.order-management-page__refundReasonPresets \.ant-btn\s*\{[\s\S]*?min-width:\s*0;[\s\S]*?width:\s*100%;/);
+  });
+
 
   it('prioritizes after-sales queues and exposes one-click next-action CTAs', () => {
     const pageSource = require('fs').readFileSync(require('path').resolve(__dirname, 'OrderManagement.tsx'), 'utf8');

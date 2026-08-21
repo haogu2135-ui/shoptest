@@ -624,6 +624,13 @@ describe('Navbar Android app download entry', () => {
     expect(css).toContain('.shop-nav__mobile-auth--primary .shop-nav__mobile-authText');
   });
 
+  it('keeps the desktop account summary hidden in the compact mobile utility row', () => {
+    const css = readNavbarCss();
+    const finalMobileClosure = css.slice(css.lastIndexOf('Mobile action-summary closure'));
+
+    expect(finalMobileClosure).toMatch(/@media \(max-width:\s*780px\)[\s\S]*?body:not\(\.shop-mobile-app\) \.shop-nav \.shop-nav__actions > \.shop-nav__actionSummary,[\s\S]*?display:\s*none\s*!important;/);
+  });
+
   it('hides the floating bottom navigation on cart task pages', () => {
     const css = readNavbarCss();
     const bottomNavCss = css.slice(css.indexOf('/* Mobile bottom commerce navigation */'));

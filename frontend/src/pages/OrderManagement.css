@@ -1623,12 +1623,28 @@ body .order-management-page__carrierPopup.shop-mobile-popup-layer.ant-select-dro
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
+  min-width: 0;
+}
+
+.order-management-page__refundReasonPresets > .shop-space {
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+}
+
+.order-management-page__refundReasonPresets > .shop-space > .shop-space__item {
+  width: 100%;
+  min-width: 0;
 }
 
 .order-management-page__refundReasonPresets .ant-btn {
   max-width: 100%;
   white-space: normal;
   height: auto;
+  min-width: 0;
+  width: 100%;
   text-align: left;
 }
 

@@ -1,0 +1,1381 @@
+{
+  "viewport": {
+    "name": "landscape-740",
+    "width": 740,
+    "height": 360
+  },
+  "url": "http://127.0.0.1:4200/admin/orders",
+  "consoleMessages": [
+    {
+      "type": "warning",
+      "text": "The resource http://127.0.0.1:4200/assets/home/hero-mobile-pet.webp was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+    },
+    {
+      "type": "warning",
+      "text": "The resource http://127.0.0.1:4200/assets/home/hero-mobile-pet.webp was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+    }
+  ],
+  "states": [
+    {
+      "state": "top",
+      "viewport": {
+        "width": 740,
+        "height": 360
+      },
+      "body": {
+        "scrollWidth": 740,
+        "clientWidth": 740,
+        "scrollHeight": 3171,
+        "clientHeight": 360,
+        "scrollY": 0
+      },
+      "rects": {
+        "adminHeader": {
+          "selector": ".admin-layout__header",
+          "text": "Volver a la tiendaReportar bugCerrar sesión",
+          "x": 72,
+          "y": 0,
+          "width": 668,
+          "height": 89,
+          "right": 740,
+          "bottom": 89,
+          "position": "sticky",
+          "zIndex": "60",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 668,
+          "clientWidth": 668,
+          "scrollHeight": 88,
+          "clientHeight": 88
+        },
+        "title": {
+          "selector": ".order-management-page > h4.ant-typography",
+          "text": "Pedidos",
+          "x": 99,
+          "y": 116,
+          "width": 614,
+          "height": 20,
+          "right": 713,
+          "bottom": 136,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 614,
+          "clientWidth": 614,
+          "scrollHeight": 20,
+          "clientHeight": 20
+        },
+        "summaryGrid": {
+          "selector": ".order-management-page__summaryGrid",
+          "text": "Requiere acción3Vencidos2Por vencer1Sin guía1Pendiente de envío1Cola postventa2Devolución solicitada1Devolución enviada1Reembolsando1Reembolsado0",
+          "x": 99,
+          "y": 169,
+          "width": 614,
+          "height": 177,
+          "right": 713,
+          "bottom": 346,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 614,
+          "clientWidth": 614,
+          "scrollHeight": 177,
+          "clientHeight": 177
+        },
+        "toolbar": {
+          "selector": ".order-management-page__toolbar",
+          "text": "Filtrar estado:Todos los estadosExportar pedidosEnvío masivoTotal: 3 pedidos | 1/1",
+          "x": 99,
+          "y": 362,
+          "width": 614,
+          "height": 132,
+          "right": 713,
+          "bottom": 494,
+          "position": "relative",
+          "zIndex": "auto",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "scrollWidth": 612,
+          "clientWidth": 612,
+          "scrollHeight": 130,
+          "clientHeight": 130
+        },
+        "table": {
+          "selector": ".order-management-page__table",
+          "text": "ID pedidoClienteImporteEstadoSiguiente acciónDatos de devoluciónDirecciónPagoGuíaCreado elAcciones 88010Maria customer waiting for return approvalRegistradomaria.long.customer@example.com+52 55 1234 5678ID 501$2,386.75De",
+          "x": 99,
+          "y": 510,
+          "width": 614,
+          "height": 2633.78125,
+          "right": 713,
+          "bottom": 3143.78125,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "scrollWidth": 612,
+          "clientWidth": 612,
+          "scrollHeight": 2632,
+          "clientHeight": 2632
+        },
+        "tableContent": {
+          "selector": ".order-management-page__table .ant-table-content",
+          "text": "ID pedidoClienteImporteEstadoSiguiente acciónDatos de devoluciónDirecciónPagoGuíaCreado elAcciones 88010Maria customer waiting for return approvalRegistradomaria.long.customer@example.com+52 55 1234 5678ID 501$2,386.75De",
+          "x": 101,
+          "y": 512,
+          "width": 611,
+          "height": 2572.78125,
+          "right": 712,
+          "bottom": 3084.78125,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 611,
+          "clientWidth": 611,
+          "scrollHeight": 2573,
+          "clientHeight": 2573
+        },
+        "mainActionCell": null,
+        "detailModal": null,
+        "detailBody": null,
+        "refundModal": null,
+        "refundBody": null,
+        "shippingModal": null,
+        "popup": null
+      },
+      "visibleRatios": {
+        "summaryGrid": 1,
+        "table": 0,
+        "mainActionCell": null,
+        "detailModal": null,
+        "refundModal": null,
+        "shippingModal": null,
+        "popup": null
+      },
+      "summaryCards": [
+        {
+          "text": "Requiere acción3",
+          "x": 99,
+          "y": 169,
+          "width": 116.390625,
+          "right": 215.390625,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Vencidos2",
+          "x": 223.390625,
+          "y": 169,
+          "width": 116.40625,
+          "right": 339.796875,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Por vencer1",
+          "x": 347.796875,
+          "y": 169,
+          "width": 116.390625,
+          "right": 464.1875,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Sin guía1",
+          "x": 472.1875,
+          "y": 169,
+          "width": 116.40625,
+          "right": 588.59375,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Pendiente de envío1",
+          "x": 596.59375,
+          "y": 169,
+          "width": 116.40625,
+          "right": 713,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Cola postventa2",
+          "x": 99,
+          "y": 261.5,
+          "width": 116.390625,
+          "right": 215.390625,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Devolución solicitada1",
+          "x": 223.390625,
+          "y": 261.5,
+          "width": 116.40625,
+          "right": 339.796875,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Devolución enviada1",
+          "x": 347.796875,
+          "y": 261.5,
+          "width": 116.390625,
+          "right": 464.1875,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Reembolsando1",
+          "x": 472.1875,
+          "y": 261.5,
+          "width": 116.40625,
+          "right": 588.59375,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Reembolsado0",
+          "x": 596.59375,
+          "y": 261.5,
+          "width": 116.40625,
+          "right": 713,
+          "visibleRatio": 1
+        }
+      ],
+      "modalTables": [],
+      "overflowEls": [],
+      "hits": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "state": "table-actions",
+      "viewport": {
+        "width": 740,
+        "height": 360
+      },
+      "body": {
+        "scrollWidth": 740,
+        "clientWidth": 740,
+        "scrollHeight": 3171,
+        "clientHeight": 360,
+        "scrollY": 0
+      },
+      "rects": {
+        "adminHeader": {
+          "selector": ".admin-layout__header",
+          "text": "Volver a la tiendaReportar bugCerrar sesión",
+          "x": 72,
+          "y": 0,
+          "width": 668,
+          "height": 89,
+          "right": 740,
+          "bottom": 89,
+          "position": "sticky",
+          "zIndex": "60",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 668,
+          "clientWidth": 668,
+          "scrollHeight": 88,
+          "clientHeight": 88
+        },
+        "title": {
+          "selector": ".order-management-page > h4.ant-typography",
+          "text": "Pedidos",
+          "x": 99,
+          "y": 116,
+          "width": 614,
+          "height": 20,
+          "right": 713,
+          "bottom": 136,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 614,
+          "clientWidth": 614,
+          "scrollHeight": 20,
+          "clientHeight": 20
+        },
+        "summaryGrid": {
+          "selector": ".order-management-page__summaryGrid",
+          "text": "Requiere acción3Vencidos2Por vencer1Sin guía1Pendiente de envío1Cola postventa2Devolución solicitada1Devolución enviada1Reembolsando1Reembolsado0",
+          "x": 99,
+          "y": 169,
+          "width": 614,
+          "height": 177,
+          "right": 713,
+          "bottom": 346,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 614,
+          "clientWidth": 614,
+          "scrollHeight": 177,
+          "clientHeight": 177
+        },
+        "toolbar": {
+          "selector": ".order-management-page__toolbar",
+          "text": "Filtrar estado:Todos los estadosExportar pedidosEnvío masivoTotal: 3 pedidos | 1/1",
+          "x": 99,
+          "y": 362,
+          "width": 614,
+          "height": 132,
+          "right": 713,
+          "bottom": 494,
+          "position": "relative",
+          "zIndex": "auto",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "scrollWidth": 612,
+          "clientWidth": 612,
+          "scrollHeight": 130,
+          "clientHeight": 130
+        },
+        "table": {
+          "selector": ".order-management-page__table",
+          "text": "ID pedidoClienteImporteEstadoSiguiente acciónDatos de devoluciónDirecciónPagoGuíaCreado elAcciones 88010Maria customer waiting for return approvalRegistradomaria.long.customer@example.com+52 55 1234 5678ID 501$2,386.75De",
+          "x": 99,
+          "y": 510,
+          "width": 614,
+          "height": 2633.78125,
+          "right": 713,
+          "bottom": 3143.78125,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "scrollWidth": 612,
+          "clientWidth": 612,
+          "scrollHeight": 2632,
+          "clientHeight": 2632
+        },
+        "tableContent": {
+          "selector": ".order-management-page__table .ant-table-content",
+          "text": "ID pedidoClienteImporteEstadoSiguiente acciónDatos de devoluciónDirecciónPagoGuíaCreado elAcciones 88010Maria customer waiting for return approvalRegistradomaria.long.customer@example.com+52 55 1234 5678ID 501$2,386.75De",
+          "x": 101,
+          "y": 512,
+          "width": 611,
+          "height": 2572.78125,
+          "right": 712,
+          "bottom": 3084.78125,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 611,
+          "clientWidth": 611,
+          "scrollHeight": 2573,
+          "clientHeight": 2573
+        },
+        "mainActionCell": null,
+        "detailModal": null,
+        "detailBody": null,
+        "refundModal": null,
+        "refundBody": null,
+        "shippingModal": null,
+        "popup": null
+      },
+      "visibleRatios": {
+        "summaryGrid": 1,
+        "table": 0,
+        "mainActionCell": null,
+        "detailModal": null,
+        "refundModal": null,
+        "shippingModal": null,
+        "popup": null
+      },
+      "summaryCards": [
+        {
+          "text": "Requiere acción3",
+          "x": 99,
+          "y": 169,
+          "width": 116.390625,
+          "right": 215.390625,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Vencidos2",
+          "x": 223.390625,
+          "y": 169,
+          "width": 116.40625,
+          "right": 339.796875,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Por vencer1",
+          "x": 347.796875,
+          "y": 169,
+          "width": 116.390625,
+          "right": 464.1875,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Sin guía1",
+          "x": 472.1875,
+          "y": 169,
+          "width": 116.40625,
+          "right": 588.59375,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Pendiente de envío1",
+          "x": 596.59375,
+          "y": 169,
+          "width": 116.40625,
+          "right": 713,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Cola postventa2",
+          "x": 99,
+          "y": 261.5,
+          "width": 116.390625,
+          "right": 215.390625,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Devolución solicitada1",
+          "x": 223.390625,
+          "y": 261.5,
+          "width": 116.40625,
+          "right": 339.796875,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Devolución enviada1",
+          "x": 347.796875,
+          "y": 261.5,
+          "width": 116.390625,
+          "right": 464.1875,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Reembolsando1",
+          "x": 472.1875,
+          "y": 261.5,
+          "width": 116.40625,
+          "right": 588.59375,
+          "visibleRatio": 1
+        },
+        {
+          "text": "Reembolsado0",
+          "x": 596.59375,
+          "y": 261.5,
+          "width": 116.40625,
+          "right": 713,
+          "visibleRatio": 1
+        }
+      ],
+      "modalTables": [],
+      "overflowEls": [],
+      "hits": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "state": "detail-modal",
+      "viewport": {
+        "width": 740,
+        "height": 360
+      },
+      "body": {
+        "scrollWidth": 740,
+        "clientWidth": 740,
+        "scrollHeight": 3171,
+        "clientHeight": 360,
+        "scrollY": 1298
+      },
+      "rects": {
+        "adminHeader": {
+          "selector": ".admin-layout__header",
+          "text": "Volver a la tiendaReportar bugCerrar sesión",
+          "x": 72,
+          "y": -1298,
+          "width": 668,
+          "height": 89,
+          "right": 740,
+          "bottom": -1209,
+          "position": "sticky",
+          "zIndex": "60",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 668,
+          "clientWidth": 668,
+          "scrollHeight": 88,
+          "clientHeight": 88
+        },
+        "title": {
+          "selector": ".order-management-page > h4.ant-typography",
+          "text": "Pedidos",
+          "x": 99,
+          "y": -1182,
+          "width": 614,
+          "height": 20,
+          "right": 713,
+          "bottom": -1162,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 614,
+          "clientWidth": 614,
+          "scrollHeight": 20,
+          "clientHeight": 20
+        },
+        "summaryGrid": {
+          "selector": ".order-management-page__summaryGrid",
+          "text": "Requiere acción3Vencidos2Por vencer1Sin guía1Pendiente de envío1Cola postventa2Devolución solicitada1Devolución enviada1Reembolsando1Reembolsado0",
+          "x": 99,
+          "y": -1129,
+          "width": 614,
+          "height": 177,
+          "right": 713,
+          "bottom": -952,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 614,
+          "clientWidth": 614,
+          "scrollHeight": 177,
+          "clientHeight": 177
+        },
+        "toolbar": {
+          "selector": ".order-management-page__toolbar",
+          "text": "Filtrar estado:Todos los estadosExportar pedidosEnvío masivoTotal: 3 pedidos | 1/1",
+          "x": 99,
+          "y": -936,
+          "width": 614,
+          "height": 132,
+          "right": 713,
+          "bottom": -804,
+          "position": "relative",
+          "zIndex": "auto",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "scrollWidth": 612,
+          "clientWidth": 612,
+          "scrollHeight": 130,
+          "clientHeight": 130
+        },
+        "table": {
+          "selector": ".order-management-page__table",
+          "text": "ID pedidoClienteImporteEstadoSiguiente acciónDatos de devoluciónDirecciónPagoGuíaCreado elAcciones 88010Maria customer waiting for return approvalRegistradomaria.long.customer@example.com+52 55 1234 5678ID 501$2,386.75De",
+          "x": 99,
+          "y": -788,
+          "width": 614,
+          "height": 2633.78125,
+          "right": 713,
+          "bottom": 1845.78125,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "scrollWidth": 612,
+          "clientWidth": 612,
+          "scrollHeight": 2632,
+          "clientHeight": 2632
+        },
+        "tableContent": {
+          "selector": ".order-management-page__table .ant-table-content",
+          "text": "ID pedidoClienteImporteEstadoSiguiente acciónDatos de devoluciónDirecciónPagoGuíaCreado elAcciones 88010Maria customer waiting for return approvalRegistradomaria.long.customer@example.com+52 55 1234 5678ID 501$2,386.75De",
+          "x": 101,
+          "y": -786,
+          "width": 611,
+          "height": 2572.78125,
+          "right": 712,
+          "bottom": 1786.78125,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 611,
+          "clientWidth": 611,
+          "scrollHeight": 2573,
+          "clientHeight": 2573
+        },
+        "mainActionCell": null,
+        "detailModal": {
+          "selector": ".order-management-page__detailModal.shop-modal__panel",
+          "text": "Productos del pedido SO-REFUND-20260608-00008810-LONGIDProductoCantidadImporteSubtotal3001Premium orthopedic dog bed with washable cover and extra-long product naming for order detail modal stressTalla: Grande / Color: C",
+          "x": 12,
+          "y": 24,
+          "width": 716,
+          "height": 320,
+          "right": 728,
+          "bottom": 344,
+          "position": "relative",
+          "zIndex": "1",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 716,
+          "clientWidth": 716,
+          "scrollHeight": 320,
+          "clientHeight": 320
+        },
+        "detailBody": {
+          "selector": ".order-management-page__detailModal .shop-modal__body",
+          "text": "IDProductoCantidadImporteSubtotal3001Premium orthopedic dog bed with washable cover and extra-long product naming for order detail modal stressTalla: Grande / Color: Charcoal / Warranty: Extended return service2$899.50$1",
+          "x": 12,
+          "y": 73.796875,
+          "width": 716,
+          "height": 270.203125,
+          "right": 728,
+          "bottom": 344,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "scrollWidth": 716,
+          "clientWidth": 716,
+          "scrollHeight": 1184,
+          "clientHeight": 270
+        },
+        "refundModal": null,
+        "refundBody": null,
+        "shippingModal": null,
+        "popup": null
+      },
+      "visibleRatios": {
+        "summaryGrid": 0,
+        "table": 0.13668561122910264,
+        "mainActionCell": null,
+        "detailModal": 1,
+        "refundModal": null,
+        "shippingModal": null,
+        "popup": null
+      },
+      "summaryCards": [
+        {
+          "text": "Requiere acción3",
+          "x": 99,
+          "y": -1129,
+          "width": 116.390625,
+          "right": 215.390625,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Vencidos2",
+          "x": 223.390625,
+          "y": -1129,
+          "width": 116.40625,
+          "right": 339.796875,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Por vencer1",
+          "x": 347.796875,
+          "y": -1129,
+          "width": 116.390625,
+          "right": 464.1875,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Sin guía1",
+          "x": 472.1875,
+          "y": -1129,
+          "width": 116.40625,
+          "right": 588.59375,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Pendiente de envío1",
+          "x": 596.59375,
+          "y": -1129,
+          "width": 116.40625,
+          "right": 713,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Cola postventa2",
+          "x": 99,
+          "y": -1036.5,
+          "width": 116.390625,
+          "right": 215.390625,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Devolución solicitada1",
+          "x": 223.390625,
+          "y": -1036.5,
+          "width": 116.40625,
+          "right": 339.796875,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Devolución enviada1",
+          "x": 347.796875,
+          "y": -1036.5,
+          "width": 116.390625,
+          "right": 464.1875,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Reembolsando1",
+          "x": 472.1875,
+          "y": -1036.5,
+          "width": 116.40625,
+          "right": 588.59375,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Reembolsado0",
+          "x": 596.59375,
+          "y": -1036.5,
+          "width": 116.40625,
+          "right": 713,
+          "visibleRatio": 0
+        }
+      ],
+      "modalTables": [
+        {
+          "selector": "div.ant-table-wrapper.order-management-page__modalEvidenceTable.css-qlmvhk",
+          "text": "IDProductoCantidadImporteSubtotal3001Premium orthopedic dog bed with washable cover and extra-long product naming for order detail modal stressTalla: Grande / Color: Charcoal / War",
+          "x": 30,
+          "y": 89.796875,
+          "width": 680,
+          "height": 535,
+          "right": 710,
+          "bottom": 624.796875,
+          "scrollWidth": 680,
+          "clientWidth": 680,
+          "overflowRight": -30
+        },
+        {
+          "selector": "div.ant-table-content",
+          "text": "IDProductoCantidadImporteSubtotal3001Premium orthopedic dog bed with washable cover and extra-long product naming for order detail modal stressTalla: Grande / Color: Charcoal / War",
+          "x": 30,
+          "y": 89.796875,
+          "width": 680,
+          "height": 535,
+          "right": 710,
+          "bottom": 624.796875,
+          "scrollWidth": 680,
+          "clientWidth": 680,
+          "overflowRight": -30
+        },
+        {
+          "selector": "div.ant-table-wrapper.order-management-page__modalEvidenceTable.css-qlmvhk",
+          "text": "PagoEstadoImporteReferencia de reembolsoCreado elAccionesMERCADO_PAGO_INSTALLMENTSPagado$2,386.75-7/6/2026, 2:21:00 a.m.Sincronizar estadoMANUAL_RECONCILIATIONRequiere revisión de ",
+          "x": 30,
+          "y": 661.796875,
+          "width": 680,
+          "height": 580,
+          "right": 710,
+          "bottom": 1241.796875,
+          "scrollWidth": 680,
+          "clientWidth": 680,
+          "overflowRight": -30
+        },
+        {
+          "selector": "div.ant-table-content",
+          "text": "PagoEstadoImporteReferencia de reembolsoCreado elAccionesMERCADO_PAGO_INSTALLMENTSPagado$2,386.75-7/6/2026, 2:21:00 a.m.Sincronizar estadoMANUAL_RECONCILIATIONRequiere revisión de ",
+          "x": 30,
+          "y": 661.796875,
+          "width": 680,
+          "height": 580,
+          "right": 710,
+          "bottom": 1241.796875,
+          "scrollWidth": 680,
+          "clientWidth": 680,
+          "overflowRight": -30
+        }
+      ],
+      "overflowEls": [],
+      "hits": [
+        null,
+        {
+          "selector": ".order-management-page__detailModal .shop-modal__close",
+          "point": {
+            "x": 698,
+            "y": 54
+          },
+          "hitTag": "path",
+          "hitClass": "[object SVGAnimatedString]",
+          "hitText": ""
+        },
+        null,
+        null,
+        null,
+        null
+      ]
+    },
+    {
+      "state": "refund-modal",
+      "viewport": {
+        "width": 740,
+        "height": 360
+      },
+      "body": {
+        "scrollWidth": 740,
+        "clientWidth": 740,
+        "scrollHeight": 3171,
+        "clientHeight": 360,
+        "scrollY": 1298
+      },
+      "rects": {
+        "adminHeader": {
+          "selector": ".admin-layout__header",
+          "text": "Volver a la tiendaReportar bugCerrar sesión",
+          "x": 72,
+          "y": -1298,
+          "width": 668,
+          "height": 89,
+          "right": 740,
+          "bottom": -1209,
+          "position": "sticky",
+          "zIndex": "60",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 668,
+          "clientWidth": 668,
+          "scrollHeight": 88,
+          "clientHeight": 88
+        },
+        "title": {
+          "selector": ".order-management-page > h4.ant-typography",
+          "text": "Pedidos",
+          "x": 99,
+          "y": -1182,
+          "width": 614,
+          "height": 20,
+          "right": 713,
+          "bottom": -1162,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 614,
+          "clientWidth": 614,
+          "scrollHeight": 20,
+          "clientHeight": 20
+        },
+        "summaryGrid": {
+          "selector": ".order-management-page__summaryGrid",
+          "text": "Requiere acción3Vencidos2Por vencer1Sin guía1Pendiente de envío1Cola postventa2Devolución solicitada1Devolución enviada1Reembolsando1Reembolsado0",
+          "x": 99,
+          "y": -1129,
+          "width": 614,
+          "height": 177,
+          "right": 713,
+          "bottom": -952,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 614,
+          "clientWidth": 614,
+          "scrollHeight": 177,
+          "clientHeight": 177
+        },
+        "toolbar": {
+          "selector": ".order-management-page__toolbar",
+          "text": "Filtrar estado:Todos los estadosExportar pedidosEnvío masivoTotal: 3 pedidos | 1/1",
+          "x": 99,
+          "y": -936,
+          "width": 614,
+          "height": 132,
+          "right": 713,
+          "bottom": -804,
+          "position": "relative",
+          "zIndex": "auto",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "scrollWidth": 612,
+          "clientWidth": 612,
+          "scrollHeight": 130,
+          "clientHeight": 130
+        },
+        "table": {
+          "selector": ".order-management-page__table",
+          "text": "ID pedidoClienteImporteEstadoSiguiente acciónDatos de devoluciónDirecciónPagoGuíaCreado elAcciones 88010Maria customer waiting for return approvalRegistradomaria.long.customer@example.com+52 55 1234 5678ID 501$2,386.75De",
+          "x": 99,
+          "y": -788,
+          "width": 614,
+          "height": 2633.78125,
+          "right": 713,
+          "bottom": 1845.78125,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "scrollWidth": 612,
+          "clientWidth": 612,
+          "scrollHeight": 2632,
+          "clientHeight": 2632
+        },
+        "tableContent": {
+          "selector": ".order-management-page__table .ant-table-content",
+          "text": "ID pedidoClienteImporteEstadoSiguiente acciónDatos de devoluciónDirecciónPagoGuíaCreado elAcciones 88010Maria customer waiting for return approvalRegistradomaria.long.customer@example.com+52 55 1234 5678ID 501$2,386.75De",
+          "x": 101,
+          "y": -786,
+          "width": 611,
+          "height": 2572.78125,
+          "right": 712,
+          "bottom": 1786.78125,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 611,
+          "clientWidth": 611,
+          "scrollHeight": 2573,
+          "clientHeight": 2573
+        },
+        "mainActionCell": null,
+        "detailModal": null,
+        "detailBody": null,
+        "refundModal": {
+          "selector": ".order-management-page__refundModal.shop-modal__panel",
+          "text": "Reembolsar ahoraReembolsa el pedido SO-REFUND-20260608-00008810-LONG por $2,386.75. Úsalo solo después de confirmar que el cliente debe recibir el dinero.Customer reports unopened item and requests return before carrier ",
+          "x": 12,
+          "y": 24,
+          "width": 716,
+          "height": 320,
+          "right": 728,
+          "bottom": 344,
+          "position": "relative",
+          "zIndex": "1",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 716,
+          "clientWidth": 716,
+          "scrollHeight": 320,
+          "clientHeight": 320
+        },
+        "refundBody": {
+          "selector": ".order-management-page__refundModal .shop-modal__body",
+          "text": "Reembolsa el pedido SO-REFUND-20260608-00008810-LONG por $2,386.75. Úsalo solo después de confirmar que el cliente debe recibir el dinero.Customer reports unopened item and requests return before carrier pickup window cl",
+          "x": 12,
+          "y": 73.796875,
+          "width": 716,
+          "height": 197.203125,
+          "right": 728,
+          "bottom": 271,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "scrollWidth": 716,
+          "clientWidth": 716,
+          "scrollHeight": 1380,
+          "clientHeight": 197
+        },
+        "shippingModal": null,
+        "popup": null
+      },
+      "visibleRatios": {
+        "summaryGrid": 0,
+        "table": 0.13668561122910264,
+        "mainActionCell": null,
+        "detailModal": null,
+        "refundModal": 1,
+        "shippingModal": null,
+        "popup": null
+      },
+      "summaryCards": [
+        {
+          "text": "Requiere acción3",
+          "x": 99,
+          "y": -1129,
+          "width": 116.390625,
+          "right": 215.390625,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Vencidos2",
+          "x": 223.390625,
+          "y": -1129,
+          "width": 116.40625,
+          "right": 339.796875,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Por vencer1",
+          "x": 347.796875,
+          "y": -1129,
+          "width": 116.390625,
+          "right": 464.1875,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Sin guía1",
+          "x": 472.1875,
+          "y": -1129,
+          "width": 116.40625,
+          "right": 588.59375,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Pendiente de envío1",
+          "x": 596.59375,
+          "y": -1129,
+          "width": 116.40625,
+          "right": 713,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Cola postventa2",
+          "x": 99,
+          "y": -1036.5,
+          "width": 116.390625,
+          "right": 215.390625,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Devolución solicitada1",
+          "x": 223.390625,
+          "y": -1036.5,
+          "width": 116.40625,
+          "right": 339.796875,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Devolución enviada1",
+          "x": 347.796875,
+          "y": -1036.5,
+          "width": 116.390625,
+          "right": 464.1875,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Reembolsando1",
+          "x": 472.1875,
+          "y": -1036.5,
+          "width": 116.40625,
+          "right": 588.59375,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Reembolsado0",
+          "x": 596.59375,
+          "y": -1036.5,
+          "width": 116.40625,
+          "right": 713,
+          "visibleRatio": 0
+        }
+      ],
+      "modalTables": [
+        {
+          "selector": "div.ant-table-wrapper.order-management-page__modalEvidenceTable.css-qlmvhk",
+          "text": "PagoEstadoImporteReferencia de reembolsoAccionesMERCADO_PAGO_INSTALLMENTSPagado$2,386.75-Sincronizar estadoMANUAL_RECONCILIATIONRequiere revisión de pago$2,386.75MANUAL-REFUND-REVI",
+          "x": 30,
+          "y": 943.625,
+          "width": 680,
+          "height": 494,
+          "right": 710,
+          "bottom": 1437.625,
+          "scrollWidth": 680,
+          "clientWidth": 680,
+          "overflowRight": -30
+        },
+        {
+          "selector": "div.ant-table-content",
+          "text": "PagoEstadoImporteReferencia de reembolsoAccionesMERCADO_PAGO_INSTALLMENTSPagado$2,386.75-Sincronizar estadoMANUAL_RECONCILIATIONRequiere revisión de pago$2,386.75MANUAL-REFUND-REVI",
+          "x": 30,
+          "y": 943.625,
+          "width": 680,
+          "height": 494,
+          "right": 710,
+          "bottom": 1437.625,
+          "scrollWidth": 680,
+          "clientWidth": 680,
+          "overflowRight": -30
+        }
+      ],
+      "overflowEls": [],
+      "hits": [
+        null,
+        null,
+        {
+          "selector": ".order-management-page__refundModal .shop-modal__footer .ant-btn-primary",
+          "point": {
+            "x": 615.03125,
+            "y": 306
+          },
+          "hitTag": "SPAN",
+          "hitClass": "shop-button__label",
+          "hitText": "Reembolsar ahora"
+        },
+        {
+          "selector": ".order-management-page__refundModal .ant-table-wrapper",
+          "point": {
+            "x": 370,
+            "y": 359
+          },
+          "hitTag": "BUTTON",
+          "hitClass": "shop-modal__mask",
+          "hitText": ""
+        },
+        null,
+        null
+      ]
+    },
+    {
+      "state": "transition-dropdown",
+      "viewport": {
+        "width": 740,
+        "height": 360
+      },
+      "body": {
+        "scrollWidth": 740,
+        "clientWidth": 740,
+        "scrollHeight": 3171,
+        "clientHeight": 360,
+        "scrollY": 1298
+      },
+      "rects": {
+        "adminHeader": {
+          "selector": ".admin-layout__header",
+          "text": "Volver a la tiendaReportar bugCerrar sesión",
+          "x": 72,
+          "y": 0,
+          "width": 668,
+          "height": 89,
+          "right": 740,
+          "bottom": 89,
+          "position": "sticky",
+          "zIndex": "60",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 668,
+          "clientWidth": 668,
+          "scrollHeight": 88,
+          "clientHeight": 88
+        },
+        "title": {
+          "selector": ".order-management-page > h4.ant-typography",
+          "text": "Pedidos",
+          "x": 99,
+          "y": -1182,
+          "width": 614,
+          "height": 20,
+          "right": 713,
+          "bottom": -1162,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 614,
+          "clientWidth": 614,
+          "scrollHeight": 20,
+          "clientHeight": 20
+        },
+        "summaryGrid": {
+          "selector": ".order-management-page__summaryGrid",
+          "text": "Requiere acción3Vencidos2Por vencer1Sin guía1Pendiente de envío1Cola postventa2Devolución solicitada1Devolución enviada1Reembolsando1Reembolsado0",
+          "x": 99,
+          "y": -1129,
+          "width": 614,
+          "height": 177,
+          "right": 713,
+          "bottom": -952,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 614,
+          "clientWidth": 614,
+          "scrollHeight": 177,
+          "clientHeight": 177
+        },
+        "toolbar": {
+          "selector": ".order-management-page__toolbar",
+          "text": "Filtrar estado:Todos los estadosExportar pedidosEnvío masivoTotal: 3 pedidos | 1/1",
+          "x": 99,
+          "y": -936,
+          "width": 614,
+          "height": 132,
+          "right": 713,
+          "bottom": -804,
+          "position": "relative",
+          "zIndex": "auto",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "scrollWidth": 612,
+          "clientWidth": 612,
+          "scrollHeight": 130,
+          "clientHeight": 130
+        },
+        "table": {
+          "selector": ".order-management-page__table",
+          "text": "ID pedidoClienteImporteEstadoSiguiente acciónDatos de devoluciónDirecciónPagoGuíaCreado elAcciones 88010Maria customer waiting for return approvalRegistradomaria.long.customer@example.com+52 55 1234 5678ID 501$2,386.75De",
+          "x": 99,
+          "y": -788,
+          "width": 614,
+          "height": 2633.78125,
+          "right": 713,
+          "bottom": 1845.78125,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "auto",
+          "overflowY": "auto",
+          "scrollWidth": 612,
+          "clientWidth": 612,
+          "scrollHeight": 2632,
+          "clientHeight": 2632
+        },
+        "tableContent": {
+          "selector": ".order-management-page__table .ant-table-content",
+          "text": "ID pedidoClienteImporteEstadoSiguiente acciónDatos de devoluciónDirecciónPagoGuíaCreado elAcciones 88010Maria customer waiting for return approvalRegistradomaria.long.customer@example.com+52 55 1234 5678ID 501$2,386.75De",
+          "x": 101,
+          "y": -786,
+          "width": 611,
+          "height": 2572.78125,
+          "right": 712,
+          "bottom": 1786.78125,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible",
+          "scrollWidth": 611,
+          "clientWidth": 611,
+          "scrollHeight": 2573,
+          "clientHeight": 2573
+        },
+        "mainActionCell": null,
+        "detailModal": null,
+        "detailBody": null,
+        "refundModal": null,
+        "refundBody": null,
+        "shippingModal": null,
+        "popup": {
+          "selector": ".shop-select__popup, .shop-modal.shop-mobile-popup-layer",
+          "text": "Aprobar devoluciónRechazar devolución",
+          "x": 449.03125,
+          "y": 207.78125,
+          "width": 140,
+          "height": 102,
+          "right": 589.03125,
+          "bottom": 309.78125,
+          "position": "fixed",
+          "zIndex": "10050",
+          "overflowX": "hidden",
+          "overflowY": "hidden",
+          "scrollWidth": 138,
+          "clientWidth": 138,
+          "scrollHeight": 100,
+          "clientHeight": 100
+        }
+      },
+      "visibleRatios": {
+        "summaryGrid": 0,
+        "table": 0.13668561122910264,
+        "mainActionCell": null,
+        "detailModal": null,
+        "refundModal": null,
+        "shippingModal": null,
+        "popup": 1
+      },
+      "summaryCards": [
+        {
+          "text": "Requiere acción3",
+          "x": 99,
+          "y": -1129,
+          "width": 116.390625,
+          "right": 215.390625,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Vencidos2",
+          "x": 223.390625,
+          "y": -1129,
+          "width": 116.40625,
+          "right": 339.796875,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Por vencer1",
+          "x": 347.796875,
+          "y": -1129,
+          "width": 116.390625,
+          "right": 464.1875,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Sin guía1",
+          "x": 472.1875,
+          "y": -1129,
+          "width": 116.40625,
+          "right": 588.59375,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Pendiente de envío1",
+          "x": 596.59375,
+          "y": -1129,
+          "width": 116.40625,
+          "right": 713,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Cola postventa2",
+          "x": 99,
+          "y": -1036.5,
+          "width": 116.390625,
+          "right": 215.390625,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Devolución solicitada1",
+          "x": 223.390625,
+          "y": -1036.5,
+          "width": 116.40625,
+          "right": 339.796875,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Devolución enviada1",
+          "x": 347.796875,
+          "y": -1036.5,
+          "width": 116.390625,
+          "right": 464.1875,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Reembolsando1",
+          "x": 472.1875,
+          "y": -1036.5,
+          "width": 116.40625,
+          "right": 588.59375,
+          "visibleRatio": 0
+        },
+        {
+          "text": "Reembolsado0",
+          "x": 596.59375,
+          "y": -1036.5,
+          "width": 116.40625,
+          "right": 713,
+          "visibleRatio": 0
+        }
+      ],
+      "modalTables": [],
+      "overflowEls": [],
+      "hits": [
+        null,
+        null,
+        null,
+        null,
+        null,
+        {
+          "selector": ".shop-select__popup .shop-select__option",
+          "point": {
+            "x": 519.03125,
+            "y": 236.78125
+          },
+          "hitTag": "SPAN",
+          "hitClass": "shop-select__optionLabel",
+          "hitText": "Aprobar devolución"
+        }
+      ]
+    }
+  ]
+}

@@ -177,15 +177,19 @@ async function installMocks(page) {
     blockedImages: ['javascript:alert(1)'],
     warnings: ['MISSING_CATEGORY'],
   }));
-  await page.route('**/api/admin/products**', (route) => fulfillJson(route, {
-    items: products,
-    total: products.length,
-    page: 1,
-    size: 50,
-    totalPages: 1,
-    hasNext: false,
-    hasPrevious: false,
-  }));
+  await page.route(/\/api\/admin\/products(?:\?.*)?$/, (route) => {
+    const pathname = new URL(route.request().url()).pathname;
+    if (pathname !== '/api/admin/products') return route.fallback();
+    return fulfillJson(route, {
+      items: products,
+      total: products.length,
+      page: 1,
+      size: 50,
+      totalPages: 1,
+      hasNext: false,
+      hasPrevious: false,
+    });
+  });
 }
 
 async function waitForPage(page) {
@@ -268,7 +272,7 @@ async function collectMetrics(page, state) {
       .filter(Boolean)
       .sort((left, right) => Math.max(right.overflowRight, right.overflowLeft) - Math.max(left.overflowRight, left.overflowLeft))
       .slice(0, 50);
-    const optionRows = Array.from(document.querySelectorAll('.ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item, .ant-select-tree-list-holder .ant-select-tree-treenode, .ant-picker-dropdown .ant-picker-cell')).map((el) => {
+    const optionRows = Array.from(document.querySelectorAll('.ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item, .ant-select-tree-list-holder .ant-select-tree-treenode, .shop-select__popup .shop-select__option, .shop-tree-select__popup .shop-tree-select__row, .ant-picker-dropdown .ant-picker-cell')).map((el) => {
       const rect = el.getBoundingClientRect();
       return {
         text: textOf(el).slice(0, 120),
@@ -313,9 +317,9 @@ async function collectMetrics(page, state) {
         quality: rectOf('.product-listing-quality'),
         qualityMetrics: rectOf('.product-listing-quality__metrics'),
         table: rectOf('.product-management-page .ant-table-wrapper'),
-        modal: rectOf('.shopify-product-modal .ant-modal-content'),
-        modalBody: rectOf('.shopify-product-modal .ant-modal-body'),
-        modalFooter: rectOf('.shopify-product-modal .ant-modal-footer'),
+        modal: rectOf('.shopify-product-modal .ant-modal-content, .shopify-product-modal .shop-modal__content'),
+        modalBody: rectOf('.shopify-product-modal .ant-modal-body, .shopify-product-modal .shop-modal__body'),
+        modalFooter: rectOf('.shopify-product-modal .ant-modal-footer, .shopify-product-modal .shop-modal__footer'),
         editor: rectOf('.shopify-product-editor'),
         editorMain: rectOf('.shopify-product-editor__main'),
         editorSide: rectOf('.shopify-product-editor__side'),
@@ -327,13 +331,13 @@ async function collectMetrics(page, state) {
         richTypeSelect: rectOf('.product-rich-detail-editor__typeSelect'),
         variantList: rectOf('.shopify-variant-list'),
         dropdown: rectOf('.ant-select-dropdown:not(.ant-select-dropdown-hidden), .ant-picker-dropdown'),
-        treeDropdown: rectOf('.ant-select-tree-dropdown:not(.ant-select-dropdown-hidden)'),
+        treeDropdown: rectOf('.ant-select-tree-dropdown:not(.ant-select-dropdown-hidden), .shop-tree-select__popup'),
         pickerDropdown: rectOf('.ant-picker-dropdown'),
       },
       visibleRatios: {
-        modal: visibleRatioOf('.shopify-product-modal .ant-modal-content'),
-        modalBody: visibleRatioOf('.shopify-product-modal .ant-modal-body'),
-        modalFooter: visibleRatioOf('.shopify-product-modal .ant-modal-footer'),
+        modal: visibleRatioOf('.shopify-product-modal .ant-modal-content, .shopify-product-modal .shop-modal__content'),
+        modalBody: visibleRatioOf('.shopify-product-modal .ant-modal-body, .shopify-product-modal .shop-modal__body'),
+        modalFooter: visibleRatioOf('.shopify-product-modal .ant-modal-footer, .shopify-product-modal .shop-modal__footer'),
         editorSide: visibleRatioOf('.shopify-product-editor__side'),
         category: visibleRatioOf('.shopify-product-modal .ant-tree-select'),
         richTypeSelect: visibleRatioOf('.product-rich-detail-editor__typeSelect'),
@@ -345,10 +349,10 @@ async function collectMetrics(page, state) {
       optionRows,
       overflowEls,
       hits: [
-        centerHit('.ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option'),
-        centerHit('.ant-select-tree-list-holder .ant-select-tree-treenode'),
+        centerHit('.ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option, .shop-select__popup .shop-select__option'),
+        centerHit('.ant-select-tree-list-holder .ant-select-tree-treenode, .shop-tree-select__popup .shop-tree-select__row'),
         centerHit('.ant-picker-dropdown .ant-picker-cell-in-view'),
-        centerHit('.shopify-product-modal .ant-modal-footer .ant-btn-primary'),
+        centerHit('.shopify-product-modal .ant-modal-footer .ant-btn-primary, .shopify-product-modal .shop-modal__footer .ant-btn-primary'),
         centerHit('.product-rich-detail-editor__typeSelect'),
         centerHit('.shopify-range-picker'),
       ],
@@ -375,7 +379,7 @@ async function closePopup(page) {
 
 async function scrollModalTo(page, selector) {
   await page.evaluate((targetSelector) => {
-    const body = document.querySelector('.shopify-product-modal .ant-modal-body');
+    const body = document.querySelector('.shopify-product-modal .ant-modal-body, .shopify-product-modal .shop-modal__body');
     const target = document.querySelector(targetSelector);
     if (!body || !target) return;
     const bodyRect = body.getBoundingClientRect();
@@ -386,8 +390,14 @@ async function scrollModalTo(page, selector) {
 }
 
 async function openProductModal(page) {
-  await page.locator('button').filter({ hasText: /Add product|添加商品/i }).first().click();
-  await page.waitForSelector('.shopify-product-modal .ant-modal-content', { timeout: 10000 });
+  await page.waitForFunction(() => Array.from(document.querySelectorAll('button')).some((button) => {
+    const text = `${button.textContent || ''} ${button.getAttribute('aria-label') || ''}`;
+    return !button.disabled && /Add product|Agregar producto|添加商品/i.test(text);
+  }), { timeout: 30000 });
+  const addButton = page.locator('button:not([disabled])').filter({ hasText: /Add product|Agregar producto|添加商品/i }).first();
+  await addButton.waitFor({ state: 'visible', timeout: 10000 });
+  await addButton.click();
+  await page.waitForSelector('.shopify-product-modal .ant-modal-content, .shopify-product-modal .shop-modal__content', { timeout: 10000 });
   await page.waitForTimeout(500);
 }
 
@@ -408,6 +418,7 @@ async function run() {
       localStorage.setItem('token', 'ui-audit-token');
       localStorage.setItem('refreshToken', 'ui-audit-refresh-token');
       localStorage.setItem('role', 'SUPER_ADMIN');
+      localStorage.setItem('shop-language', 'en');
     });
     const consoleMessages = [];
     page.on('console', (msg) => {
@@ -425,30 +436,30 @@ async function run() {
     states.push(await capture(page, viewport.name, 'editor-top', true));
 
     await resetToProductModal(page);
-    await scrollModalTo(page, '.shopify-product-modal .ant-tree-select');
-    await page.locator('.shopify-product-modal .ant-tree-select').click();
-    await page.waitForSelector('.ant-select-dropdown:not(.ant-select-dropdown-hidden), .ant-select-tree-dropdown', { timeout: 5000 }).catch(() => undefined);
+    await scrollModalTo(page, '.shopify-product-modal .shop-tree-select');
+    await page.locator('.shopify-product-modal .shop-tree-select').click();
+    await page.waitForSelector('.ant-select-dropdown:not(.ant-select-dropdown-hidden), .ant-select-tree-dropdown, .shop-tree-select__popup', { timeout: 5000 }).catch(() => undefined);
     await page.waitForTimeout(250);
     states.push(await capture(page, viewport.name, 'category-tree-dropdown', true));
 
     await resetToProductModal(page);
     await scrollModalTo(page, '.shopify-product-editor__side');
     states.push(await capture(page, viewport.name, 'editor-side', true));
-    const sideSelects = page.locator('.shopify-product-editor__side .ant-select');
+    const sideSelects = page.locator('.shopify-product-editor__side .ant-select, .shopify-product-editor__side .shop-select');
     if (await sideSelects.count()) {
       await sideSelects.first().click();
-      await page.waitForSelector('.ant-select-dropdown:not(.ant-select-dropdown-hidden)', { timeout: 5000 }).catch(() => undefined);
+      await page.waitForSelector('.ant-select-dropdown:not(.ant-select-dropdown-hidden), .shop-select__popup', { timeout: 5000 }).catch(() => undefined);
       await page.waitForTimeout(250);
       states.push(await capture(page, viewport.name, 'status-dropdown', true));
     }
 
     await resetToProductModal(page);
     await scrollModalTo(page, '.shopify-product-editor__side');
-    const freshSideSelects = page.locator('.shopify-product-editor__side .ant-select');
+    const freshSideSelects = page.locator('.shopify-product-editor__side .ant-select, .shopify-product-editor__side .shop-select');
     const freshSideCount = await freshSideSelects.count();
     if (freshSideCount > 1) {
       await freshSideSelects.nth(1).click();
-      await page.waitForSelector('.ant-select-dropdown:not(.ant-select-dropdown-hidden)', { timeout: 5000 }).catch(() => undefined);
+      await page.waitForSelector('.ant-select-dropdown:not(.ant-select-dropdown-hidden), .shop-select__popup', { timeout: 5000 }).catch(() => undefined);
       await page.waitForTimeout(250);
       states.push(await capture(page, viewport.name, 'brand-dropdown', true));
     }
@@ -458,7 +469,7 @@ async function run() {
     states.push(await capture(page, viewport.name, 'limited-time-section', true));
     if (await page.locator('.shopify-range-picker').count()) {
       await page.locator('.shopify-range-picker').click();
-      await page.waitForSelector('.ant-picker-dropdown', { timeout: 5000 }).catch(() => undefined);
+      await page.waitForSelector('.ant-picker-dropdown, .shop-range-picker', { timeout: 5000 }).catch(() => undefined);
       await page.waitForTimeout(350);
       states.push(await capture(page, viewport.name, 'range-picker-dropdown', true));
     }
@@ -468,7 +479,7 @@ async function run() {
     states.push(await capture(page, viewport.name, 'rich-editor-section', true));
     if (await page.locator('.product-rich-detail-editor__typeSelect').count()) {
       await page.locator('.product-rich-detail-editor__typeSelect').first().click();
-      await page.waitForSelector('.ant-select-dropdown:not(.ant-select-dropdown-hidden)', { timeout: 5000 }).catch(() => undefined);
+      await page.waitForSelector('.ant-select-dropdown:not(.ant-select-dropdown-hidden), .shop-select__popup', { timeout: 5000 }).catch(() => undefined);
       await page.waitForTimeout(250);
       states.push(await capture(page, viewport.name, 'rich-type-dropdown', true));
     }

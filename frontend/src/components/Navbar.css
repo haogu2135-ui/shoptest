@@ -3708,6 +3708,15 @@ body.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__actionSummary {
   }
 }
 
+/* Mobile action-summary closure: the desktop account summary must stay out of
+   the compact utility row after generic 44px hit-area rules are applied. */
+@media (max-width: 780px) {
+  body:not(.shop-mobile-app) .shop-nav .shop-nav__actions > .shop-nav__actionSummary,
+  body.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__actions > .shop-nav__actionSummary {
+    display: none !important;
+  }
+}
+
 
 /* Gate116: native ShopSelect nav popup */
 body .shop-nav__select-popup.shop-select__popup {

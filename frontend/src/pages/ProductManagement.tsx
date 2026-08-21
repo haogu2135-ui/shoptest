@@ -2855,7 +2855,7 @@ const ProductManagement: React.FC = () => {
 	                    <ShopInputNumber min={0} placeholder="0" aria-label={stockInputLabel} title={stockInputLabel} />
 	                  </Form.Item>
                 </div>
-                <div className="shopify-pill-row">
+                <div className="shopify-pill-row shopify-inventory-meta">
                   <span>{t('pages.productAdmin.sku')}</span>
                   <span>{t('pages.productAdmin.barcode')}</span>
                   <span>{t('pages.productAdmin.sellWhenOut')} <b>{t('pages.productAdmin.off')}</b></span>

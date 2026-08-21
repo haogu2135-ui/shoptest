@@ -19,6 +19,11 @@
   cursor: zoom-in;
 }
 
+.shop-image--previewable .shop-image__img:focus-visible {
+  outline: 3px solid rgba(18, 71, 52, 0.42);
+  outline-offset: 2px;
+}
+
 .shop-image__placeholder {
   display: inline-flex;
   align-items: center;
@@ -65,4 +70,9 @@
   font-size: 24px;
   line-height: 1;
   cursor: pointer;
+}
+
+.shop-image-preview__close .shop-icon {
+  width: 20px;
+  height: 20px;
 }

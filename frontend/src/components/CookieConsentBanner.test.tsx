@@ -24,6 +24,14 @@ describe('CookieConsentBanner short-screen layout contract', () => {
     expect(css).toContain('body.shop-cookie-consent-visible');
   });
 
+  it('keeps long localized consent action labels inside narrow buttons', () => {
+    const css = readLocal('CookieConsentBanner.css');
+
+    expect(css).toMatch(/@media \(max-width: 390px\)[\s\S]*?\.cookie-consent-banner__button\.ant-btn\s*\{[\s\S]*?padding-inline:\s*8px/);
+    expect(css).toMatch(/body \.cookie-consent-banner__button\.ant-btn:not\(\.ant-btn-icon-only\)\s*>\s*span\.shop-button__label[\s\S]*?white-space:\s*normal\s*!important/);
+    expect(css).toMatch(/body \.cookie-consent-banner__button\.ant-btn:not\(\.ant-btn-icon-only\)\s*>\s*span\.shop-button__label[\s\S]*?overflow:\s*visible\s*!important/);
+  });
+
   it('reserves a short-screen home layout for the visible consent panel', () => {
     const homeCss = fs.readFileSync(path.resolve(__dirname, '../pages/Home.css'), 'utf8');
 

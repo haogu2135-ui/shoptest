@@ -1,0 +1,5296 @@
+{
+  "viewport": {
+    "name": "small-320",
+    "width": 320,
+    "height": 568
+  },
+  "url": "http://127.0.0.1:4200/admin/system",
+  "consoleMessages": [
+    {
+      "type": "warning",
+      "text": "The resource http://127.0.0.1:4200/assets/home/hero-mobile-pet.webp was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally."
+    }
+  ],
+  "states": [
+    {
+      "state": "top",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "body": {
+        "scrollWidth": 320,
+        "clientWidth": 320,
+        "scrollHeight": 5967,
+        "clientHeight": 568
+      },
+      "rects": {
+        "adminHeader": {
+          "selector": ".admin-layout__header",
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 137,
+          "right": 320,
+          "bottom": 137,
+          "position": "sticky",
+          "zIndex": "60",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "adminContent": {
+          "selector": ".admin-layout__content",
+          "x": 5,
+          "y": 142,
+          "width": 310,
+          "height": 5820.0625,
+          "right": 315,
+          "bottom": 5962.0625,
+          "position": "relative",
+          "zIndex": "auto",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        },
+        "page": {
+          "selector": ".system-monitor",
+          "x": 13,
+          "y": 150,
+          "width": 294,
+          "height": 5804.0625,
+          "right": 307,
+          "bottom": 5954.0625,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "hidden",
+          "overflowY": "auto"
+        },
+        "hero": {
+          "selector": ".system-monitor__hero",
+          "x": 13,
+          "y": 150,
+          "width": 294,
+          "height": 219,
+          "right": 307,
+          "bottom": 369,
+          "position": "relative",
+          "zIndex": "8",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "stats": {
+          "selector": ".system-monitor__stats",
+          "x": 13,
+          "y": 381,
+          "width": 294,
+          "height": 410.75,
+          "right": 307,
+          "bottom": 791.75,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "alert": {
+          "selector": ".system-monitor__alert",
+          "x": 13,
+          "y": 791.75,
+          "width": 294,
+          "height": 136.46875,
+          "right": 307,
+          "bottom": 928.21875,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "resourceGrid": {
+          "selector": ".system-monitor__resourceGrid",
+          "x": 13,
+          "y": 940.21875,
+          "width": 294,
+          "height": 806,
+          "right": 307,
+          "bottom": 1746.21875,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "opsTips": {
+          "selector": ".system-monitor__card:last-of-type",
+          "x": 13,
+          "y": 1328.71875,
+          "width": 294,
+          "height": 417.5,
+          "right": 307,
+          "bottom": 1746.21875,
+          "position": "relative",
+          "zIndex": "auto",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      "stats": [
+        {
+          "index": 0,
+          "text": "Estado generalProblema de dependencia crítica",
+          "x": 13,
+          "y": 381,
+          "width": 294,
+          "height": 95.1875,
+          "right": 307,
+          "bottom": 476.1875,
+          "visibleRatio": 1
+        },
+        {
+          "index": 1,
+          "text": "Aplicaciónshop-backend-production-cluster-east-long-name-for-status-card",
+          "x": 13,
+          "y": 486.1875,
+          "width": 294,
+          "height": 138.375,
+          "right": 307,
+          "bottom": 624.5625,
+          "visibleRatio": 0.5912375790424571
+        },
+        {
+          "index": 2,
+          "text": "Tiempo activo11d 10h",
+          "x": 13,
+          "y": 634.5625,
+          "width": 294,
+          "height": 73.59375,
+          "right": 307,
+          "bottom": 708.15625,
+          "visibleRatio": 0
+        },
+        {
+          "index": 3,
+          "text": "Núcleos CPU12",
+          "x": 13,
+          "y": 718.15625,
+          "width": 294,
+          "height": 73.59375,
+          "right": 307,
+          "bottom": 791.75,
+          "visibleRatio": 0
+        }
+      ],
+      "cards": [
+        {
+          "index": 0,
+          "title": "Memoria JVM",
+          "x": 13,
+          "y": 940.21875,
+          "width": 294,
+          "height": 378.5,
+          "right": 307,
+          "bottom": 1318.71875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 1,
+          "title": "Espacio en disco",
+          "x": 13,
+          "y": 1328.71875,
+          "width": 294,
+          "height": 417.5,
+          "right": 307,
+          "bottom": 1746.21875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 2,
+          "title": "Entorno de ejecución",
+          "x": 13,
+          "y": 1746.21875,
+          "width": 294,
+          "height": 604.5,
+          "right": 307,
+          "bottom": 2350.71875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 3,
+          "title": "Configuración de producción Degradado",
+          "x": 13,
+          "y": 2350.71875,
+          "width": 294,
+          "height": 933.71875,
+          "right": 307,
+          "bottom": 3284.4375,
+          "visibleRatio": 0
+        },
+        {
+          "index": 4,
+          "title": "Base de datos Caído",
+          "x": 13,
+          "y": 3284.4375,
+          "width": 294,
+          "height": 599,
+          "right": 307,
+          "bottom": 3883.4375,
+          "visibleRatio": 0
+        },
+        {
+          "index": 5,
+          "title": "Redis Activo",
+          "x": 13,
+          "y": 3893.4375,
+          "width": 294,
+          "height": 512.5,
+          "right": 307,
+          "bottom": 4405.9375,
+          "visibleRatio": 0
+        },
+        {
+          "index": 6,
+          "title": "Descubrimiento Nacos Degradado",
+          "x": 13,
+          "y": 4415.9375,
+          "width": 294,
+          "height": 1125.125,
+          "right": 307,
+          "bottom": 5541.0625,
+          "visibleRatio": 0
+        },
+        {
+          "index": 7,
+          "title": "Consejos operativos",
+          "x": 13,
+          "y": 5541.0625,
+          "width": 294,
+          "height": 321,
+          "right": 307,
+          "bottom": 5862.0625,
+          "visibleRatio": 0
+        }
+      ],
+      "descriptionItems": [
+        {
+          "index": 0,
+          "text": "Usado1.6 GB",
+          "label": "Usado",
+          "content": "1.6 GB",
+          "x": 28,
+          "y": 1119.21875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 1180.71875,
+          "labelRect": {
+            "x": 28,
+            "y": 1119.21875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 1149.21875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 1149.21875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 1180.71875
+          }
+        },
+        {
+          "index": 1,
+          "text": "Máximo2.0 GB",
+          "label": "Máximo",
+          "content": "2.0 GB",
+          "x": 28,
+          "y": 1180.71875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 1242.21875,
+          "labelRect": {
+            "x": 28,
+            "y": 1180.71875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 1210.71875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 1210.71875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 1242.21875
+          }
+        },
+        {
+          "index": 2,
+          "text": "Libre102.4 MB",
+          "label": "Libre",
+          "content": "102.4 MB",
+          "x": 28,
+          "y": 1242.21875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 1303.71875,
+          "labelRect": {
+            "x": 28,
+            "y": 1242.21875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 1272.21875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 1272.21875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 1303.71875
+          }
+        },
+        {
+          "index": 3,
+          "text": "Ruta/var/lib/shoptest/runtime/uploads-and-generated-assets-with-long-path",
+          "label": "Ruta",
+          "content": "/var/lib/shoptest/runtime/uploads-and-generated-assets-with-long-path",
+          "x": 28,
+          "y": 1507.71875,
+          "width": 264,
+          "height": 100.5,
+          "right": 292,
+          "bottom": 1608.21875,
+          "labelRect": {
+            "x": 28,
+            "y": 1507.71875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 1537.71875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 1537.71875,
+            "width": 264,
+            "height": 70.5,
+            "right": 292,
+            "bottom": 1608.21875
+          }
+        },
+        {
+          "index": 4,
+          "text": "Usado46.0 GB",
+          "label": "Usado",
+          "content": "46.0 GB",
+          "x": 28,
+          "y": 1608.21875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 1669.71875,
+          "labelRect": {
+            "x": 28,
+            "y": 1608.21875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 1638.21875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 1638.21875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 1669.71875
+          }
+        },
+        {
+          "index": 5,
+          "text": "Total50.0 GB",
+          "label": "Total",
+          "content": "50.0 GB",
+          "x": 28,
+          "y": 1669.71875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 1731.21875,
+          "labelRect": {
+            "x": 28,
+            "y": 1669.71875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 1699.71875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 1699.71875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 1731.21875
+          }
+        },
+        {
+          "index": 6,
+          "text": "Estado backendDegradadoBloqueado",
+          "label": "Estado backend",
+          "content": "DegradadoBloqueado",
+          "x": 29,
+          "y": 1806.21875,
+          "width": 262,
+          "height": 87,
+          "right": 291,
+          "bottom": 1893.21875,
+          "labelRect": {
+            "x": 29,
+            "y": 1806.21875,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": 1836.21875
+          },
+          "contentRect": {
+            "x": 29,
+            "y": 1836.21875,
+            "width": 261,
+            "height": 56,
+            "right": 290,
+            "bottom": 1892.21875
+          }
+        },
+        {
+          "index": 7,
+          "text": "Dirección API/api",
+          "label": "Dirección API",
+          "content": "/api",
+          "x": 29,
+          "y": 1893.21875,
+          "width": 262,
+          "height": 62.5,
+          "right": 291,
+          "bottom": 1955.71875,
+          "labelRect": {
+            "x": 29,
+            "y": 1893.21875,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": 1923.21875
+          },
+          "contentRect": {
+            "x": 29,
+            "y": 1923.21875,
+            "width": 261,
+            "height": 31.5,
+            "right": 290,
+            "bottom": 1954.71875
+          }
+        },
+        {
+          "index": 8,
+          "text": "Puerto8081",
+          "label": "Puerto",
+          "content": "8081",
+          "x": 29,
+          "y": 1955.71875,
+          "width": 262,
+          "height": 62.5,
+          "right": 291,
+          "bottom": 2018.21875,
+          "labelRect": {
+            "x": 29,
+            "y": 1955.71875,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": 1985.71875
+          },
+          "contentRect": {
+            "x": 29,
+            "y": 1985.71875,
+            "width": 261,
+            "height": 31.5,
+            "right": 290,
+            "bottom": 2017.21875
+          }
+        },
+        {
+          "index": 9,
+          "text": "Modoproduction",
+          "label": "Modo",
+          "content": "production",
+          "x": 29,
+          "y": 2018.21875,
+          "width": 262,
+          "height": 62.5,
+          "right": 291,
+          "bottom": 2080.71875,
+          "labelRect": {
+            "x": 29,
+            "y": 2018.21875,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": 2048.21875
+          },
+          "contentRect": {
+            "x": 29,
+            "y": 2048.21875,
+            "width": 261,
+            "height": 31.5,
+            "right": 290,
+            "bottom": 2079.71875
+          }
+        },
+        {
+          "index": 10,
+          "text": "Perfilprodnacos-configredis-required",
+          "label": "Perfil",
+          "content": "prodnacos-configredis-required",
+          "x": 29,
+          "y": 2080.71875,
+          "width": 262,
+          "height": 131,
+          "right": 291,
+          "bottom": 2211.71875,
+          "labelRect": {
+            "x": 29,
+            "y": 2080.71875,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": 2110.71875
+          },
+          "contentRect": {
+            "x": 29,
+            "y": 2110.71875,
+            "width": 261,
+            "height": 100,
+            "right": 290,
+            "bottom": 2210.71875
+          }
+        },
+        {
+          "index": 11,
+          "text": "Java21.0.5-temurin-long-runtime-build",
+          "label": "Java",
+          "content": "21.0.5-temurin-long-runtime-build",
+          "x": 29,
+          "y": 2211.71875,
+          "width": 262,
+          "height": 62.5,
+          "right": 291,
+          "bottom": 2274.21875,
+          "labelRect": {
+            "x": 29,
+            "y": 2211.71875,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": 2241.71875
+          },
+          "contentRect": {
+            "x": 29,
+            "y": 2241.71875,
+            "width": 261,
+            "height": 31.5,
+            "right": 290,
+            "bottom": 2273.21875
+          }
+        },
+        {
+          "index": 12,
+          "text": "SistemaLinux 6.8.0-1017-oracle",
+          "label": "Sistema",
+          "content": "Linux 6.8.0-1017-oracle",
+          "x": 29,
+          "y": 2274.21875,
+          "width": 262,
+          "height": 61.5,
+          "right": 291,
+          "bottom": 2335.71875,
+          "labelRect": {
+            "x": 29,
+            "y": 2274.21875,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": 2304.21875
+          },
+          "contentRect": {
+            "x": 29,
+            "y": 2304.21875,
+            "width": 261,
+            "height": 31.5,
+            "right": 290,
+            "bottom": 2335.71875
+          }
+        },
+        {
+          "index": 13,
+          "text": "ListoBloqueado",
+          "label": "Listo",
+          "content": "Bloqueado",
+          "x": 28,
+          "y": 2494.96875,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": 2580.96875,
+          "labelRect": {
+            "x": 28,
+            "y": 2494.96875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 2524.96875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 2524.96875,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": 2580.96875
+          }
+        },
+        {
+          "index": 14,
+          "text": "RequeridoActivado",
+          "label": "Requerido",
+          "content": "Activado",
+          "x": 28,
+          "y": 2580.96875,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": 2666.96875,
+          "labelRect": {
+            "x": 28,
+            "y": 2580.96875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 2610.96875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 2610.96875,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": 2666.96875
+          }
+        },
+        {
+          "index": 15,
+          "text": "Modoproduction",
+          "label": "Modo",
+          "content": "production",
+          "x": 28,
+          "y": 2666.96875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 2728.46875,
+          "labelRect": {
+            "x": 28,
+            "y": 2666.96875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 2696.96875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 2696.96875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 2728.46875
+          }
+        },
+        {
+          "index": 16,
+          "text": "Cuentas de correo1",
+          "label": "Cuentas de correo",
+          "content": "1",
+          "x": 28,
+          "y": 2728.46875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 2789.96875,
+          "labelRect": {
+            "x": 28,
+            "y": 2728.46875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 2758.46875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 2758.46875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 2789.96875
+          }
+        },
+        {
+          "index": 17,
+          "text": "Canales de pago1/5",
+          "label": "Canales de pago",
+          "content": "1/5",
+          "x": 28,
+          "y": 2789.96875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 2851.46875,
+          "labelRect": {
+            "x": 28,
+            "y": 2789.96875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 2819.96875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 2819.96875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 2851.46875
+          }
+        },
+        {
+          "index": 18,
+          "text": "Webhooks del proveedor-/-",
+          "label": "Webhooks del proveedor",
+          "content": "-/-",
+          "x": 28,
+          "y": 2851.46875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 2912.96875,
+          "labelRect": {
+            "x": 28,
+            "y": 2851.46875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 2881.46875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 2881.46875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 2912.96875
+          }
+        },
+        {
+          "index": 19,
+          "text": "Orígenes CORS9",
+          "label": "Orígenes CORS",
+          "content": "9",
+          "x": 28,
+          "y": 2912.96875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 2974.46875,
+          "labelRect": {
+            "x": 28,
+            "y": 2912.96875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 2942.96875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 2942.96875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 2974.46875
+          }
+        },
+        {
+          "index": 20,
+          "text": "BloqueosPayment channel VISA is enabled but missing a provider checkout URL for production traffic.Mail account transactional-prod has no verified sender configured.",
+          "label": "Bloqueos",
+          "content": "Payment channel VISA is enabled but missing a provider checkout URL for production traffic.Mail account transactional-prod has no verified sender configured.",
+          "x": 28,
+          "y": 2974.46875,
+          "width": 264,
+          "height": 147.484375,
+          "right": 292,
+          "bottom": 3121.953125,
+          "labelRect": {
+            "x": 28,
+            "y": 2974.46875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 3004.46875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 3004.46875,
+            "width": 264,
+            "height": 117.484375,
+            "right": 292,
+            "bottom": 3121.953125
+          }
+        },
+        {
+          "index": 21,
+          "text": "AdvertenciasCORS origins include a staging host and should be reviewed before launch.Nacos namespace is configured but registration is disabled.",
+          "label": "Advertencias",
+          "content": "CORS origins include a staging host and should be reviewed before launch.Nacos namespace is configured but registration is disabled.",
+          "x": 28,
+          "y": 3121.953125,
+          "width": 264,
+          "height": 147.484375,
+          "right": 292,
+          "bottom": 3269.4375,
+          "labelRect": {
+            "x": 28,
+            "y": 3121.953125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 3151.953125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 3151.953125,
+            "width": 264,
+            "height": 117.484375,
+            "right": 292,
+            "bottom": 3269.4375
+          }
+        },
+        {
+          "index": 22,
+          "text": "ListoBloqueado",
+          "label": "Listo",
+          "content": "Bloqueado",
+          "x": 28,
+          "y": 3392.4375,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": 3478.4375,
+          "labelRect": {
+            "x": 28,
+            "y": 3392.4375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 3422.4375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 3422.4375,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": 3478.4375
+          }
+        },
+        {
+          "index": 23,
+          "text": "Latencia2000 ms",
+          "label": "Latencia",
+          "content": "2000 ms",
+          "x": 28,
+          "y": 3478.4375,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 3539.9375,
+          "labelRect": {
+            "x": 28,
+            "y": 3478.4375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 3508.4375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 3508.4375,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 3539.9375
+          }
+        },
+        {
+          "index": 24,
+          "text": "URLjdbc:mysql://****:****@primary-db.internal.shoptest.example:3306/shoptest?useSSL=true&allowPublicKeyRetrieval=false&serverTimezone=UTC",
+          "label": "URL",
+          "content": "jdbc:mysql://****:****@primary-db.internal.shoptest.example:3306/shoptest?useSSL=true&allowPublicKeyRetrieval=false&serverTimezone=UTC",
+          "x": 28,
+          "y": 3539.9375,
+          "width": 264,
+          "height": 147,
+          "right": 292,
+          "bottom": 3686.9375,
+          "labelRect": {
+            "x": 28,
+            "y": 3539.9375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 3569.9375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 3569.9375,
+            "width": 264,
+            "height": 117,
+            "right": 292,
+            "bottom": 3686.9375
+          }
+        },
+        {
+          "index": 25,
+          "text": "Controladorcom.mysql.cj.jdbc.Driver",
+          "label": "Controlador",
+          "content": "com.mysql.cj.jdbc.Driver",
+          "x": 28,
+          "y": 3686.9375,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 3748.4375,
+          "labelRect": {
+            "x": 28,
+            "y": 3686.9375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 3716.9375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 3716.9375,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 3748.4375
+          }
+        },
+        {
+          "index": 26,
+          "text": "FalloCommunications link failure: timed out after 2000ms while checking primary-db.internal.shoptest.example",
+          "label": "Fallo",
+          "content": "Communications link failure: timed out after 2000ms while checking primary-db.internal.shoptest.example",
+          "x": 28,
+          "y": 3748.4375,
+          "width": 264,
+          "height": 120,
+          "right": 292,
+          "bottom": 3868.4375,
+          "labelRect": {
+            "x": 28,
+            "y": 3748.4375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 3778.4375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 3778.4375,
+            "width": 264,
+            "height": 90,
+            "right": 292,
+            "bottom": 3868.4375
+          }
+        },
+        {
+          "index": 27,
+          "text": "ListoListo",
+          "label": "Listo",
+          "content": "Listo",
+          "x": 28,
+          "y": 3953.4375,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": 4039.4375,
+          "labelRect": {
+            "x": 28,
+            "y": 3953.4375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 3983.4375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 3983.4375,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": 4039.4375
+          }
+        },
+        {
+          "index": 28,
+          "text": "RequeridoActivado",
+          "label": "Requerido",
+          "content": "Activado",
+          "x": 28,
+          "y": 4039.4375,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": 4125.4375,
+          "labelRect": {
+            "x": 28,
+            "y": 4039.4375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4069.4375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4069.4375,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": 4125.4375
+          }
+        },
+        {
+          "index": 29,
+          "text": "Direcciónredis-cache-production-east.internal.shoptest.example:6379",
+          "label": "Dirección",
+          "content": "redis-cache-production-east.internal.shoptest.example:6379",
+          "x": 28,
+          "y": 4125.4375,
+          "width": 264,
+          "height": 81,
+          "right": 292,
+          "bottom": 4206.4375,
+          "labelRect": {
+            "x": 28,
+            "y": 4125.4375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4155.4375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4155.4375,
+            "width": 264,
+            "height": 51,
+            "right": 292,
+            "bottom": 4206.4375
+          }
+        },
+        {
+          "index": 30,
+          "text": "DB0",
+          "label": "DB",
+          "content": "0",
+          "x": 28,
+          "y": 4206.4375,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 4267.9375,
+          "labelRect": {
+            "x": 28,
+            "y": 4206.4375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4236.4375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4236.4375,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 4267.9375
+          }
+        },
+        {
+          "index": 31,
+          "text": "Latencia18 ms",
+          "label": "Latencia",
+          "content": "18 ms",
+          "x": 28,
+          "y": 4267.9375,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 4329.4375,
+          "labelRect": {
+            "x": 28,
+            "y": 4267.9375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4297.9375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4297.9375,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 4329.4375
+          }
+        },
+        {
+          "index": 32,
+          "text": "PINGPONG",
+          "label": "PING",
+          "content": "PONG",
+          "x": 28,
+          "y": 4329.4375,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 4390.9375,
+          "labelRect": {
+            "x": 28,
+            "y": 4329.4375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4359.4375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4359.4375,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 4390.9375
+          }
+        },
+        {
+          "index": 33,
+          "text": "ListoBloqueado",
+          "label": "Listo",
+          "content": "Bloqueado",
+          "x": 28,
+          "y": 4504.1875,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": 4590.1875,
+          "labelRect": {
+            "x": 28,
+            "y": 4504.1875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4534.1875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4534.1875,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": 4590.1875
+          }
+        },
+        {
+          "index": 34,
+          "text": "Direcciónnacos-prod.internal.shoptest.example:8848",
+          "label": "Dirección",
+          "content": "nacos-prod.internal.shoptest.example:8848",
+          "x": 28,
+          "y": 4590.1875,
+          "width": 264,
+          "height": 100.5,
+          "right": 292,
+          "bottom": 4690.6875,
+          "labelRect": {
+            "x": 28,
+            "y": 4590.1875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4620.1875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4620.1875,
+            "width": 264,
+            "height": 70.5,
+            "right": 292,
+            "bottom": 4690.6875
+          }
+        },
+        {
+          "index": 35,
+          "text": "Espacio de nombresproduction-commerce-namespace-with-long-name",
+          "label": "Espacio de nombres",
+          "content": "production-commerce-namespace-with-long-name",
+          "x": 28,
+          "y": 4690.6875,
+          "width": 264,
+          "height": 81,
+          "right": 292,
+          "bottom": 4771.6875,
+          "labelRect": {
+            "x": 28,
+            "y": 4690.6875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4720.6875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4720.6875,
+            "width": 264,
+            "height": 51,
+            "right": 292,
+            "bottom": 4771.6875
+          }
+        },
+        {
+          "index": 36,
+          "text": "GrupoSHOPTEST_PRODUCTION_GROUP",
+          "label": "Grupo",
+          "content": "SHOPTEST_PRODUCTION_GROUP",
+          "x": 28,
+          "y": 4771.6875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 4833.1875,
+          "labelRect": {
+            "x": 28,
+            "y": 4771.6875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4801.6875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4801.6875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 4833.1875
+          }
+        },
+        {
+          "index": 37,
+          "text": "ConfiguraciónActivado",
+          "label": "Configuración",
+          "content": "Activado",
+          "x": 28,
+          "y": 4833.1875,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": 4919.1875,
+          "labelRect": {
+            "x": 28,
+            "y": 4833.1875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4863.1875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4863.1875,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": 4919.1875
+          }
+        },
+        {
+          "index": 38,
+          "text": "DescubrimientoActivado",
+          "label": "Descubrimiento",
+          "content": "Activado",
+          "x": 28,
+          "y": 4919.1875,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": 5005.1875,
+          "labelRect": {
+            "x": 28,
+            "y": 4919.1875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4949.1875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4949.1875,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": 5005.1875
+          }
+        },
+        {
+          "index": 39,
+          "text": "RegistroDesactivado",
+          "label": "Registro",
+          "content": "Desactivado",
+          "x": 28,
+          "y": 5005.1875,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": 5091.1875,
+          "labelRect": {
+            "x": 28,
+            "y": 5005.1875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 5035.1875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 5035.1875,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": 5091.1875
+          }
+        },
+        {
+          "index": 40,
+          "text": "Estado de servicioWARN",
+          "label": "Estado de servicio",
+          "content": "WARN",
+          "x": 28,
+          "y": 5091.1875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 5152.6875,
+          "labelRect": {
+            "x": 28,
+            "y": 5091.1875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 5121.1875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 5121.1875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 5152.6875
+          }
+        },
+        {
+          "index": 41,
+          "text": "Data IDshop-backend-production.yaml",
+          "label": "Data ID",
+          "content": "shop-backend-production.yaml",
+          "x": 28,
+          "y": 5152.6875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 5214.1875,
+          "labelRect": {
+            "x": 28,
+            "y": 5152.6875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 5182.6875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 5182.6875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 5214.1875
+          }
+        },
+        {
+          "index": 42,
+          "text": "Latencia840 ms",
+          "label": "Latencia",
+          "content": "840 ms",
+          "x": 28,
+          "y": 5214.1875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 5275.6875,
+          "labelRect": {
+            "x": 28,
+            "y": 5214.1875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 5244.1875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 5244.1875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 5275.6875
+          }
+        },
+        {
+          "index": 43,
+          "text": "AdvertenciasDiscovery registration is disabled, so this instance will not appear in service registry.Config snapshot is older than the last successful deployment.",
+          "label": "Advertencias",
+          "content": "Discovery registration is disabled, so this instance will not appear in service registry.Config snapshot is older than the last successful deployment.",
+          "x": 28,
+          "y": 5275.6875,
+          "width": 264,
+          "height": 147.484375,
+          "right": 292,
+          "bottom": 5423.171875,
+          "labelRect": {
+            "x": 28,
+            "y": 5275.6875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 5305.6875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 5305.6875,
+            "width": 264,
+            "height": 117.484375,
+            "right": 292,
+            "bottom": 5423.171875
+          }
+        },
+        {
+          "index": 44,
+          "text": "FalloNacos heartbeat latency exceeded the 800 ms operational threshold.",
+          "label": "Fallo",
+          "content": "Nacos heartbeat latency exceeded the 800 ms operational threshold.",
+          "x": 28,
+          "y": 5423.171875,
+          "width": 264,
+          "height": 102.890625,
+          "right": 292,
+          "bottom": 5526.0625,
+          "labelRect": {
+            "x": 28,
+            "y": 5423.171875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 5453.171875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 5453.171875,
+            "width": 264,
+            "height": 72.890625,
+            "right": 292,
+            "bottom": 5526.0625
+          }
+        }
+      ],
+      "tags": [
+        {
+          "index": 0,
+          "text": "Degradado",
+          "x": 41,
+          "y": 1838.21875,
+          "width": 92.234375,
+          "height": 44,
+          "right": 133.234375,
+          "bottom": 1882.21875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 1,
+          "text": "Bloqueado",
+          "x": 147.234375,
+          "y": 1838.21875,
+          "width": 89.71875,
+          "height": 44,
+          "right": 236.953125,
+          "bottom": 1882.21875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 2,
+          "text": "prod",
+          "x": 41,
+          "y": 2112.71875,
+          "width": 49.34375,
+          "height": 44,
+          "right": 90.34375,
+          "bottom": 2156.71875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 3,
+          "text": "nacos-config",
+          "x": 98.34375,
+          "y": 2112.71875,
+          "width": 103.953125,
+          "height": 44,
+          "right": 202.296875,
+          "bottom": 2156.71875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 4,
+          "text": "redis-required",
+          "x": 41,
+          "y": 2156.71875,
+          "width": 114.84375,
+          "height": 44,
+          "right": 155.84375,
+          "bottom": 2200.71875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 5,
+          "text": "Degradado",
+          "x": 26,
+          "y": 2379.96875,
+          "width": 92.234375,
+          "height": 44,
+          "right": 118.234375,
+          "bottom": 2423.96875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 6,
+          "text": "Bloqueado",
+          "x": 40,
+          "y": 2526.96875,
+          "width": 89.71875,
+          "height": 44,
+          "right": 129.71875,
+          "bottom": 2570.96875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 7,
+          "text": "Activado",
+          "x": 40,
+          "y": 2612.96875,
+          "width": 77.015625,
+          "height": 44,
+          "right": 117.015625,
+          "bottom": 2656.96875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 8,
+          "text": "Caído",
+          "x": 161.28125,
+          "y": 3285.4375,
+          "width": 55.859375,
+          "height": 44,
+          "right": 217.140625,
+          "bottom": 3329.4375,
+          "visibleRatio": 0
+        },
+        {
+          "index": 9,
+          "text": "Bloqueado",
+          "x": 40,
+          "y": 3424.4375,
+          "width": 89.71875,
+          "height": 44,
+          "right": 129.71875,
+          "bottom": 3468.4375,
+          "visibleRatio": 0
+        },
+        {
+          "index": 10,
+          "text": "Activo",
+          "x": 80.53125,
+          "y": 3894.4375,
+          "width": 60.328125,
+          "height": 44,
+          "right": 140.859375,
+          "bottom": 3938.4375,
+          "visibleRatio": 0
+        },
+        {
+          "index": 11,
+          "text": "Listo",
+          "x": 40,
+          "y": 3985.4375,
+          "width": 50.890625,
+          "height": 44,
+          "right": 90.890625,
+          "bottom": 4029.4375,
+          "visibleRatio": 0
+        },
+        {
+          "index": 12,
+          "text": "Activado",
+          "x": 40,
+          "y": 4071.4375,
+          "width": 77.015625,
+          "height": 44,
+          "right": 117.015625,
+          "bottom": 4115.4375,
+          "visibleRatio": 0
+        },
+        {
+          "index": 13,
+          "text": "Degradado",
+          "x": 26,
+          "y": 4445.1875,
+          "width": 92.234375,
+          "height": 44,
+          "right": 118.234375,
+          "bottom": 4489.1875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 14,
+          "text": "Bloqueado",
+          "x": 40,
+          "y": 4536.1875,
+          "width": 89.71875,
+          "height": 44,
+          "right": 129.71875,
+          "bottom": 4580.1875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 15,
+          "text": "Activado",
+          "x": 40,
+          "y": 4865.1875,
+          "width": 77.015625,
+          "height": 44,
+          "right": 117.015625,
+          "bottom": 4909.1875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 16,
+          "text": "Activado",
+          "x": 40,
+          "y": 4951.1875,
+          "width": 77.015625,
+          "height": 44,
+          "right": 117.015625,
+          "bottom": 4995.1875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 17,
+          "text": "Desactivado",
+          "x": 40,
+          "y": 5037.1875,
+          "width": 101.0625,
+          "height": 44,
+          "right": 141.0625,
+          "bottom": 5081.1875,
+          "visibleRatio": 0
+        }
+      ],
+      "overflowEls": [],
+      "hits": [
+        {
+          "selector": ".system-monitor__hero .ant-btn",
+          "point": {
+            "x": 160,
+            "y": 334
+          },
+          "hitTag": "SPAN",
+          "hitClass": "shop-button__label",
+          "hitText": "Actualizar"
+        },
+        {
+          "selector": ".system-monitor__stats .ant-card:nth-child(1)",
+          "point": {
+            "x": 160,
+            "y": 428.59375
+          },
+          "hitTag": "SPAN",
+          "hitClass": "shop-statistic__value ant-statistic-content-value",
+          "hitText": "Problema de dependencia crítica"
+        },
+        {
+          "selector": ".system-monitor__card:nth-of-type(2)",
+          "point": {
+            "x": 160,
+            "y": 567
+          },
+          "hitTag": "SPAN",
+          "hitClass": "shop-statistic__value ant-statistic-content-value",
+          "hitText": "shop-backend-production-cluster-east-long-name-for-status-card"
+        },
+        {
+          "selector": ".system-monitor__card:last-of-type",
+          "point": {
+            "x": 160,
+            "y": 567
+          },
+          "hitTag": "SPAN",
+          "hitClass": "shop-statistic__value ant-statistic-content-value",
+          "hitText": "shop-backend-production-cluster-east-long-name-for-status-card"
+        }
+      ]
+    },
+    {
+      "state": "middle",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "body": {
+        "scrollWidth": 320,
+        "clientWidth": 320,
+        "scrollHeight": 5967,
+        "clientHeight": 568
+      },
+      "rects": {
+        "adminHeader": {
+          "selector": ".admin-layout__header",
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 137,
+          "right": 320,
+          "bottom": 137,
+          "position": "sticky",
+          "zIndex": "60",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "adminContent": {
+          "selector": ".admin-layout__content",
+          "x": 5,
+          "y": -266,
+          "width": 310,
+          "height": 5820.0625,
+          "right": 315,
+          "bottom": 5554.0625,
+          "position": "relative",
+          "zIndex": "auto",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        },
+        "page": {
+          "selector": ".system-monitor",
+          "x": 13,
+          "y": -258,
+          "width": 294,
+          "height": 5804.0625,
+          "right": 307,
+          "bottom": 5546.0625,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "hidden",
+          "overflowY": "auto"
+        },
+        "hero": {
+          "selector": ".system-monitor__hero",
+          "x": 13,
+          "y": -258,
+          "width": 294,
+          "height": 219,
+          "right": 307,
+          "bottom": -39,
+          "position": "relative",
+          "zIndex": "8",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "stats": {
+          "selector": ".system-monitor__stats",
+          "x": 13,
+          "y": -27,
+          "width": 294,
+          "height": 410.75,
+          "right": 307,
+          "bottom": 383.75,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "alert": {
+          "selector": ".system-monitor__alert",
+          "x": 13,
+          "y": 383.75,
+          "width": 294,
+          "height": 136.46875,
+          "right": 307,
+          "bottom": 520.21875,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "resourceGrid": {
+          "selector": ".system-monitor__resourceGrid",
+          "x": 13,
+          "y": 532.21875,
+          "width": 294,
+          "height": 806,
+          "right": 307,
+          "bottom": 1338.21875,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "opsTips": {
+          "selector": ".system-monitor__card:last-of-type",
+          "x": 13,
+          "y": 920.71875,
+          "width": 294,
+          "height": 417.5,
+          "right": 307,
+          "bottom": 1338.21875,
+          "position": "relative",
+          "zIndex": "auto",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      "stats": [
+        {
+          "index": 0,
+          "text": "Estado generalProblema de dependencia crítica",
+          "x": 13,
+          "y": -27,
+          "width": 294,
+          "height": 95.1875,
+          "right": 307,
+          "bottom": 68.1875,
+          "visibleRatio": 0.716349310571241
+        },
+        {
+          "index": 1,
+          "text": "Aplicaciónshop-backend-production-cluster-east-long-name-for-status-card",
+          "x": 13,
+          "y": 78.1875,
+          "width": 294,
+          "height": 138.375,
+          "right": 307,
+          "bottom": 216.5625,
+          "visibleRatio": 1
+        },
+        {
+          "index": 2,
+          "text": "Tiempo activo11d 10h",
+          "x": 13,
+          "y": 226.5625,
+          "width": 294,
+          "height": 73.59375,
+          "right": 307,
+          "bottom": 300.15625,
+          "visibleRatio": 1
+        },
+        {
+          "index": 3,
+          "text": "Núcleos CPU12",
+          "x": 13,
+          "y": 310.15625,
+          "width": 294,
+          "height": 73.59375,
+          "right": 307,
+          "bottom": 383.75,
+          "visibleRatio": 1
+        }
+      ],
+      "cards": [
+        {
+          "index": 0,
+          "title": "Memoria JVM",
+          "x": 13,
+          "y": 532.21875,
+          "width": 294,
+          "height": 378.5,
+          "right": 307,
+          "bottom": 910.71875,
+          "visibleRatio": 0.0945343461030383
+        },
+        {
+          "index": 1,
+          "title": "Espacio en disco",
+          "x": 13,
+          "y": 920.71875,
+          "width": 294,
+          "height": 417.5,
+          "right": 307,
+          "bottom": 1338.21875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 2,
+          "title": "Entorno de ejecución",
+          "x": 13,
+          "y": 1338.21875,
+          "width": 294,
+          "height": 604.5,
+          "right": 307,
+          "bottom": 1942.71875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 3,
+          "title": "Configuración de producción Degradado",
+          "x": 13,
+          "y": 1942.71875,
+          "width": 294,
+          "height": 933.71875,
+          "right": 307,
+          "bottom": 2876.4375,
+          "visibleRatio": 0
+        },
+        {
+          "index": 4,
+          "title": "Base de datos Caído",
+          "x": 13,
+          "y": 2876.4375,
+          "width": 294,
+          "height": 599,
+          "right": 307,
+          "bottom": 3475.4375,
+          "visibleRatio": 0
+        },
+        {
+          "index": 5,
+          "title": "Redis Activo",
+          "x": 13,
+          "y": 3485.4375,
+          "width": 294,
+          "height": 512.5,
+          "right": 307,
+          "bottom": 3997.9375,
+          "visibleRatio": 0
+        },
+        {
+          "index": 6,
+          "title": "Descubrimiento Nacos Degradado",
+          "x": 13,
+          "y": 4007.9375,
+          "width": 294,
+          "height": 1125.125,
+          "right": 307,
+          "bottom": 5133.0625,
+          "visibleRatio": 0
+        },
+        {
+          "index": 7,
+          "title": "Consejos operativos",
+          "x": 13,
+          "y": 5133.0625,
+          "width": 294,
+          "height": 321,
+          "right": 307,
+          "bottom": 5454.0625,
+          "visibleRatio": 0
+        }
+      ],
+      "descriptionItems": [
+        {
+          "index": 0,
+          "text": "Usado1.6 GB",
+          "label": "Usado",
+          "content": "1.6 GB",
+          "x": 28,
+          "y": 711.21875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 772.71875,
+          "labelRect": {
+            "x": 28,
+            "y": 711.21875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 741.21875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 741.21875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 772.71875
+          }
+        },
+        {
+          "index": 1,
+          "text": "Máximo2.0 GB",
+          "label": "Máximo",
+          "content": "2.0 GB",
+          "x": 28,
+          "y": 772.71875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 834.21875,
+          "labelRect": {
+            "x": 28,
+            "y": 772.71875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 802.71875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 802.71875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 834.21875
+          }
+        },
+        {
+          "index": 2,
+          "text": "Libre102.4 MB",
+          "label": "Libre",
+          "content": "102.4 MB",
+          "x": 28,
+          "y": 834.21875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 895.71875,
+          "labelRect": {
+            "x": 28,
+            "y": 834.21875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 864.21875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 864.21875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 895.71875
+          }
+        },
+        {
+          "index": 3,
+          "text": "Ruta/var/lib/shoptest/runtime/uploads-and-generated-assets-with-long-path",
+          "label": "Ruta",
+          "content": "/var/lib/shoptest/runtime/uploads-and-generated-assets-with-long-path",
+          "x": 28,
+          "y": 1099.71875,
+          "width": 264,
+          "height": 100.5,
+          "right": 292,
+          "bottom": 1200.21875,
+          "labelRect": {
+            "x": 28,
+            "y": 1099.71875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 1129.71875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 1129.71875,
+            "width": 264,
+            "height": 70.5,
+            "right": 292,
+            "bottom": 1200.21875
+          }
+        },
+        {
+          "index": 4,
+          "text": "Usado46.0 GB",
+          "label": "Usado",
+          "content": "46.0 GB",
+          "x": 28,
+          "y": 1200.21875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 1261.71875,
+          "labelRect": {
+            "x": 28,
+            "y": 1200.21875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 1230.21875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 1230.21875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 1261.71875
+          }
+        },
+        {
+          "index": 5,
+          "text": "Total50.0 GB",
+          "label": "Total",
+          "content": "50.0 GB",
+          "x": 28,
+          "y": 1261.71875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 1323.21875,
+          "labelRect": {
+            "x": 28,
+            "y": 1261.71875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 1291.71875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 1291.71875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 1323.21875
+          }
+        },
+        {
+          "index": 6,
+          "text": "Estado backendDegradadoBloqueado",
+          "label": "Estado backend",
+          "content": "DegradadoBloqueado",
+          "x": 29,
+          "y": 1398.21875,
+          "width": 262,
+          "height": 87,
+          "right": 291,
+          "bottom": 1485.21875,
+          "labelRect": {
+            "x": 29,
+            "y": 1398.21875,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": 1428.21875
+          },
+          "contentRect": {
+            "x": 29,
+            "y": 1428.21875,
+            "width": 261,
+            "height": 56,
+            "right": 290,
+            "bottom": 1484.21875
+          }
+        },
+        {
+          "index": 7,
+          "text": "Dirección API/api",
+          "label": "Dirección API",
+          "content": "/api",
+          "x": 29,
+          "y": 1485.21875,
+          "width": 262,
+          "height": 62.5,
+          "right": 291,
+          "bottom": 1547.71875,
+          "labelRect": {
+            "x": 29,
+            "y": 1485.21875,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": 1515.21875
+          },
+          "contentRect": {
+            "x": 29,
+            "y": 1515.21875,
+            "width": 261,
+            "height": 31.5,
+            "right": 290,
+            "bottom": 1546.71875
+          }
+        },
+        {
+          "index": 8,
+          "text": "Puerto8081",
+          "label": "Puerto",
+          "content": "8081",
+          "x": 29,
+          "y": 1547.71875,
+          "width": 262,
+          "height": 62.5,
+          "right": 291,
+          "bottom": 1610.21875,
+          "labelRect": {
+            "x": 29,
+            "y": 1547.71875,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": 1577.71875
+          },
+          "contentRect": {
+            "x": 29,
+            "y": 1577.71875,
+            "width": 261,
+            "height": 31.5,
+            "right": 290,
+            "bottom": 1609.21875
+          }
+        },
+        {
+          "index": 9,
+          "text": "Modoproduction",
+          "label": "Modo",
+          "content": "production",
+          "x": 29,
+          "y": 1610.21875,
+          "width": 262,
+          "height": 62.5,
+          "right": 291,
+          "bottom": 1672.71875,
+          "labelRect": {
+            "x": 29,
+            "y": 1610.21875,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": 1640.21875
+          },
+          "contentRect": {
+            "x": 29,
+            "y": 1640.21875,
+            "width": 261,
+            "height": 31.5,
+            "right": 290,
+            "bottom": 1671.71875
+          }
+        },
+        {
+          "index": 10,
+          "text": "Perfilprodnacos-configredis-required",
+          "label": "Perfil",
+          "content": "prodnacos-configredis-required",
+          "x": 29,
+          "y": 1672.71875,
+          "width": 262,
+          "height": 131,
+          "right": 291,
+          "bottom": 1803.71875,
+          "labelRect": {
+            "x": 29,
+            "y": 1672.71875,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": 1702.71875
+          },
+          "contentRect": {
+            "x": 29,
+            "y": 1702.71875,
+            "width": 261,
+            "height": 100,
+            "right": 290,
+            "bottom": 1802.71875
+          }
+        },
+        {
+          "index": 11,
+          "text": "Java21.0.5-temurin-long-runtime-build",
+          "label": "Java",
+          "content": "21.0.5-temurin-long-runtime-build",
+          "x": 29,
+          "y": 1803.71875,
+          "width": 262,
+          "height": 62.5,
+          "right": 291,
+          "bottom": 1866.21875,
+          "labelRect": {
+            "x": 29,
+            "y": 1803.71875,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": 1833.71875
+          },
+          "contentRect": {
+            "x": 29,
+            "y": 1833.71875,
+            "width": 261,
+            "height": 31.5,
+            "right": 290,
+            "bottom": 1865.21875
+          }
+        },
+        {
+          "index": 12,
+          "text": "SistemaLinux 6.8.0-1017-oracle",
+          "label": "Sistema",
+          "content": "Linux 6.8.0-1017-oracle",
+          "x": 29,
+          "y": 1866.21875,
+          "width": 262,
+          "height": 61.5,
+          "right": 291,
+          "bottom": 1927.71875,
+          "labelRect": {
+            "x": 29,
+            "y": 1866.21875,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": 1896.21875
+          },
+          "contentRect": {
+            "x": 29,
+            "y": 1896.21875,
+            "width": 261,
+            "height": 31.5,
+            "right": 290,
+            "bottom": 1927.71875
+          }
+        },
+        {
+          "index": 13,
+          "text": "ListoBloqueado",
+          "label": "Listo",
+          "content": "Bloqueado",
+          "x": 28,
+          "y": 2086.96875,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": 2172.96875,
+          "labelRect": {
+            "x": 28,
+            "y": 2086.96875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 2116.96875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 2116.96875,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": 2172.96875
+          }
+        },
+        {
+          "index": 14,
+          "text": "RequeridoActivado",
+          "label": "Requerido",
+          "content": "Activado",
+          "x": 28,
+          "y": 2172.96875,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": 2258.96875,
+          "labelRect": {
+            "x": 28,
+            "y": 2172.96875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 2202.96875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 2202.96875,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": 2258.96875
+          }
+        },
+        {
+          "index": 15,
+          "text": "Modoproduction",
+          "label": "Modo",
+          "content": "production",
+          "x": 28,
+          "y": 2258.96875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 2320.46875,
+          "labelRect": {
+            "x": 28,
+            "y": 2258.96875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 2288.96875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 2288.96875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 2320.46875
+          }
+        },
+        {
+          "index": 16,
+          "text": "Cuentas de correo1",
+          "label": "Cuentas de correo",
+          "content": "1",
+          "x": 28,
+          "y": 2320.46875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 2381.96875,
+          "labelRect": {
+            "x": 28,
+            "y": 2320.46875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 2350.46875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 2350.46875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 2381.96875
+          }
+        },
+        {
+          "index": 17,
+          "text": "Canales de pago1/5",
+          "label": "Canales de pago",
+          "content": "1/5",
+          "x": 28,
+          "y": 2381.96875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 2443.46875,
+          "labelRect": {
+            "x": 28,
+            "y": 2381.96875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 2411.96875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 2411.96875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 2443.46875
+          }
+        },
+        {
+          "index": 18,
+          "text": "Webhooks del proveedor-/-",
+          "label": "Webhooks del proveedor",
+          "content": "-/-",
+          "x": 28,
+          "y": 2443.46875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 2504.96875,
+          "labelRect": {
+            "x": 28,
+            "y": 2443.46875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 2473.46875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 2473.46875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 2504.96875
+          }
+        },
+        {
+          "index": 19,
+          "text": "Orígenes CORS9",
+          "label": "Orígenes CORS",
+          "content": "9",
+          "x": 28,
+          "y": 2504.96875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 2566.46875,
+          "labelRect": {
+            "x": 28,
+            "y": 2504.96875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 2534.96875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 2534.96875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 2566.46875
+          }
+        },
+        {
+          "index": 20,
+          "text": "BloqueosPayment channel VISA is enabled but missing a provider checkout URL for production traffic.Mail account transactional-prod has no verified sender configured.",
+          "label": "Bloqueos",
+          "content": "Payment channel VISA is enabled but missing a provider checkout URL for production traffic.Mail account transactional-prod has no verified sender configured.",
+          "x": 28,
+          "y": 2566.46875,
+          "width": 264,
+          "height": 147.484375,
+          "right": 292,
+          "bottom": 2713.953125,
+          "labelRect": {
+            "x": 28,
+            "y": 2566.46875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 2596.46875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 2596.46875,
+            "width": 264,
+            "height": 117.484375,
+            "right": 292,
+            "bottom": 2713.953125
+          }
+        },
+        {
+          "index": 21,
+          "text": "AdvertenciasCORS origins include a staging host and should be reviewed before launch.Nacos namespace is configured but registration is disabled.",
+          "label": "Advertencias",
+          "content": "CORS origins include a staging host and should be reviewed before launch.Nacos namespace is configured but registration is disabled.",
+          "x": 28,
+          "y": 2713.953125,
+          "width": 264,
+          "height": 147.484375,
+          "right": 292,
+          "bottom": 2861.4375,
+          "labelRect": {
+            "x": 28,
+            "y": 2713.953125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 2743.953125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 2743.953125,
+            "width": 264,
+            "height": 117.484375,
+            "right": 292,
+            "bottom": 2861.4375
+          }
+        },
+        {
+          "index": 22,
+          "text": "ListoBloqueado",
+          "label": "Listo",
+          "content": "Bloqueado",
+          "x": 28,
+          "y": 2984.4375,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": 3070.4375,
+          "labelRect": {
+            "x": 28,
+            "y": 2984.4375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 3014.4375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 3014.4375,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": 3070.4375
+          }
+        },
+        {
+          "index": 23,
+          "text": "Latencia2000 ms",
+          "label": "Latencia",
+          "content": "2000 ms",
+          "x": 28,
+          "y": 3070.4375,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 3131.9375,
+          "labelRect": {
+            "x": 28,
+            "y": 3070.4375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 3100.4375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 3100.4375,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 3131.9375
+          }
+        },
+        {
+          "index": 24,
+          "text": "URLjdbc:mysql://****:****@primary-db.internal.shoptest.example:3306/shoptest?useSSL=true&allowPublicKeyRetrieval=false&serverTimezone=UTC",
+          "label": "URL",
+          "content": "jdbc:mysql://****:****@primary-db.internal.shoptest.example:3306/shoptest?useSSL=true&allowPublicKeyRetrieval=false&serverTimezone=UTC",
+          "x": 28,
+          "y": 3131.9375,
+          "width": 264,
+          "height": 147,
+          "right": 292,
+          "bottom": 3278.9375,
+          "labelRect": {
+            "x": 28,
+            "y": 3131.9375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 3161.9375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 3161.9375,
+            "width": 264,
+            "height": 117,
+            "right": 292,
+            "bottom": 3278.9375
+          }
+        },
+        {
+          "index": 25,
+          "text": "Controladorcom.mysql.cj.jdbc.Driver",
+          "label": "Controlador",
+          "content": "com.mysql.cj.jdbc.Driver",
+          "x": 28,
+          "y": 3278.9375,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 3340.4375,
+          "labelRect": {
+            "x": 28,
+            "y": 3278.9375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 3308.9375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 3308.9375,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 3340.4375
+          }
+        },
+        {
+          "index": 26,
+          "text": "FalloCommunications link failure: timed out after 2000ms while checking primary-db.internal.shoptest.example",
+          "label": "Fallo",
+          "content": "Communications link failure: timed out after 2000ms while checking primary-db.internal.shoptest.example",
+          "x": 28,
+          "y": 3340.4375,
+          "width": 264,
+          "height": 120,
+          "right": 292,
+          "bottom": 3460.4375,
+          "labelRect": {
+            "x": 28,
+            "y": 3340.4375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 3370.4375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 3370.4375,
+            "width": 264,
+            "height": 90,
+            "right": 292,
+            "bottom": 3460.4375
+          }
+        },
+        {
+          "index": 27,
+          "text": "ListoListo",
+          "label": "Listo",
+          "content": "Listo",
+          "x": 28,
+          "y": 3545.4375,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": 3631.4375,
+          "labelRect": {
+            "x": 28,
+            "y": 3545.4375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 3575.4375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 3575.4375,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": 3631.4375
+          }
+        },
+        {
+          "index": 28,
+          "text": "RequeridoActivado",
+          "label": "Requerido",
+          "content": "Activado",
+          "x": 28,
+          "y": 3631.4375,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": 3717.4375,
+          "labelRect": {
+            "x": 28,
+            "y": 3631.4375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 3661.4375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 3661.4375,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": 3717.4375
+          }
+        },
+        {
+          "index": 29,
+          "text": "Direcciónredis-cache-production-east.internal.shoptest.example:6379",
+          "label": "Dirección",
+          "content": "redis-cache-production-east.internal.shoptest.example:6379",
+          "x": 28,
+          "y": 3717.4375,
+          "width": 264,
+          "height": 81,
+          "right": 292,
+          "bottom": 3798.4375,
+          "labelRect": {
+            "x": 28,
+            "y": 3717.4375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 3747.4375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 3747.4375,
+            "width": 264,
+            "height": 51,
+            "right": 292,
+            "bottom": 3798.4375
+          }
+        },
+        {
+          "index": 30,
+          "text": "DB0",
+          "label": "DB",
+          "content": "0",
+          "x": 28,
+          "y": 3798.4375,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 3859.9375,
+          "labelRect": {
+            "x": 28,
+            "y": 3798.4375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 3828.4375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 3828.4375,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 3859.9375
+          }
+        },
+        {
+          "index": 31,
+          "text": "Latencia18 ms",
+          "label": "Latencia",
+          "content": "18 ms",
+          "x": 28,
+          "y": 3859.9375,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 3921.4375,
+          "labelRect": {
+            "x": 28,
+            "y": 3859.9375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 3889.9375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 3889.9375,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 3921.4375
+          }
+        },
+        {
+          "index": 32,
+          "text": "PINGPONG",
+          "label": "PING",
+          "content": "PONG",
+          "x": 28,
+          "y": 3921.4375,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 3982.9375,
+          "labelRect": {
+            "x": 28,
+            "y": 3921.4375,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 3951.4375
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 3951.4375,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 3982.9375
+          }
+        },
+        {
+          "index": 33,
+          "text": "ListoBloqueado",
+          "label": "Listo",
+          "content": "Bloqueado",
+          "x": 28,
+          "y": 4096.1875,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": 4182.1875,
+          "labelRect": {
+            "x": 28,
+            "y": 4096.1875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4126.1875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4126.1875,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": 4182.1875
+          }
+        },
+        {
+          "index": 34,
+          "text": "Direcciónnacos-prod.internal.shoptest.example:8848",
+          "label": "Dirección",
+          "content": "nacos-prod.internal.shoptest.example:8848",
+          "x": 28,
+          "y": 4182.1875,
+          "width": 264,
+          "height": 100.5,
+          "right": 292,
+          "bottom": 4282.6875,
+          "labelRect": {
+            "x": 28,
+            "y": 4182.1875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4212.1875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4212.1875,
+            "width": 264,
+            "height": 70.5,
+            "right": 292,
+            "bottom": 4282.6875
+          }
+        },
+        {
+          "index": 35,
+          "text": "Espacio de nombresproduction-commerce-namespace-with-long-name",
+          "label": "Espacio de nombres",
+          "content": "production-commerce-namespace-with-long-name",
+          "x": 28,
+          "y": 4282.6875,
+          "width": 264,
+          "height": 81,
+          "right": 292,
+          "bottom": 4363.6875,
+          "labelRect": {
+            "x": 28,
+            "y": 4282.6875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4312.6875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4312.6875,
+            "width": 264,
+            "height": 51,
+            "right": 292,
+            "bottom": 4363.6875
+          }
+        },
+        {
+          "index": 36,
+          "text": "GrupoSHOPTEST_PRODUCTION_GROUP",
+          "label": "Grupo",
+          "content": "SHOPTEST_PRODUCTION_GROUP",
+          "x": 28,
+          "y": 4363.6875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 4425.1875,
+          "labelRect": {
+            "x": 28,
+            "y": 4363.6875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4393.6875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4393.6875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 4425.1875
+          }
+        },
+        {
+          "index": 37,
+          "text": "ConfiguraciónActivado",
+          "label": "Configuración",
+          "content": "Activado",
+          "x": 28,
+          "y": 4425.1875,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": 4511.1875,
+          "labelRect": {
+            "x": 28,
+            "y": 4425.1875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4455.1875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4455.1875,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": 4511.1875
+          }
+        },
+        {
+          "index": 38,
+          "text": "DescubrimientoActivado",
+          "label": "Descubrimiento",
+          "content": "Activado",
+          "x": 28,
+          "y": 4511.1875,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": 4597.1875,
+          "labelRect": {
+            "x": 28,
+            "y": 4511.1875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4541.1875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4541.1875,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": 4597.1875
+          }
+        },
+        {
+          "index": 39,
+          "text": "RegistroDesactivado",
+          "label": "Registro",
+          "content": "Desactivado",
+          "x": 28,
+          "y": 4597.1875,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": 4683.1875,
+          "labelRect": {
+            "x": 28,
+            "y": 4597.1875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4627.1875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4627.1875,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": 4683.1875
+          }
+        },
+        {
+          "index": 40,
+          "text": "Estado de servicioWARN",
+          "label": "Estado de servicio",
+          "content": "WARN",
+          "x": 28,
+          "y": 4683.1875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 4744.6875,
+          "labelRect": {
+            "x": 28,
+            "y": 4683.1875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4713.1875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4713.1875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 4744.6875
+          }
+        },
+        {
+          "index": 41,
+          "text": "Data IDshop-backend-production.yaml",
+          "label": "Data ID",
+          "content": "shop-backend-production.yaml",
+          "x": 28,
+          "y": 4744.6875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 4806.1875,
+          "labelRect": {
+            "x": 28,
+            "y": 4744.6875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4774.6875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4774.6875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 4806.1875
+          }
+        },
+        {
+          "index": 42,
+          "text": "Latencia840 ms",
+          "label": "Latencia",
+          "content": "840 ms",
+          "x": 28,
+          "y": 4806.1875,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": 4867.6875,
+          "labelRect": {
+            "x": 28,
+            "y": 4806.1875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4836.1875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4836.1875,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": 4867.6875
+          }
+        },
+        {
+          "index": 43,
+          "text": "AdvertenciasDiscovery registration is disabled, so this instance will not appear in service registry.Config snapshot is older than the last successful deployment.",
+          "label": "Advertencias",
+          "content": "Discovery registration is disabled, so this instance will not appear in service registry.Config snapshot is older than the last successful deployment.",
+          "x": 28,
+          "y": 4867.6875,
+          "width": 264,
+          "height": 147.484375,
+          "right": 292,
+          "bottom": 5015.171875,
+          "labelRect": {
+            "x": 28,
+            "y": 4867.6875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 4897.6875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 4897.6875,
+            "width": 264,
+            "height": 117.484375,
+            "right": 292,
+            "bottom": 5015.171875
+          }
+        },
+        {
+          "index": 44,
+          "text": "FalloNacos heartbeat latency exceeded the 800 ms operational threshold.",
+          "label": "Fallo",
+          "content": "Nacos heartbeat latency exceeded the 800 ms operational threshold.",
+          "x": 28,
+          "y": 5015.171875,
+          "width": 264,
+          "height": 102.890625,
+          "right": 292,
+          "bottom": 5118.0625,
+          "labelRect": {
+            "x": 28,
+            "y": 5015.171875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 5045.171875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 5045.171875,
+            "width": 264,
+            "height": 72.890625,
+            "right": 292,
+            "bottom": 5118.0625
+          }
+        }
+      ],
+      "tags": [
+        {
+          "index": 0,
+          "text": "Degradado",
+          "x": 41,
+          "y": 1430.21875,
+          "width": 92.234375,
+          "height": 44,
+          "right": 133.234375,
+          "bottom": 1474.21875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 1,
+          "text": "Bloqueado",
+          "x": 147.234375,
+          "y": 1430.21875,
+          "width": 89.71875,
+          "height": 44,
+          "right": 236.953125,
+          "bottom": 1474.21875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 2,
+          "text": "prod",
+          "x": 41,
+          "y": 1704.71875,
+          "width": 49.34375,
+          "height": 44,
+          "right": 90.34375,
+          "bottom": 1748.71875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 3,
+          "text": "nacos-config",
+          "x": 98.34375,
+          "y": 1704.71875,
+          "width": 103.953125,
+          "height": 44,
+          "right": 202.296875,
+          "bottom": 1748.71875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 4,
+          "text": "redis-required",
+          "x": 41,
+          "y": 1748.71875,
+          "width": 114.84375,
+          "height": 44,
+          "right": 155.84375,
+          "bottom": 1792.71875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 5,
+          "text": "Degradado",
+          "x": 26,
+          "y": 1971.96875,
+          "width": 92.234375,
+          "height": 44,
+          "right": 118.234375,
+          "bottom": 2015.96875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 6,
+          "text": "Bloqueado",
+          "x": 40,
+          "y": 2118.96875,
+          "width": 89.71875,
+          "height": 44,
+          "right": 129.71875,
+          "bottom": 2162.96875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 7,
+          "text": "Activado",
+          "x": 40,
+          "y": 2204.96875,
+          "width": 77.015625,
+          "height": 44,
+          "right": 117.015625,
+          "bottom": 2248.96875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 8,
+          "text": "Caído",
+          "x": 161.28125,
+          "y": 2877.4375,
+          "width": 55.859375,
+          "height": 44,
+          "right": 217.140625,
+          "bottom": 2921.4375,
+          "visibleRatio": 0
+        },
+        {
+          "index": 9,
+          "text": "Bloqueado",
+          "x": 40,
+          "y": 3016.4375,
+          "width": 89.71875,
+          "height": 44,
+          "right": 129.71875,
+          "bottom": 3060.4375,
+          "visibleRatio": 0
+        },
+        {
+          "index": 10,
+          "text": "Activo",
+          "x": 80.53125,
+          "y": 3486.4375,
+          "width": 60.328125,
+          "height": 44,
+          "right": 140.859375,
+          "bottom": 3530.4375,
+          "visibleRatio": 0
+        },
+        {
+          "index": 11,
+          "text": "Listo",
+          "x": 40,
+          "y": 3577.4375,
+          "width": 50.890625,
+          "height": 44,
+          "right": 90.890625,
+          "bottom": 3621.4375,
+          "visibleRatio": 0
+        },
+        {
+          "index": 12,
+          "text": "Activado",
+          "x": 40,
+          "y": 3663.4375,
+          "width": 77.015625,
+          "height": 44,
+          "right": 117.015625,
+          "bottom": 3707.4375,
+          "visibleRatio": 0
+        },
+        {
+          "index": 13,
+          "text": "Degradado",
+          "x": 26,
+          "y": 4037.1875,
+          "width": 92.234375,
+          "height": 44,
+          "right": 118.234375,
+          "bottom": 4081.1875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 14,
+          "text": "Bloqueado",
+          "x": 40,
+          "y": 4128.1875,
+          "width": 89.71875,
+          "height": 44,
+          "right": 129.71875,
+          "bottom": 4172.1875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 15,
+          "text": "Activado",
+          "x": 40,
+          "y": 4457.1875,
+          "width": 77.015625,
+          "height": 44,
+          "right": 117.015625,
+          "bottom": 4501.1875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 16,
+          "text": "Activado",
+          "x": 40,
+          "y": 4543.1875,
+          "width": 77.015625,
+          "height": 44,
+          "right": 117.015625,
+          "bottom": 4587.1875,
+          "visibleRatio": 0
+        },
+        {
+          "index": 17,
+          "text": "Desactivado",
+          "x": 40,
+          "y": 4629.1875,
+          "width": 101.0625,
+          "height": 44,
+          "right": 141.0625,
+          "bottom": 4673.1875,
+          "visibleRatio": 0
+        }
+      ],
+      "overflowEls": [],
+      "hits": [
+        {
+          "selector": ".system-monitor__hero .ant-btn",
+          "point": {
+            "x": 160,
+            "y": 0
+          },
+          "hitTag": "HEADER",
+          "hitClass": "ant-layout-header admin-layout__header css-qlmvhk",
+          "hitText": "Volver a la tiendaReportar bugCerrar sesión"
+        },
+        {
+          "selector": ".system-monitor__stats .ant-card:nth-child(1)",
+          "point": {
+            "x": 160,
+            "y": 20.59375
+          },
+          "hitTag": "SPAN",
+          "hitClass": "",
+          "hitText": "Volver a la tienda"
+        },
+        {
+          "selector": ".system-monitor__card:nth-of-type(2)",
+          "point": {
+            "x": 160,
+            "y": 567
+          },
+          "hitTag": "DIV",
+          "hitClass": "shop-card__head ant-card-head",
+          "hitText": "Memoria JVM"
+        },
+        {
+          "selector": ".system-monitor__card:last-of-type",
+          "point": {
+            "x": 160,
+            "y": 567
+          },
+          "hitTag": "DIV",
+          "hitClass": "shop-card__head ant-card-head",
+          "hitText": "Memoria JVM"
+        }
+      ]
+    },
+    {
+      "state": "bottom",
+      "viewport": {
+        "width": 320,
+        "height": 568
+      },
+      "body": {
+        "scrollWidth": 320,
+        "clientWidth": 320,
+        "scrollHeight": 5967,
+        "clientHeight": 568
+      },
+      "rects": {
+        "adminHeader": {
+          "selector": ".admin-layout__header",
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 137,
+          "right": 320,
+          "bottom": 137,
+          "position": "sticky",
+          "zIndex": "60",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "adminContent": {
+          "selector": ".admin-layout__content",
+          "x": 5,
+          "y": -5257,
+          "width": 310,
+          "height": 5820.0625,
+          "right": 315,
+          "bottom": 563.0625,
+          "position": "relative",
+          "zIndex": "auto",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        },
+        "page": {
+          "selector": ".system-monitor",
+          "x": 13,
+          "y": -5249,
+          "width": 294,
+          "height": 5804.0625,
+          "right": 307,
+          "bottom": 555.0625,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "hidden",
+          "overflowY": "auto"
+        },
+        "hero": {
+          "selector": ".system-monitor__hero",
+          "x": 13,
+          "y": -5249,
+          "width": 294,
+          "height": 219,
+          "right": 307,
+          "bottom": -5030,
+          "position": "relative",
+          "zIndex": "8",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "stats": {
+          "selector": ".system-monitor__stats",
+          "x": 13,
+          "y": -5018,
+          "width": 294,
+          "height": 410.75,
+          "right": 307,
+          "bottom": -4607.25,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "alert": {
+          "selector": ".system-monitor__alert",
+          "x": 13,
+          "y": -4607.25,
+          "width": 294,
+          "height": 136.46875,
+          "right": 307,
+          "bottom": -4470.78125,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "resourceGrid": {
+          "selector": ".system-monitor__resourceGrid",
+          "x": 13,
+          "y": -4458.78125,
+          "width": 294,
+          "height": 806,
+          "right": 307,
+          "bottom": -3652.78125,
+          "position": "static",
+          "zIndex": "auto",
+          "overflowX": "visible",
+          "overflowY": "visible"
+        },
+        "opsTips": {
+          "selector": ".system-monitor__card:last-of-type",
+          "x": 13,
+          "y": -4070.28125,
+          "width": 294,
+          "height": 417.5,
+          "right": 307,
+          "bottom": -3652.78125,
+          "position": "relative",
+          "zIndex": "auto",
+          "overflowX": "hidden",
+          "overflowY": "hidden"
+        }
+      },
+      "stats": [
+        {
+          "index": 0,
+          "text": "Estado generalProblema de dependencia crítica",
+          "x": 13,
+          "y": -5018,
+          "width": 294,
+          "height": 95.1875,
+          "right": 307,
+          "bottom": -4922.8125,
+          "visibleRatio": 0
+        },
+        {
+          "index": 1,
+          "text": "Aplicaciónshop-backend-production-cluster-east-long-name-for-status-card",
+          "x": 13,
+          "y": -4912.8125,
+          "width": 294,
+          "height": 138.375,
+          "right": 307,
+          "bottom": -4774.4375,
+          "visibleRatio": 0
+        },
+        {
+          "index": 2,
+          "text": "Tiempo activo11d 10h",
+          "x": 13,
+          "y": -4764.4375,
+          "width": 294,
+          "height": 73.59375,
+          "right": 307,
+          "bottom": -4690.84375,
+          "visibleRatio": 0
+        },
+        {
+          "index": 3,
+          "text": "Núcleos CPU12",
+          "x": 13,
+          "y": -4680.84375,
+          "width": 294,
+          "height": 73.59375,
+          "right": 307,
+          "bottom": -4607.25,
+          "visibleRatio": 0
+        }
+      ],
+      "cards": [
+        {
+          "index": 0,
+          "title": "Memoria JVM",
+          "x": 13,
+          "y": -4458.78125,
+          "width": 294,
+          "height": 378.5,
+          "right": 307,
+          "bottom": -4080.28125,
+          "visibleRatio": 0
+        },
+        {
+          "index": 1,
+          "title": "Espacio en disco",
+          "x": 13,
+          "y": -4070.28125,
+          "width": 294,
+          "height": 417.5,
+          "right": 307,
+          "bottom": -3652.78125,
+          "visibleRatio": 0
+        },
+        {
+          "index": 2,
+          "title": "Entorno de ejecución",
+          "x": 13,
+          "y": -3652.78125,
+          "width": 294,
+          "height": 604.5,
+          "right": 307,
+          "bottom": -3048.28125,
+          "visibleRatio": 0
+        },
+        {
+          "index": 3,
+          "title": "Configuración de producción Degradado",
+          "x": 13,
+          "y": -3048.28125,
+          "width": 294,
+          "height": 933.71875,
+          "right": 307,
+          "bottom": -2114.5625,
+          "visibleRatio": 0
+        },
+        {
+          "index": 4,
+          "title": "Base de datos Caído",
+          "x": 13,
+          "y": -2114.5625,
+          "width": 294,
+          "height": 599,
+          "right": 307,
+          "bottom": -1515.5625,
+          "visibleRatio": 0
+        },
+        {
+          "index": 5,
+          "title": "Redis Activo",
+          "x": 13,
+          "y": -1505.5625,
+          "width": 294,
+          "height": 512.5,
+          "right": 307,
+          "bottom": -993.0625,
+          "visibleRatio": 0
+        },
+        {
+          "index": 6,
+          "title": "Descubrimiento Nacos Degradado",
+          "x": 13,
+          "y": -983.0625,
+          "width": 294,
+          "height": 1125.125,
+          "right": 307,
+          "bottom": 142.0625,
+          "visibleRatio": 0.12626374847239197
+        },
+        {
+          "index": 7,
+          "title": "Consejos operativos",
+          "x": 13,
+          "y": 142.0625,
+          "width": 294,
+          "height": 321,
+          "right": 307,
+          "bottom": 463.0625,
+          "visibleRatio": 1
+        }
+      ],
+      "descriptionItems": [
+        {
+          "index": 0,
+          "text": "Usado1.6 GB",
+          "label": "Usado",
+          "content": "1.6 GB",
+          "x": 28,
+          "y": -4279.78125,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": -4218.28125,
+          "labelRect": {
+            "x": 28,
+            "y": -4279.78125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -4249.78125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -4249.78125,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": -4218.28125
+          }
+        },
+        {
+          "index": 1,
+          "text": "Máximo2.0 GB",
+          "label": "Máximo",
+          "content": "2.0 GB",
+          "x": 28,
+          "y": -4218.28125,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": -4156.78125,
+          "labelRect": {
+            "x": 28,
+            "y": -4218.28125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -4188.28125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -4188.28125,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": -4156.78125
+          }
+        },
+        {
+          "index": 2,
+          "text": "Libre102.4 MB",
+          "label": "Libre",
+          "content": "102.4 MB",
+          "x": 28,
+          "y": -4156.78125,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": -4095.28125,
+          "labelRect": {
+            "x": 28,
+            "y": -4156.78125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -4126.78125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -4126.78125,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": -4095.28125
+          }
+        },
+        {
+          "index": 3,
+          "text": "Ruta/var/lib/shoptest/runtime/uploads-and-generated-assets-with-long-path",
+          "label": "Ruta",
+          "content": "/var/lib/shoptest/runtime/uploads-and-generated-assets-with-long-path",
+          "x": 28,
+          "y": -3891.28125,
+          "width": 264,
+          "height": 100.5,
+          "right": 292,
+          "bottom": -3790.78125,
+          "labelRect": {
+            "x": 28,
+            "y": -3891.28125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -3861.28125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -3861.28125,
+            "width": 264,
+            "height": 70.5,
+            "right": 292,
+            "bottom": -3790.78125
+          }
+        },
+        {
+          "index": 4,
+          "text": "Usado46.0 GB",
+          "label": "Usado",
+          "content": "46.0 GB",
+          "x": 28,
+          "y": -3790.78125,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": -3729.28125,
+          "labelRect": {
+            "x": 28,
+            "y": -3790.78125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -3760.78125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -3760.78125,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": -3729.28125
+          }
+        },
+        {
+          "index": 5,
+          "text": "Total50.0 GB",
+          "label": "Total",
+          "content": "50.0 GB",
+          "x": 28,
+          "y": -3729.28125,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": -3667.78125,
+          "labelRect": {
+            "x": 28,
+            "y": -3729.28125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -3699.28125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -3699.28125,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": -3667.78125
+          }
+        },
+        {
+          "index": 6,
+          "text": "Estado backendDegradadoBloqueado",
+          "label": "Estado backend",
+          "content": "DegradadoBloqueado",
+          "x": 29,
+          "y": -3592.78125,
+          "width": 262,
+          "height": 87,
+          "right": 291,
+          "bottom": -3505.78125,
+          "labelRect": {
+            "x": 29,
+            "y": -3592.78125,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": -3562.78125
+          },
+          "contentRect": {
+            "x": 29,
+            "y": -3562.78125,
+            "width": 261,
+            "height": 56,
+            "right": 290,
+            "bottom": -3506.78125
+          }
+        },
+        {
+          "index": 7,
+          "text": "Dirección API/api",
+          "label": "Dirección API",
+          "content": "/api",
+          "x": 29,
+          "y": -3505.78125,
+          "width": 262,
+          "height": 62.5,
+          "right": 291,
+          "bottom": -3443.28125,
+          "labelRect": {
+            "x": 29,
+            "y": -3505.78125,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": -3475.78125
+          },
+          "contentRect": {
+            "x": 29,
+            "y": -3475.78125,
+            "width": 261,
+            "height": 31.5,
+            "right": 290,
+            "bottom": -3444.28125
+          }
+        },
+        {
+          "index": 8,
+          "text": "Puerto8081",
+          "label": "Puerto",
+          "content": "8081",
+          "x": 29,
+          "y": -3443.28125,
+          "width": 262,
+          "height": 62.5,
+          "right": 291,
+          "bottom": -3380.78125,
+          "labelRect": {
+            "x": 29,
+            "y": -3443.28125,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": -3413.28125
+          },
+          "contentRect": {
+            "x": 29,
+            "y": -3413.28125,
+            "width": 261,
+            "height": 31.5,
+            "right": 290,
+            "bottom": -3381.78125
+          }
+        },
+        {
+          "index": 9,
+          "text": "Modoproduction",
+          "label": "Modo",
+          "content": "production",
+          "x": 29,
+          "y": -3380.78125,
+          "width": 262,
+          "height": 62.5,
+          "right": 291,
+          "bottom": -3318.28125,
+          "labelRect": {
+            "x": 29,
+            "y": -3380.78125,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": -3350.78125
+          },
+          "contentRect": {
+            "x": 29,
+            "y": -3350.78125,
+            "width": 261,
+            "height": 31.5,
+            "right": 290,
+            "bottom": -3319.28125
+          }
+        },
+        {
+          "index": 10,
+          "text": "Perfilprodnacos-configredis-required",
+          "label": "Perfil",
+          "content": "prodnacos-configredis-required",
+          "x": 29,
+          "y": -3318.28125,
+          "width": 262,
+          "height": 131,
+          "right": 291,
+          "bottom": -3187.28125,
+          "labelRect": {
+            "x": 29,
+            "y": -3318.28125,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": -3288.28125
+          },
+          "contentRect": {
+            "x": 29,
+            "y": -3288.28125,
+            "width": 261,
+            "height": 100,
+            "right": 290,
+            "bottom": -3188.28125
+          }
+        },
+        {
+          "index": 11,
+          "text": "Java21.0.5-temurin-long-runtime-build",
+          "label": "Java",
+          "content": "21.0.5-temurin-long-runtime-build",
+          "x": 29,
+          "y": -3187.28125,
+          "width": 262,
+          "height": 62.5,
+          "right": 291,
+          "bottom": -3124.78125,
+          "labelRect": {
+            "x": 29,
+            "y": -3187.28125,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": -3157.28125
+          },
+          "contentRect": {
+            "x": 29,
+            "y": -3157.28125,
+            "width": 261,
+            "height": 31.5,
+            "right": 290,
+            "bottom": -3125.78125
+          }
+        },
+        {
+          "index": 12,
+          "text": "SistemaLinux 6.8.0-1017-oracle",
+          "label": "Sistema",
+          "content": "Linux 6.8.0-1017-oracle",
+          "x": 29,
+          "y": -3124.78125,
+          "width": 262,
+          "height": 61.5,
+          "right": 291,
+          "bottom": -3063.28125,
+          "labelRect": {
+            "x": 29,
+            "y": -3124.78125,
+            "width": 261,
+            "height": 30,
+            "right": 290,
+            "bottom": -3094.78125
+          },
+          "contentRect": {
+            "x": 29,
+            "y": -3094.78125,
+            "width": 261,
+            "height": 31.5,
+            "right": 290,
+            "bottom": -3063.28125
+          }
+        },
+        {
+          "index": 13,
+          "text": "ListoBloqueado",
+          "label": "Listo",
+          "content": "Bloqueado",
+          "x": 28,
+          "y": -2904.03125,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": -2818.03125,
+          "labelRect": {
+            "x": 28,
+            "y": -2904.03125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -2874.03125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -2874.03125,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": -2818.03125
+          }
+        },
+        {
+          "index": 14,
+          "text": "RequeridoActivado",
+          "label": "Requerido",
+          "content": "Activado",
+          "x": 28,
+          "y": -2818.03125,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": -2732.03125,
+          "labelRect": {
+            "x": 28,
+            "y": -2818.03125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -2788.03125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -2788.03125,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": -2732.03125
+          }
+        },
+        {
+          "index": 15,
+          "text": "Modoproduction",
+          "label": "Modo",
+          "content": "production",
+          "x": 28,
+          "y": -2732.03125,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": -2670.53125,
+          "labelRect": {
+            "x": 28,
+            "y": -2732.03125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -2702.03125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -2702.03125,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": -2670.53125
+          }
+        },
+        {
+          "index": 16,
+          "text": "Cuentas de correo1",
+          "label": "Cuentas de correo",
+          "content": "1",
+          "x": 28,
+          "y": -2670.53125,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": -2609.03125,
+          "labelRect": {
+            "x": 28,
+            "y": -2670.53125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -2640.53125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -2640.53125,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": -2609.03125
+          }
+        },
+        {
+          "index": 17,
+          "text": "Canales de pago1/5",
+          "label": "Canales de pago",
+          "content": "1/5",
+          "x": 28,
+          "y": -2609.03125,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": -2547.53125,
+          "labelRect": {
+            "x": 28,
+            "y": -2609.03125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -2579.03125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -2579.03125,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": -2547.53125
+          }
+        },
+        {
+          "index": 18,
+          "text": "Webhooks del proveedor-/-",
+          "label": "Webhooks del proveedor",
+          "content": "-/-",
+          "x": 28,
+          "y": -2547.53125,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": -2486.03125,
+          "labelRect": {
+            "x": 28,
+            "y": -2547.53125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -2517.53125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -2517.53125,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": -2486.03125
+          }
+        },
+        {
+          "index": 19,
+          "text": "Orígenes CORS9",
+          "label": "Orígenes CORS",
+          "content": "9",
+          "x": 28,
+          "y": -2486.03125,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": -2424.53125,
+          "labelRect": {
+            "x": 28,
+            "y": -2486.03125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -2456.03125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -2456.03125,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": -2424.53125
+          }
+        },
+        {
+          "index": 20,
+          "text": "BloqueosPayment channel VISA is enabled but missing a provider checkout URL for production traffic.Mail account transactional-prod has no verified sender configured.",
+          "label": "Bloqueos",
+          "content": "Payment channel VISA is enabled but missing a provider checkout URL for production traffic.Mail account transactional-prod has no verified sender configured.",
+          "x": 28,
+          "y": -2424.53125,
+          "width": 264,
+          "height": 147.484375,
+          "right": 292,
+          "bottom": -2277.046875,
+          "labelRect": {
+            "x": 28,
+            "y": -2424.53125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -2394.53125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -2394.53125,
+            "width": 264,
+            "height": 117.484375,
+            "right": 292,
+            "bottom": -2277.046875
+          }
+        },
+        {
+          "index": 21,
+          "text": "AdvertenciasCORS origins include a staging host and should be reviewed before launch.Nacos namespace is configured but registration is disabled.",
+          "label": "Advertencias",
+          "content": "CORS origins include a staging host and should be reviewed before launch.Nacos namespace is configured but registration is disabled.",
+          "x": 28,
+          "y": -2277.046875,
+          "width": 264,
+          "height": 147.484375,
+          "right": 292,
+          "bottom": -2129.5625,
+          "labelRect": {
+            "x": 28,
+            "y": -2277.046875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -2247.046875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -2247.046875,
+            "width": 264,
+            "height": 117.484375,
+            "right": 292,
+            "bottom": -2129.5625
+          }
+        },
+        {
+          "index": 22,
+          "text": "ListoBloqueado",
+          "label": "Listo",
+          "content": "Bloqueado",
+          "x": 28,
+          "y": -2006.5625,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": -1920.5625,
+          "labelRect": {
+            "x": 28,
+            "y": -2006.5625,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -1976.5625
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -1976.5625,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": -1920.5625
+          }
+        },
+        {
+          "index": 23,
+          "text": "Latencia2000 ms",
+          "label": "Latencia",
+          "content": "2000 ms",
+          "x": 28,
+          "y": -1920.5625,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": -1859.0625,
+          "labelRect": {
+            "x": 28,
+            "y": -1920.5625,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -1890.5625
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -1890.5625,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": -1859.0625
+          }
+        },
+        {
+          "index": 24,
+          "text": "URLjdbc:mysql://****:****@primary-db.internal.shoptest.example:3306/shoptest?useSSL=true&allowPublicKeyRetrieval=false&serverTimezone=UTC",
+          "label": "URL",
+          "content": "jdbc:mysql://****:****@primary-db.internal.shoptest.example:3306/shoptest?useSSL=true&allowPublicKeyRetrieval=false&serverTimezone=UTC",
+          "x": 28,
+          "y": -1859.0625,
+          "width": 264,
+          "height": 147,
+          "right": 292,
+          "bottom": -1712.0625,
+          "labelRect": {
+            "x": 28,
+            "y": -1859.0625,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -1829.0625
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -1829.0625,
+            "width": 264,
+            "height": 117,
+            "right": 292,
+            "bottom": -1712.0625
+          }
+        },
+        {
+          "index": 25,
+          "text": "Controladorcom.mysql.cj.jdbc.Driver",
+          "label": "Controlador",
+          "content": "com.mysql.cj.jdbc.Driver",
+          "x": 28,
+          "y": -1712.0625,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": -1650.5625,
+          "labelRect": {
+            "x": 28,
+            "y": -1712.0625,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -1682.0625
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -1682.0625,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": -1650.5625
+          }
+        },
+        {
+          "index": 26,
+          "text": "FalloCommunications link failure: timed out after 2000ms while checking primary-db.internal.shoptest.example",
+          "label": "Fallo",
+          "content": "Communications link failure: timed out after 2000ms while checking primary-db.internal.shoptest.example",
+          "x": 28,
+          "y": -1650.5625,
+          "width": 264,
+          "height": 120,
+          "right": 292,
+          "bottom": -1530.5625,
+          "labelRect": {
+            "x": 28,
+            "y": -1650.5625,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -1620.5625
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -1620.5625,
+            "width": 264,
+            "height": 90,
+            "right": 292,
+            "bottom": -1530.5625
+          }
+        },
+        {
+          "index": 27,
+          "text": "ListoListo",
+          "label": "Listo",
+          "content": "Listo",
+          "x": 28,
+          "y": -1445.5625,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": -1359.5625,
+          "labelRect": {
+            "x": 28,
+            "y": -1445.5625,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -1415.5625
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -1415.5625,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": -1359.5625
+          }
+        },
+        {
+          "index": 28,
+          "text": "RequeridoActivado",
+          "label": "Requerido",
+          "content": "Activado",
+          "x": 28,
+          "y": -1359.5625,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": -1273.5625,
+          "labelRect": {
+            "x": 28,
+            "y": -1359.5625,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -1329.5625
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -1329.5625,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": -1273.5625
+          }
+        },
+        {
+          "index": 29,
+          "text": "Direcciónredis-cache-production-east.internal.shoptest.example:6379",
+          "label": "Dirección",
+          "content": "redis-cache-production-east.internal.shoptest.example:6379",
+          "x": 28,
+          "y": -1273.5625,
+          "width": 264,
+          "height": 81,
+          "right": 292,
+          "bottom": -1192.5625,
+          "labelRect": {
+            "x": 28,
+            "y": -1273.5625,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -1243.5625
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -1243.5625,
+            "width": 264,
+            "height": 51,
+            "right": 292,
+            "bottom": -1192.5625
+          }
+        },
+        {
+          "index": 30,
+          "text": "DB0",
+          "label": "DB",
+          "content": "0",
+          "x": 28,
+          "y": -1192.5625,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": -1131.0625,
+          "labelRect": {
+            "x": 28,
+            "y": -1192.5625,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -1162.5625
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -1162.5625,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": -1131.0625
+          }
+        },
+        {
+          "index": 31,
+          "text": "Latencia18 ms",
+          "label": "Latencia",
+          "content": "18 ms",
+          "x": 28,
+          "y": -1131.0625,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": -1069.5625,
+          "labelRect": {
+            "x": 28,
+            "y": -1131.0625,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -1101.0625
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -1101.0625,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": -1069.5625
+          }
+        },
+        {
+          "index": 32,
+          "text": "PINGPONG",
+          "label": "PING",
+          "content": "PONG",
+          "x": 28,
+          "y": -1069.5625,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": -1008.0625,
+          "labelRect": {
+            "x": 28,
+            "y": -1069.5625,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -1039.5625
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -1039.5625,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": -1008.0625
+          }
+        },
+        {
+          "index": 33,
+          "text": "ListoBloqueado",
+          "label": "Listo",
+          "content": "Bloqueado",
+          "x": 28,
+          "y": -894.8125,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": -808.8125,
+          "labelRect": {
+            "x": 28,
+            "y": -894.8125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -864.8125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -864.8125,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": -808.8125
+          }
+        },
+        {
+          "index": 34,
+          "text": "Direcciónnacos-prod.internal.shoptest.example:8848",
+          "label": "Dirección",
+          "content": "nacos-prod.internal.shoptest.example:8848",
+          "x": 28,
+          "y": -808.8125,
+          "width": 264,
+          "height": 100.5,
+          "right": 292,
+          "bottom": -708.3125,
+          "labelRect": {
+            "x": 28,
+            "y": -808.8125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -778.8125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -778.8125,
+            "width": 264,
+            "height": 70.5,
+            "right": 292,
+            "bottom": -708.3125
+          }
+        },
+        {
+          "index": 35,
+          "text": "Espacio de nombresproduction-commerce-namespace-with-long-name",
+          "label": "Espacio de nombres",
+          "content": "production-commerce-namespace-with-long-name",
+          "x": 28,
+          "y": -708.3125,
+          "width": 264,
+          "height": 81,
+          "right": 292,
+          "bottom": -627.3125,
+          "labelRect": {
+            "x": 28,
+            "y": -708.3125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -678.3125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -678.3125,
+            "width": 264,
+            "height": 51,
+            "right": 292,
+            "bottom": -627.3125
+          }
+        },
+        {
+          "index": 36,
+          "text": "GrupoSHOPTEST_PRODUCTION_GROUP",
+          "label": "Grupo",
+          "content": "SHOPTEST_PRODUCTION_GROUP",
+          "x": 28,
+          "y": -627.3125,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": -565.8125,
+          "labelRect": {
+            "x": 28,
+            "y": -627.3125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -597.3125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -597.3125,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": -565.8125
+          }
+        },
+        {
+          "index": 37,
+          "text": "ConfiguraciónActivado",
+          "label": "Configuración",
+          "content": "Activado",
+          "x": 28,
+          "y": -565.8125,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": -479.8125,
+          "labelRect": {
+            "x": 28,
+            "y": -565.8125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -535.8125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -535.8125,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": -479.8125
+          }
+        },
+        {
+          "index": 38,
+          "text": "DescubrimientoActivado",
+          "label": "Descubrimiento",
+          "content": "Activado",
+          "x": 28,
+          "y": -479.8125,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": -393.8125,
+          "labelRect": {
+            "x": 28,
+            "y": -479.8125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -449.8125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -449.8125,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": -393.8125
+          }
+        },
+        {
+          "index": 39,
+          "text": "RegistroDesactivado",
+          "label": "Registro",
+          "content": "Desactivado",
+          "x": 28,
+          "y": -393.8125,
+          "width": 264,
+          "height": 86,
+          "right": 292,
+          "bottom": -307.8125,
+          "labelRect": {
+            "x": 28,
+            "y": -393.8125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -363.8125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -363.8125,
+            "width": 264,
+            "height": 56,
+            "right": 292,
+            "bottom": -307.8125
+          }
+        },
+        {
+          "index": 40,
+          "text": "Estado de servicioWARN",
+          "label": "Estado de servicio",
+          "content": "WARN",
+          "x": 28,
+          "y": -307.8125,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": -246.3125,
+          "labelRect": {
+            "x": 28,
+            "y": -307.8125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -277.8125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -277.8125,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": -246.3125
+          }
+        },
+        {
+          "index": 41,
+          "text": "Data IDshop-backend-production.yaml",
+          "label": "Data ID",
+          "content": "shop-backend-production.yaml",
+          "x": 28,
+          "y": -246.3125,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": -184.8125,
+          "labelRect": {
+            "x": 28,
+            "y": -246.3125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -216.3125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -216.3125,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": -184.8125
+          }
+        },
+        {
+          "index": 42,
+          "text": "Latencia840 ms",
+          "label": "Latencia",
+          "content": "840 ms",
+          "x": 28,
+          "y": -184.8125,
+          "width": 264,
+          "height": 61.5,
+          "right": 292,
+          "bottom": -123.3125,
+          "labelRect": {
+            "x": 28,
+            "y": -184.8125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -154.8125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -154.8125,
+            "width": 264,
+            "height": 31.5,
+            "right": 292,
+            "bottom": -123.3125
+          }
+        },
+        {
+          "index": 43,
+          "text": "AdvertenciasDiscovery registration is disabled, so this instance will not appear in service registry.Config snapshot is older than the last successful deployment.",
+          "label": "Advertencias",
+          "content": "Discovery registration is disabled, so this instance will not appear in service registry.Config snapshot is older than the last successful deployment.",
+          "x": 28,
+          "y": -123.3125,
+          "width": 264,
+          "height": 147.484375,
+          "right": 292,
+          "bottom": 24.171875,
+          "labelRect": {
+            "x": 28,
+            "y": -123.3125,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": -93.3125
+          },
+          "contentRect": {
+            "x": 28,
+            "y": -93.3125,
+            "width": 264,
+            "height": 117.484375,
+            "right": 292,
+            "bottom": 24.171875
+          }
+        },
+        {
+          "index": 44,
+          "text": "FalloNacos heartbeat latency exceeded the 800 ms operational threshold.",
+          "label": "Fallo",
+          "content": "Nacos heartbeat latency exceeded the 800 ms operational threshold.",
+          "x": 28,
+          "y": 24.171875,
+          "width": 264,
+          "height": 102.890625,
+          "right": 292,
+          "bottom": 127.0625,
+          "labelRect": {
+            "x": 28,
+            "y": 24.171875,
+            "width": 264,
+            "height": 30,
+            "right": 292,
+            "bottom": 54.171875
+          },
+          "contentRect": {
+            "x": 28,
+            "y": 54.171875,
+            "width": 264,
+            "height": 72.890625,
+            "right": 292,
+            "bottom": 127.0625
+          }
+        }
+      ],
+      "tags": [
+        {
+          "index": 0,
+          "text": "Degradado",
+          "x": 41,
+          "y": -3560.78125,
+          "width": 92.234375,
+          "height": 44,
+          "right": 133.234375,
+          "bottom": -3516.78125,
+          "visibleRatio": 0
+        },
+        {
+          "index": 1,
+          "text": "Bloqueado",
+          "x": 147.234375,
+          "y": -3560.78125,
+          "width": 89.71875,
+          "height": 44,
+          "right": 236.953125,
+          "bottom": -3516.78125,
+          "visibleRatio": 0
+        },
+        {
+          "index": 2,
+          "text": "prod",
+          "x": 41,
+          "y": -3286.28125,
+          "width": 49.34375,
+          "height": 44,
+          "right": 90.34375,
+          "bottom": -3242.28125,
+          "visibleRatio": 0
+        },
+        {
+          "index": 3,
+          "text": "nacos-config",
+          "x": 98.34375,
+          "y": -3286.28125,
+          "width": 103.953125,
+          "height": 44,
+          "right": 202.296875,
+          "bottom": -3242.28125,
+          "visibleRatio": 0
+        },
+        {
+          "index": 4,
+          "text": "redis-required",
+          "x": 41,
+          "y": -3242.28125,
+          "width": 114.84375,
+          "height": 44,
+          "right": 155.84375,
+          "bottom": -3198.28125,
+          "visibleRatio": 0
+        },
+        {
+          "index": 5,
+          "text": "Degradado",
+          "x": 26,
+          "y": -3019.03125,
+          "width": 92.234375,
+          "height": 44,
+          "right": 118.234375,
+          "bottom": -2975.03125,
+          "visibleRatio": 0
+        },
+        {
+          "index": 6,
+          "text": "Bloqueado",
+          "x": 40,
+          "y": -2872.03125,
+          "width": 89.71875,
+          "height": 44,
+          "right": 129.71875,
+          "bottom": -2828.03125,
+          "visibleRatio": 0
+        },
+        {
+          "index": 7,
+          "text": "Activado",
+          "x": 40,
+          "y": -2786.03125,
+          "width": 77.015625,
+          "height": 44,
+          "right": 117.015625,
+          "bottom": -2742.03125,
+          "visibleRatio": 0
+        },
+        {
+          "index": 8,
+          "text": "Caído",
+          "x": 161.28125,
+          "y": -2113.5625,
+          "width": 55.859375,
+          "height": 44,
+          "right": 217.140625,
+          "bottom": -2069.5625,
+          "visibleRatio": 0
+        },
+        {
+          "index": 9,
+          "text": "Bloqueado",
+          "x": 40,
+          "y": -1974.5625,
+          "width": 89.71875,
+          "height": 44,
+          "right": 129.71875,
+          "bottom": -1930.5625,
+          "visibleRatio": 0
+        },
+        {
+          "index": 10,
+          "text": "Activo",
+          "x": 80.53125,
+          "y": -1504.5625,
+          "width": 60.328125,
+          "height": 44,
+          "right": 140.859375,
+          "bottom": -1460.5625,
+          "visibleRatio": 0
+        },
+        {
+          "index": 11,
+          "text": "Listo",
+          "x": 40,
+          "y": -1413.5625,
+          "width": 50.890625,
+          "height": 44,
+          "right": 90.890625,
+          "bottom": -1369.5625,
+          "visibleRatio": 0
+        },
+        {
+          "index": 12,
+          "text": "Activado",
+          "x": 40,
+          "y": -1327.5625,
+          "width": 77.015625,
+          "height": 44,
+          "right": 117.015625,
+          "bottom": -1283.5625,
+          "visibleRatio": 0
+        },
+        {
+          "index": 13,
+          "text": "Degradado",
+          "x": 26,
+          "y": -953.8125,
+          "width": 92.234375,
+          "height": 44,
+          "right": 118.234375,
+          "bottom": -909.8125,
+          "visibleRatio": 0
+        },
+        {
+          "index": 14,
+          "text": "Bloqueado",
+          "x": 40,
+          "y": -862.8125,
+          "width": 89.71875,
+          "height": 44,
+          "right": 129.71875,
+          "bottom": -818.8125,
+          "visibleRatio": 0
+        },
+        {
+          "index": 15,
+          "text": "Activado",
+          "x": 40,
+          "y": -533.8125,
+          "width": 77.015625,
+          "height": 44,
+          "right": 117.015625,
+          "bottom": -489.8125,
+          "visibleRatio": 0
+        },
+        {
+          "index": 16,
+          "text": "Activado",
+          "x": 40,
+          "y": -447.8125,
+          "width": 77.015625,
+          "height": 44,
+          "right": 117.015625,
+          "bottom": -403.8125,
+          "visibleRatio": 0
+        },
+        {
+          "index": 17,
+          "text": "Desactivado",
+          "x": 40,
+          "y": -361.8125,
+          "width": 101.0625,
+          "height": 44,
+          "right": 141.0625,
+          "bottom": -317.8125,
+          "visibleRatio": 0
+        }
+      ],
+      "overflowEls": [],
+      "hits": [
+        {
+          "selector": ".system-monitor__hero .ant-btn",
+          "point": {
+            "x": 160,
+            "y": 0
+          },
+          "hitTag": "HEADER",
+          "hitClass": "ant-layout-header admin-layout__header css-qlmvhk",
+          "hitText": "Volver a la tiendaReportar bugCerrar sesión"
+        },
+        {
+          "selector": ".system-monitor__stats .ant-card:nth-child(1)",
+          "point": {
+            "x": 160,
+            "y": 0
+          },
+          "hitTag": "HEADER",
+          "hitClass": "ant-layout-header admin-layout__header css-qlmvhk",
+          "hitText": "Volver a la tiendaReportar bugCerrar sesión"
+        },
+        {
+          "selector": ".system-monitor__card:nth-of-type(2)",
+          "point": {
+            "x": 160,
+            "y": 0
+          },
+          "hitTag": "HEADER",
+          "hitClass": "ant-layout-header admin-layout__header css-qlmvhk",
+          "hitText": "Volver a la tiendaReportar bugCerrar sesión"
+        },
+        {
+          "selector": ".system-monitor__card:last-of-type",
+          "point": {
+            "x": 160,
+            "y": 0
+          },
+          "hitTag": "HEADER",
+          "hitClass": "ant-layout-header admin-layout__header css-qlmvhk",
+          "hitText": "Volver a la tiendaReportar bugCerrar sesión"
+        }
+      ]
+    }
+  ]
+}

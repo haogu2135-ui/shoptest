@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import ShopSelect from './ShopSelect';
 
 describe('ShopSelect', () => {
@@ -80,6 +80,52 @@ describe('ShopSelect', () => {
     );
     expect(screen.getByText('No orders')).toBeInTheDocument();
   });
+
+  it('keeps searchable popups inside a narrow viewport', async () => {
+    const originalInnerWidth = window.innerWidth;
+    Object.defineProperty(window, 'innerWidth', { configurable: true, value: 320 });
+    const { rerender } = render(
+      <ShopSelect
+        ariaLabel="Brand"
+        showSearch
+        options={[{ value: 'brand', label: 'Long Trusted Pet Wellness Brand International' }]}
+      />,
+    );
+    const trigger = screen.getByRole('button', { name: 'Brand' });
+    const rectMock = jest.spyOn(trigger, 'getBoundingClientRect').mockReturnValue({
+      width: 304,
+      height: 44,
+      top: 50,
+      right: 335,
+      bottom: 94,
+      left: 31,
+      x: 31,
+      y: 50,
+      toJSON: () => ({}),
+    } as DOMRect);
+    rerender(
+      <ShopSelect
+        ariaLabel="Brand"
+        open
+        showSearch
+        options={[{ value: 'brand', label: 'Long Trusted Pet Wellness Brand International' }]}
+      />,
+    );
+
+    try {
+      const listbox = screen.getByRole('listbox', { name: 'Brand' });
+      await waitFor(() => {
+        expect(listbox.style.left).toBe('8px');
+        expect(listbox.style.width).toBe('304px');
+        expect(listbox.style.minWidth).toBe('304px');
+        expect(listbox.style.maxWidth).toBe('calc(100vw - 16px)');
+      });
+    } finally {
+      rectMock.mockRestore();
+      Object.defineProperty(window, 'innerWidth', { configurable: true, value: originalInnerWidth });
+    }
+  });
+
   it('filters options when showSearch is enabled', () => {
     render(
       <ShopSelect

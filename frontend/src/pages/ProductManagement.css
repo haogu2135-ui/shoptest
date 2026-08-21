@@ -1137,6 +1137,38 @@
     scroll-snap-align: start;
   }
 
+  .shopify-inventory-meta {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    overflow-x: visible;
+    touch-action: auto;
+  }
+
+  .shopify-inventory-meta > span {
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+  }
+
+  .shopify-inventory-meta > span:last-child {
+    grid-column: 1 / -1;
+  }
+
+  .shopify-channel-list {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: stretch;
+    overflow-x: visible;
+    touch-action: auto;
+  }
+
+  .shopify-channel-list span {
+    min-width: 0;
+    max-width: 100%;
+    white-space: normal;
+  }
+
 .shopify-product-modal .ant-modal-footer .ant-btn,
 
   .shopify-product-modal .shop-modal__footer .ant-btn {
@@ -2277,4 +2309,3 @@ body .product-management-page__editorPopup.shop-mobile-popup-layer .ant-picker-f
 .product-management__generateVariants {
   margin-bottom: 12px;
 }
-

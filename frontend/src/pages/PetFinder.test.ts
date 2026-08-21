@@ -11,6 +11,8 @@ describe('PetFinder responsive controls', () => {
     expect(source).toContain('<ShopRangeSlider');
     expect(source).toContain('pet-finder-page__budgetSlider');
     expect(source).toContain('ariaLabelForHandle={[');
+    expect(source).toMatch(/className="pet-finder-page__control">\s*<span[^>]*>\{t\('pages\.petFinder\.petType'\)\}/);
+    expect(source).toMatch(/className="pet-finder-page__control pet-finder-page__budgetControl">\s*<span[^>]*>\{t\('pages\.petFinder\.budget'\)\}/);
 
     const f2758Start = css.indexOf('/* F2758');
     const f2758Css = css.slice(f2758Start);

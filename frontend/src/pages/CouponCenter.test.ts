@@ -91,6 +91,17 @@ describe('CouponCenter mobile coupon rail contract', () => {
     expect(f2713Css).not.toMatch(/\.coupon-center-page__couponTags \.ant-tag[\s\S]*?text-overflow:\s*ellipsis/);
   });
 
+  it('keeps coupon panels on their outer layout classes instead of title-only classes', () => {
+    const source = readCouponCenterSource();
+
+    expect(source).toContain('className="coupon-claim-section coupon-claim-section__title--list"');
+    expect(source).toContain('className={`coupon-center-page__coupon ${couponStateClass}`}');
+    expect(source).toContain('className="coupon-wallet" id="coupon-wallet"');
+    expect(source).toContain('className="coupon-claim-section__title"');
+    expect(source).toContain('className="coupon-center-page__couponTitle"');
+    expect(source).toContain('className="coupon-wallet__heading"');
+  });
+
   it('keeps guest coupon claim actions routed through login feedback', () => {
     const source = readCouponCenterPage();
     const singleClaimStart = source.indexOf('const claimCoupon = async');

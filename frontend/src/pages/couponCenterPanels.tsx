@@ -640,7 +640,7 @@ export const CouponCenterClaimPanel: React.FC<CouponCenterPanelsProps> = (p) => 
     cancelPriorityClickAfterDrag,
   } = p;
   return (
-      <section className="coupon-claim-section__title coupon-claim-section__title--list" id="coupon-claim-list"><div className="shop-panel__head"><div className="shop-panel__title">{(
+      <section className="coupon-claim-section coupon-claim-section__title--list" id="coupon-claim-list"><div className="shop-panel__head"><div className="shop-panel__title">{(
           <span className="coupon-claim-section__title">
             <span>
               <strong>{t('pages.coupons.claimTitle')}</strong>
@@ -890,7 +890,7 @@ export const CouponCenterClaimPanel: React.FC<CouponCenterPanelsProps> = (p) => 
               const validUntilText = formatCouponDate(coupon.endAt);
               return (
                 <div className="coupon-center-page__claimItem" key={coupon.id}>
-                  <article className="coupon-center-page__couponTitle"><div className="shop-panel__head"><div className="shop-panel__title">{(
+                  <article className={`coupon-center-page__coupon ${couponStateClass}`}><div className="shop-panel__head"><div className="shop-panel__title">{(
                       <span className="coupon-center-page__couponTitle">
                         <span>{coupon.name}</span>
                         {isBestPublicCoupon ? <ShopTag color="volcano">{couponUiText.bestMatch}</ShopTag> : null}
@@ -1047,7 +1047,7 @@ export const CouponCenterWalletPanel: React.FC<CouponCenterPanelsProps> = (p) =>
     cancelPriorityClickAfterDrag,
   } = p;
   return (
-      <section className="coupon-wallet__heading" id="coupon-wallet"><div className="shop-panel__head"><div className="shop-panel__title">{(
+      <section className="coupon-wallet" id="coupon-wallet"><div className="shop-panel__head"><div className="shop-panel__title">{(
           <span className="coupon-wallet__heading">
             <span>{t('pages.coupons.myCoupons')}</span>
             <ShopTag color={myCoupons.length > 0 ? 'green' : 'default'}>{myCoupons.length}</ShopTag>
@@ -1269,4 +1269,3 @@ export const CouponCenterWalletPanel: React.FC<CouponCenterPanelsProps> = (p) =>
       </section>
   );
 };
-

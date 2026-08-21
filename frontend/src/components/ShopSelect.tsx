@@ -93,12 +93,13 @@ const ShopSelect: React.FC<ShopSelectProps> = ({
     const updatePosition = () => {
       const rect = triggerRef.current?.getBoundingClientRect();
       if (!rect) return;
-      const width = Math.max(rect.width, 140);
+      const maxWidth = Math.max(window.innerWidth - 16, 140);
+      const width = Math.min(Math.max(rect.width, 140), maxWidth);
       const searchOffset = showSearch ? 52 : 0;
       const estimatedHeight = (filteredOptions.length > 0
         ? Math.min(popupMaxHeight, filteredOptions.length * 44 + 16)
         : Math.min(popupMaxHeight, 180)) + searchOffset;
-      let left = rect.left;
+      let left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - width - 8));
       let top = rect.bottom + 6;
       if (left + width > window.innerWidth - 8) {
         left = Math.max(8, window.innerWidth - width - 8);
@@ -110,7 +111,10 @@ const ShopSelect: React.FC<ShopSelectProps> = ({
         position: 'fixed',
         top,
         left,
+        width,
         minWidth: width,
+        maxWidth: 'calc(100vw - 16px)',
+        boxSizing: 'border-box',
         maxHeight: popupMaxHeight + searchOffset,
         zIndex: popupZIndex,
       });

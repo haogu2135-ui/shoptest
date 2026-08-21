@@ -7748,6 +7748,16 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
   }
 }
 
+/* Consent is a blocking bottom-layer interaction. Keep the commerce rail out
+   of the same touch region until the customer has made a choice. */
+@media (max-width: 860px) {
+  body.shop-cookie-consent-visible .shop-nav__bottomBar {
+    display: none !important;
+    visibility: hidden !important;
+    pointer-events: none !important;
+  }
+}
+
 @media (max-width: 380px) {
   body.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar {
     grid-template-columns: minmax(58px, 0.75fr) 40px 40px minmax(78px, 0.9fr) minmax(82px, 1fr) !important;
