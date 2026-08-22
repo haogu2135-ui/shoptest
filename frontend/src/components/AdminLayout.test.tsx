@@ -166,8 +166,14 @@ describe('AdminLayout visibility-aware polling', () => {
     expect(unreadEffectStart).toBeGreaterThan(-1);
     expect(logoutStart).toBeGreaterThan(unreadEffectStart);
     expect(unreadEffectSource).toContain('let disposed = false;');
-    expect(unreadEffectSource).toContain('if (!disposed) setSupportUnread(res.data.count);');
-    expect(unreadEffectSource).toContain('if (!disposed) setSupportUnread(0);');
+    // The loader runs from mount, the interval, and visibilitychange, so cleanup alone
+    // cannot separate two in-flight requests; each run also claims a sequence number.
+    expect(unreadEffectSource).toContain('let unreadRequestSeq = 0;');
+    expect(unreadEffectSource).toContain('const requestSeq = unreadRequestSeq + 1;');
+    expect(unreadEffectSource).toContain('const isCurrentRequest = () => !disposed && unreadRequestSeq === requestSeq;');
+    expect(unreadEffectSource).toContain('if (isCurrentRequest()) setSupportUnread(res.data.count);');
+    expect(unreadEffectSource).toContain('if (isCurrentRequest()) setSupportUnread(0);');
+    expect(unreadEffectSource).not.toContain('if (!disposed) setSupportUnread(res.data.count);');
     expect(unreadEffectSource).toContain('disposed = true;');
     expect(unreadEffectSource).toContain('window.clearInterval(timer);');
   });

@@ -17,6 +17,18 @@ const loadingCards = [
   { file: 'LogisticsCarrierManagement.tsx', className: 'logistics-carrier-page__loadingState', cardLoading: true },
   { file: 'PermissionManagement.tsx', className: 'permission-management-page__loadingState', cardLoading: true },
   { file: 'OrderManagement.tsx', className: 'order-management-page__loadingState', cardLoading: true },
+  { file: 'InventoryManagement.tsx', className: 'inventory-page__loadingState', cardLoading: true },
+];
+
+// BugManagement announces its initial load through a skeleton wrapper rather than a
+// ShopCard, and composes the page name into the label, so it is asserted separately
+// instead of being forced into the ShopCard shape above.
+const loadingRegions = [
+  {
+    file: 'BugManagement.tsx',
+    className: 'bug-management__skeleton bug-management__loadingState',
+    labelPattern: /aria-label=\{`\$\{bugPageLabel\}: \$\{t\('common\.loading'\)\}`\}/,
+  },
 ];
 
 describe('admin loading accessibility guards', () => {
@@ -34,6 +46,20 @@ describe('admin loading accessibility guards', () => {
       if (cardLoading) {
         expect(loadingCardSource).toMatch(/\bloading\b/);
       }
+    });
+  });
+
+  it('keeps non-card admin loading regions announced as busy status regions', () => {
+    loadingRegions.forEach(({ file, className, labelPattern }) => {
+      const source = readPageSource(file);
+      const match = source.match(new RegExp(`<div\\s+[\\s\\S]*?className="${escapeRegExp(className)}"[\\s\\S]*?>`));
+
+      expect(match?.[0]).toBeTruthy();
+      const loadingRegionSource = match?.[0] || '';
+      expect(loadingRegionSource).toContain('role="status"');
+      expect(loadingRegionSource).toContain('aria-live="polite"');
+      expect(loadingRegionSource).toContain('aria-busy="true"');
+      expect(loadingRegionSource).toMatch(labelPattern);
     });
   });
 });

@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Table, Form } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
@@ -23,6 +23,7 @@ import {
   roleColor,
   roleLabelKey,
 } from '../utils/roles';
+import { useDebounce } from '../hooks/useDebounce';
 import { hasStoredValue } from '../utils/safeStorage';
 import PageError from '../components/PageError';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -81,6 +82,7 @@ const UserManagement: React.FC = () => {
   const [userSnapshotLoaded, setUserSnapshotLoaded] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [keyword, setKeyword] = useState('');
+  const debouncedKeyword = useDebounce(keyword.trim(), 300);
   const [roleFilter, setRoleFilter] = useState<string | undefined>();
   const [statusFilter, setStatusFilter] = useState<string | undefined>();
   const [currentUserId, setCurrentUserId] = useState(0);
@@ -97,6 +99,10 @@ const UserManagement: React.FC = () => {
   } | null>(null);
   const [roleConfirmLoading, setRoleConfirmLoading] = useState(false);
   const [pageState, setPageState] = useState({ page: 1, size: DEFAULT_USER_PAGE_SIZE, total: 0 });
+  const fetchUsersRequestSeqRef = useRef(0);
+  // Filter edits refetch from page 1, but the operator's chosen page size must
+  // survive that reset rather than snapping back to the default.
+  const pageSizeRef = useRef(DEFAULT_USER_PAGE_SIZE);
   const [profileForm] = Form.useForm<UserProfileFormValues>();
   const canManageRoles = isSuperAdminRole(currentRole);
   const canWriteUsers = hasAdminPermission(adminPermissions, currentRole, USERS_WRITE_PERMISSION);
@@ -158,33 +164,47 @@ const UserManagement: React.FC = () => {
   ].filter(Boolean).length;
 
   const fetchUsers = useCallback(async (page = 1, size = DEFAULT_USER_PAGE_SIZE) => {
+    // Filter edits and pagination can leave several fetches in flight at once. Each
+    // run claims a sequence number so only the newest response is applied; a slower
+    // earlier request must not overwrite the list the operator is now looking at.
+    const requestSeq = fetchUsersRequestSeqRef.current + 1;
+    fetchUsersRequestSeqRef.current = requestSeq;
     try {
       setLoading(true);
-      const params = { keyword: keyword.trim() || undefined, role: roleFilter, status: statusFilter, page, size };
+      const params = { keyword: debouncedKeyword || undefined, role: roleFilter, status: statusFilter, page, size };
       const [usersResponse, summaryResponse] = await Promise.all([
         adminApi.getUsersPage(params),
         adminApi.getUserSummary({ keyword: params.keyword, role: params.role, status: params.status }),
       ]);
+      if (fetchUsersRequestSeqRef.current !== requestSeq) return;
       setUserLoadError(null);
       setUsers(usersResponse.data.items || []);
+      const resolvedSize = usersResponse.data.size || size;
+      pageSizeRef.current = resolvedSize;
       setPageState({
         page: usersResponse.data.page || page,
-        size: usersResponse.data.size || size,
+        size: resolvedSize,
         total: usersResponse.data.total || 0,
       });
       setSummary(summaryResponse.data || null);
       setUserSnapshotLoaded(true);
     } catch (error: unknown) {
+      if (fetchUsersRequestSeqRef.current !== requestSeq) return;
       const errorMessage = getApiErrorMessage(error, t('pages.adminUsers.fetchFailed'), language);
       setUserLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      setLoading(false);
+      if (fetchUsersRequestSeqRef.current === requestSeq) {
+        setLoading(false);
+      }
     }
-  }, [keyword, language, roleFilter, statusFilter, t]);
+  }, [debouncedKeyword, language, roleFilter, statusFilter, t]);
 
   useEffect(() => {
-    fetchUsers(1, DEFAULT_USER_PAGE_SIZE);
+    // Filter changes reset to the first page but must keep the page size the
+    // operator picked from the size changer, rather than snapping back to the
+    // default and silently shrinking a 100-row view to 20.
+    fetchUsers(1, pageSizeRef.current);
   }, [fetchUsers]);
 
   useEffect(() => {
@@ -296,7 +316,7 @@ const UserManagement: React.FC = () => {
     }
     setExporting(true);
     try {
-      const res = await adminApi.exportUsers({ keyword: keyword.trim() || undefined, role: roleFilter, status: statusFilter });
+      const res = await adminApi.exportUsers({ keyword: debouncedKeyword || undefined, role: roleFilter, status: statusFilter });
       const blob = new Blob([res.data], { type: 'text/csv;charset=utf-8;' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');

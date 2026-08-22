@@ -214,10 +214,18 @@ export const useCartSessionData = ({
   useEffect(() => {
     if (!conversionConfig.cartRecentlyViewed.enabled) return;
     let disposed = false;
+    // The preferences-updated listener re-invokes this loader inside the same effect
+    // run, so `disposed` alone cannot tell two concurrent loads apart: a slow earlier
+    // fetch would resolve last and repaint the panel with the older history. Each run
+    // claims a sequence number so only the newest one writes.
+    let recentLoadSeq = 0;
     const loadRecentlyViewedProducts = async () => {
+      const requestSeq = recentLoadSeq + 1;
+      recentLoadSeq = requestSeq;
+      const isCurrentLoad = () => !disposed && mountedRef.current && recentLoadSeq === requestSeq;
       const preferences = loadProductViewPreferences();
       if (preferences.recent.length === 0) {
-        if (disposed || !mountedRef.current) return;
+        if (!isCurrentLoad()) return;
         setRecentProducts([]);
         return;
       }
@@ -226,12 +234,12 @@ export const useCartSessionData = ({
         const cacheKey = `${language}|${recentIds.join(',')}`;
         const cachedProducts = getCachedRecentProducts(cacheKey);
         if (cachedProducts) {
-          if (disposed || !mountedRef.current) return;
+          if (!isCurrentLoad()) return;
           setRecentProducts(cachedProducts);
           return;
         }
         const response = await productApi.getByIds(recentIds);
-        if (disposed || !mountedRef.current) return;
+        if (!isCurrentLoad()) return;
         const productById = new Map(response.data.map((product) => [product.id, localizeProduct(product, language)]));
         const nextRecentProducts = preferences.recent
           .map((productId) => productById.get(productId))
@@ -242,7 +250,7 @@ export const useCartSessionData = ({
         setRecentProducts(nextRecentProducts);
       } catch (error) {
         reportNonBlockingError('Cart.loadRecentProducts', error);
-        if (disposed || !mountedRef.current) return;
+        if (!isCurrentLoad()) return;
         setRecentProducts([]);
       }
     };

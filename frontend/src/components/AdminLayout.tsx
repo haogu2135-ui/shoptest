@@ -252,15 +252,23 @@ const AdminLayout: React.FC = () => {
       return;
     }
     let disposed = false;
+    // This loader runs on mount, on the 15s interval, and on every visibilitychange,
+    // so several requests can be in flight together and `disposed` cannot tell them
+    // apart. Each run claims a sequence number so a slow earlier response cannot
+    // repaint the badge with a stale count.
+    let unreadRequestSeq = 0;
     const loadUnread = () => {
       if (!adminDocumentIsVisible()) return;
+      const requestSeq = unreadRequestSeq + 1;
+      unreadRequestSeq = requestSeq;
+      const isCurrentRequest = () => !disposed && unreadRequestSeq === requestSeq;
       adminSupportApi.getUnreadCount()
         .then((res) => {
-          if (!disposed) setSupportUnread(res.data.count);
+          if (isCurrentRequest()) setSupportUnread(res.data.count);
         })
         .catch((error) => {
-          if (!disposed) setSupportUnread(0);
-          if (!disposed) reportNonBlockingError('AdminLayout.loadSupportUnread', error);
+          if (isCurrentRequest()) setSupportUnread(0);
+          if (isCurrentRequest()) reportNonBlockingError('AdminLayout.loadSupportUnread', error);
         });
     };
     const refreshUnreadWhenVisible = () => {

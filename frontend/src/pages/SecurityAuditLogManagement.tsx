@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Table } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
@@ -323,6 +323,7 @@ const SecurityAuditLogManagement: React.FC = () => {
   const [actorUsername, setActorUsername] = useState('');
   const [range, setRange] = useState<ShopRangeValue>(null);
   const [retentionDays, setRetentionDays] = useState(180);
+  const fetchLogsRequestSeqRef = useRef(0);
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const canExportAuditLogs = hasAdminPermission(adminPermissions, currentRole, AUDIT_LOGS_EXPORT_PERMISSION);
   const canPurgeAuditLogs = hasAdminPermission(adminPermissions, currentRole, AUDIT_LOGS_PURGE_PERMISSION);
@@ -546,22 +547,32 @@ const SecurityAuditLogManagement: React.FC = () => {
   };
 
   const fetchLogs = useCallback(async () => {
+    // The 180ms debounce only merges filter edits that are still pending. A fetch
+    // already awaiting the network can be overtaken by a newer one, and the slower
+    // response would otherwise replace the rows the operator is now filtering for.
+    // Each run claims a sequence number so only the latest one applies.
+    const requestSeq = fetchLogsRequestSeqRef.current + 1;
+    fetchLogsRequestSeqRef.current = requestSeq;
     setLoading(true);
     try {
       const [logResponse, summaryResponse] = await Promise.all([
         adminApi.getAuditLogs(queryParams),
         adminApi.getAuditLogSummary({ ...queryParams, topLimit: 6 }),
       ]);
+      if (fetchLogsRequestSeqRef.current !== requestSeq) return;
       setLoadError(null);
       setLogs(logResponse.data || []);
       setSummary(summaryResponse.data || null);
       setAuditSnapshotLoaded(true);
     } catch (error: unknown) {
+      if (fetchLogsRequestSeqRef.current !== requestSeq) return;
       const errorMessage = getApiErrorMessage(error, t('pages.auditLogs.loadFailed'), language);
       setLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      setLoading(false);
+      if (fetchLogsRequestSeqRef.current === requestSeq) {
+        setLoading(false);
+      }
     }
   }, [language, queryParams, t]);
 

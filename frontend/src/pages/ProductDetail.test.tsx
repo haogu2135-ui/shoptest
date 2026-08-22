@@ -782,3 +782,29 @@ describe('ProductDetail recommendation cache', () => {
     expect(helpersSource).not.toMatch(/\bany\b/);
   });
 });
+
+describe('ProductDetail heading style contract', () => {
+  // The product name and recommendation headings render as
+  // <h1 className="product-detail-page__title"> / <h3 className="...__title">.
+  // Sizing rules keyed to the old h2/h3 + __text shape selected nothing, so the
+  // headings fell through to the browser default heading size and lost their
+  // line clamp. These assertions tie the CSS to the tags the JSX actually emits.
+  it('sizes the product name through the tag and class the JSX renders', () => {
+    const css = readProductDetailCss();
+    const summarySource = readProductDetailSummarySource();
+
+    expect(summarySource).toContain('<h1 className="product-detail-page__title">{productName}</h1>');
+    expect(css).toContain('.product-title-block h1.product-detail-page__title');
+    expect(css).not.toContain('.product-title-block h2.product-detail-page__text');
+    expect(css).not.toContain('.product-title-block h1.product-detail-page__text');
+  });
+
+  it('sizes recommendation headings through the tag and class the JSX renders', () => {
+    const css = readProductDetailCss();
+    const recommendationsSource = readProductDetailRecommendationsPanelSource();
+
+    expect(recommendationsSource).toContain('<h3 className="product-detail-page__title">');
+    expect(css).toContain('.product-recommendations h3.product-detail-page__title');
+    expect(css).not.toContain('.product-recommendations h3.product-detail-page__text');
+  });
+});

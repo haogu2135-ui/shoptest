@@ -209,6 +209,10 @@ const renderNavbar = (children?: React.ReactNode) => render(
   </MemoryRouter>,
 );
 
+// Navbar debounces same-badge refreshes by NAV_BADGE_REFRESH_DEBOUNCE_MS (350ms);
+// wait past it so the queued refresh actually fires.
+const NAV_BADGE_DEBOUNCE_WAIT_MS = 400;
+
 const flushScheduledIdleTasks = async () => {
   await act(async () => {
     (scheduleIdleTask as jest.Mock).mock.calls.forEach(([callback]) => {
@@ -692,6 +696,60 @@ describe('Navbar Android app download entry', () => {
     expect(announceAccessibleMessage).toHaveBeenCalledTimes(1);
     expect(reportNonBlockingError).toHaveBeenCalledWith('Navbar.refreshCartBadge', cartError);
     expect(reportNonBlockingError).toHaveBeenCalledWith('Navbar.refreshNotificationBadge', notificationError);
+  });
+
+  it('keeps the newest notification badge count when a superseded refresh resolves last', async () => {
+    mockUseAuth.mockReturnValue({
+      user: { id: 12, username: 'Mia', role: 'USER' },
+      token: 'member-token',
+      login: mockLoginAuthSession,
+      logout: mockLogoutAuthSession,
+      loading: false,
+    });
+    (getLocalStorageItem as jest.Mock).mockImplementation((key: string) => (key === 'username' ? 'Mia' : null));
+
+    // Each call parks its resolver so two refreshes can be held in flight at once
+    // and completed out of order.
+    const resolvers: Array<(count: number) => void> = [];
+    (notificationApi.getUnreadCount as jest.Mock).mockImplementation(() => new Promise((resolve) => {
+      resolvers.push((count: number) => resolve({ data: { count } }));
+    }));
+    const drain = async () => {
+      await act(async () => {
+        for (let i = 0; i < 8; i += 1) {
+          await Promise.resolve();
+        }
+      });
+    };
+
+    renderNavbar();
+    await flushScheduledIdleTasks();
+    await waitFor(() => {
+      expect(resolvers.length).toBeGreaterThan(0);
+    });
+
+    // The refresh already awaiting the network is the one that must lose. Real
+    // timers are used throughout because React's scheduler also runs on timers,
+    // so the debounce is waited out rather than advanced.
+    const supersededIndex = resolvers.length - 1;
+    await act(async () => {
+      window.dispatchEvent(new Event('shop:notifications-updated'));
+      await new Promise((resolve) => { setTimeout(resolve, NAV_BADGE_DEBOUNCE_WAIT_MS); });
+    });
+    await waitFor(() => {
+      expect(resolvers.length).toBeGreaterThan(supersededIndex + 1);
+    });
+    const currentIndex = resolvers.length - 1;
+
+    // The newer request answers first; the superseded one then answers with a
+    // stale count that must not overwrite it.
+    resolvers[currentIndex](7);
+    await drain();
+    resolvers[supersededIndex](99);
+    await drain();
+
+    expect(screen.getAllByRole('button', { name: 'Notifications: 7' }).length).toBeGreaterThan(0);
+    expect(screen.queryAllByRole('button', { name: 'Notifications: 99' })).toHaveLength(0);
   });
 
   it('reports announcement load failures without breaking navigation render', async () => {

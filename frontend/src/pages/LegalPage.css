@@ -50,7 +50,10 @@
   margin-bottom: 0;
 }
 
-.legal-page__section h2.legal-page__text {
+/* Section headings render as <h2 className="legal-page__title">, so this has to
+   match that class: keyed to legal-page__text it selected nothing and the
+   headings fell through to the browser default h2 size. */
+.legal-page__section h2.legal-page__title {
   margin-bottom: 8px;
   font-size: 1.15rem;
   color: #102f22;

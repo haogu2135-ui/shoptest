@@ -411,6 +411,16 @@ const Navbar: React.FC = () => {
     let disposed = false;
     const idleTasks: ScheduledIdleTask[] = [];
     const refreshTimers: Record<string, number | undefined> = {};
+    // Debouncing only merges refreshes that are still pending. A refresh already
+    // awaiting the network can be overtaken by a newer one for the same badge, and
+    // the slower response would otherwise win and show a stale count. Each run
+    // claims a monotonic sequence number per badge so only the latest run applies.
+    const refreshSeq: Record<string, number> = {};
+    const claimBadgeRefresh = (key: string) => {
+      const requestSeq = (refreshSeq[key] ?? 0) + 1;
+      refreshSeq[key] = requestSeq;
+      return () => !disposed && refreshSeq[key] === requestSeq;
+    };
     const queueIdleRefresh = (callback: () => void | Promise<void>, timeout?: number) => {
       idleTasks.push(scheduleIdleTask(() => {
         if (!disposed) void callback();
@@ -427,6 +437,7 @@ const Navbar: React.FC = () => {
       }, NAV_BADGE_REFRESH_DEBOUNCE_MS);
     };
     const refreshAlertCount = async () => {
+      const isCurrentRefresh = claimBadgeRefresh('alerts');
       if (!token) {
         setAlertCount(0);
         return;
@@ -439,14 +450,14 @@ const Navbar: React.FC = () => {
       const productIds = Array.from(new Set(alerts.map((alert) => alert.productId)));
       try {
         const response = await productApi.getByIds(productIds);
-        if (disposed) return;
+        if (!isCurrentRefresh()) return;
         const readyCount = response.data.filter((product) => {
           const stock = product.stock;
           return stock === undefined || stock > 0;
         }).length;
         setAlertCount(readyCount);
       } catch (error) {
-        if (!disposed) {
+        if (isCurrentRefresh()) {
           setAlertCount(0);
           showBadgeLoadWarning('stock alert', error);
         }
@@ -457,14 +468,15 @@ const Navbar: React.FC = () => {
       setCartCount(count);
     };
     const refreshCartCount = async () => {
+      const isCurrentRefresh = claimBadgeRefresh('cart');
       if (token) {
         try {
           const res = await cartApi.getItems(0);
-          if (disposed) return;
+          if (!isCurrentRefresh()) return;
           const count = res.data.reduce((sum: number, item: CartItem) => sum + normalizeBadgeCount(item.quantity), 0);
           setCartCount(count);
         } catch (error) {
-          if (!disposed) {
+          if (isCurrentRefresh()) {
             setCartCount(0);
             showBadgeLoadWarning('cart', error);
           }
@@ -474,45 +486,48 @@ const Navbar: React.FC = () => {
       }
     };
     const refreshUnreadCount = async () => {
+      const isCurrentRefresh = claimBadgeRefresh('unread');
       if (!token) {
         setUnreadCount(0);
         return;
       }
       try {
         const res = await notificationApi.getUnreadCount();
-        if (!disposed) setUnreadCount(normalizeBadgeCount(res.data.count));
+        if (isCurrentRefresh()) setUnreadCount(normalizeBadgeCount(res.data.count));
       } catch (error) {
-        if (!disposed) {
+        if (isCurrentRefresh()) {
           setUnreadCount(0);
           showBadgeLoadWarning('notification', error);
         }
       }
     };
     const refreshWishlistCount = async () => {
+      const isCurrentRefresh = claimBadgeRefresh('wishlist');
       if (!token) {
         setWishlistCount(0);
         return;
       }
       try {
         const res = await wishlistApi.getCount(0);
-        if (!disposed) setWishlistCount(normalizeBadgeCount(res.data.count));
+        if (isCurrentRefresh()) setWishlistCount(normalizeBadgeCount(res.data.count));
       } catch (error) {
-        if (!disposed) {
+        if (isCurrentRefresh()) {
           setWishlistCount(0);
           showBadgeLoadWarning('wishlist', error);
         }
       }
     };
     const refreshCouponCount = async () => {
+      const isCurrentRefresh = claimBadgeRefresh('coupons');
       if (!token) {
         setCouponCount(0);
         return;
       }
       try {
         const res = await couponApi.getAvailableByUser(0);
-        if (!disposed) setCouponCount(normalizeBadgeCount(res.data.length));
+        if (isCurrentRefresh()) setCouponCount(normalizeBadgeCount(res.data.length));
       } catch (error) {
-        if (!disposed) {
+        if (isCurrentRefresh()) {
           setCouponCount(0);
           showBadgeLoadWarning('coupon', error);
         }
