@@ -429,8 +429,7 @@ export const HomeDiscoverySection: React.FC<{
             ))}
           </div>
           {hasMoreDiscoveryProducts ? (
-            <div className="shopee-load-more" role="status" aria-live="polite" aria-busy="true" aria-label={t('home.discoveryLoadingMore')}>
-              <span className="home-spinner" aria-hidden="true" />
+            <div className="shopee-load-more">
               <button
                 type="button"
                 className="shopee-load-more__button"

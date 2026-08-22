@@ -429,7 +429,6 @@
     "emptyProductsHint": "新品即将上架，可先浏览分类或使用搜索。",
     "discoveryShowing": "已显示 {shown} / {total} 个推荐",
     "discoveryLoadMore": "加载更多推荐",
-    "discoveryLoadingMore": "正在加载更多推荐",
     "discoveryAllLoaded": "推荐商品已全部加载"
   },
   "footer": {

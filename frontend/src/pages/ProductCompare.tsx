@@ -1,7 +1,7 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { useNavigate } from 'react-router-dom';
-import { cartApi, productApi } from '../api';
+import { cartApi, createApiAbortController, productApi } from '../api';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
@@ -67,7 +67,19 @@ const ProductCompare: React.FC = () => {
   const compareProductName = useCallback((product: Product) =>
     (product.name || '').trim() || t('pages.profile.productFallback', { id: product.id }), [t]);
 
+  const mountedRef = useRef(true);
+  const compareFetchSeqRef = useRef(0);
+  const compareAbortRef = useRef<AbortController | null>(null);
+
   const fetchComparedProducts = useCallback(async () => {
+    compareAbortRef.current?.abort();
+    const requestSeq = compareFetchSeqRef.current + 1;
+    compareFetchSeqRef.current = requestSeq;
+    const abortController = createApiAbortController();
+    compareAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && compareFetchSeqRef.current === requestSeq
+      && !abortController.signal.aborted;
     const ids = readCompareProductIds();
     setCompareLoadAttemptCount(ids.length);
     if (ids.length === 0) {
@@ -77,7 +89,8 @@ const ProductCompare: React.FC = () => {
     }
     try {
       setLoading(true);
-      const response = await productApi.getByIds(ids);
+      const response = await productApi.getByIds(ids, { signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       const nextProducts = response.data.map((product) => localizeProduct(product, language));
       ids
         .filter((id) => !nextProducts.some((product) => product.id === id))
@@ -85,13 +98,31 @@ const ProductCompare: React.FC = () => {
       setProducts(nextProducts);
       setCompareLoadError(false);
     } catch (error) {
+      // Superseded and aborted fetches are expected during rapid navigation, so
+      // they must not be reported as page errors.
+      if (!isCurrentRequest()) return;
       reportNonBlockingError('ProductCompare.fetchComparedProducts', error);
       setCompareLoadError(true);
       announceAccessibleMessage(t('pages.compare.loadFailed'), 'error');
     } finally {
-      setLoading(false);
+      if (compareAbortRef.current === abortController) {
+        compareAbortRef.current = null;
+      }
+      if (isCurrentRequest()) {
+        setLoading(false);
+      }
     }
   }, [language, t]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      compareFetchSeqRef.current += 1;
+      compareAbortRef.current?.abort();
+      compareAbortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     fetchComparedProducts();

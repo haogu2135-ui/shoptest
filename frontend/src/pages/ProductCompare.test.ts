@@ -80,3 +80,27 @@ describe('ProductCompare stale data guards', () => {
     expect(source.match(/disabled=\{compareActionsDisabled\}/g)?.length ?? 0).toBeGreaterThanOrEqual(4);
   });
 });
+
+describe('ProductCompare unmount and stale response guards', () => {
+  it('guards compare fetch setState calls against unmount and superseded responses', () => {
+    const page = readProductComparePage();
+
+    expect(page).toContain('const mountedRef = useRef(true);');
+    expect(page).toContain('const compareFetchSeqRef = useRef(0);');
+    expect(page).toContain('const requestSeq = compareFetchSeqRef.current + 1;');
+    expect(page).toContain('compareFetchSeqRef.current = requestSeq;');
+    expect(page).toMatch(/const isCurrentRequest = \(\) => mountedRef\.current\s*&& compareFetchSeqRef\.current === requestSeq\s*&& !abortController\.signal\.aborted;/);
+    expect(page).toContain('mountedRef.current = false;');
+    expect(page).toContain('compareFetchSeqRef.current += 1;');
+    expect(page).toMatch(/const response = await productApi\.getByIds\(ids, \{ signal: abortController\.signal \}\);\s*\n\s*if \(!isCurrentRequest\(\)\) return;/);
+    expect(page).toMatch(/if \(isCurrentRequest\(\)\) \{\s*\n\s*setLoading\(false\);/);
+
+    // In-flight compare fetches are aborted instead of left running after
+    // unmount or after a newer fetch supersedes them.
+    expect(page).toContain('const compareAbortRef = useRef<AbortController | null>(null);');
+    expect(page).toContain('const abortController = createApiAbortController();');
+    expect(page).toMatch(/compareFetchSeqRef\.current \+= 1;\s*compareAbortRef\.current\?\.abort\(\);/);
+    // Aborted/superseded fetches must not be reported as page errors.
+    expect(page).toMatch(/if \(!isCurrentRequest\(\)\) return;\s*reportNonBlockingError\('ProductCompare\.fetchComparedProducts', error\);/);
+  });
+});

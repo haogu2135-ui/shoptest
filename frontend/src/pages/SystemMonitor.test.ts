@@ -73,6 +73,23 @@ describe('SystemMonitor mobile diagnostics guards', () => {
     expect(f2717Css).toMatch(/\.system-monitor \.ant-descriptions-item-content \.ant-tag,[\s\S]*?\.system-monitor__statusTitle \.ant-tag\s*\{[\s\S]*?display:\s*inline-flex;[\s\S]*?flex:\s*0 0 auto;[\s\S]*?white-space:\s*nowrap\s*!important;[\s\S]*?word-break:\s*normal\s*!important;[\s\S]*?overflow-wrap:\s*normal\s*!important;/);
   });
 
+  it('guards system status setState calls against unmount and stale responses', () => {
+    expect(pageSource).toContain('const mountedRef = useRef(true);');
+    expect(pageSource).toContain('const statusFetchSeqRef = useRef(0);');
+    expect(pageSource).toMatch(/const isCurrentRequest = \(\) => mountedRef\.current\s*&& statusFetchSeqRef\.current === requestSeq\s*&& !abortController\.signal\.aborted;/);
+    expect(pageSource).toMatch(/if \(!isCurrentRequest\(\)\) return;\s*setStatus\(response\.data\);/);
+    expect(pageSource).toMatch(/catch \(error: unknown\) \{\s*if \(!isCurrentRequest\(\)\) return;/);
+    expect(pageSource).toMatch(/if \(isCurrentRequest\(\)\) \{\s*setLoading\(false\);/);
+    expect(pageSource).toMatch(/mountedRef\.current = false;\s*statusFetchSeqRef\.current \+= 1;/);
+
+    // In-flight system status requests are aborted rather than left running
+    // after unmount or after a newer refresh supersedes them.
+    expect(pageSource).toContain('const statusAbortRef = useRef<AbortController | null>(null);');
+    expect(pageSource).toContain('const abortController = createApiAbortController();');
+    expect(pageSource).toContain('adminApi.getSystemStatus({ signal: abortController.signal })');
+    expect(pageSource).toMatch(/statusFetchSeqRef\.current \+= 1;\s*statusAbortRef\.current\?\.abort\(\);/);
+  });
+
   it('surfaces a production payment channel checklist from readiness details', () => {
     expect(pageSource).toContain("t('pages.systemMonitor.paymentChannelChecklist')");
     expect(pageSource).toContain('system-monitor__paymentChannelChecklist');

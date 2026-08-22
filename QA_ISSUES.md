@@ -17060,7 +17060,7 @@ Backend Maven ✅ **442/442 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 ## New Issues (2026-05-30 09:00 UTC) — Multi-Dimensional Deep Analysis
 
 ### F3444: MEDIUM — Multiple pages missing unmount protection for async setState
-- **Status**: OPEN
+- **Status**: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED
 - **Opened**: 2026-05-30 09:00 UTC
 - **Source**: Frontend State Management Analysis
 - **How found**: Static code analysis
@@ -17069,6 +17069,8 @@ Backend Maven ✅ **442/442 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Risk**: Memory leaks during rapid navigation; invalid operations on unmounted components
 - **Component**: Multiple pages
 - **File**: frontend/src/pages/SystemMonitor.tsx, ProductManagement.tsx, ReviewManagement.tsx, Wishlist.tsx, Notifications.tsx, Home.tsx, CustomerSupportWidget.tsx, SupportManagement.tsx
+- **Fix (2026-08-22 UTC)**: Every page named in the symptom now discards post-unmount and superseded async results. `ProductManagement`, `ReviewManagement`, `CustomerSupportWidget`, `SupportManagement`, and `Home` (through `hooks/useHomeCatalog.ts`) use `disposed` flags in effect cleanup. `SystemMonitor`, `RegistryManagement`, `PermissionManagement`, `ProductCompare`, `Wishlist`, and `Notifications` use the stronger `mountedRef` + per-fetch sequence guard, so a slow first response can no longer overwrite a newer one; `setLoading(false)` is likewise gated so a stale response cannot clear a live spinner.
+- **Regression coverage**: `SystemMonitor.test.ts`, `RegistryManagement.test.ts`, `PermissionManagement.test.ts`, and `ProductCompare.test.ts` require the mounted/sequence/abort guard contract on each load path. Verified by the full frontend Jest suite: 233 suites, 1620 tests, zero failures.
 
 ### F3445: MEDIUM — Profile.tsx useEffect dependency on orders may cause loop
 - **Status**: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED
@@ -17121,7 +17123,7 @@ Backend Maven ✅ **442/442 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Regression coverage**: `frontend/src/components/CustomerSupportWidget.test.tsx` now guards the ref-backed guest polling contract.
 
 ### F3449: LOW — Most pages lack AbortController for API requests
-- **Status**: OPEN
+- **Status**: PARTIAL / IN_PROGRESS
 - **Opened**: 2026-05-30 09:00 UTC
 - **Source**: Frontend State Management Analysis
 - **How found**: Static code analysis
@@ -17130,6 +17132,9 @@ Backend Maven ✅ **442/442 passed**. Frontend Build ✅ **SUCCESS**. Frontend J
 - **Risk**: Wasted network resources during rapid page switching
 - **Component**: All pages
 - **File**: frontend/src/pages/*.tsx
+- **Progress (2026-08-22 UTC)**: The symptom's premise is now stale. Beyond `OrderTracking`, abort wiring covers `Notifications`, `ProductList` (`hooks/useProductListCatalog.ts`), `Checkout` (`hooks/useCheckoutPaymentLifecycle.ts`), and — added in this pass — `SystemMonitor`, `RegistryManagement`, `PermissionManagement`, and `ProductCompare`. Each aborts the previous in-flight request when a reload is triggered and again on unmount, so rapid navigation or repeated refresh clicks no longer leave superseded requests running.
+- **Supporting API change**: `adminApi.getSystemStatus` / `getRegistryStatus` / `getRoles` now accept `ApiRequestOptions`. `getRoles` shares one pending request across callers via `cachedGet`, so its signal is stripped from the shared loader with `cacheLoaderOptions` and applied only to the calling promise — one caller aborting cannot cancel the request another caller is awaiting. Covered by `api/index.test.ts` ("passes admin diagnostics abort signals through to the request config", "keeps the shared admin role request alive when one caller aborts").
+- **Remaining**: Other admin/list pages still rely on `disposed` or mounted-ref guards without aborting. Those are correctness-safe (no stale state is applied); the open part is purely the wasted in-flight bandwidth.
 
 ### F3450: MEDIUM — @Transactional missing rollbackFor across all services
 - **Status**: FIXED / SOURCE_FIXED / REGRESSION_GUARD_ADDED

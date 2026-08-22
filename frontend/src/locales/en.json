@@ -429,7 +429,6 @@
     "emptyProductsHint": "New pet essentials are on the way. Browse categories or try search.",
     "discoveryShowing": "Showing {shown} of {total} picks",
     "discoveryLoadMore": "Load more picks",
-    "discoveryLoadingMore": "Loading more picks",
     "discoveryAllLoaded": "All discovery picks are loaded"
   },
   "footer": {

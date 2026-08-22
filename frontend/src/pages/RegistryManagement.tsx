@@ -1,9 +1,9 @@
 import { useNavigate } from 'react-router-dom';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Table } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import { ApiOutlined, CloudServerOutlined, LinkOutlined, ReloadOutlined, SafetyCertificateOutlined, SearchOutlined } from '@ant-design/icons';
-import { apiBaseUrl } from '../api';
+import { apiBaseUrl, createApiAbortController } from '../api';
 import { adminApi } from '../api/admin';
 import { apiGatewayEnabled, apiGatewayPrefix } from '../utils/apiDispatcher';
 import type { AdminRegistryInstance, AdminRegistryServiceSummary, AdminRegistryStatus } from '../types';
@@ -38,20 +38,49 @@ const RegistryManagement: React.FC = () => {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [serviceKeyword, setServiceKeyword] = useState('');
 
+  const mountedRef = useRef(true);
+  const statusFetchSeqRef = useRef(0);
+  const statusAbortRef = useRef<AbortController | null>(null);
+
   const loadStatus = useCallback(async () => {
+    statusAbortRef.current?.abort();
+    const requestSeq = statusFetchSeqRef.current + 1;
+    statusFetchSeqRef.current = requestSeq;
+    const abortController = createApiAbortController();
+    statusAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && statusFetchSeqRef.current === requestSeq
+      && !abortController.signal.aborted;
     setLoading(true);
     try {
       setLoadError(null);
-      const response = await adminApi.getRegistryStatus();
+      const response = await adminApi.getRegistryStatus({ signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       setStatus(response.data);
     } catch (error: unknown) {
+      if (!isCurrentRequest()) return;
       const errorMessage = getApiErrorMessage(error, t('pages.registryAdmin.loadFailed'), language);
       setLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      setLoading(false);
+      if (statusAbortRef.current === abortController) {
+        statusAbortRef.current = null;
+      }
+      if (isCurrentRequest()) {
+        setLoading(false);
+      }
     }
   }, [language, t]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      statusFetchSeqRef.current += 1;
+      statusAbortRef.current?.abort();
+      statusAbortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     loadStatus();

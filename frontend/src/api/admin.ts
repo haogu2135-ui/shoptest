@@ -124,6 +124,7 @@ import {
   toPathId,
   withArrayData,
   withRequestOptions,
+  cacheLoaderOptions,
 } from './core';
 import type {
   AdminSupportSessionQuery,
@@ -148,8 +149,10 @@ export const adminApi = {
             });
         return adminRuntime.dashboardRequest;
     },
-    getRegistryStatus: () => api.get<AdminRegistryStatus>('/admin/registry'),
-    getSystemStatus: () => api.get<AdminSystemStatus>('/admin/system/status'),
+    getRegistryStatus: (options?: ApiRequestOptions) =>
+        api.get<AdminRegistryStatus>('/admin/registry', withRequestOptions({}, options)),
+    getSystemStatus: (options?: ApiRequestOptions) =>
+        api.get<AdminSystemStatus>('/admin/system/status', withRequestOptions({}, options)),
     getConfigCenter: (params?: { dataId?: string; group?: string; namespace?: string }) =>
         api.get<AdminConfigCenterSnapshot>('/admin/config-center', { params }),
     publishConfigCenter: (payload: AdminConfigCenterPublishRequest) =>
@@ -310,7 +313,16 @@ export const adminApi = {
             return response;
         }),
     deleteUser: (id: number) => api.delete(`/admin/users/${toPathId(id)}`).finally(clearAdminUserCache),
-    getRoles: () => cachedGet(adminRoleCache, adminRoleRequests, 'roles', ADMIN_ROLE_CACHE_MS, () => api.get<AdminRole[]>('/admin/roles')),
+    getRoles: (options?: ApiRequestOptions) => cachedGet(
+        adminRoleCache,
+        adminRoleRequests,
+        'roles',
+        ADMIN_ROLE_CACHE_MS,
+        // The pending request is shared across callers, so the per-caller signal must
+        // not reach it; cachedGet applies the signal to this caller's promise instead.
+        () => api.get<AdminRole[]>('/admin/roles', withRequestOptions({}, cacheLoaderOptions(options))),
+        options,
+    ),
     saveRole: (role: Partial<AdminRole>) => api.post<AdminRole>('/admin/roles', normalizeAdminRolePayload(role))
         .then((response) => {
             clearAdminRoleCache();

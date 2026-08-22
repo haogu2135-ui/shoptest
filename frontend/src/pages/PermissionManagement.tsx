@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Form, Table } from 'antd';
 import ShopInput from '../components/ShopInput';
 import ShopModal from '../components/ShopModal';
 import ShopCheckbox, { ShopCheckboxGroup } from '../components/ShopCheckbox';
 import { DownloadOutlined, PlusOutlined, SafetyCertificateOutlined, SearchOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { createApiAbortController } from '../api';
 import { adminApi } from '../api/admin';
 import { useLanguage } from '../i18n';
 import type { AdminRole } from '../types';
@@ -46,21 +47,50 @@ const PermissionManagement: React.FC = () => {
   const roleActionDisabled = loading || Boolean(roleLoadError) || !roleSnapshotLoaded;
   const roleActionUnavailableMessage = roleLoadError || (loading ? t('common.loading') : t('pages.permissions.fetchFailed'));
 
+  const mountedRef = useRef(true);
+  const roleFetchSeqRef = useRef(0);
+  const roleAbortRef = useRef<AbortController | null>(null);
+
   const loadRoles = useCallback(async () => {
+    roleAbortRef.current?.abort();
+    const requestSeq = roleFetchSeqRef.current + 1;
+    roleFetchSeqRef.current = requestSeq;
+    const abortController = createApiAbortController();
+    roleAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && roleFetchSeqRef.current === requestSeq
+      && !abortController.signal.aborted;
     try {
       setLoading(true);
-      const res = await adminApi.getRoles();
+      const res = await adminApi.getRoles({ signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       setRoleLoadError(null);
       setRoles(res.data || []);
       setRoleSnapshotLoaded(true);
     } catch (err: unknown) {
+      if (!isCurrentRequest()) return;
       const errorMessage = getApiErrorMessage(err, t('pages.permissions.fetchFailed'), language);
       setRoleLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      setLoading(false);
+      if (roleAbortRef.current === abortController) {
+        roleAbortRef.current = null;
+      }
+      if (isCurrentRequest()) {
+        setLoading(false);
+      }
     }
   }, [language, t]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      roleFetchSeqRef.current += 1;
+      roleAbortRef.current?.abort();
+      roleAbortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (!isSuperAdminRole(currentRole)) {

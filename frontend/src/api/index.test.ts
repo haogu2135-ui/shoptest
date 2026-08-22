@@ -2472,6 +2472,52 @@ const { adminApi } = require('./admin');
     ]);
   });
 
+  it('passes admin diagnostics abort signals through to the request config', async () => {
+    jest.resetModules();
+    const statusController = new AbortController();
+    const registryController = new AbortController();
+    mockGet
+      .mockResolvedValueOnce({ data: {} })
+      .mockResolvedValueOnce({ data: {} });
+
+    const { adminApi } = require('./admin');
+
+    await adminApi.getSystemStatus({ signal: statusController.signal });
+    await adminApi.getRegistryStatus({ signal: registryController.signal });
+
+    expect(mockGet.mock.calls[0]).toEqual([
+      '/admin/system/status',
+      expect.objectContaining({ signal: statusController.signal }),
+    ]);
+    expect(mockGet.mock.calls[1]).toEqual([
+      '/admin/registry',
+      expect.objectContaining({ signal: registryController.signal }),
+    ]);
+  });
+
+  it('keeps the shared admin role request alive when one caller aborts', async () => {
+    jest.resetModules();
+    const abortedController = new AbortController();
+    mockGet.mockResolvedValueOnce({ data: [{ code: 'OPS' }] });
+
+    const { adminApi } = require('./admin');
+
+    // The pending role request is shared across callers, so a per-caller signal
+    // must reject only that caller and never cancel the underlying fetch.
+    const abortedRequest = adminApi.getRoles({ signal: abortedController.signal });
+    const rejection = expect(abortedRequest).rejects.toMatchObject({ name: 'AbortError' });
+    abortedController.abort();
+    await rejection;
+
+    // The shared in-flight request must not carry the aborting caller's signal.
+    expect(mockGet.mock.calls[0][0]).toBe('/admin/roles');
+    expect(mockGet.mock.calls[0][1]?.signal).toBeUndefined();
+
+    const surviving = await adminApi.getRoles();
+    expect(surviving.data).toEqual([{ code: 'OPS' }]);
+    expect(mockGet).toHaveBeenCalledTimes(1);
+  });
+
   it('normalizes notification, pet profile, pet gallery, and logistics params', async () => {
     const { notificationApi, petProfileApi, petGalleryApi, logisticsApi } = require('./index');
 

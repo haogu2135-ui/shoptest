@@ -84,4 +84,21 @@ describe('Home render memoization contracts', () => {
     expect(homeSource).toContain('role="listitem"');
     expect(homeSource).toContain('shopee-load-more__button');
   });
+
+  it('does not announce the idle discovery load-more control as a busy loading region', () => {
+    const panels = fs.readFileSync(path.join(__dirname, 'homeProductPanels.tsx'), 'utf8');
+    const loadMoreIndex = panels.indexOf('className="shopee-load-more"');
+    const loadMoreRegion = panels.slice(loadMoreIndex, panels.indexOf('</div>', loadMoreIndex));
+
+    expect(loadMoreIndex).toBeGreaterThan(-1);
+    // Load-more only slices an already-fetched array, so the wrapper must not
+    // claim a permanent busy status or render a perpetual spinner.
+    expect(loadMoreRegion).not.toContain('aria-busy');
+    expect(loadMoreRegion).not.toContain('role="status"');
+    expect(loadMoreRegion).not.toContain('home-spinner');
+    expect(loadMoreRegion).not.toContain('home.discoveryLoadingMore');
+    expect(panels).not.toContain('home.discoveryLoadingMore');
+    // The real count status region above the grid stays the announced surface.
+    expect(panels).toContain('className="shopee-discovery__status"');
+  });
 });

@@ -332,7 +332,6 @@
     "emptyProductsHint": "Pronto habrá más productos. Explora categorías o usa la búsqueda.",
     "discoveryShowing": "Mostrando {shown} de {total} recomendaciones",
     "discoveryLoadMore": "Cargar más recomendaciones",
-    "discoveryLoadingMore": "Cargando más recomendaciones",
     "discoveryAllLoaded": "Todas las recomendaciones están cargadas"
   },
   "footer": {

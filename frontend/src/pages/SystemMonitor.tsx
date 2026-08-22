@@ -1,6 +1,6 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { CloudServerOutlined, DatabaseOutlined, HddOutlined, ReloadOutlined, SafetyCertificateOutlined, SettingOutlined } from '@ant-design/icons';
-import { apiBaseUrl } from '../api';
+import { apiBaseUrl, createApiAbortController } from '../api';
 import { adminApi } from '../api/admin';
 import type { AdminSystemStatus } from '../types';
 import { useNavigate } from 'react-router-dom';
@@ -99,20 +99,49 @@ const SystemMonitor: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
+  const mountedRef = useRef(true);
+  const statusFetchSeqRef = useRef(0);
+  const statusAbortRef = useRef<AbortController | null>(null);
+
   const loadStatus = useCallback(async () => {
+    statusAbortRef.current?.abort();
+    const requestSeq = statusFetchSeqRef.current + 1;
+    statusFetchSeqRef.current = requestSeq;
+    const abortController = createApiAbortController();
+    statusAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && statusFetchSeqRef.current === requestSeq
+      && !abortController.signal.aborted;
     setLoading(true);
     try {
       setLoadError(null);
-      const response = await adminApi.getSystemStatus();
+      const response = await adminApi.getSystemStatus({ signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       setStatus(response.data);
     } catch (error: unknown) {
+      if (!isCurrentRequest()) return;
       const errorMessage = getApiErrorMessage(error, t('pages.systemMonitor.loadFailed'), language);
       setLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      setLoading(false);
+      if (statusAbortRef.current === abortController) {
+        statusAbortRef.current = null;
+      }
+      if (isCurrentRequest()) {
+        setLoading(false);
+      }
     }
   }, [language, t]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      statusFetchSeqRef.current += 1;
+      statusAbortRef.current?.abort();
+      statusAbortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     loadStatus();

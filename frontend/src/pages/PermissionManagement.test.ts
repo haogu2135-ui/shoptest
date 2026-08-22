@@ -43,3 +43,29 @@ describe('PermissionManagement role editor layout guards', () => {
     expect(f3518Css).not.toContain('@media');
   });
 });
+
+describe('PermissionManagement async state guards', () => {
+  it('guards role list setState calls against unmount and stale responses', () => {
+    expect(pageSource).toContain('const mountedRef = useRef(true);');
+    expect(pageSource).toContain('const roleFetchSeqRef = useRef(0);');
+    expect(pageSource).toContain('const requestSeq = roleFetchSeqRef.current + 1;');
+    expect(pageSource).toMatch(/const isCurrentRequest = \(\) => mountedRef\.current\s*&& roleFetchSeqRef\.current === requestSeq\s*&& !abortController\.signal\.aborted;/);
+    expect(pageSource).toContain('mountedRef.current = false;');
+    expect(pageSource).toContain('roleFetchSeqRef.current += 1;');
+
+    // In-flight role requests are aborted rather than left running after
+    // unmount or after a newer refresh supersedes them.
+    expect(pageSource).toContain('const roleAbortRef = useRef<AbortController | null>(null);');
+    expect(pageSource).toContain('const abortController = createApiAbortController();');
+    expect(pageSource).toContain('adminApi.getRoles({ signal: abortController.signal })');
+    expect(pageSource).toMatch(/roleFetchSeqRef\.current \+= 1;\s*roleAbortRef\.current\?\.abort\(\);/);
+
+    const loadBody = pageSource.slice(
+      pageSource.indexOf('const loadRoles = useCallback'),
+      pageSource.indexOf('}, [language, t]);'),
+    );
+    expect(loadBody).toContain('if (!isCurrentRequest()) return;\n      setRoleLoadError(null);');
+    expect(loadBody).toMatch(/if \(isCurrentRequest\(\)\) \{\s*setLoading\(false\);/);
+    expect(loadBody).not.toMatch(/\}\s*catch \(err: unknown\) \{\s*const errorMessage/);
+  });
+});
