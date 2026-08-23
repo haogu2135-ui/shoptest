@@ -759,12 +759,13 @@ public class PaymentService {
     private Payment refreshPayment(Payment payment, Order order, String channel) {
         validateOrderReadyForPayment(order);
         LocalDateTime now = LocalDateTime.now();
+        String expectedStatus = payment.getStatus();
         PaymentChannelConfig.Channel channelConfig = paymentChannelConfig.requireEnabled(channel);
         if (channelConfig.isStripeProvider()) {
-            return refreshStripePayment(payment, order, now, channelConfig);
+            return refreshStripePayment(payment, order, now, channelConfig, expectedStatus);
         }
         if (channelConfig.isGenericApiProvider()) {
-            return refreshGenericApiPayment(payment, order, now, channelConfig);
+            return refreshGenericApiPayment(payment, order, now, channelConfig, expectedStatus);
         }
         payment.setAmount(order.getTotalAmount());
         payment.setStatus(PENDING);
@@ -777,10 +778,7 @@ public class PaymentService {
         payment.setExpiresAt(now.plusMinutes(resolveTimeoutMinutes(channelConfig)));
         payment.setPaymentUrl(buildPaymentUrl(order, channelConfig, payment.getExpiresAt()));
         payment.setUpdatedAt(now);
-        paymentRepository.update(payment);
-        Payment refreshed = paymentRepository.findById(payment.getId());
-        logPaymentLifecycle("Payment refreshed", refreshed == null ? payment : refreshed);
-        return refreshed;
+        return persistRefreshedPayment(payment, expectedStatus, "Payment refreshed");
     }
 
     private Payment createStripePayment(Order order, LocalDateTime now, PaymentChannelConfig.Channel channelConfig) {
@@ -813,7 +811,11 @@ public class PaymentService {
         }
     }
 
-    private Payment refreshStripePayment(Payment payment, Order order, LocalDateTime now, PaymentChannelConfig.Channel channelConfig) {
+    private Payment refreshStripePayment(Payment payment,
+                                         Order order,
+                                         LocalDateTime now,
+                                         PaymentChannelConfig.Channel channelConfig,
+                                         String expectedStatus) {
         String secretKey = stripeSecretKey();
         if (isBlank(secretKey)) {
             throw new IllegalStateException("Stripe secret key is not configured");
@@ -821,7 +823,7 @@ public class PaymentService {
         try {
             Session session = Session.create(
                     buildStripeCheckoutSession(order, channelConfig),
-                    stripeRequestOptions(secretKey, "checkout-session-refresh-" + order.getId() + "-" + payment.getId() + "-" + now.toString()));
+                    stripeRequestOptions(secretKey, paymentRefreshIdempotencyKey(order, payment, channelConfig)));
             payment.setAmount(order.getTotalAmount());
             payment.setChannel(channelConfig.getCode());
             payment.setStatus(PENDING);
@@ -834,10 +836,7 @@ public class PaymentService {
             payment.setRefundedAt(null);
             payment.setCallbackAt(null);
             payment.setUpdatedAt(now);
-            paymentRepository.update(payment);
-            Payment refreshed = paymentRepository.findById(payment.getId());
-            logPaymentLifecycle("Payment refreshed via Stripe", refreshed == null ? payment : refreshed);
-            return refreshed;
+            return persistRefreshedPayment(payment, expectedStatus, "Payment refreshed via Stripe");
         } catch (StripeException e) {
             throw stripeProviderUnavailable("Failed to create Stripe Checkout session", e);
         }
@@ -876,7 +875,11 @@ public class PaymentService {
         return payment;
     }
 
-    private Payment refreshGenericApiPayment(Payment payment, Order order, LocalDateTime now, PaymentChannelConfig.Channel channelConfig) {
+    private Payment refreshGenericApiPayment(Payment payment,
+                                             Order order,
+                                             LocalDateTime now,
+                                             PaymentChannelConfig.Channel channelConfig,
+                                             String expectedStatus) {
         String createUrl = trimToNull(channelConfig.getCreateUrl());
         if (createUrl == null) {
             throw new IllegalStateException("Create payment URL is not configured for channel " + channelConfig.getCode());
@@ -903,10 +906,18 @@ public class PaymentService {
         payment.setExpiresAt(gateway.expiresAt);
         payment.setPaymentUrl(gateway.paymentUrl);
         payment.setUpdatedAt(now);
-        paymentRepository.update(payment);
+        return persistRefreshedPayment(payment, expectedStatus, "Payment refreshed via generic API");
+    }
+
+    private Payment persistRefreshedPayment(Payment payment, String expectedStatus, String lifecycleEvent) {
+        int updated = paymentRepository.updateForRefresh(payment, expectedStatus);
         Payment refreshed = paymentRepository.findById(payment.getId());
-        logPaymentLifecycle("Payment refreshed via generic API", refreshed == null ? payment : refreshed);
-        return refreshed;
+        if (updated == 0 && refreshed == null) {
+            throw new IllegalStateException("Payment refresh state update failed");
+        }
+        Payment effective = refreshed == null ? payment : refreshed;
+        logPaymentLifecycle(lifecycleEvent, effective);
+        return effective;
     }
 
     private ResponseEntity<String> requestGenericApiPayment(Order order,
@@ -1659,7 +1670,13 @@ public class PaymentService {
     }
 
     private String paymentRefreshIdempotencyKey(Order order, Payment payment, PaymentChannelConfig.Channel channel) {
-        return "payment-refresh-" + order.getId() + "-" + payment.getId() + "-" + channel.getCode();
+        String paymentRevision = firstNonBlank(
+                payment.getExpiresAt() == null ? null : payment.getExpiresAt().toString(),
+                payment.getUpdatedAt() == null ? null : payment.getUpdatedAt().toString(),
+                payment.getTransactionId(),
+                payment.getProviderReference(),
+                String.valueOf(payment.getId()));
+        return "payment-refresh-" + order.getId() + "-" + payment.getId() + "-" + channel.getCode() + "-" + paymentRevision;
     }
 
     private String readText(JsonNode root, String fieldName) {

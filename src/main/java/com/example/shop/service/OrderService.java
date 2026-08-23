@@ -1504,6 +1504,9 @@ public class OrderService {
         }
 
         if (payment != null && !"PAID".equals(payment.getStatus()) && !"REFUNDED".equals(payment.getStatus())) {
+            if (!Set.of("PENDING", "FAILED", "EXPIRED", "CANCELLED").contains(payment.getStatus())) {
+                throw new IllegalStateException("Payment cannot be manually confirmed from status: " + payment.getStatus());
+            }
             payment.setAmount(order.getTotalAmount());
             payment.setChannel(resolveManualPaymentChannel(order, payment));
             payment.setStatus("PAID");
@@ -1514,7 +1517,12 @@ public class OrderService {
             payment.setPaidAt(now);
             payment.setCallbackAt(now);
             payment.setUpdatedAt(now);
-            if (paymentRepository.update(payment) == 0) {
+            if (paymentRepository.markManuallyPaid(
+                    payment.getId(),
+                    payment.getAmount(),
+                    payment.getChannel(),
+                    payment.getTransactionId(),
+                    now) == 0) {
                 throw new IllegalStateException("Payment confirmation update failed");
             }
         } else {

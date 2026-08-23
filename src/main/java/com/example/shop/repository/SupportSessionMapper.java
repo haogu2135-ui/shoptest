@@ -3,6 +3,7 @@ package com.example.shop.repository;
 import com.example.shop.entity.SupportSession;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
+import org.apache.ibatis.annotations.Select;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -26,6 +27,10 @@ public interface SupportSessionMapper {
                         @Param("assignedAdminId") Long assignedAdminId,
                         @Param("search") String search);
     Map<String, Object> adminSummary(@Param("adminId") Long adminId, @Param("staleBefore") LocalDateTime staleBefore);
+    @Select("SELECT GET_LOCK(#{lockName}, 5)")
+    Long acquireSessionCreationLock(@Param("lockName") String lockName);
+    @Select("SELECT RELEASE_LOCK(#{lockName})")
+    Long releaseSessionCreationLock(@Param("lockName") String lockName);
     int insert(SupportSession session);
     int updateLastMessage(@Param("id") Long id, @Param("lastMessage") String lastMessage);
     int assignAdmin(@Param("id") Long id, @Param("adminId") Long adminId);

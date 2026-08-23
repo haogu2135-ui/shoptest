@@ -361,7 +361,16 @@ public class ProductVariantService {
 
     private BigDecimal decimalValue(Object value) {
         if (value instanceof Number) {
-            return BigDecimal.valueOf(((Number) value).doubleValue());
+            if (value instanceof BigDecimal) {
+                return (BigDecimal) value;
+            }
+            if (value instanceof Byte || value instanceof Short
+                    || value instanceof Integer || value instanceof Long) {
+                return BigDecimal.valueOf(((Number) value).longValue());
+            }
+            // Preserve the catalog number's decimal representation instead of
+            // exposing binary floating-point artifacts through doubleValue().
+            return new BigDecimal(value.toString());
         }
         if (value == null || String.valueOf(value).trim().isEmpty()) {
             return BigDecimal.ZERO;

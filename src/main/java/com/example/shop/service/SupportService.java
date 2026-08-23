@@ -11,9 +11,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -40,7 +45,6 @@ public class SupportService {
     private final SupportMessageMapper supportMessageMapper;
     private final RuntimeConfigService runtimeConfig;
     private final ConcurrentMap<String, RateBucket> messageRateBuckets = new ConcurrentHashMap<>();
-    private final ConcurrentMap<String, Object> sessionCreationLocks = new ConcurrentHashMap<>();
 
     @Transactional(rollbackFor = Exception.class)
     public SupportSession getOrCreateOpenSession(Long userId) {
@@ -75,34 +79,68 @@ public class SupportService {
         if (session != null) {
             return session;
         }
-        String lockKey = sessionCreationLockKey(userId, contextKey);
-        Object lock = sessionCreationLocks.computeIfAbsent(lockKey, key -> new Object());
+        String lockName = sessionCreationLockName(userId, contextKey);
+        // GET_LOCK is connection-scoped; the surrounding transaction keeps the
+        // mapper calls on the same database connection across application nodes.
+        Long acquired = supportSessionMapper.acquireSessionCreationLock(lockName);
+        if (!Long.valueOf(1L).equals(acquired)) {
+            throw new IllegalStateException("Support session is temporarily unavailable");
+        }
+        boolean releaseAfterTransaction = deferSessionCreationLockRelease(lockName);
         try {
-            synchronized (lock) {
-                SupportSession current = contextKey == null
-                        ? supportSessionMapper.findOpenByUserId(userId)
-                        : supportSessionMapper.findOpenByUserIdAndContextKey(userId, contextKey);
-                if (current != null) {
-                    return current;
-                }
-                session = new SupportSession();
-                session.setUserId(userId);
-                session.setContextKey(contextKey);
-                session.setStatus("OPEN");
-                session.setLastMessage("");
-                session.setLastMessageAt(LocalDateTime.now());
-                session.setCreatedAt(LocalDateTime.now());
-                session.setUpdatedAt(LocalDateTime.now());
-                supportSessionMapper.insert(session);
-                return supportSessionMapper.findById(session.getId());
+            SupportSession current = contextKey == null
+                    ? supportSessionMapper.findOpenByUserId(userId)
+                    : supportSessionMapper.findOpenByUserIdAndContextKey(userId, contextKey);
+            if (current != null) {
+                return current;
             }
+            session = new SupportSession();
+            session.setUserId(userId);
+            session.setContextKey(contextKey);
+            session.setStatus("OPEN");
+            session.setLastMessage("");
+            session.setLastMessageAt(LocalDateTime.now());
+            session.setCreatedAt(LocalDateTime.now());
+            session.setUpdatedAt(LocalDateTime.now());
+            supportSessionMapper.insert(session);
+            return supportSessionMapper.findById(session.getId());
         } finally {
-            sessionCreationLocks.remove(lockKey, lock);
+            if (!releaseAfterTransaction) {
+                supportSessionMapper.releaseSessionCreationLock(lockName);
+            }
         }
     }
 
-    private String sessionCreationLockKey(Long userId, String contextKey) {
-        return String.valueOf(userId) + ":" + (contextKey == null ? "" : contextKey);
+    private boolean deferSessionCreationLockRelease(String lockName) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()
+                || !TransactionSynchronizationManager.isActualTransactionActive()) {
+            return false;
+        }
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                supportSessionMapper.releaseSessionCreationLock(lockName);
+            }
+        });
+        return true;
+    }
+
+    private String sessionCreationLockName(Long userId, String contextKey) {
+        String input = String.valueOf(userId) + ":" + (contextKey == null ? "" : contextKey);
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(input.getBytes(StandardCharsets.UTF_8));
+            StringBuilder hex = new StringBuilder(48);
+            for (byte value : digest) {
+                hex.append(String.format(Locale.ROOT, "%02x", value));
+                if (hex.length() == 48) {
+                    break;
+                }
+            }
+            return "support-session-" + hex;
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("Support session locking is unavailable", exception);
+        }
     }
 
     public SupportSession getLatestSession(Long userId) {

@@ -93,7 +93,9 @@ public class CartController {
                 return ResponseEntity.notFound().build();
             }
             SecurityUtils.assertSelf(authentication, item.getUserId());
-            cartService.updateQuantity(cartItemId, quantity);
+            if (!cartService.updateQuantity(cartItemId, quantity)) {
+                return ResponseEntity.notFound().build();
+            }
             return ResponseEntity.ok().build();
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

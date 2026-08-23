@@ -56,6 +56,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.doThrow;
@@ -2337,7 +2338,12 @@ class PaymentFlowServiceTest {
         when(paymentRepository.findPendingByOrderId(42L)).thenReturn(payment);
         when(paymentRepository.findById(9L)).thenReturn(payment);
         when(orderRepository.updateStatusIfCurrent(42L, "PENDING_PAYMENT", "PENDING_SHIPMENT")).thenReturn(1);
-        when(paymentRepository.update(payment)).thenReturn(1);
+        when(paymentRepository.markManuallyPaid(
+                eq(9L),
+                eq(new BigDecimal("88.00")),
+                anyString(),
+                eq("MANUAL-TXN"),
+                any(LocalDateTime.class))).thenReturn(1);
         User user = new User();
         user.setId(7L);
         user.setEmail("Mia@Example.com");
@@ -2355,7 +2361,12 @@ class PaymentFlowServiceTest {
 
         InOrder inOrder = inOrder(orderRepository, paymentRepository);
         inOrder.verify(orderRepository).updateStatusIfCurrent(42L, "PENDING_PAYMENT", "PENDING_SHIPMENT");
-        inOrder.verify(paymentRepository).update(payment);
+        inOrder.verify(paymentRepository).markManuallyPaid(
+                eq(9L),
+                eq(new BigDecimal("88.00")),
+                anyString(),
+                eq("MANUAL-TXN"),
+                any(LocalDateTime.class));
         verify(notificationService).tryCreateNotification(
                 eq(7L),
                 eq("ORDER"),
@@ -2396,6 +2407,33 @@ class PaymentFlowServiceTest {
         assertThrows(IllegalStateException.class, () -> service.confirmPayment(42L, "MANUAL-TXN"));
         verify(paymentRepository, never()).update(any(Payment.class));
         verify(paymentRepository, never()).insert(any(Payment.class));
+    }
+
+    @Test
+    void manualPaymentConfirmationDoesNotResurrectRefundingPayment() {
+        OrderRepository orderRepository = mock(OrderRepository.class);
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        Order order = new Order();
+        order.setId(42L);
+        order.setOrderNo("SO202605260001");
+        order.setStatus("PENDING_PAYMENT");
+        order.setTotalAmount(new BigDecimal("88.00"));
+        Payment payment = new Payment();
+        payment.setId(9L);
+        payment.setOrderId(42L);
+        payment.setStatus("REFUNDING");
+
+        when(orderRepository.findById(42L)).thenReturn(order);
+        when(paymentRepository.findLatestByOrderId(42L)).thenReturn(payment);
+        when(orderRepository.updateStatusIfCurrent(42L, "PENDING_PAYMENT", "PENDING_SHIPMENT")).thenReturn(1);
+
+        OrderService service = new OrderService();
+        ReflectionTestUtils.setField(service, "orderRepository", orderRepository);
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+
+        assertThrows(IllegalStateException.class, () -> service.confirmPayment(42L, "MANUAL-TXN"));
+        verify(paymentRepository, never()).markManuallyPaid(any(), any(), anyString(), anyString(), any(LocalDateTime.class));
+        verify(paymentRepository, never()).update(any(Payment.class));
     }
 
     @Test

@@ -86,28 +86,30 @@ public class CartService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void updateQuantity(Long cartItemId, Integer quantity) {
+    public boolean updateQuantity(Long cartItemId, Integer quantity) {
         CartItem cartItemSnapshot = cartItemMapper.findById(cartItemId);
         if (cartItemSnapshot == null) {
-            return;
+            return false;
         }
         Product product = requirePurchasableProductForUpdate(cartItemSnapshot.getProductId(), quantity);
         CartItem cartItem = cartItemMapper.findByIdForUpdate(cartItemId);
-        if (cartItem != null) {
-            int normalizedQuantity = normalizeQuantity(quantity);
-            if (!cartItemSnapshot.getProductId().equals(cartItem.getProductId())) {
-                throw new IllegalStateException("Cart item changed while updating");
-            }
-            productVariantService.validateSelection(product, cartItem.getSelectedSpecs());
-            Integer availableStock = productVariantService.resolveStock(product, cartItem.getSelectedSpecs());
-            if (availableStock == null || availableStock < normalizedQuantity) {
-                throw new IllegalStateException("Insufficient stock for product: " + product.getName());
-            }
-            cartItem.setQuantity(normalizedQuantity);
-            cartItem.setPrice(productVariantService.resolvePrice(product, cartItem.getSelectedSpecs()));
-            cartItem.setUpdatedAt(LocalDateTime.now());
-            cartItemMapper.update(cartItem);
+        if (cartItem == null) {
+            return false;
         }
+        int normalizedQuantity = normalizeQuantity(quantity);
+        if (!cartItemSnapshot.getProductId().equals(cartItem.getProductId())) {
+            throw new IllegalStateException("Cart item changed while updating");
+        }
+        productVariantService.validateSelection(product, cartItem.getSelectedSpecs());
+        Integer availableStock = productVariantService.resolveStock(product, cartItem.getSelectedSpecs());
+        if (availableStock == null || availableStock < normalizedQuantity) {
+            throw new IllegalStateException("Insufficient stock for product: " + product.getName());
+        }
+        cartItem.setQuantity(normalizedQuantity);
+        cartItem.setPrice(productVariantService.resolvePrice(product, cartItem.getSelectedSpecs()));
+        cartItem.setUpdatedAt(LocalDateTime.now());
+        cartItemMapper.update(cartItem);
+        return true;
     }
 
     @Transactional(rollbackFor = Exception.class)

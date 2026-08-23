@@ -7,6 +7,8 @@ import com.example.shop.repository.SupportMessageMapper;
 import com.example.shop.repository.SupportSessionMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -20,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -146,13 +149,15 @@ class SupportServiceTest {
                 "supportService.sendUserMessage(order.getUserId(), sessionId, content, guestSupportContextKey(order))"));
         assertTrue(controllerSource.contains(
                 "return \"guest-order:\" + order.getOrderNo().trim().toLowerCase(java.util.Locale.ROOT);"));
-        assertTrue(serviceSource.contains(
-                "private final ConcurrentMap<String, Object> sessionCreationLocks = new ConcurrentHashMap<>();"));
-        assertTrue(serviceSource.contains("String lockKey = sessionCreationLockKey(userId, contextKey);"));
-        assertTrue(serviceSource.contains("sessionCreationLocks.computeIfAbsent(lockKey"));
-        assertTrue(serviceSource.contains("synchronized (lock)"));
+        assertTrue(serviceSource.contains("supportSessionMapper.acquireSessionCreationLock(lockName)"));
+        assertTrue(serviceSource.contains("supportSessionMapper.releaseSessionCreationLock(lockName)"));
+        assertTrue(serviceSource.contains("deferSessionCreationLockRelease(lockName)"));
+        assertTrue(serviceSource.contains("afterCompletion(int status)"));
+        assertTrue(serviceSource.contains("MessageDigest.getInstance(\"SHA-256\")"));
+        assertTrue(Files.readString(Path.of("src/main/java/com/example/shop/repository/SupportSessionMapper.java"))
+                .contains("SELECT GET_LOCK(#{lockName}, 5)"));
 
-        int lockStart = serviceSource.indexOf("synchronized (lock)");
+        int lockStart = serviceSource.indexOf("Long acquired = supportSessionMapper.acquireSessionCreationLock(lockName);");
         int recheck = serviceSource.indexOf("supportSessionMapper.findOpenByUserIdAndContextKey(userId, contextKey);",
                 lockStart);
         int insert = serviceSource.indexOf("supportSessionMapper.insert(session);", lockStart);
@@ -161,8 +166,71 @@ class SupportServiceTest {
         assertTrue(insert > recheck);
         assertFalse(controllerSource.contains("count + 1"));
         assertFalse(controllerSource.contains("putIfAbsent"));
-        assertFalse(serviceSource.contains("count + 1"));
-        assertFalse(serviceSource.contains("putIfAbsent"));
+        assertFalse(serviceSource.contains("sessionCreationLocks"));
+    }
+
+    @Test
+    void createsSessionOnlyAfterAcquiringDatabaseLock() {
+        SupportSession created = new SupportSession();
+        created.setId(77L);
+        created.setUserId(5L);
+        created.setStatus("OPEN");
+        when(supportSessionMapper.findOpenByUserIdAndContextKey(5L, "guest-order:order-77"))
+                .thenReturn(null);
+        when(supportSessionMapper.acquireSessionCreationLock(any(String.class))).thenReturn(1L);
+        doAnswer(invocation -> {
+            ((SupportSession) invocation.getArgument(0)).setId(77L);
+            return 1;
+        }).when(supportSessionMapper).insert(any(SupportSession.class));
+        when(supportSessionMapper.findById(77L)).thenReturn(created);
+
+        SupportSession result = service.getOrCreateOpenSession(5L, "guest-order:order-77");
+
+        assertEquals(created, result);
+        verify(supportSessionMapper).acquireSessionCreationLock(any(String.class));
+        verify(supportSessionMapper).releaseSessionCreationLock(any(String.class));
+    }
+
+    @Test
+    void refusesSessionCreationWhenDatabaseLockCannotBeAcquired() {
+        when(supportSessionMapper.findOpenByUserId(5L)).thenReturn(null);
+        when(supportSessionMapper.acquireSessionCreationLock(any(String.class))).thenReturn(0L);
+
+        assertThrows(IllegalStateException.class, () -> service.getOrCreateOpenSession(5L));
+        verify(supportSessionMapper, never()).insert(any(SupportSession.class));
+        verify(supportSessionMapper, never()).releaseSessionCreationLock(any(String.class));
+    }
+
+    @Test
+    void releasesDatabaseLockOnlyAfterTransactionCompletion() {
+        SupportSession created = new SupportSession();
+        created.setId(88L);
+        created.setUserId(5L);
+        created.setStatus("OPEN");
+        when(supportSessionMapper.findOpenByUserIdAndContextKey(5L, "guest-order:order-88"))
+                .thenReturn(null);
+        when(supportSessionMapper.acquireSessionCreationLock(any(String.class))).thenReturn(1L);
+        doAnswer(invocation -> {
+            ((SupportSession) invocation.getArgument(0)).setId(88L);
+            return 1;
+        }).when(supportSessionMapper).insert(any(SupportSession.class));
+        when(supportSessionMapper.findById(88L)).thenReturn(created);
+
+        TransactionSynchronizationManager.initSynchronization();
+        TransactionSynchronizationManager.setActualTransactionActive(true);
+        try {
+            assertEquals(created, service.getOrCreateOpenSession(5L, "guest-order:order-88"));
+            verify(supportSessionMapper, never()).releaseSessionCreationLock(any(String.class));
+
+            TransactionSynchronizationManager.getSynchronizations().forEach(
+                    synchronization -> synchronization.afterCompletion(TransactionSynchronization.STATUS_COMMITTED));
+            verify(supportSessionMapper).releaseSessionCreationLock(any(String.class));
+        } finally {
+            TransactionSynchronizationManager.setActualTransactionActive(false);
+            if (TransactionSynchronizationManager.isSynchronizationActive()) {
+                TransactionSynchronizationManager.clearSynchronization();
+            }
+        }
     }
 
     @Test

@@ -34,6 +34,10 @@ class PaymentServiceObservabilityContractTest {
         assertTrue(source.contains("Provider paid reconciliation required"));
         assertTrue(source.contains("Stripe payment sync failed"));
         assertTrue(source.contains("Payment callback rejected invalid signature"));
+        assertTrue(source.contains("paymentRepository.updateForRefresh(payment, expectedStatus)"),
+                "Payment refreshes must use a conditional state update");
+        assertTrue(source.contains("paymentRefreshIdempotencyKey(order, payment, channelConfig)"),
+                "Stripe refreshes must reuse a stable idempotency key");
 
         assertTrue(source.contains("paymentId={}, orderId={}, orderNo={}, channel={}, amount={}, status={}"),
                 "Lifecycle logs should include stable payment/order context");

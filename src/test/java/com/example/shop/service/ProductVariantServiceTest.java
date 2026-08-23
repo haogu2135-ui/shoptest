@@ -7,6 +7,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -104,6 +105,18 @@ class ProductVariantServiceTest {
 
         service.validateSelection(product, "{\"Size\":\"M\",\"Color\":\"Green\",\"_variantSku\":\"SKU-M-GREEN\"}");
         assertTrue(service.findSelectedVariant(product, "{\"Size\":\"M\",\"Color\":\"Green\"}").isPresent());
+    }
+
+    @Test
+    void keepsJsonFloatingPointPricesAsExactDecimalText() {
+        Product product = new Product();
+        product.setPrice(new BigDecimal("20.00"));
+        product.setVariantsList(List.of(Map.of(
+                "price", 19.99d,
+                "stock", 3,
+                "options", Map.of("Size", "M"))));
+
+        assertEquals(new BigDecimal("19.99"), service.resolvePrice(product, "{\"Size\":\"M\"}"));
     }
 
     private Product baseVariantProduct() {

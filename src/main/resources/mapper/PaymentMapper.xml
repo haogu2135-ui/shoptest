@@ -148,6 +148,42 @@
         WHERE id = #{id} AND status = 'PENDING'
     </update>
 
+    <update id="markManuallyPaid">
+        UPDATE payments
+        SET amount = #{amount},
+            channel = #{channel},
+            status = 'PAID',
+            payment_url = NULL,
+            transaction_id = #{transactionId},
+            provider_reference = #{transactionId},
+            refund_reference = NULL,
+            expires_at = NULL,
+            paid_at = #{callbackAt},
+            refunded_at = NULL,
+            callback_at = #{callbackAt},
+            updated_at = NOW()
+        WHERE id = #{id}
+          AND status IN ('PENDING', 'FAILED', 'EXPIRED', 'CANCELLED')
+    </update>
+
+    <update id="updateForRefresh">
+        UPDATE payments
+        SET amount = #{payment.amount},
+            channel = #{payment.channel},
+            status = #{payment.status},
+            payment_url = #{payment.paymentUrl},
+            transaction_id = #{payment.transactionId},
+            provider_reference = #{payment.providerReference},
+            refund_reference = #{payment.refundReference},
+            expires_at = #{payment.expiresAt},
+            paid_at = #{payment.paidAt},
+            refunded_at = #{payment.refundedAt},
+            callback_at = #{payment.callbackAt},
+            updated_at = #{payment.updatedAt}
+        WHERE id = #{payment.id}
+          AND status = #{expectedStatus}
+    </update>
+
     <update id="markReconcileRequired">
         UPDATE payments
         SET status = 'RECONCILE_REQUIRED',

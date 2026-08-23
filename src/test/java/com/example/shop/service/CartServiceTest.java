@@ -1,6 +1,7 @@
 package com.example.shop.service;
 
 import com.example.shop.entity.CartItem;
+import com.example.shop.entity.Product;
 import com.example.shop.repository.CartItemMapper;
 import com.example.shop.repository.ProductRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -15,19 +16,23 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 class CartServiceTest {
     private CartItemMapper cartItemMapper;
+    private ProductRepository productRepository;
+    private ProductVariantService productVariantService;
     private CartService service;
 
     @BeforeEach
     void setUp() {
         cartItemMapper = mock(CartItemMapper.class);
-        ProductRepository productRepository = mock(ProductRepository.class);
-        ProductVariantService productVariantService = mock(ProductVariantService.class);
+        productRepository = mock(ProductRepository.class);
+        productVariantService = mock(ProductVariantService.class);
         RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        when(runtimeConfig.getInt("cart.max-quantity-per-line", 99)).thenReturn(99);
         service = new CartService(cartItemMapper, productRepository, productVariantService, runtimeConfig);
     }
 
@@ -63,6 +68,21 @@ class CartServiceTest {
         service.removeFromCart(123L);
 
         verify(cartItemMapper).deleteById(123L);
+    }
+
+    @Test
+    void reportsWhenCartItemIsDeletedBetweenSnapshotAndLockedUpdate() {
+        CartItem snapshot = cartItem("10.00", 1);
+        snapshot.setProductId(9L);
+        Product product = new Product();
+        product.setId(9L);
+        product.setStatus("ACTIVE");
+        when(cartItemMapper.findById(41L)).thenReturn(snapshot);
+        when(productRepository.findByIdForUpdate(9L)).thenReturn(product);
+        when(cartItemMapper.findByIdForUpdate(41L)).thenReturn(null);
+
+        assertFalse(service.updateQuantity(41L, 2));
+        verify(cartItemMapper, never()).update(org.mockito.ArgumentMatchers.any(CartItem.class));
     }
 
     @Test

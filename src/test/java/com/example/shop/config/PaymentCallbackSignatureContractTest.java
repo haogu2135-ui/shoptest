@@ -17,8 +17,13 @@ class PaymentCallbackSignatureContractTest {
         String request = read("src/main/java/com/example/shop/dto/PaymentCallbackRequest.java");
         String controller = read("src/main/java/com/example/shop/controller/PaymentController.java");
 
-        assertTrue(request.contains("@NotNull\n    private Long callbackTimestamp;"));
-        assertTrue(request.contains("@NotBlank\n    private String signature;"));
+        assertTrue(request.contains("@NotNull"));
+        assertTrue(request.contains("private Long callbackTimestamp;"));
+        assertTrue(request.contains("@Min(0)"));
+        assertTrue(request.contains("@Max(4102444800L)"));
+        assertTrue(request.contains("@NotBlank"));
+        assertTrue(request.contains("private String signature;"));
+        assertTrue(request.contains("@Pattern(regexp = \"(?i)^[0-9a-f]{64}$\")"));
         assertTrue(controller.contains("@PostMapping(\"/callback\")"));
         assertTrue(controller.contains("paymentService.handleCallback(request)"));
 

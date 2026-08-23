@@ -29,6 +29,13 @@ public interface PaymentRepository {
                          @Param("transactionId") String transactionId,
                          @Param("providerReference") String providerReference,
                          @Param("callbackAt") java.time.LocalDateTime callbackAt);
+    int markManuallyPaid(@Param("id") Long id,
+                         @Param("amount") java.math.BigDecimal amount,
+                         @Param("channel") String channel,
+                         @Param("transactionId") String transactionId,
+                         @Param("callbackAt") java.time.LocalDateTime callbackAt);
+    int updateForRefresh(@Param("payment") Payment payment,
+                         @Param("expectedStatus") String expectedStatus);
     int markReconcileRequired(@Param("id") Long id,
                               @Param("transactionId") String transactionId,
                               @Param("providerReference") String providerReference,
