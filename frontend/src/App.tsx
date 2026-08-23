@@ -113,8 +113,10 @@ const RegistryManagement = lazy(() => import('./pages/RegistryManagement'));
 const ReviewManagement = lazy(() => import('./pages/ReviewManagement'));
 const SecurityAuditLogManagement = lazy(() => import('./pages/SecurityAuditLogManagement'));
 const StockAlerts = lazy(() => import('./pages/StockAlerts'));
+const Seckill = lazy(() => import('./pages/Seckill'));
 const SupportManagement = lazy(() => import('./pages/SupportManagement'));
 const SystemMonitor = lazy(() => import('./pages/SystemMonitor'));
+const SeckillManagement = lazy(() => import('./pages/SeckillManagement'));
 const TrafficControl = lazy(() => import('./pages/TrafficControl'));
 const UserManagement = lazy(() => import('./pages/UserManagement'));
 const Wishlist = lazy(() => import('./pages/Wishlist'));
@@ -1330,6 +1332,7 @@ const App: React.FC = () => {
                 <Route path="pet-gallery" element={<PetGallery />} />
                 <Route path="compare" element={<ProductCompare />} />
                 <Route path="products/:id" element={<ProductDetail />} />
+                <Route path="seckill" element={<Seckill />} />
                 <Route path="cart" element={<Cart />} />
                 <Route path="checkout" element={<Checkout />} />
                 <Route path="coupons" element={<CouponCenter />} />
@@ -1364,6 +1367,7 @@ const App: React.FC = () => {
                 <Route path="questions" element={adminRouteElement('admin-questions', <ProductQuestionManagement />)} />
                 <Route path="notifications" element={adminRouteElement('admin-notifications', <NotificationManagement />)} />
                 <Route path="announcements" element={adminRouteElement('admin-announcements', <AnnouncementManagement />)} />
+                <Route path="seckill" element={adminRouteElement('admin-seckill', <SeckillManagement />)} />
                 <Route path="support" element={adminRouteElement('admin-support', <SupportManagement />)} />
                 <Route path="audit-logs" element={adminRouteElement('admin-audit-logs', <SecurityAuditLogManagement />)} />
                 <Route path="alerts" element={adminRouteElement('admin-alerts', <AlertManagement />)} />

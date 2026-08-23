@@ -91,7 +91,7 @@ public class AdminRoleService {
 
     public static final List<String> ADMIN_PAGES = List.of(
             "dashboard", "products", "brands", "categories", "orders", "logistics-carriers",
-            "users", "permissions", "reviews", "questions", "coupons", "notifications", "announcements", "audit-logs", "alerts", BUGS_PAGE_PERMISSION, "ip-blacklist", "logs", "support", "pet-gallery", "registry", "config-center", "traffic-control", "system");
+            "users", "permissions", "reviews", "questions", "coupons", "notifications", "announcements", "seckill", "audit-logs", "alerts", BUGS_PAGE_PERMISSION, "ip-blacklist", "logs", "support", "pet-gallery", "registry", "config-center", "traffic-control", "system");
     public static final List<String> ADMIN_ACTION_PERMISSIONS = List.of(
             ORDER_STATUS_PERMISSION,
             ORDER_FULFILLMENT_PERMISSION,
@@ -176,6 +176,7 @@ public class AdminRoleService {
             Map.entry("/coupons", "coupons"),
             Map.entry("/notifications", "notifications"),
             Map.entry("/announcements", "announcements"),
+            Map.entry("/seckill", "seckill"),
             Map.entry("/audit-logs", "audit-logs"),
             Map.entry("/alerts", "alerts"),
             Map.entry("/bugs", BUGS_PAGE_PERMISSION),

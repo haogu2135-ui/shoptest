@@ -609,6 +609,50 @@ export interface ProductPublicPage {
     hasPrevious?: boolean;
 }
 
+export interface SeckillItem {
+    id: number;
+    productId: number;
+    productName?: string;
+    imageUrl?: string;
+    originalPrice?: number;
+    seckillPrice: number;
+    quota: number;
+    sold: number;
+    remaining: number;
+    limitPerUser: number;
+    productStock?: number;
+    optionGroups?: Array<{ name: string; values?: string[]; options?: string[] }>;
+}
+
+export interface SeckillCampaign {
+    id: number;
+    title: string;
+    subtitle?: string;
+    bannerUrl?: string;
+    status: string;
+    state: 'DRAFT' | 'PUBLISHED' | 'PAUSED' | 'UPCOMING' | 'ONGOING' | 'ENDED' | string;
+    startAt: string;
+    endAt: string;
+    items: SeckillItem[];
+}
+
+export interface SeckillItemWritePayload {
+    productId: number;
+    seckillPrice: number;
+    quota: number;
+    limitPerUser: number;
+}
+
+export interface SeckillCampaignWritePayload {
+    title: string;
+    subtitle?: string;
+    bannerUrl?: string;
+    status: 'DRAFT' | 'PUBLISHED' | 'PAUSED';
+    startAt: string;
+    endAt: string;
+    items: SeckillItemWritePayload[];
+}
+
 export interface ProductBundleConfig {
     enabled?: boolean;
     title?: string;

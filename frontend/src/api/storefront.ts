@@ -27,6 +27,7 @@ import type {
   ProductQuestionPublic,
   PublicReview,
   ReviewableOrder,
+  SeckillCampaign,
   SupportMessageCustomer,
   SupportSessionCustomer,
   SupportWebSocketTicket,
@@ -374,6 +375,34 @@ export const productApi = {
                     return normalized;
                 }), options);
     }
+};
+
+export const seckillApi = {
+    getCampaigns: () => api.get<SeckillCampaign[]>('/seckill/campaigns', anonymousGetConfig()),
+    getCampaign: (campaignId: number) => api.get<SeckillCampaign>(`/seckill/campaigns/${toPathId(campaignId)}`, anonymousGetConfig()),
+    purchase: (campaignId: number, payload: {
+        itemId: number;
+        quantity: number;
+        selectedSpecs?: string;
+        shippingAddress: string;
+        recipientName: string;
+        recipientPhone: string;
+        contactEmail?: string;
+        paymentMethod: string;
+    }, idempotencyKey?: string) => api.post<OrderCustomer>(
+        `/seckill/campaigns/${toPathId(campaignId)}/purchase`,
+        {
+            itemId: toPathId(payload.itemId),
+            quantity: normalizeQuantityParam(payload.quantity),
+            selectedSpecs: normalizeTextParam(payload.selectedSpecs, MAX_SELECTED_SPECS_LENGTH) || undefined,
+            shippingAddress: normalizeTextParam(payload.shippingAddress, 2000),
+            recipientName: normalizeTextParam(payload.recipientName, 120),
+            recipientPhone: normalizeTextParam(payload.recipientPhone, 40),
+            contactEmail: normalizeEmailParam(payload.contactEmail) || undefined,
+            paymentMethod: normalizeTextParam(payload.paymentMethod, 50),
+        },
+        checkoutIdempotencyConfig({ idempotencyKey }),
+    ),
 };
 
 // 购物车相关 API

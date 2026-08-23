@@ -59,6 +59,8 @@ import type {
   SiteAnnouncementAdminPage,
   SiteAnnouncementAdminSummary,
   ProductMutationPayload,
+  SeckillCampaign,
+  SeckillCampaignWritePayload,
 } from '../types';
 import {
   ADMIN_DASHBOARD_CACHE_MS,
@@ -613,6 +615,13 @@ export const adminApi = {
     updateAnnouncement: (id: number, announcement: Partial<SiteAnnouncement>) =>
         api.put<SiteAnnouncement>(`/admin/announcements/${toPathId(id)}`, normalizeAnnouncementPayload(announcement)).finally(clearAnnouncementCache),
     deleteAnnouncement: (id: number) => api.delete(`/admin/announcements/${toPathId(id)}`).finally(clearAnnouncementCache),
+    getSeckillCampaigns: () => api.get<SeckillCampaign[]>('/admin/seckill/campaigns'),
+    createSeckillCampaign: (payload: SeckillCampaignWritePayload) =>
+        api.post<SeckillCampaign>('/admin/seckill/campaigns', payload),
+    updateSeckillCampaign: (id: number, payload: SeckillCampaignWritePayload) =>
+        api.put<SeckillCampaign>(`/admin/seckill/campaigns/${toPathId(id)}`, payload),
+    updateSeckillStatus: (id: number, status: SeckillCampaignWritePayload['status']) =>
+        api.post<SeckillCampaign>(`/admin/seckill/campaigns/${toPathId(id)}/status`, null, { params: { status } }),
 };
 
 export const adminSupportApi = {

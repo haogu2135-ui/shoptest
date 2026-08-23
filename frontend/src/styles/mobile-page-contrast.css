@@ -204,6 +204,13 @@ body.shop-mobile-app.shop-mobile-app .shop-app-shell .cart-page__savedItem > a[h
   text-underline-offset: initial !important;
 }
 
+body.shop-mobile-app.shop-mobile-app .shop-app-shell a.seckill-item__media[href] {
+  color: inherit !important;
+  -webkit-text-fill-color: currentColor !important;
+  text-decoration: none !important;
+  text-underline-offset: initial !important;
+}
+
 body.shop-mobile-app.shop-mobile-app .shop-app-shell a.product-list__imageButton[href],
 body.shop-mobile-app.shop-mobile-app .shop-app-shell a.product-list__imageButton[href]:hover,
 body.shop-mobile-app.shop-mobile-app .shop-app-shell a.product-list__imageButton[href]:focus-visible {
@@ -221,6 +228,7 @@ body.shop-mobile-app.shop-mobile-app .shop-app-shell a.shopee-product__name[href
 body.shop-mobile-app.shop-mobile-app .shop-app-shell a.product-recommendations__name[href],
 body.shop-mobile-app.shop-mobile-app .shop-app-shell a.stock-alerts__productLink[href],
 body.shop-mobile-app.shop-mobile-app .shop-app-shell a.cart-page__mobileItemTitle[href],
+body.shop-mobile-app.shop-mobile-app .shop-app-shell a.seckill-item__name[href],
 body.shop-mobile-app.shop-mobile-app .shop-app-shell .cart-page__savedInfo > a[href] {
   color: #173f2b !important;
   -webkit-text-fill-color: #173f2b !important;
@@ -249,6 +257,8 @@ body.shop-mobile-app.shop-mobile-app .shop-app-shell a.stock-alerts__productLink
 body.shop-mobile-app.shop-mobile-app .shop-app-shell a.stock-alerts__productLink[href]:focus-visible,
 body.shop-mobile-app.shop-mobile-app .shop-app-shell a.cart-page__mobileItemTitle[href]:hover,
 body.shop-mobile-app.shop-mobile-app .shop-app-shell a.cart-page__mobileItemTitle[href]:focus-visible,
+body.shop-mobile-app.shop-mobile-app .shop-app-shell a.seckill-item__name[href]:hover,
+body.shop-mobile-app.shop-mobile-app .shop-app-shell a.seckill-item__name[href]:focus-visible,
 body.shop-mobile-app.shop-mobile-app .shop-app-shell .cart-page__savedInfo > a[href]:hover,
 body.shop-mobile-app.shop-mobile-app .shop-app-shell .cart-page__savedInfo > a[href]:focus-visible {
   color: #ee4d2d !important;

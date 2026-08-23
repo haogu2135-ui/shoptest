@@ -95,6 +95,7 @@ const AdminLayout: React.FC = () => {
       canSee('coupons') ? { key: '/admin/coupons', icon: <GiftOutlined />, label: t('adminLayout.coupons') } : null,
       canSee('notifications') ? { key: '/admin/notifications', icon: <NotificationOutlined />, label: t('adminLayout.notifications') } : null,
       canSee('announcements') ? { key: '/admin/announcements', icon: <SoundOutlined />, label: t('adminLayout.announcements') } : null,
+      canSee('seckill') ? { key: '/admin/seckill', icon: <ThunderboltOutlined />, label: t('adminLayout.seckill') } : null,
       canSee('audit-logs') ? { key: '/admin/audit-logs', icon: <SafetyCertificateOutlined />, label: t('adminLayout.auditLogs') } : null,
       canSee('alerts') ? { key: '/admin/alerts', icon: <AlertOutlined />, label: t('adminLayout.alerts') } : null,
       canSeeBugs ? { key: '/admin/bugs', icon: <BugOutlined />, label: t('adminLayout.bugs') } : null,

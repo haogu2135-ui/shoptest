@@ -78,6 +78,7 @@ const Navbar: React.FC = () => {
   const isProductsActive = location.pathname === '/products' || location.pathname.startsWith('/products/');
   const isCartActive = isPathActive(['/cart']);
   const isCouponsActive = isPathActive(['/coupons']);
+  const isSeckillActive = isPathActive(['/seckill']);
   const isAccountActive = isPathActive(['/profile', '/login', '/register']);
   const navSearchParams = useMemo(() => new URLSearchParams(location.search), [location.search]);
   const activeProductKeyword = (navSearchParams.get('keyword') || '').toLowerCase();
@@ -828,6 +829,7 @@ const Navbar: React.FC = () => {
               )
             ) : null}
             <Link className={isDealsActive ? 'shop-nav__linkActive' : undefined} to="/products?discount=true" aria-current={isDealsActive ? 'page' : undefined}>{t('nav.followDeals')}</Link>
+            <Link className={isSeckillActive ? 'shop-nav__linkActive' : undefined} to="/seckill" aria-current={isSeckillActive ? 'page' : undefined}><ShopIcon path={SI.thunder} /> {t('nav.seckill')}</Link>
           </div>
           <div className="shop-nav__links shop-nav__links--right">
             <Link className={isPathActive(['/track-order']) ? 'shop-nav__linkActive' : undefined} to="/track-order" aria-current={isPathActive(['/track-order']) ? 'page' : undefined}>{t('nav.trackOrder')}</Link>
@@ -1068,6 +1070,7 @@ const Navbar: React.FC = () => {
                     { key: 'pet-finder', icon: <ShopIcon path={SI.search} />, label: t('nav.petFinder'), onClick: () => navigate('/pet-finder') },
                     { key: 'pet-gallery', icon: <ShopIcon path={SI.shopping} />, label: t('nav.petGallery'), onClick: () => navigate('/pet-gallery') },
                     { key: 'deals', icon: <ShopIcon path={SI.gift} />, label: t('nav.followDeals'), onClick: () => navigate('/products?discount=true') },
+                    { key: 'seckill', icon: <ShopIcon path={SI.thunder} />, label: t('nav.seckill'), onClick: () => navigate('/seckill') },
                     { key: 'track-order', icon: <ShopIcon path={SI.shopping} />, label: t('nav.trackOrder'), onClick: () => navigate('/track-order') },
                     { key: 'coupons', icon: <ShopIcon path={SI.gift} />, label: t('pages.coupons.title'), onClick: () => navigate('/coupons') },
                     { key: 'support', icon: <ShopIcon path={SI.support} />, label: t('nav.help'), onClick: openSupport },
@@ -1122,6 +1125,7 @@ const Navbar: React.FC = () => {
                     { key: 'pet-gallery', icon: <ShopIcon path={SI.shopping} />, label: t('nav.petGallery'), onClick: () => navigate('/pet-gallery') },
                     { key: 'coupons', icon: <ShopIcon path={SI.gift} />, label: t('pages.coupons.title'), onClick: () => navigate('/coupons') },
                     { key: 'deals', icon: <ShopIcon path={SI.gift} />, label: t('nav.followDeals'), onClick: () => navigate('/products?discount=true') },
+                    { key: 'seckill', icon: <ShopIcon path={SI.thunder} />, label: t('nav.seckill'), onClick: () => navigate('/seckill') },
                     { key: 'track-order', icon: <ShopIcon path={SI.shopping} />, label: t('nav.trackOrder'), onClick: () => navigate('/track-order') },
                     ...(androidDownloadMenuItem ? [androidDownloadMenuItem] : []),
                     { key: 'support', icon: <ShopIcon path={SI.support} />, label: t('nav.help'), onClick: openSupport },
