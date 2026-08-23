@@ -3,8 +3,10 @@ package com.example.shop.dto;
 import lombok.Data;
 
 import javax.validation.constraints.Email;
+import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotEmpty;
+import javax.validation.constraints.NotNull;
 import javax.validation.constraints.Pattern;
 import javax.validation.constraints.Size;
 import java.util.List;
@@ -14,7 +16,8 @@ public class CheckoutRequest {
     private Long userId;
 
     @NotEmpty
-    private List<Long> cartItemIds;
+    @Size(max = 80)
+    private List<@NotNull @Min(1) Long> cartItemIds;
 
     @NotEmpty
     @Size(max = 2000)

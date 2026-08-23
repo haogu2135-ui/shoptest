@@ -32,6 +32,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -261,6 +262,30 @@ class OrderInputNormalizationServiceTest {
     }
 
     @Test
+    void checkoutRequestRejectsInvalidCartItemIdsBeforeServiceLogic() {
+        Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+        CheckoutRequest request = checkoutRequest();
+        request.setCartItemIds(List.of(0L));
+
+        Set<ConstraintViolation<CheckoutRequest>> violations = validator.validate(request);
+
+        assertTrue(violations.stream()
+                .anyMatch(violation -> "cartItemIds[0]".contentEquals(violation.getPropertyPath().toString())));
+    }
+
+    @Test
+    void checkoutRequestRejectsMoreThanEightyCartItemsBeforeServiceLogic() {
+        Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+        CheckoutRequest request = checkoutRequest();
+        request.setCartItemIds(java.util.stream.LongStream.rangeClosed(1, 81).boxed().collect(Collectors.toList()));
+
+        Set<ConstraintViolation<CheckoutRequest>> violations = validator.validate(request);
+
+        assertTrue(violations.stream()
+                .anyMatch(violation -> "cartItemIds".contentEquals(violation.getPropertyPath().toString())));
+    }
+
+    @Test
     void checkoutRequestAllowsValidRecipientAndOptionalContactEmail() {
         Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
         CheckoutRequest request = checkoutRequest();
@@ -273,6 +298,38 @@ class OrderInputNormalizationServiceTest {
         Set<ConstraintViolation<CheckoutRequest>> violations = validator.validate(request);
 
         assertTrue(violations.isEmpty());
+    }
+
+    @Test
+    void guestCheckoutRequestRejectsOverlongOrMalformedContactFieldsBeforeServiceLogic() {
+        Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+        GuestCheckoutRequest request = guestCheckoutRequest(1);
+        request.setGuestEmail("not-an-email");
+        request.setGuestName("N".repeat(121));
+        request.setGuestPhone("not-a-phone");
+        request.setShippingAddress("A".repeat(2001));
+        request.setPaymentMethod("P".repeat(51));
+
+        Set<ConstraintViolation<GuestCheckoutRequest>> violations = validator.validate(request);
+
+        assertTrue(violations.stream().anyMatch(violation -> "guestEmail".contentEquals(violation.getPropertyPath().toString())));
+        assertTrue(violations.stream().anyMatch(violation -> "guestName".contentEquals(violation.getPropertyPath().toString())));
+        assertTrue(violations.stream().anyMatch(violation -> "guestPhone".contentEquals(violation.getPropertyPath().toString())));
+        assertTrue(violations.stream().anyMatch(violation -> "shippingAddress".contentEquals(violation.getPropertyPath().toString())));
+        assertTrue(violations.stream().anyMatch(violation -> "paymentMethod".contentEquals(violation.getPropertyPath().toString())));
+    }
+
+    @Test
+    void guestCheckoutRequestRejectsUnsafeLineQuantitiesBeforeServiceLogic() {
+        Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
+        GuestCheckoutRequest request = guestCheckoutRequest(1);
+        request.getItems().get(0).setProductId(0L);
+        request.getItems().get(0).setQuantity(1000);
+
+        Set<ConstraintViolation<GuestCheckoutRequest>> violations = validator.validate(request);
+
+        assertTrue(violations.stream().anyMatch(violation -> "items[0].productId".contentEquals(violation.getPropertyPath().toString())));
+        assertTrue(violations.stream().anyMatch(violation -> "items[0].quantity".contentEquals(violation.getPropertyPath().toString())));
     }
 
     @Test
