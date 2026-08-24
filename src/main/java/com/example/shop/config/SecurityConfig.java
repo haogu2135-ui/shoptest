@@ -79,6 +79,7 @@ public class SecurityConfig {
             .antMatchers(HttpMethod.POST, "/errors").permitAll()
             .antMatchers(HttpMethod.GET, "/search").permitAll()
             .antMatchers(HttpMethod.GET, "/home/products", "/home/products/**").permitAll()
+            .antMatchers(HttpMethod.GET, "/seckill/campaigns", "/seckill/campaigns/**").permitAll()
             .antMatchers(HttpMethod.GET, "/sitemap.xml").permitAll()
             .antMatchers(HttpMethod.HEAD, "/sitemap.xml").permitAll()
             .antMatchers(HttpMethod.GET, "/payment", "/payment/").permitAll()

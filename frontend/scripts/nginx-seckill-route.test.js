@@ -18,6 +18,10 @@ for (const configPath of configPaths) {
   assert(publicRoutes.length > 0, `${configPath}: public SPA route is missing`);
   assert(adminRoutes.length > 0, `${configPath}: admin SPA route is missing`);
   assert(publicRoutes.every((line) => /\|seckill\)/.test(line)), `${configPath}: public /seckill route is missing`);
+  assert(
+    publicRoutes.every((line) => /\|orders\|/.test(line) && /\|privacy\|/.test(line) && /\|terms\|/.test(line)),
+    `${configPath}: public order/legal routes are missing`,
+  );
   assert(adminRoutes.every((line) => /\|seckill\)/.test(line)), `${configPath}: admin /seckill route is missing`);
   assert(source.includes('location /api/'), `${configPath}: API proxy route is missing`);
 }

@@ -380,6 +380,74 @@ body.shop-mobile-app .ant-modal-content {
   }
 }
 
+/* Native home buttons use the lightweight home-btn primitive rather than
+   Ant Button. Keep them readable before the runtime contrast guard arrives. */
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .shopee-home :is(
+  .shopee-hero__actions .home-btn,
+  .shopee-hero__authActions .home-btn,
+  .shopee-hero__featuredActions .home-btn,
+  .shopee-hero__spotlight .home-btn
+) {
+  border-color: rgba(18, 71, 52, 0.22) !important;
+  background: #ffffff !important;
+  color: #173f2b !important;
+  -webkit-text-fill-color: #173f2b !important;
+  opacity: 1 !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .shopee-home :is(
+  .shopee-hero__actions .home-btn:first-child,
+  .shopee-hero__featuredActions .home-btn--primary,
+  .shopee-hero__spotlight .home-btn--primary
+) {
+  border-color: #124734 !important;
+  background: #124734 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .shopee-home .shopee-hero__authActions .home-btn--primary {
+  border-color: #ee4d2d !important;
+  background: #ee4d2d !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .shopee-home :is(
+  .shopee-hero__actions .home-btn,
+  .shopee-hero__authActions .home-btn,
+  .shopee-hero__featuredActions .home-btn,
+  .shopee-hero__spotlight .home-btn
+) :where(span, strong, small, .anticon, svg, svg *) {
+  color: inherit !important;
+  -webkit-text-fill-color: inherit !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-list__actionButton.ant-btn-primary {
+  border-color: #124734 !important;
+  background: #124734 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-list__actionButton.ant-btn-primary :where(
+  .ant-btn-icon,
+  .shop-button__icon,
+  .shop-button__label,
+  .product-list__actionLabel,
+  .anticon,
+  svg,
+  svg *
+) {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+
 /* App-specific refinements: keep ShopMX web branding, but use native-screen spacing and touch targets. */
 html.shop-mobile-app-root,
 html.shop-mobile-app-root body,
@@ -11027,4 +11095,65 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav .shop-nav__brandC
     pointer-events: none !important;
     transform: translateY(calc(100% + 18px)) !important;
   }
+}
+
+/* Final native CTA closure. This stays after route CSS so WebView text fill
+   cannot be replaced by the broad page readability rules. */
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .shopee-home :is(
+  .shopee-hero__actions .home-btn,
+  .shopee-hero__authActions .home-btn,
+  .shopee-hero__featuredActions .home-btn,
+  .shopee-hero__spotlight .home-btn
+) {
+  border-color: rgba(18, 71, 52, 0.22) !important;
+  background: #ffffff !important;
+  color: #173f2b !important;
+  -webkit-text-fill-color: #173f2b !important;
+  opacity: 1 !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .shopee-home :is(
+  .shopee-hero__actions .home-btn:first-child,
+  .shopee-hero__featuredActions .home-btn--primary,
+  .shopee-hero__spotlight .home-btn--primary
+) {
+  border-color: #124734 !important;
+  background: #124734 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .shopee-home :is(
+  .shopee-hero__actions .home-btn,
+  .shopee-hero__authActions .home-btn,
+  .shopee-hero__featuredActions .home-btn,
+  .shopee-hero__spotlight .home-btn
+) :where(span, strong, small, .anticon, svg, svg *) {
+  color: inherit !important;
+  -webkit-text-fill-color: inherit !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-list__actionButton.ant-btn-primary {
+  border-color: #124734 !important;
+  background: #124734 !important;
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-list__actionButton.ant-btn-primary :where(
+  .ant-btn-icon,
+  .shop-button__icon,
+  .shop-button__label,
+  .product-list__actionLabel,
+  .anticon,
+  svg,
+  svg *
+) {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
 }

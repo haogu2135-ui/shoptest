@@ -100,6 +100,19 @@
     bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 10px + env(safe-area-inset-bottom, 0px));
   }
 
+  /* Conversion shells deliberately hide the global bottom nav on mobile.
+     Keep the consent panel at the real safe-area edge instead of leaving a
+     phantom 72px nav gap that pushes it over the form/content above. */
+  body:has(.shop-app-shell--auth-flow) .cookie-consent-banner,
+  body:has(.shop-app-shell--product-detail) .cookie-consent-banner,
+  body:has(.shop-app-shell--cart) .cookie-consent-banner,
+  body:has(.shop-app-shell--checkout) .cookie-consent-banner,
+  body:has(.shop-app-shell--checkout-flow) .cookie-consent-banner,
+  body:has(.shop-app-shell--order-tracking-flow) .cookie-consent-banner,
+  body:has(.shop-app-shell--payment-instructions) .cookie-consent-banner {
+    bottom: calc(8px + env(safe-area-inset-bottom, 0px)) !important;
+  }
+
   .cookie-consent-banner__inner {
     gap: 8px;
     padding: 10px 12px;
@@ -277,6 +290,12 @@
   body.shop-cookie-consent-visible .shopee-forgot-root {
     padding-bottom: calc(var(--shop-cookie-consent-clearance, 200px) + 24px) !important;
     scroll-padding-bottom: calc(var(--shop-cookie-consent-clearance, 200px) + 24px);
+  }
+
+  /* The form remains primary; these duplicate footer shortcuts are already
+     available in the mobile header and would otherwise sit below the rail. */
+  body.shop-cookie-consent-visible:has(.shop-app-shell--auth-flow) .shopee-login-quickLinks {
+    display: none !important;
   }
 
   /* Empty-state conversion actions are in-flow; reserve scroll room under the cookie panel. */

@@ -175,6 +175,7 @@ public class SeckillService {
         if (userId == null || userId <= 0) {
             throw new IllegalArgumentException("Login is required for seckill purchase");
         }
+        validatePurchaseRequest(request);
         String safeIdempotencyKey = normalizeIdempotencyKey(idempotencyKey);
         SeckillCampaign campaign = campaignRepository.findByIdForUpdate(campaignId);
         if (campaign == null) {
@@ -278,6 +279,19 @@ public class SeckillService {
         if (request == null || request.getStartAt() == null || request.getEndAt() == null) {
             throw new IllegalArgumentException("Campaign time window is required");
         }
+        String title = trimToNull(request.getTitle());
+        if (title == null) {
+            throw new IllegalArgumentException("Campaign title is required");
+        }
+        if (title.length() > 160) {
+            throw new IllegalArgumentException("Campaign title is too long");
+        }
+        if (request.getSubtitle() != null && request.getSubtitle().length() > 500) {
+            throw new IllegalArgumentException("Campaign subtitle is too long");
+        }
+        if (request.getBannerUrl() != null && request.getBannerUrl().length() > 2000) {
+            throw new IllegalArgumentException("Campaign banner URL is too long");
+        }
         if (!request.getEndAt().isAfter(request.getStartAt())) {
             throw new IllegalArgumentException("Campaign endAt must be after startAt");
         }
@@ -299,10 +313,47 @@ public class SeckillService {
             if (item.getSeckillPrice() == null || item.getSeckillPrice().compareTo(BigDecimal.ZERO) <= 0) {
                 throw new IllegalArgumentException("Seckill price must be greater than zero");
             }
+            if (item.getQuota() == null || item.getQuota() < 1) {
+                throw new IllegalArgumentException("Seckill quota must be greater than zero");
+            }
+            if (item.getLimitPerUser() == null || item.getLimitPerUser() < 1) {
+                throw new IllegalArgumentException("Per-user limit must be greater than zero");
+            }
             if (product.getPrice() != null && item.getSeckillPrice().compareTo(product.getPrice()) > 0) {
                 throw new IllegalArgumentException("Seckill price cannot exceed the product price");
             }
         }
+    }
+
+    private void validatePurchaseRequest(SeckillPurchaseRequest request) {
+        if (request == null) {
+            throw new IllegalArgumentException("Seckill purchase payload is required");
+        }
+        if (request.getItemId() == null || request.getItemId() <= 0) {
+            throw new IllegalArgumentException("Seckill item is required");
+        }
+        normalizeQuantity(request.getQuantity());
+        requireText(request.getShippingAddress(), "Shipping address", 2000);
+        requireText(request.getRecipientName(), "Recipient name", 120);
+        requireText(request.getRecipientPhone(), "Recipient phone", 40);
+        requireText(request.getPaymentMethod(), "Payment method", 50);
+        if (request.getSelectedSpecs() != null && request.getSelectedSpecs().length() > 1000) {
+            throw new IllegalArgumentException("Selected specs are too long");
+        }
+        if (request.getContactEmail() != null && request.getContactEmail().length() > 160) {
+            throw new IllegalArgumentException("Contact email is too long");
+        }
+    }
+
+    private String requireText(String value, String label, int maxLength) {
+        String normalized = trimToNull(value);
+        if (normalized == null) {
+            throw new IllegalArgumentException(label + " is required");
+        }
+        if (normalized.length() > maxLength) {
+            throw new IllegalArgumentException(label + " is too long");
+        }
+        return normalized;
     }
 
     private void applyCampaignFields(SeckillCampaign campaign, SeckillCampaignWriteRequest request) {
@@ -437,8 +488,8 @@ public class SeckillService {
         if (normalized == null) {
             return "auto-" + UUID.randomUUID();
         }
-        if (normalized.length() > 120) {
-            throw new IllegalArgumentException("Idempotency-Key is too long");
+        if (normalized.length() > 120 || !normalized.matches("[A-Za-z0-9._:-]+")) {
+            throw new IllegalArgumentException("Invalid Idempotency-Key");
         }
         return normalized;
     }

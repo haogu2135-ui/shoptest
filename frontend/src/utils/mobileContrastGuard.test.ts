@@ -17,4 +17,15 @@ describe('mobileContrastGuard source contract', () => {
     expect(source).toContain('state.markedElements');
     expect(source).toContain('state.lastInteractionAt');
   });
+
+  it('keeps native home and catalog primary CTAs readable in the Android WebView', () => {
+    const source = readSource();
+
+    expect(source).toContain('.shopee-hero__actions .home-btn');
+    expect(source).toContain('.shopee-hero__authActions .home-btn');
+    expect(source).toContain('.product-list__actionButton.ant-btn-primary');
+    expect(source).toContain('-webkit-text-fill-color: #ffffff !important;');
+    expect(source).toContain('.product-list__actionButton.ant-btn-primary.ant-btn-disabled');
+    expect(source).toContain('fill: currentColor !important;');
+  });
 });

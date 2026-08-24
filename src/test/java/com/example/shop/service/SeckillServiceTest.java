@@ -22,6 +22,7 @@ import java.time.LocalDateTime;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -149,6 +150,37 @@ class SeckillServiceTest {
         verify(claimRepository, never()).delete(any(SeckillClaim.class));
     }
 
+    @Test
+    void purchaseRejectsMissingPayloadBeforeTouchingRepositories() {
+        assertThrows(IllegalArgumentException.class, () -> service.purchase(7L, 4L, null, "seckill-key"));
+
+        verify(campaignRepository, never()).findByIdForUpdate(4L);
+        verify(itemRepository, never()).findByIdAndCampaignIdForUpdate(9L, 4L);
+    }
+
+    @Test
+    void campaignWriteRejectsInvalidQuotaAndBlankTitle() {
+        com.example.shop.dto.SeckillCampaignWriteRequest blankTitle = new com.example.shop.dto.SeckillCampaignWriteRequest();
+        blankTitle.setTitle("  ");
+        blankTitle.setStartAt(LocalDateTime.now().plusMinutes(1));
+        blankTitle.setEndAt(LocalDateTime.now().plusMinutes(10));
+
+        assertThrows(IllegalArgumentException.class, () -> service.createCampaign(blankTitle));
+
+        com.example.shop.dto.SeckillCampaignWriteRequest invalidQuota = campaignWriteRequest();
+        invalidQuota.getItems().get(0).setQuota(0);
+        when(productService.findById(12L)).thenReturn(Optional.of(product()));
+
+        assertThrows(IllegalArgumentException.class, () -> service.createCampaign(invalidQuota));
+    }
+
+    @Test
+    void purchaseRejectsUnsafeIdempotencyKeyBeforeLoadingCampaign() {
+        assertThrows(IllegalArgumentException.class, () -> service.purchase(7L, 4L, request(9L, 1), "bad key"));
+
+        verify(campaignRepository, never()).findByIdForUpdate(4L);
+    }
+
     private SeckillCampaign campaign() {
         SeckillCampaign campaign = new SeckillCampaign();
         campaign.setId(4L);
@@ -189,6 +221,21 @@ class SeckillServiceTest {
         request.setRecipientName("Test user");
         request.setRecipientPhone("1234567890");
         request.setPaymentMethod("TEST");
+        return request;
+    }
+
+    private com.example.shop.dto.SeckillCampaignWriteRequest campaignWriteRequest() {
+        com.example.shop.dto.SeckillCampaignWriteRequest request = new com.example.shop.dto.SeckillCampaignWriteRequest();
+        request.setTitle("Flash campaign");
+        request.setStatus("DRAFT");
+        request.setStartAt(LocalDateTime.now().plusMinutes(1));
+        request.setEndAt(LocalDateTime.now().plusMinutes(10));
+        com.example.shop.dto.SeckillItemWriteRequest item = new com.example.shop.dto.SeckillItemWriteRequest();
+        item.setProductId(12L);
+        item.setSeckillPrice(new BigDecimal("5.00"));
+        item.setQuota(10);
+        item.setLimitPerUser(1);
+        request.setItems(java.util.List.of(item));
         return request;
     }
 }

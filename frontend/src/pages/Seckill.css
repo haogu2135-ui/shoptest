@@ -134,6 +134,22 @@
   box-shadow: 0 8px 22px rgba(18, 71, 52, 0.05);
 }
 
+.seckill-campaign__banner {
+  width: 100%;
+  aspect-ratio: 4 / 1;
+  margin-bottom: 16px;
+  overflow: hidden;
+  border-radius: 6px;
+  background: #edf3ee;
+}
+
+.seckill-campaign__banner img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
 .seckill-campaign__header {
   display: flex;
   justify-content: space-between;
@@ -476,6 +492,11 @@
 
   .seckill-campaign {
     padding: 12px;
+  }
+
+  .seckill-campaign__banner {
+    aspect-ratio: 2.4 / 1;
+    margin-bottom: 14px;
   }
 
   .seckill-campaign__header {

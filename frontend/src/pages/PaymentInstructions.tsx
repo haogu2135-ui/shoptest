@@ -213,13 +213,33 @@ const PaymentInstructions: React.FC = () => {
           return;
         }
         if (disposed || verifyRequestSeqRef.current !== requestSeq) return;
+        let nextPayment: PaymentCustomer | null = null;
         try {
           const paymentResponse = await paymentApi.getLatestByOrder(nextOrder.id, guestEmail || undefined, nextOrder.orderNo || normalizedOrderNo);
-          if (!disposed && verifyRequestSeqRef.current === requestSeq) setPayment(paymentResponse.data);
+          nextPayment = paymentResponse.data;
         } catch (error) {
-          reportNonBlockingError('PaymentInstructions.loadLatestPayment', error);
-          if (!disposed && verifyRequestSeqRef.current === requestSeq) setPayment(null);
+          const responseStatus = Number((error as { response?: { status?: number } })?.response?.status);
+          const paymentMethod = String(nextOrder.paymentMethod || '').trim();
+          const canCreatePendingPayment = responseStatus === 404
+            && nextOrder.status === 'PENDING_PAYMENT'
+            && Boolean(paymentMethod);
+          if (canCreatePendingPayment) {
+            try {
+              const createdPayment = await paymentApi.create(
+                nextOrder.id,
+                paymentMethod,
+                guestEmail || undefined,
+                nextOrder.orderNo || normalizedOrderNo,
+              );
+              nextPayment = createdPayment.data;
+            } catch (createError) {
+              reportNonBlockingError('PaymentInstructions.createPendingPayment', createError);
+            }
+          } else {
+            reportNonBlockingError('PaymentInstructions.loadLatestPayment', error);
+          }
         }
+        if (!disposed && verifyRequestSeqRef.current === requestSeq) setPayment(nextPayment);
       } catch (error) {
         reportNonBlockingError('PaymentInstructions.verifyPaymentDetails', error);
         if (disposed || verifyRequestSeqRef.current !== requestSeq) return;

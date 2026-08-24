@@ -44,4 +44,16 @@ describe('Seckill mobile purchase surface', () => {
     expect(source).toContain('maxLength={160}');
     expect(source).toContain('pattern="^(?=(?:.*\\d){6,20})');
   });
+
+  it('renders safe campaign banners and resilient product media', () => {
+    const source = pageSource();
+    const css = styleSource();
+
+    expect(source).toContain('resolveApiAssetUrl(campaign.bannerUrl)');
+    expect(source).toContain('className="seckill-campaign__banner"');
+    expect(source).toContain('resolveProductImage(item.imageUrl)');
+    expect(source).toContain('productImageFallback');
+    expect(css).toContain('.seckill-campaign__banner img');
+    expect(css).toContain('object-fit: cover;');
+  });
 });

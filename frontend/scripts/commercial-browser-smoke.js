@@ -995,6 +995,7 @@ async function main() {
       },
       {
         path: '/no-such-page-commercial-smoke',
+        expectedStatus: 404,
         expect: /page not found|doesn't exist|back to home|search products|browse coupons|track an order/i,
         softExpect: /not found|home|products|coupon|track/i,
         selectorHint: '.not-found-page, main',
@@ -1003,7 +1004,8 @@ async function main() {
 
     for (const route of routes) {
       const response = await page.goto(`${base}${route.path}`, { waitUntil: 'domcontentloaded', timeout: 45000 });
-      check(`route ${route.path} status`, Boolean(response && response.status() === 200), response && response.status());
+      const expectedStatus = route.expectedStatus || 200;
+      check(`route ${route.path} status`, Boolean(response && response.status() === expectedStatus), response && response.status());
       await page.waitForSelector('#root', { timeout: 20000 });
       const attempts = route.settleMsAttempts || 12;
       const mainInfo = await waitForMainContent(

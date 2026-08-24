@@ -12,7 +12,9 @@ import type { PaymentChannel, SeckillCampaign, SeckillItem } from '../types';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { getApiErrorMessage } from '../utils/apiError';
+import { resolveApiAssetUrl } from '../utils/mediaAssets';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import { productImageFallback, resolveProductImage } from '../utils/productMedia';
 import './Seckill.css';
 
 type PurchaseForm = {
@@ -322,8 +324,20 @@ const Seckill: React.FC = () => {
         <div className="seckill-page__campaigns">
           {campaigns.map((campaign) => {
             const state = resolveCampaignState(campaign);
+            const campaignBanner = resolveApiAssetUrl(campaign.bannerUrl);
             return (
             <section className="seckill-campaign" key={campaign.id} aria-labelledby={`seckill-campaign-${campaign.id}`}>
+              {campaignBanner ? (
+                <div className="seckill-campaign__banner">
+                  <img
+                    src={campaignBanner}
+                    alt={campaign.title}
+                    loading="lazy"
+                    decoding="async"
+                    onError={(event) => { event.currentTarget.style.display = 'none'; }}
+                  />
+                </div>
+              ) : null}
               <div className="seckill-campaign__header">
                 <div>
                   <span className={`seckill-campaign__status seckill-campaign__status--${state.toLowerCase()}`}>
@@ -344,7 +358,15 @@ const Seckill: React.FC = () => {
                   return (
                     <article className={`seckill-item${soldOut ? ' seckill-item--soldOut' : ''}`} key={item.id}>
                       <a className="seckill-item__media" href={`/products/${item.productId}`} aria-label={item.productName || t('pages.seckill.product')}>
-                        {item.imageUrl ? <img src={item.imageUrl} alt="" loading="lazy" /> : <ShopIcon path={SI.shopping} />}
+                        <img
+                          src={resolveProductImage(item.imageUrl)}
+                          alt=""
+                          loading="lazy"
+                          decoding="async"
+                          onError={(event) => {
+                            if (event.currentTarget.src !== productImageFallback) event.currentTarget.src = productImageFallback;
+                          }}
+                        />
                       </a>
                       <div className="seckill-item__body">
                         <a className="seckill-item__name" href={`/products/${item.productId}`}>{item.productName || t('pages.seckill.product')}</a>

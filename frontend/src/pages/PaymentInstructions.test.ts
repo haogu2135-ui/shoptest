@@ -26,6 +26,10 @@ describe('PaymentInstructions step readability guards', () => {
     expect(effectSource).toContain('if (disposed || verifyRequestSeqRef.current !== requestSeq) return;');
     expect(effectSource).toContain('setOrder(nextOrder);');
     expect(effectSource).toContain('setPayment(paymentResponse.data)');
+    expect(effectSource).toContain('responseStatus === 404');
+    expect(effectSource).toContain("nextOrder.status === 'PENDING_PAYMENT'");
+    expect(effectSource).toContain('paymentApi.create');
+    expect(effectSource).toContain('PaymentInstructions.createPendingPayment');
     expect(effectSource).toContain('setPayment(null)');
     expect(effectSource).toContain('setVerifying(false)');
     expect(effectSource).toContain('disposed = true;');

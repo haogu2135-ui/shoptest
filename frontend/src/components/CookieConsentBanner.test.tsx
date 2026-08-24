@@ -32,6 +32,13 @@ describe('CookieConsentBanner short-screen layout contract', () => {
     expect(css).toMatch(/body \.cookie-consent-banner__button\.ant-btn:not\(\.ant-btn-icon-only\)\s*>\s*span\.shop-button__label[\s\S]*?overflow:\s*visible\s*!important/);
   });
 
+  it('uses the real safe-area edge on mobile conversion shells', () => {
+    const css = readLocal('CookieConsentBanner.css');
+
+    expect(css).toMatch(/body:has\(\.shop-app-shell--auth-flow\) \.cookie-consent-banner,[\s\S]*?body:has\(\.shop-app-shell--checkout-flow\) \.cookie-consent-banner[\s\S]*?bottom:\s*calc\(8px \+ env\(safe-area-inset-bottom, 0px\)\) !important/);
+    expect(css).toMatch(/body\.shop-cookie-consent-visible:has\(\.shop-app-shell--auth-flow\) \.shopee-login-quickLinks[\s\S]*?display:\s*none !important/);
+  });
+
   it('reserves a short-screen home layout for the visible consent panel', () => {
     const homeCss = fs.readFileSync(path.resolve(__dirname, '../pages/Home.css'), 'utf8');
 

@@ -135,6 +135,71 @@ async function measureCookieConsentLayout(page) {
   });
 }
 
+async function measureCookieConsentCriticalContent(page, routePath) {
+  return page.evaluate((path) => {
+    const selectorsByRoute = {
+      '/login': [
+        '.shopee-login-form input',
+        '.shopee-login-form button[type="submit"]',
+      ],
+      '/products/2': [
+        '.product-mobile-buybar__cart',
+        '.product-mobile-buybar__buy',
+      ],
+      '/cart': [
+        '.cart-page__emptyActions .ant-btn:nth-of-type(-n+2)',
+        '.cart-page__summary .ant-btn-primary',
+      ],
+      '/checkout': [
+        '.checkout-page__emptyActions .ant-btn:nth-of-type(-n+2)',
+        '.checkout-page__mobilePayBar .ant-btn',
+        '.checkout-page__submitReview .ant-btn-primary',
+      ],
+    };
+    const rectFor = (element) => {
+      if (!element) return null;
+      const rect = element.getBoundingClientRect();
+      return {
+        top: rect.top,
+        bottom: rect.bottom,
+        left: rect.left,
+        right: rect.right,
+        width: rect.width,
+        height: rect.height,
+      };
+    };
+    const banner = document.querySelector('.cookie-consent-banner');
+    const bannerRect = rectFor(banner);
+    const selectors = selectorsByRoute[path] || [];
+    const nodes = Array.from(new Set(selectors.flatMap((selector) => Array.from(document.querySelectorAll(selector)))));
+    const targets = nodes.map((element) => {
+      const rect = rectFor(element);
+      const style = window.getComputedStyle(element);
+      return {
+        selector: element.className || element.tagName,
+        rect,
+        visible: Boolean(rect && rect.width > 0 && rect.height > 0
+          && style.display !== 'none'
+          && style.visibility !== 'hidden'),
+      };
+    }).filter((item) => item.visible);
+    const overlaps = (first, second) => Boolean(
+      first && second
+      && first.bottom > second.top + 1
+      && first.top < second.bottom - 1
+      && first.right > second.left + 1
+      && first.left < second.right - 1,
+    );
+    return {
+      route: path,
+      banner: bannerRect,
+      targetCount: targets.length,
+      targets,
+      overlapCount: targets.filter((target) => overlaps(target.rect, bannerRect)).length,
+    };
+  }, routePath);
+}
+
 async function measurePrimaryTouchTargets(page) {
   return page.evaluate(() => {
     const selectors = [
@@ -388,6 +453,9 @@ async function main() {
       });
 
       for (const route of ROUTES) {
+        // Re-open consent on every route so fixed-panel coverage is measured
+        // for the actual mobile conversion surface, not just the homepage.
+        await page.evaluate(() => localStorage.removeItem('shopmx.cookie-consent.v1')).catch(() => undefined);
         const response = await page.goto(`${base}${route.path}`, {
           waitUntil: 'domcontentloaded',
           timeout: 45000,
@@ -430,12 +498,6 @@ async function main() {
             !cookieLayout.horizontalOverflow,
           );
         }
-        await dismissCookie(page);
-        // Re-assert native shell class after SPA mount.
-        await page.evaluate(() => {
-          document.documentElement.classList.add('shop-mobile-app');
-          if (document.body) document.body.classList.add('shop-mobile-app');
-        }).catch(() => undefined);
 
         const attempts = route.settleAttempts || 14;
         const isCatalogSettled = (text) => {
@@ -477,6 +539,29 @@ async function main() {
             mainInfo.text.slice(0, 120),
           );
         }
+
+        if (['/login', '/products/2', '/cart', '/checkout'].includes(route.path)) {
+          const consent = page.locator('.cookie-consent-banner');
+          await consent.waitFor({ state: 'visible', timeout: 10000 }).catch(() => undefined);
+          const criticalLayout = await measureCookieConsentCriticalContent(page, route.path);
+          check(
+            `${viewport.name} ${route.path} consent exposes critical targets`,
+            criticalLayout.targetCount > 0,
+            `targets=${criticalLayout.targetCount}`,
+          );
+          check(
+            `${viewport.name} ${route.path} consent does not cover critical targets`,
+            criticalLayout.overlapCount === 0,
+            `overlaps=${criticalLayout.overlapCount} bannerTop=${Math.round(criticalLayout.banner?.top || 0)} targets=${criticalLayout.targets.map((target) => `${Math.round(target.rect.top)}-${Math.round(target.rect.bottom)}`).join(',')}`,
+          );
+        }
+
+        await dismissCookie(page);
+        // Re-assert native shell class after SPA mount.
+        await page.evaluate(() => {
+          document.documentElement.classList.add('shop-mobile-app');
+          if (document.body) document.body.classList.add('shop-mobile-app');
+        }).catch(() => undefined);
 
         const shellCount = await page.locator(route.shell).count();
         check(
