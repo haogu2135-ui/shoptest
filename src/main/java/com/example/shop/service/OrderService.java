@@ -147,6 +147,8 @@ public class OrderService {
     @Autowired
     private ProductVariantService productVariantService;
     @Autowired
+    private SeckillService seckillService;
+    @Autowired
     private LogisticsCarrierService logisticsCarrierService;
     @Autowired
     private RefundService refundService;
@@ -1572,6 +1574,9 @@ public class OrderService {
             return false;
         }
         List<OrderItem> items = orderItemRepository.findByOrderId(id);
+        if (seckillService != null) {
+            seckillService.releaseClaimForOrder(id);
+        }
         restoreStock(items);
         if (closePendingPayments) {
             paymentRepository.markPendingCancelledByOrderId(id);

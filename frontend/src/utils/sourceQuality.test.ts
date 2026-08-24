@@ -195,7 +195,7 @@ describe('source quality contracts', () => {
     expect(checkoutCssSource).toContain('@media (max-width: 480px)');
     expect(skeletonCssSource).toContain('@media (prefers-reduced-motion: reduce)');
 
-    expect(checkoutRequestSource).toContain('private List<Long> cartItemIds;');
+    expect(checkoutRequestSource).toMatch(/private List<@NotNull @Min\(1\) Long> cartItemIds;/);
     expect(checkoutRequestSource).not.toContain('unitPrice');
     expect(guestCheckoutRequestSource).not.toContain('unitPrice');
     expect(orderServiceSource).toContain('assertCheckoutItemOwnership(userId, cartItemIds, selectedItems);');

@@ -243,7 +243,7 @@ async function main() {
     check('static js long-cache immutable', false, 'main js not found in home html');
   }
 
-  for (const path of ['/products', '/cart', '/checkout', '/login', '/register', '/coupons', '/track-order', '/wishlist', '/history', '/forgot-password', '/compare', '/privacy', '/terms']) {
+  for (const path of ['/products', '/cart', '/checkout', '/login', '/register', '/coupons', '/track-order', '/wishlist', '/history', '/forgot-password', '/compare', '/privacy', '/terms', '/seckill', '/admin/seckill']) {
     const res = await get(path);
     check(`spa ${path}`, res.status === 200 && (res.body.includes('id="root"') || res.body.includes("id='root'")), res.status);
   }

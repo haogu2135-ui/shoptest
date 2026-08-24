@@ -222,7 +222,13 @@ export const HomeMobileQuickPanel: React.FC<{
   <div className="shopee-container shopee-mobile-priority">
     <section className="shopee-mobile-quick-panel" aria-label={t('home.categories')}>
       {actions.map((action) => (
-        <button key={action.key} type="button" data-commercial-primary-cta={`home-mobile-${action.key}`} onClick={action.onClick}>
+        <button
+          key={action.key}
+          type="button"
+          className={action.key === 'seckill' ? 'shopee-mobile-quick-panel__button--seckill' : undefined}
+          data-commercial-primary-cta={`home-mobile-${action.key}`}
+          onClick={action.onClick}
+        >
           <span className="shopee-mobile-quick-panel__icon">{action.icon}</span>
           <span className="shopee-mobile-quick-panel__label">{action.label}</span>
         </button>

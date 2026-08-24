@@ -168,6 +168,10 @@ const Home: React.FC = () => {
         navigate('/coupons');
         return;
       }
+      if (item.intent === 'seckill') {
+        navigate('/seckill');
+        return;
+      }
       if (item.intent === 'wishlist') {
         navigate(isAuthenticated ? '/wishlist' : buildLoginUrlFromWindow());
         return;

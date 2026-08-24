@@ -21,6 +21,8 @@ class OrderCancelStatusGuardTest {
     private OrderRepository orderRepository;
     private OrderItemRepository orderItemRepository;
     private PaymentRepository paymentRepository;
+    private CouponService couponService;
+    private SeckillService seckillService;
     private OrderService orderService;
 
     @BeforeEach
@@ -28,10 +30,14 @@ class OrderCancelStatusGuardTest {
         orderRepository = mock(OrderRepository.class);
         orderItemRepository = mock(OrderItemRepository.class);
         paymentRepository = mock(PaymentRepository.class);
+        couponService = mock(CouponService.class);
+        seckillService = mock(SeckillService.class);
         orderService = new OrderService();
         ReflectionTestUtils.setField(orderService, "orderRepository", orderRepository);
         ReflectionTestUtils.setField(orderService, "orderItemRepository", orderItemRepository);
         ReflectionTestUtils.setField(orderService, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(orderService, "couponService", couponService);
+        ReflectionTestUtils.setField(orderService, "seckillService", seckillService);
     }
 
     @Test
@@ -68,6 +74,17 @@ class OrderCancelStatusGuardTest {
             verify(orderItemRepository, never()).findByOrderId(42L);
             verify(paymentRepository, never()).markPendingCancelledByOrderId(42L);
         }
+    }
+
+    @Test
+    void cancelOrderReleasesSeckillClaimAfterStatusIsCancelled() {
+        Order order = orderWithStatus("PENDING_PAYMENT");
+        when(orderRepository.findById(42L)).thenReturn(order);
+        when(orderRepository.updateStatusIfCurrent(42L, "PENDING_PAYMENT", "CANCELLED")).thenReturn(1);
+
+        orderService.cancelOrder(42L);
+
+        verify(seckillService).releaseClaimForOrder(42L);
     }
 
     private Order orderWithStatus(String status) {

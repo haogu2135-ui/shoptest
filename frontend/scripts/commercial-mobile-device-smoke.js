@@ -295,6 +295,17 @@ async function runSeckillPurchaseFixture(page, viewport) {
     check(`${viewport.name} seckill fixture locks background`, openState.overflow === 'hidden', openState.overflow);
     check(`${viewport.name} seckill fixture owns overlay stack`, openState.dialogZIndex >= 10010, openState.dialogZIndex);
 
+    const emptyPurchaseValidity = await page.evaluate(() => {
+      const form = document.querySelector('.seckill-purchase__form');
+      if (!(form instanceof HTMLFormElement)) return { present: false, valid: true };
+      return { present: true, valid: form.checkValidity() };
+    });
+    check(
+      viewport.name + ' seckill fixture blocks incomplete purchase locally',
+      emptyPurchaseValidity.present && emptyPurchaseValidity.valid === false,
+      JSON.stringify(emptyPurchaseValidity),
+    );
+
     await dialog.evaluate((element) => { element.scrollTop = element.scrollHeight; });
     const submitRect = await page.locator('.seckill-purchase button[type="submit"]').boundingBox();
     check(
@@ -392,6 +403,7 @@ async function main() {
         );
         await page.waitForSelector('#root', { timeout: 20000 }).catch(() => undefined);
         if (route.path === '/') {
+          await page.locator('.cookie-consent-banner').waitFor({ state: 'visible', timeout: 10000 }).catch(() => undefined);
           const cookieLayout = await measureCookieConsentLayout(page);
           check(
             `${viewport.name} / cookie consent legal links stay on one row`,
@@ -485,6 +497,49 @@ async function main() {
             `${viewport.name} ${route.path} primary touch targets >=44px`,
             true,
             'no-primary-cta-sample-skip',
+          );
+        }
+
+        if (route.path === '/') {
+          const seckillEntry = page.locator('[data-commercial-primary-cta="home-mobile-seckill"]');
+          await seckillEntry.waitFor({ state: 'visible', timeout: 10000 }).catch(() => undefined);
+          const seckillBox = await seckillEntry.boundingBox().catch(() => null);
+          check(
+            `${viewport.name} home exposes flash-sale entry`,
+            Boolean(seckillBox && seckillBox.height >= 44 && seckillBox.width > 0),
+            seckillBox ? JSON.stringify({ width: Math.round(seckillBox.width), height: Math.round(seckillBox.height) }) : 'missing',
+          );
+          let seckillHitTarget = false;
+          for (let attempt = 0; attempt < 12 && !seckillHitTarget; attempt += 1) {
+            seckillHitTarget = await seckillEntry.evaluate((element) => {
+              const entryRect = element.getBoundingClientRect();
+              const bottomBar = document.querySelector('.shop-nav__bottomBar');
+              if (!bottomBar || window.getComputedStyle(bottomBar).display === 'none') return true;
+              const navRect = bottomBar.getBoundingClientRect();
+              return entryRect.bottom <= navRect.top + 1 || entryRect.top >= navRect.bottom - 1;
+            }).catch(() => false);
+            if (!seckillHitTarget) await page.waitForTimeout(250);
+          }
+          check(
+            `${viewport.name} home flash-sale entry is not covered`,
+            seckillHitTarget,
+          );
+          let seckillEntryNavigates = false;
+          try {
+            // Countdown/catalog repaints can make a physical Playwright click
+            // retry while the button is already actionable. The hit-target
+            // assertion above keeps coverage of real mobile occlusion while
+            // DOM click makes the navigation check deterministic.
+            await seckillEntry.evaluate((element) => element.click());
+            await page.waitForURL(/\/seckill(?:\/|$)/, { timeout: 10000 });
+            seckillEntryNavigates = true;
+          } catch (error) {
+            seckillEntryNavigates = false;
+          }
+          check(
+            `${viewport.name} home flash-sale entry navigates`,
+            seckillEntryNavigates,
+            page.url(),
           );
         }
 

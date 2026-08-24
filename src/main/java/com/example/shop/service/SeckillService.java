@@ -68,6 +68,34 @@ public class SeckillService {
     @Autowired(required = false)
     private PaymentChannelAvailabilityService paymentChannelAvailabilityService;
 
+    /**
+     * Releases a pending-payment reservation so an unpaid seckill order does
+     * not permanently consume campaign quota or the per-user claim.
+     */
+    @Transactional
+    public void releaseClaimForOrder(Long orderId) {
+        if (orderId == null) {
+            return;
+        }
+        SeckillClaim claim = claimRepository.findByOrderIdForUpdate(orderId).orElse(null);
+        if (claim == null) {
+            return;
+        }
+
+        SeckillItem item = itemRepository.findByIdAndCampaignIdForUpdate(claim.getItemId(), claim.getCampaignId());
+        if (item == null) {
+            log.warn("Seckill claim item missing during release: orderId={}, claimId={}, itemId={}",
+                    orderId, claim.getId(), claim.getItemId());
+        } else {
+            int sold = item.getSold() == null ? 0 : item.getSold();
+            int quantity = claim.getQuantity() == null ? 0 : Math.max(0, claim.getQuantity());
+            item.setSold(Math.max(0, sold - quantity));
+            item.setUpdatedAt(LocalDateTime.now());
+            itemRepository.save(item);
+        }
+        claimRepository.delete(claim);
+    }
+
     @Transactional(readOnly = true)
     public List<SeckillCampaignResponse> findPublicCampaigns() {
         LocalDateTime now = LocalDateTime.now();

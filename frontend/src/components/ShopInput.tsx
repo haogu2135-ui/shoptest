@@ -11,6 +11,7 @@ export type ShopInputProps = {
   type?: React.HTMLInputTypeAttribute;
   placeholder?: string;
   disabled?: boolean;
+  required?: boolean;
   readOnly?: boolean;
   className?: string;
   id?: string;
@@ -49,6 +50,7 @@ const ShopInput = forwardRef<HTMLInputElement, ShopInputProps>((props, ref) => {
   type = 'text',
   placeholder = '',
   disabled = false,
+  required = false,
   readOnly = false,
   className = '',
   id,
@@ -110,6 +112,7 @@ const ShopInput = forwardRef<HTMLInputElement, ShopInputProps>((props, ref) => {
           defaultValue={isControlled ? undefined : defaultValue}
           placeholder={placeholder}
           disabled={disabled}
+          required={required}
           readOnly={readOnly}
           autoComplete={autoComplete}
           inputMode={inputMode}

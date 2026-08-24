@@ -27,6 +27,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -115,6 +116,37 @@ class SeckillServiceTest {
 
         assertSame(existing, service.purchase(7L, 4L, request(9L, 1), "seckill-key"));
         verify(productRepository, org.mockito.Mockito.never()).decreaseStock(12L, 1);
+    }
+
+    @Test
+    void releaseClaimForOrderReturnsQuotaAndDeletesClaim() {
+        SeckillClaim claim = new SeckillClaim();
+        claim.setId(31L);
+        claim.setCampaignId(4L);
+        claim.setItemId(9L);
+        claim.setOrderId(88L);
+        claim.setQuantity(2);
+        SeckillItem item = item();
+        item.setSold(6);
+        when(claimRepository.findByOrderIdForUpdate(88L)).thenReturn(Optional.of(claim));
+        when(itemRepository.findByIdAndCampaignIdForUpdate(9L, 4L)).thenReturn(item);
+
+        service.releaseClaimForOrder(88L);
+
+        assertEquals(4, item.getSold());
+        verify(itemRepository).save(item);
+        verify(claimRepository).delete(claim);
+    }
+
+    @Test
+    void releaseClaimForOrderIsIdempotentWhenClaimWasAlreadyDeleted() {
+        when(claimRepository.findByOrderIdForUpdate(88L)).thenReturn(Optional.empty());
+
+        service.releaseClaimForOrder(88L);
+
+        verify(itemRepository, never()).findByIdAndCampaignIdForUpdate(9L, 4L);
+        verify(itemRepository, never()).save(any(SeckillItem.class));
+        verify(claimRepository, never()).delete(any(SeckillClaim.class));
     }
 
     private SeckillCampaign campaign() {

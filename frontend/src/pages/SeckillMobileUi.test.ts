@@ -29,7 +29,19 @@ describe('Seckill mobile purchase surface', () => {
     expect(css).toContain('env(safe-area-inset-bottom, 0px)');
     expect(css).toContain('min-height: 100dvh;');
     expect(css).toContain('z-index: 10010;');
+    expect(css).toContain('padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 24px + env(safe-area-inset-bottom, 0px));');
+    expect(css).toContain('scroll-padding-bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 32px + env(safe-area-inset-bottom, 0px));');
     expect(css).toContain('body.shop-seckill-purchase-open .cookie-consent-banner');
     expect(css).toContain('display: none !important;');
+  });
+
+  it('keeps purchase fields aligned with the backend validation contract', () => {
+    const source = pageSource();
+
+    expect(source).toContain('aria-required="true" required maxLength={120}');
+    expect(source).toContain('aria-required="true" required maxLength={40}');
+    expect(source).toContain('aria-required="true" required maxLength={2000}');
+    expect(source).toContain('maxLength={160}');
+    expect(source).toContain('pattern="^(?=(?:.*\\d){6,20})');
   });
 });

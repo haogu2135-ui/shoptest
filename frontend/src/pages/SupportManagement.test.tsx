@@ -116,7 +116,7 @@ describe('SupportManagement', () => {
     await waitFor(() => expect(mockGetSessions).toHaveBeenCalled());
     await userEvent.click(await screen.findByRole('button', { name: /Customer A/i }, { timeout: 6000 }));
 
-    const replyInput = await screen.findByRole('textbox', { name: /Write a reply/i }, { timeout: 6000 });
+    const replyInput = await screen.findByRole('textbox', { name: /Customer A/i }, { timeout: 6000 });
     expect(replyInput).toBeInTheDocument();
     expect(replyInput).toBeDisabled();
     expect(screen.getAllByText(/^(No admin permission|Sin permiso de administración)$/).length).toBeGreaterThan(0);

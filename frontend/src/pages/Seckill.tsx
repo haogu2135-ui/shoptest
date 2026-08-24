@@ -138,7 +138,7 @@ const Seckill: React.FC = () => {
   }, [token]);
 
   useEffect(() => {
-    if (!selected) return undefined;
+    if (!selected) return;
     const previousBodyOverflow = document.body.style.overflow;
     const previousBodyPaddingRight = document.body.style.paddingRight;
     const previouslyFocused = document.activeElement instanceof HTMLElement
@@ -399,7 +399,7 @@ const Seckill: React.FC = () => {
             </div>
             <form onSubmit={submitPurchase} className="seckill-purchase__form">
               <label>{t('pages.seckill.quantity')}
-                <ShopInput type="number" min={1} max={maxPurchaseQuantity} value={String(form.quantity)} onChange={(event) => updateForm('quantity', event.target.value)} inputMode="numeric" aria-label={t('pages.seckill.quantity')} />
+                <ShopInput type="number" min={1} max={maxPurchaseQuantity} value={String(form.quantity)} onChange={(event) => updateForm('quantity', event.target.value)} inputMode="numeric" aria-label={t('pages.seckill.quantity')} aria-required="true" required />
               </label>
               {selected.item.optionGroups?.map((group) => {
                 const values = group.values || group.options || [];
@@ -418,16 +418,16 @@ const Seckill: React.FC = () => {
                 );
               })}
               <label>{t('pages.seckill.recipientName')}
-                <ShopInput value={form.recipientName} onChange={(event) => updateForm('recipientName', event.target.value)} autoComplete="name" aria-label={t('pages.seckill.recipientName')} />
+                <ShopInput value={form.recipientName} onChange={(event) => updateForm('recipientName', event.target.value)} autoComplete="name" aria-label={t('pages.seckill.recipientName')} aria-required="true" required maxLength={120} />
               </label>
               <label>{t('pages.seckill.recipientPhone')}
-                <ShopInput value={form.recipientPhone} onChange={(event) => updateForm('recipientPhone', event.target.value)} autoComplete="tel" inputMode="tel" aria-label={t('pages.seckill.recipientPhone')} />
+                <ShopInput value={form.recipientPhone} onChange={(event) => updateForm('recipientPhone', event.target.value)} autoComplete="tel" inputMode="tel" aria-label={t('pages.seckill.recipientPhone')} aria-required="true" required maxLength={40} pattern="^(?=(?:.*\d){6,20})\+?[\d\s().-]{6,40}$" />
               </label>
               <label>{t('pages.seckill.shippingAddress')}
-                <textarea value={form.shippingAddress} onChange={(event) => updateForm('shippingAddress', event.target.value)} rows={3} autoComplete="street-address" aria-label={t('pages.seckill.shippingAddress')} />
+                <textarea value={form.shippingAddress} onChange={(event) => updateForm('shippingAddress', event.target.value)} rows={3} autoComplete="street-address" aria-label={t('pages.seckill.shippingAddress')} aria-required="true" required maxLength={2000} />
               </label>
               <label>{t('pages.seckill.contactEmail')}
-                <ShopInput type="email" value={form.contactEmail} onChange={(event) => updateForm('contactEmail', event.target.value)} autoComplete="email" aria-label={t('pages.seckill.contactEmail')} />
+                <ShopInput type="email" value={form.contactEmail} onChange={(event) => updateForm('contactEmail', event.target.value)} autoComplete="email" aria-label={t('pages.seckill.contactEmail')} maxLength={160} />
               </label>
               <label>{t('pages.seckill.paymentMethod')}
                 <select value={form.paymentMethod} onChange={(event) => updateForm('paymentMethod', event.target.value)} aria-label={t('pages.seckill.paymentMethod')} required>
