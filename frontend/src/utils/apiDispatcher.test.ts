@@ -10,6 +10,7 @@ describe('apiDispatcher', () => {
     expect(resolveApiServiceId('/products/12')).toBe('catalog');
     expect(resolveApiServiceId('/orders/track')).toBe('order');
     expect(resolveApiServiceId('/payments/channels')).toBe('payment');
+    expect(resolveApiServiceId('/seckill/campaigns')).toBe('commerce');
     expect(resolveApiServiceId('/admin/orders/page')).toBe('admin');
   });
 
@@ -28,6 +29,7 @@ describe('apiDispatcher', () => {
     expect(resolveApiDispatcherUrl('/products?keyword=cat')).toBe('/gateway/catalog/products?keyword=cat');
     expect(resolveApiDispatcherUrl('/auth/login')).toBe('/gateway/identity/auth/login');
     expect(resolveApiDispatcherUrl('/support/messages')).toBe('/gateway/support/support/messages');
+    expect(resolveApiDispatcherUrl('/seckill/campaigns')).toBe('/gateway/commerce/seckill/campaigns');
   });
 
   it('leaves non-api, absolute, and already-dispatched urls alone', () => {

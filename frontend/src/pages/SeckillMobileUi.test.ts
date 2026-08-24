@@ -1,0 +1,35 @@
+import fs from 'fs';
+import path from 'path';
+
+const pageSource = () => fs.readFileSync(path.resolve(__dirname, 'Seckill.tsx'), 'utf8');
+const styleSource = () => fs.readFileSync(path.resolve(__dirname, 'Seckill.css'), 'utf8');
+
+describe('Seckill mobile purchase surface', () => {
+  it('keeps focus and background scroll inside the purchase dialog', () => {
+    const source = pageSource();
+
+    expect(source).toContain('document.body.style.overflow = \'hidden\';');
+    expect(source).toContain('document.body.style.overflow = previousBodyOverflow;');
+    expect(source).toContain('document.addEventListener(\'keydown\', trapFocus);');
+    expect(source).toContain('last.focus({ preventScroll: true });');
+    expect(source).toContain('first.focus({ preventScroll: true });');
+    expect(source).toContain('previouslyFocused?.focus({ preventScroll: true });');
+    expect(source).toContain('submitLoadingRef.current');
+    expect(source).toContain('role="dialog" aria-modal="true"');
+    expect(source).toContain('shop-seckill-purchase-open');
+    expect(source).toContain('document.body.classList.add(SECKILL_PURCHASE_BODY_CLASS);');
+    expect(source).toContain('document.body.classList.remove(SECKILL_PURCHASE_BODY_CLASS);');
+  });
+
+  it('keeps the mobile modal scrollable and safe-area aware', () => {
+    const css = styleSource();
+
+    expect(css).toContain('overscroll-behavior: contain;');
+    expect(css).toContain('touch-action: pan-y;');
+    expect(css).toContain('env(safe-area-inset-bottom, 0px)');
+    expect(css).toContain('min-height: 100dvh;');
+    expect(css).toContain('z-index: 10010;');
+    expect(css).toContain('body.shop-seckill-purchase-open .cookie-consent-banner');
+    expect(css).toContain('display: none !important;');
+  });
+});

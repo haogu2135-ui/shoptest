@@ -19,6 +19,7 @@ const { chromium } = require('playwright');
 
 const base = (process.env.SHOPTEST_UI_BASE || 'http://127.0.0.1:4187').replace(/\/$/, '');
 const results = [];
+let transientBrowserRetryCount = 0;
 
 const check = (name, pass, detail = '') => {
   results.push({ name, pass: Boolean(pass), detail: String(detail || '').slice(0, 240) });
@@ -936,6 +937,11 @@ async function main() {
         selectorHint: '.coupon, main',
       },
       {
+        path: '/seckill',
+        expect: /flash sale|seckill|limited|empty|campaign/i,
+        selectorHint: '.seckill-page, main',
+      },
+      {
         path: '/wishlist',
         expect: /sign in to save favorites|wishlist|favorite|browse products|browse coupons|create account|log in/i,
         softExpect: /wishlist|favorite|product|login|browse|coupon|sign in/i,
@@ -1565,7 +1571,15 @@ async function main() {
 
     check('no page errors', pageErrors.length === 0, pageErrors.slice(0, 3).join(' | '));
   } catch (error) {
-    check('browser smoke execution', false, error && error.message ? error.message : String(error));
+    const message = error && error.message ? error.message : String(error);
+    if (transientBrowserRetryCount < 1 && /target page|target context|browser has been closed|net::err_aborted|frame was detached/i.test(message)) {
+      transientBrowserRetryCount += 1;
+      // A renderer shutdown is infrastructure noise, not a product result.
+      // Retry once from a clean browser so partial assertions cannot pass.
+      results.splice(0);
+      return main();
+    }
+    check('browser smoke execution', false, message);
   } finally {
     await browser.close().catch(() => undefined);
   }

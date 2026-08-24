@@ -7,7 +7,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$ROOT"
 
-STAGING="${SHOPTEST_BUILD_STAGING:-build.next}"
+# Keep staging outside the historical, tracked build.next snapshot. A failed
+# build must not turn generated staging cleanup into source-control deletions.
+STAGING="${SHOPTEST_BUILD_STAGING:-build.next.staging}"
 LIVE="${SHOPTEST_BUILD_LIVE:-build}"
 
 export GENERATE_SOURCEMAP="${GENERATE_SOURCEMAP:-false}"

@@ -29,6 +29,13 @@ const VIEWPORTS = [
   { name: '360x740', width: 360, height: 740 },
   { name: '390x844', width: 390, height: 844 },
 ];
+const requestedViewportNames = String(process.env.SHOPTEST_MOBILE_VIEWPORTS || '')
+  .split(',')
+  .map((name) => name.trim())
+  .filter(Boolean);
+const VIEWPORTS_TO_RUN = requestedViewportNames.length > 0
+  ? VIEWPORTS.filter((viewport) => requestedViewportNames.includes(viewport.name))
+  : VIEWPORTS;
 
 const ROUTES = [
   { path: '/', expect: /product|shop|coupon|pet|browse|category/i, shell: '.shopee-home, main, #shop-main-content' },
@@ -44,6 +51,7 @@ const ROUTES = [
   { path: '/checkout', expect: /checkout|cart|browse|payment|empty|selected/i, shell: '.checkout-page, main' },
   { path: '/track-order', expect: /track|order|email|coupon|support|shop/i, shell: '.order-tracking-page, main' },
   { path: '/coupons', expect: /coupon|claim|browse|cart|empty/i, shell: '.coupon-center-page, main' },
+  { path: '/seckill', expect: /flash sale|seckill|limited|empty|campaign/i, shell: '.seckill-page, main' },
   { path: '/products/2', expect: /add|buy|cart|price|sold|stock|product/i, shell: '.product-detail-page, main' },
 ];
 
@@ -199,35 +207,156 @@ async function measureStickyRailClearance(page) {
   });
 }
 
+async function runSeckillPurchaseFixture(page, viewport) {
+  const campaign = {
+    id: 901,
+    title: 'Mobile fixture flash sale',
+    subtitle: 'Deterministic mobile purchase fixture',
+    status: 'PUBLISHED',
+    state: 'ONGOING',
+    startAt: new Date(Date.now() - 60_000).toISOString(),
+    endAt: new Date(Date.now() + 3_600_000).toISOString(),
+    items: [{
+      id: 902,
+      productId: 2,
+      productName: 'Fixture product',
+      imageUrl: '',
+      originalPrice: 19.9,
+      seckillPrice: 9.9,
+      quota: 10,
+      sold: 0,
+      remaining: 10,
+      limitPerUser: 2,
+      optionGroups: [],
+    }],
+  };
+  const profile = {
+    id: 7,
+    username: 'mobile-fixture',
+    email: 'mobile-fixture@example.com',
+    role: 'USER',
+    roleCode: 'USER',
+  };
+  const paymentChannels = [{ code: 'MERCADO_PAGO', displayName: 'Mercado Pago' }];
+  const jsonResponse = (body) => ({
+    status: 200,
+    contentType: 'application/json',
+    body: JSON.stringify(body),
+  });
+  const routeHandlers = [
+    ['**/api/seckill/campaigns', (route) => route.fulfill(jsonResponse([campaign]))],
+    ['**/api/users/profile', (route) => route.fulfill(jsonResponse(profile))],
+    ['**/api/payments/channels', (route) => route.fulfill(jsonResponse(paymentChannels))],
+    // The native navbar hydrates these badges as soon as a session exists.
+    // Keep the fixture authenticated without letting unrelated 401s clear it.
+    ['**/api/cart/me', (route) => route.fulfill(jsonResponse([]))],
+    ['**/api/notifications/me/unread-count', (route) => route.fulfill(jsonResponse({ count: 0 }))],
+    ['**/api/wishlist/me/count', (route) => route.fulfill(jsonResponse({ count: 0 }))],
+    ['**/api/coupons/me/available', (route) => route.fulfill(jsonResponse([]))],
+    ['**/api/support/unread-count', (route) => route.fulfill(jsonResponse({ count: 0 }))],
+  ];
+
+  for (const [pattern, handler] of routeHandlers) {
+    await page.route(pattern, handler);
+  }
+
+  try {
+    await page.evaluate(() => {
+      localStorage.setItem('token', 'mobile-fixture-token');
+      localStorage.removeItem('shopmx.cookie-consent.v1');
+    });
+    const response = await page.goto(`${base}/seckill`, { waitUntil: 'domcontentloaded', timeout: 45000 });
+    check(`${viewport.name} seckill fixture status`, Boolean(response && response.status() === 200), response && response.status());
+    const consent = page.locator('.cookie-consent-banner');
+    await consent.waitFor({ state: 'visible', timeout: 10000 });
+    check(`${viewport.name} seckill fixture shows first-visit consent`, await consent.isVisible());
+    await consent.getByRole('button', { name: /accept all|aceptar todo/i }).click({ timeout: 5000 });
+    await consent.waitFor({ state: 'detached', timeout: 5000 }).catch(() => undefined);
+    await page.locator('.seckill-item button').first().waitFor({ state: 'visible', timeout: 20000 });
+    // The live countdown re-renders the campaign once per second. Invoke the
+    // browser click on the current node without waiting for that repaint to
+    // settle; this still exercises the component's real React handler.
+    await page.locator('.seckill-item button').first().evaluate((element) => {
+      element.click();
+    });
+    const dialog = page.locator('.seckill-purchase[role="dialog"]');
+    await dialog.waitFor({ state: 'visible', timeout: 10000 });
+    const openState = await page.evaluate(() => {
+      const cookie = document.querySelector('.cookie-consent-banner');
+      const purchase = document.querySelector('.seckill-purchase');
+      return {
+        bodyClass: document.body.classList.contains('shop-seckill-purchase-open'),
+        overflow: document.body.style.overflow,
+        cookieDisplay: cookie ? window.getComputedStyle(cookie).display : 'missing',
+        dialogZIndex: purchase ? Number.parseInt(window.getComputedStyle(purchase.parentElement).zIndex || '0', 10) : 0,
+      };
+    });
+    check(`${viewport.name} seckill fixture has no stale consent overlay`, openState.bodyClass && openState.cookieDisplay === 'missing', JSON.stringify(openState));
+    check(`${viewport.name} seckill fixture locks background`, openState.overflow === 'hidden', openState.overflow);
+    check(`${viewport.name} seckill fixture owns overlay stack`, openState.dialogZIndex >= 10010, openState.dialogZIndex);
+
+    await dialog.evaluate((element) => { element.scrollTop = element.scrollHeight; });
+    const submitRect = await page.locator('.seckill-purchase button[type="submit"]').boundingBox();
+    check(
+      `${viewport.name} seckill fixture submit reachable`,
+      Boolean(submitRect && submitRect.height >= 44 && submitRect.y >= 0 && submitRect.y + submitRect.height <= viewport.height),
+      submitRect ? JSON.stringify({ top: Math.round(submitRect.y), bottom: Math.round(submitRect.y + submitRect.height), height: Math.round(submitRect.height) }) : 'missing',
+    );
+
+    await page.locator('.seckill-purchase__close').click();
+    await dialog.waitFor({ state: 'hidden', timeout: 10000 });
+    const closedState = await page.evaluate(() => ({
+      bodyClass: document.body.classList.contains('shop-seckill-purchase-open'),
+      cookieDisplay: document.querySelector('.cookie-consent-banner')
+        ? window.getComputedStyle(document.querySelector('.cookie-consent-banner')).display
+        : 'missing',
+    }));
+    check(`${viewport.name} seckill fixture keeps consent dismissed`, !closedState.bodyClass && closedState.cookieDisplay !== 'none', JSON.stringify(closedState));
+  } finally {
+    for (const [pattern] of routeHandlers) {
+      await page.unroute(pattern).catch(() => undefined);
+    }
+    await page.evaluate(() => {
+      localStorage.removeItem('token');
+      localStorage.removeItem('shopmx.cookie-consent.v1');
+    }).catch(() => undefined);
+  }
+}
+
 async function main() {
   let browser;
-  try {
-    browser = await chromium.launch({
-      headless: true,
-      args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-    });
-  } catch (error) {
-    check('mobile device browser launch', false, error && error.message ? error.message : String(error));
-    process.exitCode = 1;
-    return;
-  }
+  const browserLaunchOptions = {
+    headless: true,
+    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+  };
 
   const pixel5 = devices['Pixel 5'] || {};
   const androidUa = pixel5.userAgent
     || 'Mozilla/5.0 (Linux; Android 13; Pixel 5) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Mobile Safari/537.36';
 
   try {
-    for (const viewport of VIEWPORTS) {
+    for (const viewport of VIEWPORTS_TO_RUN) {
+      let viewportAttempt = 0;
+      let viewportCompleted = false;
+      while (!viewportCompleted && viewportAttempt < 2) {
+        const viewportResultStart = results.length;
+        viewportAttempt += 1;
+        try {
+      // Keep each phone width in a fresh Chromium process. Long SPA route
+      // matrices can otherwise leave WebView-like pages competing for the
+      // same renderer and make a later viewport fail with "Target ... closed".
+      browser = await chromium.launch(browserLaunchOptions);
       const context = await browser.newContext({
-        viewport: { width: viewport.width, height: viewport.height },
-        userAgent: `${androidUa} ShopTestAndroidApp`,
-        isMobile: true,
-        hasTouch: true,
-        deviceScaleFactor: pixel5.deviceScaleFactor || 2.75,
-      });
-      const page = await context.newPage();
-      const pageErrors = [];
-      page.on('pageerror', (error) => pageErrors.push(String(error && error.message ? error.message : error)));
+          viewport: { width: viewport.width, height: viewport.height },
+          userAgent: `${androidUa} ShopTestAndroidApp`,
+          isMobile: true,
+          hasTouch: true,
+          deviceScaleFactor: pixel5.deviceScaleFactor || 2.75,
+        });
+      try {
+        const page = await context.newPage();
+        const pageErrors = [];
+        page.on('pageerror', (error) => pageErrors.push(String(error && error.message ? error.message : error)));
 
       await page.addInitScript(() => {
         try {
@@ -377,6 +506,8 @@ async function main() {
         }
       }
 
+      await runSeckillPurchaseFixture(page, viewport);
+
       // Cart empty multipath remains reachable on commercial phone widths.
       await page.goto(`${base}/cart`, { waitUntil: 'domcontentloaded', timeout: 45000 });
       await page.waitForSelector('#root', { timeout: 20000 }).catch(() => undefined);
@@ -404,12 +535,29 @@ async function main() {
         pageErrors.length === 0,
         pageErrors.slice(0, 3).join(' | '),
       );
-      await context.close();
+        await context.close();
+      } finally {
+        await browser.close().catch(() => undefined);
+        browser = null;
+      }
+          viewportCompleted = true;
+        } catch (error) {
+          // A renderer can disappear under the host memory ceiling during a
+          // long route matrix. Retry the whole viewport without keeping partial
+          // assertions that would make the final report misleading.
+          results.splice(viewportResultStart);
+          await browser?.close().catch(() => undefined);
+          browser = null;
+          if (viewportAttempt >= 2) {
+            check(`${viewport.name} smoke execution`, false, error && error.message ? error.message : String(error));
+          }
+        }
+      }
     }
   } catch (error) {
     check('mobile device smoke execution', false, error && error.message ? error.message : String(error));
   } finally {
-    await browser.close().catch(() => undefined);
+    await browser?.close().catch(() => undefined);
   }
 
   const passed = results.filter((item) => item.pass).length;

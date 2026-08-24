@@ -5,7 +5,7 @@ const routeServices = [
   { service: 'identity', prefixes: ['/auth', '/users'] },
   { service: 'catalog', prefixes: ['/products', '/categories', '/brands', '/reviews', '/product-questions', '/pet-gallery'] },
   { service: 'customer', prefixes: ['/addresses', '/wishlist', '/pet-profiles'] },
-  { service: 'commerce', prefixes: ['/cart', '/coupons'] },
+  { service: 'commerce', prefixes: ['/cart', '/coupons', '/seckill'] },
   { service: 'order', prefixes: ['/orders'] },
   { service: 'payment', prefixes: ['/payments'] },
   { service: 'support', prefixes: ['/support'] },

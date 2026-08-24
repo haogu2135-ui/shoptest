@@ -257,6 +257,29 @@ async function main() {
     check('api products has items', items.length >= 1, `count=${items.length}`);
   }
 
+  // Seckill is a first-class storefront surface. Keep this probe independent
+  // from campaign seed data: an empty published campaign list is valid, while
+  // a missing route or incompatible JSON contract is a release blocker.
+  const seckillCampaigns = await get('/api/seckill/campaigns');
+  check('api seckill campaigns proxy', seckillCampaigns.status === 200, seckillCampaigns.status);
+  if (seckillCampaigns.status === 200) {
+    let campaigns = null;
+    try {
+      campaigns = JSON.parse(seckillCampaigns.body.toString('utf8'));
+    } catch (error) {
+      check('api seckill campaigns json', false, error && error.message ? error.message : String(error));
+    }
+    check('api seckill campaigns json', Array.isArray(campaigns), Array.isArray(campaigns) ? `count=${campaigns.length}` : typeof campaigns);
+    if (Array.isArray(campaigns) && campaigns.length > 0) {
+      const campaign = campaigns[0];
+      check(
+        'api seckill campaign shape',
+        campaign && campaign.id != null && Array.isArray(campaign.items),
+        JSON.stringify({ id: campaign && campaign.id, items: campaign && campaign.items && campaign.items.length }),
+      );
+    }
+  }
+
   for (const path of ['/api/categories', '/api/brands', '/api/coupons/public', '/api/payments/channels', '/api/app/config']) {
     const res = await get(path);
     check(`api ${path}`, res.status === 200, res.status);

@@ -24,6 +24,8 @@ type PurchaseForm = {
   paymentMethod: string;
 };
 
+const SECKILL_PURCHASE_BODY_CLASS = 'shop-seckill-purchase-open';
+
 const initialForm: PurchaseForm = {
   quantity: 1,
   shippingAddress: '',
@@ -61,8 +63,12 @@ const Seckill: React.FC = () => {
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [form, setForm] = useState<PurchaseForm>(initialForm);
   const [submitLoading, setSubmitLoading] = useState(false);
+  const submitLoadingRef = useRef(false);
   const mountedRef = useRef(true);
   const purchaseCloseRef = useRef<HTMLButtonElement>(null);
+  const purchaseDialogRef = useRef<HTMLElement>(null);
+
+  submitLoadingRef.current = submitLoading;
 
   usePageTitle(t('pages.seckill.title'));
   useDocumentMeta({
@@ -133,16 +139,64 @@ const Seckill: React.FC = () => {
 
   useEffect(() => {
     if (!selected) return undefined;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousBodyPaddingRight = document.body.style.paddingRight;
+    const previouslyFocused = document.activeElement instanceof HTMLElement
+      ? document.activeElement
+      : null;
+    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+    const shouldCompensateScrollbar = scrollbarWidth > 0 && !previousBodyPaddingRight;
+    document.body.classList.add(SECKILL_PURCHASE_BODY_CLASS);
+    document.body.style.overflow = 'hidden';
+    if (shouldCompensateScrollbar) {
+      document.body.style.paddingRight = `${scrollbarWidth}px`;
+    }
+
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') closePurchase();
     };
+    const trapFocus = (event: KeyboardEvent) => {
+      if (event.key !== 'Tab') return;
+      const dialog = purchaseDialogRef.current;
+      if (!dialog) return;
+      const focusable = Array.from(dialog.querySelectorAll<HTMLElement>([
+        'a[href]',
+        'button:not([disabled])',
+        'input:not([disabled])',
+        'select:not([disabled])',
+        'textarea:not([disabled])',
+        '[tabindex]:not([tabindex="-1"])',
+      ].join(','))).filter((element) => element.getClientRects().length > 0);
+      if (!focusable.length) {
+        event.preventDefault();
+        dialog.focus({ preventScroll: true });
+        return;
+      }
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus({ preventScroll: true });
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus({ preventScroll: true });
+      }
+    };
     document.addEventListener('keydown', closeOnEscape);
+    document.addEventListener('keydown', trapFocus);
     const focusFrame = window.requestAnimationFrame(() => purchaseCloseRef.current?.focus());
     return () => {
       document.removeEventListener('keydown', closeOnEscape);
+      document.removeEventListener('keydown', trapFocus);
       window.cancelAnimationFrame(focusFrame);
+      document.body.classList.remove(SECKILL_PURCHASE_BODY_CLASS);
+      document.body.style.overflow = previousBodyOverflow;
+      if (shouldCompensateScrollbar) {
+        document.body.style.paddingRight = previousBodyPaddingRight;
+      }
+      previouslyFocused?.focus({ preventScroll: true });
     };
-  }, [selected, submitLoading]);
+  }, [selected]);
 
   const resolveCampaignState = useCallback((campaign: SeckillCampaign) => {
     if (campaign.state === 'UPCOMING' && remainingMs(campaign.startAt, now) === 0) return 'ONGOING';
@@ -194,7 +248,7 @@ const Seckill: React.FC = () => {
   };
 
   const closePurchase = () => {
-    if (submitLoading) return;
+    if (submitLoadingRef.current) return;
     setSelected(null);
   };
 
@@ -329,7 +383,7 @@ const Seckill: React.FC = () => {
 
       {selected ? (
         <div className="seckill-purchaseBackdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget) closePurchase(); }}>
-          <section className="seckill-purchase" role="dialog" aria-modal="true" aria-labelledby="seckill-purchase-title">
+          <section ref={purchaseDialogRef} className="seckill-purchase" role="dialog" aria-modal="true" aria-labelledby="seckill-purchase-title" tabIndex={-1}>
             <div className="seckill-purchase__header">
               <div>
                 <span>{t('pages.seckill.purchaseEyebrow')}</span>

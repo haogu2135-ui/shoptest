@@ -316,7 +316,7 @@
   position: fixed;
   /* The purchase flow must stay above the first-visit cookie panel so payment
      fields and the submit action remain reachable on short phones. */
-  z-index: 9400;
+  z-index: 10010;
   inset: 0;
   display: grid;
   place-items: center;
@@ -544,5 +544,20 @@
 }
 
 body.shop-mobile-app .shop-app-shell .seckill-purchaseBackdrop {
-  z-index: 9801 !important;
+  z-index: 10010 !important;
+}
+
+/* A purchase dialog owns the interaction stack. The first-visit consent
+   panel and support launcher return when the shopper closes the dialog. */
+body.shop-seckill-purchase-open .cookie-consent-banner {
+  display: none !important;
+  pointer-events: none !important;
+}
+
+/* The contrast guard scans asynchronously; keep the dark live-count tile
+   readable during the first App WebView paint as well. */
+body.shop-mobile-app.shop-mobile-app .shop-app-shell .seckill-page__heroStat,
+body.shop-mobile-app.shop-mobile-app .shop-app-shell .seckill-page__heroStat :where(strong, span) {
+  color: #fff !important;
+  -webkit-text-fill-color: #fff !important;
 }
