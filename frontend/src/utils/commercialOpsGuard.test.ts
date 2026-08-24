@@ -48,6 +48,15 @@ describe('commercial ops contracts', () => {
     expect(smoke).toContain('SHOPTEST_PAYMENT_CALLBACK_SECRET');
   });
 
+  it('blocks APK publication when its embedded WebView bundle is stale', () => {
+    const apkBuilder = fs.readFileSync(
+      path.join(__dirname, '..', '..', '..', 'scripts', 'build-shoptest-apk.sh'),
+      'utf8',
+    );
+    expect(apkBuilder).toContain('verify-mobile-web-bundle.js');
+    expect(apkBuilder).toContain('asset-manifest.json');
+  });
+
 
   it('keeps commercial mobile-device viewport and production readiness smoke entries', () => {
     const pkg = JSON.parse(readFrontendRoot('package.json'));

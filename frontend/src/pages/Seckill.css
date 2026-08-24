@@ -450,6 +450,48 @@
   border-color: #d44c32;
 }
 
+.seckill-purchase__paymentState {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  min-height: 46px;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #cadbce;
+  border-radius: 6px;
+  background: #f7fbf7;
+  color: #52695a;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.seckill-purchase__paymentState > svg {
+  flex: 0 0 auto;
+  color: #d44c32;
+  font-size: 18px;
+}
+
+.seckill-purchase__paymentState--alert {
+  align-items: flex-start;
+  min-height: 0;
+  padding: 12px;
+  border-color: #efc991;
+  background: #fffaf0;
+  font-weight: 400;
+}
+
+.seckill-purchase__paymentState--alert .shop-alert__content {
+  min-width: 0;
+}
+
+.seckill-purchase__paymentState--alert .shop-alert__action {
+  flex: 0 0 auto;
+}
+
+.seckill-purchase__paymentState--alert .shop-button {
+  min-height: 44px;
+}
+
 .seckill-purchase__total {
   align-items: center;
   padding: 12px 0 2px;
@@ -549,6 +591,19 @@
     padding: 16px max(14px, env(safe-area-inset-right, 0px)) calc(16px + env(safe-area-inset-bottom, 0px)) max(14px, env(safe-area-inset-left, 0px));
     border-radius: 14px 14px 0 0;
     touch-action: pan-y;
+  }
+
+  .seckill-purchase__paymentState--alert {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+
+  .seckill-purchase__paymentState--alert .shop-alert__action {
+    grid-column: 2;
+  }
+
+  .seckill-purchase__paymentState--alert .shop-button {
+    width: 100%;
   }
 }
 

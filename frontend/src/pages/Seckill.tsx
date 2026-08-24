@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { seckillApi, paymentApi } from '../api';
+import ShopAlert from '../components/ShopAlert';
 import ShopButton from '../components/ShopButton';
 import { ShopIcon, SI } from '../components/ShopIcon';
 import ShopInput from '../components/ShopInput';
@@ -58,6 +59,9 @@ const Seckill: React.FC = () => {
   const { formatMoney } = useMarket();
   const [campaigns, setCampaigns] = useState<SeckillCampaign[]>([]);
   const [paymentChannels, setPaymentChannels] = useState<PaymentChannel[]>([]);
+  const [paymentChannelsLoading, setPaymentChannelsLoading] = useState(false);
+  const [paymentChannelsError, setPaymentChannelsError] = useState('');
+  const [paymentChannelsReloadKey, setPaymentChannelsReloadKey] = useState(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [now, setNow] = useState(() => Date.now());
@@ -67,6 +71,7 @@ const Seckill: React.FC = () => {
   const [submitLoading, setSubmitLoading] = useState(false);
   const submitLoadingRef = useRef(false);
   const mountedRef = useRef(true);
+  const paymentChannelsRequestSeqRef = useRef(0);
   const purchaseCloseRef = useRef<HTMLButtonElement>(null);
   const purchaseDialogRef = useRef<HTMLElement>(null);
 
@@ -117,27 +122,55 @@ const Seckill: React.FC = () => {
 
   useEffect(() => {
     if (!token) {
+      paymentChannelsRequestSeqRef.current += 1;
       setPaymentChannels([]);
+      setPaymentChannelsLoading(false);
+      setPaymentChannelsError('');
+      setForm((current) => ({ ...current, paymentMethod: '' }));
       return;
     }
     let disposed = false;
+    const requestSeq = paymentChannelsRequestSeqRef.current + 1;
+    paymentChannelsRequestSeqRef.current = requestSeq;
+    const isCurrentRequest = () => !disposed
+      && mountedRef.current
+      && paymentChannelsRequestSeqRef.current === requestSeq;
+    setPaymentChannelsLoading(true);
+    setPaymentChannelsError('');
+    setPaymentChannels([]);
+    setForm((current) => ({ ...current, paymentMethod: '' }));
     paymentApi.getChannels()
       .then((response) => {
-        if (!disposed) {
-          setPaymentChannels(response.data || []);
-          setForm((current) => ({
-            ...current,
-            paymentMethod: current.paymentMethod || response.data?.[0]?.code || '',
-          }));
-        }
+        if (!isCurrentRequest()) return;
+        const channels = Array.isArray(response.data) ? response.data : [];
+        setPaymentChannels(channels);
+        setPaymentChannelsError('');
+        setForm((current) => ({
+          ...current,
+          paymentMethod: channels.some((channel) => channel.code === current.paymentMethod)
+            ? current.paymentMethod
+            : channels[0]?.code || '',
+        }));
+        setPaymentChannelsLoading(false);
       })
       .catch((requestError) => {
-        if (!disposed) reportNonBlockingError('Seckill.loadPaymentChannels', requestError);
+        if (!isCurrentRequest()) return;
+        const message = getApiErrorMessage(
+          requestError,
+          t('pages.seckill.paymentUnavailableDescription'),
+          language,
+        );
+        setPaymentChannels([]);
+        setForm((current) => ({ ...current, paymentMethod: '' }));
+        setPaymentChannelsError(message);
+        setPaymentChannelsLoading(false);
+        announceAccessibleMessage(message, 'error');
+        reportNonBlockingError('Seckill.loadPaymentChannels', requestError);
       });
     return () => {
       disposed = true;
     };
-  }, [token]);
+  }, [language, paymentChannelsReloadKey, t, token]);
 
   useEffect(() => {
     if (!selected) return;
@@ -263,9 +296,28 @@ const Seckill: React.FC = () => {
     }));
   };
 
+  const reloadPaymentChannels = useCallback(() => {
+    setPaymentChannelsReloadKey((key) => key + 1);
+  }, []);
+
+  const paymentMethodsAvailable = !paymentChannelsLoading
+    && !paymentChannelsError
+    && paymentChannels.length > 0;
+
   const submitPurchase = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     if (!selected || submitLoading) return;
+    if (!paymentMethodsAvailable) {
+      announceAccessibleMessage(
+        paymentChannelsError || t('pages.seckill.paymentUnavailable'),
+        'error',
+      );
+      return;
+    }
+    if (!paymentChannels.some((channel) => channel.code === form.paymentMethod)) {
+      announceAccessibleMessage(t('pages.seckill.paymentRequired'), 'error');
+      return;
+    }
     if (!form.paymentMethod) {
       announceAccessibleMessage(t('pages.seckill.paymentRequired'), 'error');
       return;
@@ -451,17 +503,69 @@ const Seckill: React.FC = () => {
               <label>{t('pages.seckill.contactEmail')}
                 <ShopInput type="email" value={form.contactEmail} onChange={(event) => updateForm('contactEmail', event.target.value)} autoComplete="email" aria-label={t('pages.seckill.contactEmail')} maxLength={160} />
               </label>
-              <label>{t('pages.seckill.paymentMethod')}
-                <select value={form.paymentMethod} onChange={(event) => updateForm('paymentMethod', event.target.value)} aria-label={t('pages.seckill.paymentMethod')} required>
-                  <option value="">{t('pages.seckill.choosePayment')}</option>
-                  {paymentChannels.map((channel) => <option value={channel.code} key={channel.code}>{channel.displayName || channel.code}</option>)}
-                </select>
-              </label>
+              {paymentChannelsLoading ? (
+                <div className="seckill-purchase__paymentState" role="status" aria-live="polite">
+                  <ShopIcon path={SI.wallet} />
+                  <span>{t('pages.seckill.paymentLoading')}</span>
+                </div>
+              ) : paymentChannelsError ? (
+                <ShopAlert
+                  className="seckill-purchase__paymentState seckill-purchase__paymentState--alert"
+                  type="warning"
+                  showIcon
+                  role="alert"
+                  aria-live="polite"
+                  message={t('pages.seckill.paymentUnavailable')}
+                  description={paymentChannelsError}
+                  action={(
+                    <ShopButton
+                      type="primary"
+                      size="small"
+                      loading={paymentChannelsLoading}
+                      icon={<ShopIcon path={SI.reload} />}
+                      aria-label={t('pages.seckill.paymentRetry')}
+                      title={t('pages.seckill.paymentRetry')}
+                      onClick={reloadPaymentChannels}
+                    >
+                      {t('pages.seckill.paymentRetry')}
+                    </ShopButton>
+                  )}
+                />
+              ) : !paymentMethodsAvailable ? (
+                <ShopAlert
+                  className="seckill-purchase__paymentState seckill-purchase__paymentState--alert"
+                  type="warning"
+                  showIcon
+                  role="alert"
+                  aria-live="polite"
+                  message={t('pages.seckill.paymentUnavailable')}
+                  description={t('pages.seckill.paymentUnavailableEmpty')}
+                  action={(
+                    <ShopButton
+                      type="primary"
+                      size="small"
+                      icon={<ShopIcon path={SI.reload} />}
+                      aria-label={t('pages.seckill.paymentRetry')}
+                      title={t('pages.seckill.paymentRetry')}
+                      onClick={reloadPaymentChannels}
+                    >
+                      {t('pages.seckill.paymentRetry')}
+                    </ShopButton>
+                  )}
+                />
+              ) : (
+                <label>{t('pages.seckill.paymentMethod')}
+                  <select value={form.paymentMethod} onChange={(event) => updateForm('paymentMethod', event.target.value)} aria-label={t('pages.seckill.paymentMethod')} required>
+                    <option value="">{t('pages.seckill.choosePayment')}</option>
+                    {paymentChannels.map((channel) => <option value={channel.code} key={channel.code}>{channel.displayName || channel.code}</option>)}
+                  </select>
+                </label>
+              )}
               <div className="seckill-purchase__total">
                 <span>{t('common.subtotal')}</span>
                 <strong>{formatMoney(selected.item.seckillPrice * Math.min(form.quantity, maxPurchaseQuantity))}</strong>
               </div>
-              <ShopButton type="primary" htmlType="submit" block loading={submitLoading} icon={<ShopIcon path={SI.thunder} />} aria-label={t('pages.seckill.confirmPurchase')}>
+              <ShopButton type="primary" htmlType="submit" block loading={submitLoading} disabled={!paymentMethodsAvailable} icon={<ShopIcon path={SI.thunder} />} aria-label={t('pages.seckill.confirmPurchase')}>
                 {t('pages.seckill.confirmPurchase')}
               </ShopButton>
             </form>

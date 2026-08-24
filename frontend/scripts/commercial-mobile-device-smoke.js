@@ -335,9 +335,32 @@ async function runSeckillPurchaseFixture(page, viewport) {
     const consent = page.locator('.cookie-consent-banner');
     await consent.waitFor({ state: 'visible', timeout: 10000 });
     check(`${viewport.name} seckill fixture shows first-visit consent`, await consent.isVisible());
+    const seckillCta = page.locator('.seckill-item button').first();
+    await seckillCta.waitFor({ state: 'visible', timeout: 20000 });
+    await seckillCta.scrollIntoViewIfNeeded();
+    const consentCtaLayout = await page.evaluate(() => {
+      const banner = document.querySelector('.cookie-consent-banner');
+      const button = document.querySelector('.seckill-item button');
+      if (!banner || !button) return { present: false, overlap: true };
+      const bannerRect = banner.getBoundingClientRect();
+      const buttonRect = button.getBoundingClientRect();
+      return {
+        present: true,
+        overlap: buttonRect.bottom > bannerRect.top + 1
+          && buttonRect.top < bannerRect.bottom - 1
+          && buttonRect.right > bannerRect.left + 1
+          && buttonRect.left < bannerRect.right - 1,
+        buttonBottom: Math.round(buttonRect.bottom),
+        bannerTop: Math.round(bannerRect.top),
+      };
+    });
+    check(
+      `${viewport.name} seckill CTA remains scroll-reachable with consent open`,
+      consentCtaLayout.present && !consentCtaLayout.overlap,
+      JSON.stringify(consentCtaLayout),
+    );
     await consent.getByRole('button', { name: /accept all|aceptar todo/i }).click({ timeout: 5000 });
     await consent.waitFor({ state: 'detached', timeout: 5000 }).catch(() => undefined);
-    await page.locator('.seckill-item button').first().waitFor({ state: 'visible', timeout: 20000 });
     // The live countdown re-renders the campaign once per second. Invoke the
     // browser click on the current node without waiting for that repaint to
     // settle; this still exercises the component's real React handler.

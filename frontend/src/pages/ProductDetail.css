@@ -5579,6 +5579,29 @@ body.shop-mobile-app .shop-app-shell .product-detail-page .product-recommendatio
   }
 }
 
+/* Mobile buybar status copy must remain a single flex item. Without the
+   wrapper, long localized text becomes an anonymous flex item and can wrap
+   one character at a time in the narrow status lane. */
+@media (max-width: 780px) {
+  .product-detail-page .product-mobile-buybar__statusText,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar__statusText {
+    display: block !important;
+    flex: 1 1 auto !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow: hidden !important;
+    overflow-wrap: break-word !important;
+    word-break: normal !important;
+    white-space: normal !important;
+    text-align: right !important;
+  }
+
+  .product-detail-page .product-mobile-buybar__meta,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-mobile-buybar__meta {
+    grid-column: 1 / -1 !important;
+  }
+}
+
 /* Native App SKU final color closure: match the requested green selected state
    even when the global App stylesheet has higher-specificity option-chip rules. */
 body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-detail-page .product-option-radio__option--selected:not(.product-option-radio__option--disabled) {
@@ -6810,6 +6833,15 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
   .product-mobile-buybar__meta span {
     font-size: 12px !important;
     line-height: 1.3 !important;
+  }
+}
+
+/* Keep the Android/WebView metadata row spanning the full purchase rail after
+   the compact 2-column rules below it have finished applying. */
+@media (max-width: 780px) {
+  .product-detail-page .product-summary-card .product-mobile-buybar__meta,
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--product-detail .product-detail-page .product-summary-card .product-mobile-buybar__meta {
+    grid-column: 1 / -1 !important;
   }
 }
 

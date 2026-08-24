@@ -51,3 +51,16 @@ if (size < minBytes) {
 
 console.log(`Verified ShopTest APK ${manifest.fileName} (${size} bytes)`);
 ' "$FRONTEND_DIR" "$MIN_RELEASE_APK_BYTES"
+
+release_apk_path="$(node -e '
+const fs = require("fs");
+const path = require("path");
+const frontendDir = process.argv[1];
+const manifest = JSON.parse(fs.readFileSync(path.join(frontendDir, "public/downloads/mobile-version.json"), "utf8"));
+process.stdout.write(path.join(frontendDir, "public/downloads", manifest.fileName || ""));
+' "$FRONTEND_DIR")"
+
+[[ -f "${FRONTEND_DIR}/build/asset-manifest.json" ]] || fail "current web asset manifest not found: ${FRONTEND_DIR}/build/asset-manifest.json"
+node "${FRONTEND_DIR}/scripts/verify-mobile-web-bundle.js" \
+  "${FRONTEND_DIR}/build" \
+  "$release_apk_path"

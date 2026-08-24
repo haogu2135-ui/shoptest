@@ -307,6 +307,16 @@ describe('ProductDetail mobile buybar layout contract', () => {
     expect(summary).toMatch(/aria-label={buyNowBlockedReason}[\s\S]*?onClick={handleBuyNow}[\s\S]*?disabled={buyNowBlocked}[\s\S]*?ghost/);
   });
 
+  it('keeps localized buybar status copy as a wrapping flex item', () => {
+    const buyBar = readProductDetailBuyBarSource();
+    const css = readProductDetailCss();
+    const fixCss = css.slice(css.lastIndexOf('Mobile buybar status copy'));
+
+    expect(buyBar).toContain('className="product-mobile-buybar__statusText"');
+    expect(fixCss).toMatch(/\.product-mobile-buybar__statusText[\s\S]*?display:\s*block\s*!important;[\s\S]*?flex:\s*1 1 auto\s*!important;[\s\S]*?word-break:\s*normal\s*!important;/);
+    expect(fixCss).toMatch(/\.product-mobile-buybar__meta[\s\S]*?grid-column:\s*1 \/ -1\s*!important;/);
+  });
+
   it('uses centralized size option semantics instead of hardcoded product-detail keywords', () => {
     const source = readProductDetailPurchaseSurface();
 

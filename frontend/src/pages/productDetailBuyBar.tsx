@@ -63,7 +63,7 @@ export const ProductDetailMobileBuyBar: React.FC<ProductDetailMobileBuyBarProps>
       <strong>{mobileBuybarPrice}</strong>
       <span className={`product-mobile-buybar__status${purchaseSelectionBlocked || isOutOfStock ? ' product-mobile-buybar__status--attention' : ''}`}>
         {purchaseSelectionBlocked || isOutOfStock ? <ShopIcon path={SI.bell} /> : <ShopIcon path={SI.checkCircle} />}
-        {mobileBuybarStatus}
+        <span className="product-mobile-buybar__statusText">{mobileBuybarStatus}</span>
       </span>
     </div>
     <button type="button" className="product-mobile-buybar__tool product-mobile-buybar__tool--home" aria-label={homeActionLabel} title={homeActionLabel} onClick={() => navigate('/')}>

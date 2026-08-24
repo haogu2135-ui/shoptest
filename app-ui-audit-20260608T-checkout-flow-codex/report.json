@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-21T16:19:44.477Z",
+  "generatedAt": "2026-08-24T15:35:40.976Z",
   "baseUrl": "http://127.0.0.1:4200",
   "viewports": [
     {
@@ -178,9 +178,9 @@
               "fontSize": "14px",
               "lineHeight": "22px",
               "centerHit": {
-                "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary",
-                "text": "Complete address",
-                "inside": true
+                "selector": "div.cookie-consent-banner__inner",
+                "text": "Cookies & privacyShopMX uses essential cookies for cart, login, security and order tracking. Optional preferences help us improve the storef",
+                "inside": false
               }
             },
             "submitButton": {
@@ -447,9 +447,9 @@
               "fontSize": "14px",
               "lineHeight": "22px",
               "centerHit": {
-                "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary",
-                "text": "Complete address",
-                "inside": true
+                "selector": "div.cookie-consent-banner__inner",
+                "text": "Cookies & privacyShopMX uses essential cookies for cart, login, security and order tracking. Optional preferences help us improve the storef",
+                "inside": false
               }
             },
             "submitButton": {
@@ -691,9 +691,9 @@
               "fontSize": "14px",
               "lineHeight": "22px",
               "centerHit": {
-                "selector": "p#cookie-consent-banner-text.cookie-consent-banner__text",
-                "text": "ShopMX uses essential cookies for cart, login, security and order tracking. Optional preferences help us improve the storefront experience.",
-                "inside": false
+                "selector": "div.checkout-page__submitMetric.checkout-page__submitMetric--method",
+                "text": "Payment methodStripe",
+                "inside": true
               }
             },
             "mobilePayBar": {
@@ -716,9 +716,9 @@
               "fontSize": "14px",
               "lineHeight": "22px",
               "centerHit": {
-                "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary",
-                "text": "Complete address",
-                "inside": true
+                "selector": "div.cookie-consent-banner__inner",
+                "text": "Cookies & privacyShopMX uses essential cookies for cart, login, security and order tracking. Optional preferences help us improve the storef",
+                "inside": false
               }
             },
             "submitButton": {
@@ -972,9 +972,9 @@
               "fontSize": "14px",
               "lineHeight": "22px",
               "centerHit": {
-                "selector": "p#cookie-consent-banner-text.cookie-consent-banner__text",
-                "text": "ShopMX uses essential cookies for cart, login, security and order tracking. Optional preferences help us improve the storefront experience.",
-                "inside": false
+                "selector": "div.checkout-page__submitMetric.checkout-page__submitMetric--method",
+                "text": "Payment methodStripe",
+                "inside": true
               }
             },
             "mobilePayBar": {
@@ -997,9 +997,9 @@
               "fontSize": "14px",
               "lineHeight": "22px",
               "centerHit": {
-                "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary",
-                "text": "Complete address",
-                "inside": true
+                "selector": "div.cookie-consent-banner__inner",
+                "text": "Cookies & privacyShopMX uses essential cookies for cart, login, security and order tracking. Optional preferences help us improve the storef",
+                "inside": false
               }
             },
             "submitButton": {
@@ -1278,9 +1278,9 @@
               "fontSize": "14px",
               "lineHeight": "22px",
               "centerHit": {
-                "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary",
-                "text": "Complete address",
-                "inside": true
+                "selector": "div.cookie-consent-banner__inner",
+                "text": "Cookies & privacyShopMX uses essential cookies for cart, login, security and order tracking. Optional preferences help us improve the storef",
+                "inside": false
               }
             },
             "submitButton": {
@@ -1632,9 +1632,9 @@
               "fontSize": "14px",
               "lineHeight": "22px",
               "centerHit": {
-                "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary",
-                "text": "Complete address",
-                "inside": true
+                "selector": "div.cookie-consent-banner__inner",
+                "text": "Cookies & privacyShopMX uses essential cookies for cart, login, security and order tracking. Optional preferences help us improve the storef",
+                "inside": false
               }
             },
             "submitButton": {
@@ -1663,7 +1663,31 @@
               }
             },
             "bottomNav": null,
-            "support": null,
+            "support": {
+              "selector": ".app-support-launcher",
+              "text": "",
+              "top": 0,
+              "bottom": 0,
+              "left": 0,
+              "right": 0,
+              "width": 0,
+              "height": 0,
+              "scrollWidth": 0,
+              "clientWidth": 0,
+              "scrollHeight": 0,
+              "clientHeight": 0,
+              "position": "fixed",
+              "zIndex": "2600",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "20px",
+              "lineHeight": "normal",
+              "centerHit": {
+                "selector": "div.shop-nav__main",
+                "text": "ShopMXPet deals for every dayPet essentials up to 50% offFree shipping on orders over $49.45 / Flash deals / Live supportdog toyscat litterp",
+                "inside": false
+              }
+            },
             "cascaderDropdown": null,
             "cascaderMenus": null
           },
@@ -1672,8 +1696,18 @@
           "overlaps": {
             "mobilePayBarVsBottomNav": null,
             "submitButtonVsBottomNav": null,
-            "mobilePayBarVsSupport": null,
-            "submitButtonVsSupport": null,
+            "mobilePayBarVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
+            "submitButtonVsSupport": {
+              "overlaps": false,
+              "x": 0,
+              "y": 0,
+              "area": 0
+            },
             "cascaderVsBottomNav": null
           },
           "smallTargets": [],
@@ -1776,8 +1810,8 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "a.cookie-consent-banner__link",
-                "text": "Terms of service",
+                "selector": "span.cookie-consent-banner__eyebrow",
+                "text": "Cookies & privacy",
                 "inside": false
               }
             },
@@ -1901,9 +1935,9 @@
               "fontSize": "14px",
               "lineHeight": "22px",
               "centerHit": {
-                "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary",
-                "text": "Complete address",
-                "inside": true
+                "selector": "div.cookie-consent-banner__inner",
+                "text": "Cookies & privacyShopMX uses essential cookies for cart, login, security and order tracking. Optional preferences help us improve the storef",
+                "inside": false
               }
             },
             "submitButton": {
@@ -2170,9 +2204,9 @@
               "fontSize": "14px",
               "lineHeight": "22px",
               "centerHit": {
-                "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary",
-                "text": "Complete address",
-                "inside": true
+                "selector": "div.cookie-consent-banner__inner",
+                "text": "Cookies & privacyShopMX uses essential cookies for cart, login, security and order tracking. Optional preferences help us improve the storef",
+                "inside": false
               }
             },
             "submitButton": {
@@ -2439,9 +2473,9 @@
               "fontSize": "14px",
               "lineHeight": "22px",
               "centerHit": {
-                "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary",
-                "text": "Complete address",
-                "inside": true
+                "selector": "div.cookie-consent-banner__inner",
+                "text": "Cookies & privacyShopMX uses essential cookies for cart, login, security and order tracking. Optional preferences help us improve the storef",
+                "inside": false
               }
             },
             "submitButton": {
@@ -2708,9 +2742,9 @@
               "fontSize": "14px",
               "lineHeight": "22px",
               "centerHit": {
-                "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary",
-                "text": "Complete address",
-                "inside": true
+                "selector": "div.cookie-consent-banner__inner",
+                "text": "Cookies & privacyShopMX uses essential cookies for cart, login, security and order tracking. Optional preferences help us improve the storef",
+                "inside": false
               }
             },
             "submitButton": {
@@ -2871,17 +2905,12 @@
         {
           "method": "GET",
           "pathname": "/api/products/add-on-candidates",
-          "search": "?targetAmount=769.01&limit=4&excludedIds=101"
+          "search": "?targetAmount=1169.01&limit=4&excludedIds=101"
         },
         {
           "method": "GET",
           "pathname": "/api/payments/channels",
           "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/products/add-on-candidates",
-          "search": "?targetAmount=1169.01&limit=4&excludedIds=101"
         }
       ],
       "error": null

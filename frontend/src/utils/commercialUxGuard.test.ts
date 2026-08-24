@@ -947,6 +947,9 @@ describe('commercial UX contracts', () => {
     expect(bannerCss).toContain('customer-support-widget__panel');
     expect(bannerCss).toContain('product-list__mobileConversionBar');
     expect(bannerCss).toContain('product-list__backToTop');
+    expect(bannerCss).toContain('body.shop-cookie-consent-visible .seckill-page');
+    expect(bannerCss).toContain('body.shop-cookie-consent-visible .seckill-item__body > .ant-btn');
+    expect(bannerCss).toMatch(/body\.shop-cookie-consent-visible \.seckill-page[\s\S]*?scroll-padding-bottom:/);
 
     expect(bannerCss).toMatch(/\.cookie-consent-banner__button\.ant-btn\s*\{[\s\S]*?min-height:\s*44px/);
     expect(bannerCss).toMatch(/\.cookie-consent-banner__button\.ant-btn\s*\{[\s\S]*?min-height:\s*44px/);

@@ -77,20 +77,32 @@ function safeBuildPath(urlPath) {
   return filePath.startsWith(buildRoot) ? filePath : null;
 }
 
-function sendFile(res, filePath) {
+function sendFile(res, filePath, statusCode = 200) {
   fs.readFile(filePath, (error, body) => {
     if (error) {
       res.writeHead(404, { 'Cache-Control': 'no-store', ...commercialSecurityHeaders() });
       res.end('not found');
       return;
     }
-    res.writeHead(200, {
+    res.writeHead(statusCode, {
       'Cache-Control': cacheControlFor(filePath),
       'Content-Type': contentTypes[path.extname(filePath)] || 'application/octet-stream',
       ...commercialSecurityHeaders(),
     });
     res.end(body);
   });
+}
+
+// Keep the local production server's SPA status semantics aligned with Nginx:
+// known client routes get a normal shell response, while unknown paths still
+// render the React recovery page with an HTTP 404 status.
+const storefrontSpaRoute = /^\/(?:products(?:\/[^/]+)?|pet-finder|pet-gallery|compare|cart|checkout|coupons|profile|wishlist|history|stock-alerts|notifications|track-order|orders|payment\/[^/]+|login|forgot-password|register|privacy|terms|product-management|category-management|seckill)\/?$/;
+const adminSpaRoute = /^\/admin(?:\/(?:dashboard|products|brands|categories|orders|logistics-carriers|coupons|users|permissions|reviews|questions|notifications|announcements|support|audit-logs|alerts|bugs|ip-blacklist|logs|registry|config-center|traffic-control|system|pet-gallery|seckill)(?:\/.*)?)?\/?$/;
+
+function isKnownSpaRoute(pathname) {
+  return pathname === '/'
+    || storefrontSpaRoute.test(pathname)
+    || adminSpaRoute.test(pathname);
 }
 
 function destroyQuietly(stream) {
@@ -156,7 +168,7 @@ function handleStatic(req, res) {
       sendFile(res, filePath);
       return;
     }
-    sendFile(res, path.join(buildRoot, 'index.html'));
+    sendFile(res, path.join(buildRoot, 'index.html'), isKnownSpaRoute(requestUrl.pathname) ? 200 : 404);
   });
 }
 

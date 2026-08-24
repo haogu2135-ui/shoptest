@@ -56,4 +56,21 @@ describe('Seckill mobile purchase surface', () => {
     expect(css).toContain('.seckill-campaign__banner img');
     expect(css).toContain('object-fit: cover;');
   });
+
+  it('keeps payment channel failures recoverable and blocks an invalid submit', () => {
+    const source = pageSource();
+    const css = styleSource();
+
+    expect(source).toContain('const [paymentChannelsLoading, setPaymentChannelsLoading] = useState(false);');
+    expect(source).toContain("const [paymentChannelsError, setPaymentChannelsError] = useState('');");
+    expect(source).toContain('const [paymentChannelsReloadKey, setPaymentChannelsReloadKey] = useState(0);');
+    expect(source).toContain('setPaymentChannelsLoading(true);');
+    expect(source).toContain('Array.isArray(response.data) ? response.data : []');
+    expect(source).toContain('getApiErrorMessage(');
+    expect(source).toContain('onClick={reloadPaymentChannels}');
+    expect(source).toContain('disabled={!paymentMethodsAvailable}');
+    expect(source).toContain('paymentChannels.some((channel) => channel.code === form.paymentMethod)');
+    expect(css).toContain('.seckill-purchase__paymentState');
+    expect(css).toContain('.seckill-purchase__paymentState--alert');
+  });
 });
