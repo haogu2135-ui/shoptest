@@ -15,6 +15,7 @@ services:
       SERVER_NAME: ${SERVER_NAME:-petsanything.com}
       CANONICAL_SERVER_NAME: ${CANONICAL_SERVER_NAME:-petsanything.com}
       CANONICAL_REDIRECT_NAMES: ${CANONICAL_REDIRECT_NAMES:-www.petsanything.com}
+      SUB2API_SERVER_NAME: ${SUB2API_SERVER_NAME:-api.petsanything.com}
       HTTPS_LISTEN_PORT: ${HTTPS_LISTEN_PORT:-443}
       SSL_CERTIFICATE: ${SSL_CERTIFICATE:-/etc/nginx/ssl/petsanything.com.crt}
       SSL_CERTIFICATE_KEY: ${SSL_CERTIFICATE_KEY:-/etc/nginx/ssl/petsanything.com.key}
