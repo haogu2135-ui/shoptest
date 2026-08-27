@@ -39,9 +39,22 @@ describe('CookieConsentBanner short-screen layout contract', () => {
     expect(css).toMatch(/body\.shop-cookie-consent-visible:has\(\.shop-app-shell--auth-flow\) \.shopee-login-quickLinks[\s\S]*?display:\s*none !important/);
   });
 
+  it('lifts native browsing history action above first-visit consent', () => {
+    const css = readLocal('CookieConsentBanner.css');
+
+    expect(css).toMatch(/body\.shop-cookie-consent-visible\.shop-mobile-app\.shop-mobile-app\.shop-mobile-app \.shop-app-shell--history \.browsing-history__mobileAction\s*\{[\s\S]*?position:\s*fixed !important;[\s\S]*?bottom:\s*calc\(var\(--shop-cookie-consent-clearance, 200px\) \+ 8px\) !important[\s\S]*?width:\s*auto !important/);
+  });
+
+  it('lifts native stock-alert action above first-visit consent', () => {
+    const css = readLocal('CookieConsentBanner.css');
+
+    expect(css).toMatch(/body\.shop-cookie-consent-visible\.shop-mobile-app\.shop-mobile-app\.shop-mobile-app \.stock-alerts__mobileAction\s*\{[\s\S]*?bottom:\s*calc\(var\(--shop-cookie-consent-clearance, 200px\) \+ 8px\) !important[\s\S]*?z-index:\s*9200 !important;/);
+  });
+
   it('reserves a short-screen home layout for the visible consent panel', () => {
     const homeCss = fs.readFileSync(path.resolve(__dirname, '../pages/Home.css'), 'utf8');
 
+    expect(homeCss).toMatch(/@media \(min-width: 781px\)[\s\S]*?body\.shop-cookie-consent-visible \.shop-app-shell--home \.shopee-home \.shopee-hero__main\s*\{[\s\S]*?align-items:\s*flex-start/);
     expect(homeCss).toContain('@media (max-width: 390px) and (max-height: 620px)');
     expect(homeCss).toMatch(/shop-cookie-consent-visible[\s\S]*?shopee-hero__authActions[\s\S]*?display:\s*none\s*!important/);
     expect(homeCss).toContain('transform: translateY(-12px);');

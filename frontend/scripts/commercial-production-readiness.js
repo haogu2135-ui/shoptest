@@ -38,6 +38,7 @@ const https = require('https');
 const crypto = require('crypto');
 const net = require('net');
 const { URL } = require('url');
+const { verifyMobileWebBundle } = require('./verify-mobile-web-bundle');
 
 const productionBase = (process.env.SHOPTEST_PRODUCTION_BASE || 'https://pet.686888666.xyz').replace(/\/$/, '');
 const canonicalBase = (process.env.SHOPTEST_CANONICAL_BASE || 'https://petsanything.com').replace(/\/$/, '');
@@ -58,6 +59,7 @@ const COMMERCIAL_SHIP_SOFT_GATES = new Set([
   'public CDN CWV measurement',
   'real provider webhook traffic evidence',
   'real-device mobile E2E evidence',
+  'local APK WebView bundle matches current build',
 ]);
 
 const check = (name, pass, detail = '') => {
@@ -1077,7 +1079,18 @@ async function probeLocalMobileReleaseArtifact() {
     meta.releaseSigned === true && Boolean(meta.certificateSha256),
     `releaseSigned=${meta.releaseSigned} cert=${meta.certificateSha256 ? 'present' : 'missing'}`,
   );
-  return { meta, apkPath, apkOk: sizeOk && shaOk };
+  const buildDir = path.resolve(__dirname, '../build');
+  let bundleOk = false;
+  let bundleDetail = 'current web build or APK bundle manifest missing';
+  try {
+    const bundle = verifyMobileWebBundle(buildDir, apkPath);
+    bundleOk = true;
+    bundleDetail = `${bundle.fileCount} assets; ${bundle.main}`;
+  } catch (error) {
+    bundleDetail = error && error.message ? error.message : String(error);
+  }
+  soft('local APK WebView bundle matches current build', bundleOk, bundleDetail);
+  return { meta, apkPath, apkOk: sizeOk && shaOk && bundleOk };
 }
 
 function getDeviceEvidenceMaxAgeDays() {
@@ -1191,6 +1204,7 @@ async function main() {
       'canonical production DNS + trusted TLS + storefront',
       'public production host CWV',
       'real provider webhook traffic',
+      'local APK WebView bundle matches current build',
       'real-device APK/WebView E2E',
     ];
     if (commercialShipGaps.length) {

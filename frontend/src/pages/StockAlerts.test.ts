@@ -34,6 +34,13 @@ describe('StockAlerts mobile action layout', () => {
     expect(fixCss).toMatch(/font-size:\s*12px\s*!important;/);
   });
 
+  it('lets the narrow App restock CTA wrap its full label', () => {
+    const css = readStockAlertsCss();
+    const fixCss = css.slice(css.indexOf('F3517:'));
+
+    expect(fixCss).toMatch(/\.stock-alerts\.stock-alerts-page \.stock-alerts__mobileAction \.ant-btn > span:not\(\.anticon\):not\(\.ant-btn-icon\)\s*\{[\s\S]*?overflow:\s*visible !important;[\s\S]*?text-overflow:\s*clip !important;[\s\S]*?white-space:\s*normal !important;/);
+  });
+
   it('keeps stale product data from masquerading as a live stock snapshot', () => {
     const source = readStockAlertsSource();
 

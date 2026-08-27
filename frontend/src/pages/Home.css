@@ -5753,6 +5753,15 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .shopee-hom
 .shopee-hero__spotlight .home-btn {
   border-radius: 999px;
 }
+
+/* Keep the first-visit consent rail from covering the home conversion stack
+   on desktop viewports. The default centered composition returns after consent. */
+@media (min-width: 781px) {
+  body.shop-cookie-consent-visible .shop-app-shell--home .shopee-home .shopee-hero__main {
+    align-items: flex-start;
+  }
+}
+
 body.shop-mobile-app .shop-app-shell .shopee-hero__actions .home-btn {
   min-width: 0 !important;
   min-height: 44px !important;

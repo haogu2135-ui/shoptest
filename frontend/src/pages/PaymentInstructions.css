@@ -680,3 +680,41 @@
   line-height: 1.45;
   overflow-wrap: anywhere;
 }
+
+/* Keep the guest verification controls inside the payment card after the
+   shared flex rules above have loaded. ShopInput has an intrinsic content
+   width, so the form must opt out of flex min-content sizing on narrow phones. */
+@media (max-width: 560px) {
+  .payment-instructions-page__guestEmailGate,
+  .payment-instructions-page__guestEmailForm,
+  .payment-instructions-page__guestEmailForm > .shop-input,
+  .payment-instructions-page__guestEmailForm > .shop-input .shop-input__shell,
+  .payment-instructions-page__guestEmailForm > .ant-btn {
+    box-sizing: border-box;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .payment-instructions-page__guestEmailForm {
+    display: flex;
+    flex-direction: column;
+    width: 100% !important;
+    gap: 8px;
+  }
+
+  .payment-instructions-page__guestEmailGate {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  .payment-instructions-page__guestEmailForm > .shop-input,
+  .payment-instructions-page__guestEmailForm > .shop-input .shop-input__shell,
+  .payment-instructions-page__guestEmailForm > .ant-btn {
+    width: 100% !important;
+    flex: 0 1 auto !important;
+  }
+
+  .payment-instructions-page__guestEmailForm > .shop-input .shop-input__shell,
+  .payment-instructions-page__guestEmailForm > .ant-btn {
+    border-radius: 10px !important;
+  }
+}

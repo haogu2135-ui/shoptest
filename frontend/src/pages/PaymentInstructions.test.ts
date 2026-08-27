@@ -142,6 +142,16 @@ describe('PaymentInstructions step readability guards', () => {
     expect(cssSource).toMatch(/payment-instructions-page__guestEmailForm[\s\S]*?min-height:\s*44px/);
   });
 
+  it('keeps guest email controls inside the mobile payment card', () => {
+    const mobileGuestEmailCss = cssSource.slice(cssSource.lastIndexOf('@media (max-width: 560px)'));
+
+    expect(mobileGuestEmailCss).toMatch(/\.payment-instructions-page__guestEmailForm\s*\{[\s\S]*?flex-direction:\s*column;[\s\S]*?width:\s*100%\s*!important;/);
+    expect(mobileGuestEmailCss).toMatch(/\.payment-instructions-page__guestEmailGate\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important;/);
+    expect(mobileGuestEmailCss).toMatch(/\.payment-instructions-page__guestEmailForm > \.shop-input,[\s\S]*?\.payment-instructions-page__guestEmailForm > \.ant-btn\s*\{[\s\S]*?min-width:\s*0\s*!important;[\s\S]*?max-width:\s*100%\s*!important;/);
+    expect(mobileGuestEmailCss).toMatch(/\.payment-instructions-page__guestEmailForm > \.shop-input,[\s\S]*?\.payment-instructions-page__guestEmailForm > \.ant-btn\s*\{[\s\S]*?width:\s*100%\s*!important;[\s\S]*?flex:\s*0 1 auto\s*!important;/);
+    expect(mobileGuestEmailCss).toMatch(/\.payment-instructions-page__guestEmailForm > \.shop-input \.shop-input__shell,[\s\S]*?\.payment-instructions-page__guestEmailForm > \.ant-btn\s*\{[\s\S]*?border-radius:\s*10px\s*!important;/);
+  });
+
   it('keeps guest email out of internal payment-instructions URLs', () => {
     const expectedPath = 'navigate(`/payment/${encodeURIComponent(String(createdOrder.orderNo || createdOrder.id))}`)';
     expect(checkoutSource).toContain(expectedPath);

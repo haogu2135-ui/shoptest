@@ -269,6 +269,24 @@
     bottom: var(--shop-cookie-consent-clearance, 200px) !important;
   }
 
+  /* Native app readability layers keep these actions in content flow. Lift the
+     primary actions above first-visit consent while it is open. */
+  body.shop-cookie-consent-visible.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell--history .browsing-history__mobileAction {
+    position: fixed !important;
+    right: max(8px, env(safe-area-inset-right, 0px)) !important;
+    bottom: calc(var(--shop-cookie-consent-clearance, 200px) + 8px) !important;
+    left: max(8px, env(safe-area-inset-left, 0px)) !important;
+    width: auto !important;
+    max-width: none !important;
+    z-index: 9200 !important;
+    margin: 0 !important;
+  }
+
+  body.shop-cookie-consent-visible.shop-mobile-app.shop-mobile-app.shop-mobile-app .stock-alerts__mobileAction {
+    bottom: calc(var(--shop-cookie-consent-clearance, 200px) + 8px) !important;
+    z-index: 9200 !important;
+  }
+
   /* Keep the navigation in its natural bottom rail; only conversion controls move. */
   body.shop-cookie-consent-visible .product-list__mobileConversionBar {
     bottom: calc(max(8px, env(safe-area-inset-bottom, 0px)) + var(--shop-cookie-consent-clearance, 200px)) !important;

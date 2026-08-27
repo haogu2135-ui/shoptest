@@ -578,6 +578,16 @@ body .stock-alerts-popconfirm.shop-popconfirm {
     font-size: 12px !important;
     line-height: 1.25;
   }
+
+  .stock-alerts.stock-alerts-page .stock-alerts__mobileAction .ant-btn > span:not(.anticon):not(.ant-btn-icon) {
+    display: block;
+    max-width: none;
+    overflow: visible !important;
+    overflow-wrap: anywhere;
+    text-overflow: clip !important;
+    white-space: normal !important;
+    text-align: center;
+  }
 }
 
 @media (max-width: 480px) {

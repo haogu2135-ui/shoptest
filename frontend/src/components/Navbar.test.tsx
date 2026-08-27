@@ -414,7 +414,7 @@ describe('Navbar Android app download entry', () => {
     expect(source).toContain("{ key: 'track-order', icon: <ShopIcon path={SI.shopping} />, label: t('nav.trackOrder'), onClick: () => navigate('/track-order') }");
     expect(source).toContain("{ key: 'pet-finder', icon: <ShopIcon path={SI.search} />, label: t('nav.petFinder'), onClick: () => navigate('/pet-finder') }");
     expect(source).toContain("{ key: 'deals', icon: <ShopIcon path={SI.gift} />, label: t('nav.followDeals'), onClick: () => navigate('/products?discount=true') }");
-    expect(f3358Css).toMatch(/@media \(min-width:\s*781px\) and \(max-width:\s*1060px\)\s*\{/);
+    expect(f3358Css).toMatch(/@media \(min-width:\s*781px\) and \(max-width:\s*1060px\) and \(min-height:\s*431px\)\s*\{/);
     expect(f3358Css).toMatch(/\.shop-nav__top\s*\{[\s\S]*?display:\s*none;/);
     expect(f3358Css).toMatch(/\.shop-nav__inner--main\s*\{[\s\S]*?grid-template-columns:\s*minmax\(150px,\s*auto\) minmax\(280px,\s*1fr\) auto;/);
     expect(f3358Css).toMatch(/\.shop-nav__actions\s*\{[\s\S]*?min-height:\s*44px;[\s\S]*?flex-wrap:\s*nowrap;/);
@@ -468,13 +468,27 @@ describe('Navbar Android app download entry', () => {
     const css = readNavbarCss();
     const f2855Css = css.slice(css.indexOf('/* F2855'));
 
-    expect(f2855Css).toMatch(/@media \(max-width:\s*780px\) and \(max-height:\s*430px\)\s*\{/);
+    expect(f2855Css).toMatch(/@media \(max-width:\s*900px\) and \(max-height:\s*430px\)\s*\{/);
     expect(f2855Css).toMatch(/\.shop-nav__announcement,[\s\S]*?\.shop-nav__bottomBar\s*\{[\s\S]*?display:\s*none\s*!important;/);
     expect(f2855Css).toMatch(/\.shop-nav__inner--main\s*\{[\s\S]*?grid-template-columns:\s*minmax\(104px,\s*auto\) minmax\(0,\s*1fr\) auto\s*!important;[\s\S]*?grid-template-areas:\s*"brand search actions";/);
     expect(f2855Css).toMatch(/\.shop-nav__brand\s*\{[\s\S]*?grid-area:\s*brand;[\s\S]*?min-height:\s*44px;/);
     expect(f2855Css).toMatch(/\.shop-nav__search\s*\{[\s\S]*?grid-area:\s*search;[\s\S]*?grid-row:\s*auto\s*!important;/);
     expect(f2855Css).toMatch(/\.shop-nav \.shop-nav__search \.shop-search-field\s*\{[\s\S]*?min-height:\s*44px\s*!important;[\s\S]*?height:\s*44px\s*!important;/);
     expect(f2855Css).toMatch(/\.shop-nav__actions\s*\{[\s\S]*?grid-area:\s*actions;[\s\S]*?flex-wrap:\s*nowrap\s*!important;[\s\S]*?overflow-x:\s*auto;/);
+  });
+
+  it('keeps the late native App stylesheet from reopening short-landscape chrome', () => {
+    const navbarCss = readNavbarCss();
+    const mobileAppCss = readMobileAppCss();
+    const finalNavbar = navbarCss.slice(navbarCss.lastIndexOf('/* F3670'));
+    const finalMobileApp = mobileAppCss.slice(mobileAppCss.lastIndexOf('/* F3670'));
+
+    expect(finalNavbar).toMatch(/@media \(max-width:\s*900px\) and \(max-height:\s*430px\)\s*\{/);
+    expect(finalNavbar).toMatch(/\.shop-nav__mega,[\s\S]*?\.shop-nav__bottomBar[\s\S]*?display:\s*none\s*!important;/);
+    expect(finalNavbar).toMatch(/\.shop-nav__inner--main\s*\{[\s\S]*?grid-template-columns:\s*minmax\(104px,\s*auto\) minmax\(0,\s*1fr\) auto\s*!important;[\s\S]*?grid-template-areas:\s*"brand search actions"\s*!important;[\s\S]*?grid-template-rows:\s*44px\s*!important;/);
+    expect(finalNavbar).toMatch(/\.shop-nav__actions\s*\{[\s\S]*?width:\s*auto\s*!important;[\s\S]*?flex:\s*0 0 auto\s*!important;[\s\S]*?overflow:\s*visible\s*!important;/);
+    expect(finalMobileApp).toMatch(/body\.shop-mobile-app\.shop-mobile-app\.shop-mobile-app \.shop-nav__mega,[\s\S]*?body\.shop-mobile-app\.shop-mobile-app\.shop-mobile-app \.shop-nav__bottomBar[\s\S]*?display:\s*none\s*!important;/);
+    expect(finalMobileApp).toMatch(/body\.shop-mobile-app\.shop-mobile-app\.shop-mobile-app \.shop-nav__inner--main\s*\{[\s\S]*?grid-template-areas:\s*"brand search actions"\s*!important;/);
   });
 
   it('turns the browser entry into an APK link only when release metadata allows it', async () => {
