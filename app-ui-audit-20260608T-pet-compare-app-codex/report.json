@@ -1,0 +1,159 @@
+{
+  "generatedAt": "2026-08-27T07:37:33.875Z",
+  "baseUrl": "http://127.0.0.1:4200",
+  "viewports": [
+    {
+      "name": "phone-390-app",
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "mockScope": [
+    "authenticated pet finder candidate catalog",
+    "authenticated pet gallery photos/quota/like/delete",
+    "four-product compare list with direct-add and option-required products",
+    "nav count endpoints and Android App WebView runtime shim"
+  ],
+  "results": [
+    {
+      "viewport": {
+        "name": "phone-390-app",
+        "width": 390,
+        "height": 844
+      },
+      "snapshots": [],
+      "consoleMessages": [],
+      "networkFailures": [],
+      "apiRequests": [
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/app/config",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/announcements/active",
+          "search": "?limit=4"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/products/by-ids",
+          "search": "?ids=7301&ids=7302&ids=7303&ids=7304"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/cart/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/notifications/me/unread-count",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/wishlist/me/count",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/coupons/me/available",
+          "search": ""
+        }
+      ],
+      "error": {
+        "message": "page.waitForTimeout: Target page, context or browser has been closed",
+        "stack": "page.waitForTimeout: Target page, context or browser has been closed\n    at gotoState (/home/guhao/shoptest/audit-mobile-app-pet-compare-ui.js:727:14)\n    at async runProductCompare (/home/guhao/shoptest/audit-mobile-app-pet-compare-ui.js:776:3)\n    at async runViewport (/home/guhao/shoptest/audit-mobile-app-pet-compare-ui.js:824:7)\n    at async main (/home/guhao/shoptest/audit-mobile-app-pet-compare-ui.js:1163:20)",
+        "url": "http://127.0.0.1:4200/compare"
+      }
+    }
+  ],
+  "issues": [],
+  "issueGroups": [],
+  "consoleMessageCount": 0,
+  "networkFailureCount": 0,
+  "runErrors": [
+    {
+      "viewport": {
+        "name": "phone-390-app",
+        "width": 390,
+        "height": 844
+      },
+      "snapshots": [],
+      "consoleMessages": [],
+      "networkFailures": [],
+      "apiRequests": [
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/app/config",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/announcements/active",
+          "search": "?limit=4"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/products/by-ids",
+          "search": "?ids=7301&ids=7302&ids=7303&ids=7304"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/cart/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/notifications/me/unread-count",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/wishlist/me/count",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/coupons/me/available",
+          "search": ""
+        }
+      ],
+      "error": {
+        "message": "page.waitForTimeout: Target page, context or browser has been closed",
+        "stack": "page.waitForTimeout: Target page, context or browser has been closed\n    at gotoState (/home/guhao/shoptest/audit-mobile-app-pet-compare-ui.js:727:14)\n    at async runProductCompare (/home/guhao/shoptest/audit-mobile-app-pet-compare-ui.js:776:3)\n    at async runViewport (/home/guhao/shoptest/audit-mobile-app-pet-compare-ui.js:824:7)\n    at async main (/home/guhao/shoptest/audit-mobile-app-pet-compare-ui.js:1163:20)",
+        "url": "http://127.0.0.1:4200/compare"
+      }
+    }
+  ]
+}

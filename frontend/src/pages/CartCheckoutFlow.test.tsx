@@ -934,6 +934,16 @@ describe('cart to checkout flows', () => {
     expect(f2709Css).not.toMatch(/grid-auto-flow:\s*column/);
   });
 
+  it('does not reserve an empty icon column in App cart KPI cards', () => {
+    const css = fs.readFileSync(path.resolve(__dirname, '../mobile-app.css'), 'utf8');
+    const cartKpiStart = css.lastIndexOf('body.shop-mobile-app.shop-mobile-app.shop-mobile-app .cart-page__heroStat,');
+    const cartKpiCss = css.slice(cartKpiStart, css.indexOf('body.shop-mobile-app.shop-mobile-app.shop-mobile-app .cart-page__heroStat strong', cartKpiStart));
+
+    expect(cartKpiStart).toBeGreaterThan(-1);
+    expect(cartKpiCss).toMatch(/grid-template-columns:\s*minmax\(0,\s*1fr\)\s*!important;/);
+    expect(cartKpiCss).not.toMatch(/grid-template-columns:\s*40px\s+minmax\(0,\s*1fr\)/);
+  });
+
   it('keeps Chinese cart copy wrapped on dense cart surfaces', () => {
     const css = fs.readFileSync(path.resolve(__dirname, 'Cart.css'), 'utf8');
     const zhStart = css.indexOf('Chinese cart pass: CJK copy needs explicit break opportunities');

@@ -9,6 +9,18 @@ const viewports = [
   { name: 'small-320-app', width: 320, height: 568 },
   { name: 'phone-390-app', width: 390, height: 844 },
 ];
+const requestedViewportNames = String(process.env.SHOPTEST_MOBILE_APP_VIEWPORTS || '')
+  .split(',')
+  .map((name) => name.trim())
+  .filter(Boolean);
+const viewportsToRun = requestedViewportNames.length
+  ? viewports.filter((viewport) => requestedViewportNames.includes(viewport.name))
+  : viewports;
+const requestedSurface = String(process.env.SHOPTEST_MOBILE_APP_ONLY || '').trim().toLowerCase();
+
+function shouldRunSurface(...names) {
+  return !requestedSurface || names.includes(requestedSurface);
+}
 
 const now = Date.parse('2026-06-08T09:25:00Z');
 
@@ -234,6 +246,11 @@ async function installRuntime(page) {
     localStorage.setItem('role', 'USER');
     localStorage.setItem('shop-language', 'en');
     localStorage.setItem('currency', 'USD');
+    localStorage.setItem('shopmx.cookie-consent.v1', JSON.stringify({
+      version: 1,
+      acceptedAt: '2026-08-21T09:15:00.000Z',
+      essentialOnly: false,
+    }));
     localStorage.setItem('shop-product-compare', JSON.stringify(compareIds));
     localStorage.setItem('shop-pet-finder-preferences', JSON.stringify({
       petType: 'all',
@@ -456,8 +473,11 @@ async function collectSnapshot(page, viewport, stateName) {
       'textarea',
       'select',
       '[role="button"]',
-      '.ant-select-selector',
+      '.shop-select',
+      '.shop-select__option',
       '.ant-switch',
+      '.shop-switch',
+      '.shop-range__input',
       '.ant-slider-handle',
       '.ant-popover-buttons button',
     ].join(',');
@@ -589,13 +609,13 @@ async function collectSnapshot(page, viewport, stateName) {
       .filter(Boolean)
       .slice(0, 80);
 
-    const tableWrapper = rectOf('.product-compare-page .ant-table-wrapper');
-    const tableContent = rectOf('.product-compare-page .ant-table-content');
-    const galleryPreview = rectOf('.pet-gallery-preview .ant-modal-content');
+    const tableWrapper = rectOf('.product-compare__tableContainer');
+    const tableContent = rectOf('.product-compare__tableScroll');
+    const galleryPreview = rectOf('.pet-gallery-preview .shop-modal__content');
     const galleryPreviewCaption = rectOf('.pet-gallery-preview__figure figcaption');
     const galleryDeletePopover = rectOf('.pet-gallery-delete-popconfirm');
     const compareClearPopover = rectOf('.product-compare-clear-popconfirm');
-    const finderSelectDropdown = rectOf('.shop-mobile-popup-layer.ant-select-dropdown');
+    const finderSelectDropdown = rectOf('.shop-mobile-popup-layer.shop-select__popup');
 
     return {
       viewportName,
@@ -613,7 +633,7 @@ async function collectSnapshot(page, viewport, stateName) {
         bottomNav,
         petFinderPage: rectOf('.pet-finder-page'),
         finderFirstCard: rectOf('.pet-finder-page__productCard'),
-        finderFirstViewButton: rectOf('.pet-finder-page__productCard .ant-card-actions .ant-btn'),
+        finderFirstViewButton: rectOf('.pet-finder-page__productCard .pet-finder-page__productActions .ant-btn'),
         finderSignals: rectOf('.pet-finder-page__signalGrid'),
         finderNextStep: rectOf('.pet-finder-page__nextStep'),
         finderNextStepActions: rectOf('.pet-finder-page__nextStepActions'),
@@ -649,20 +669,20 @@ async function collectSnapshot(page, viewport, stateName) {
         compareToolbarVsBottomNav: overlap(rectOf('.product-compare__toolbar'), bottomNav),
       },
       hits: [
-        hitAt('.pet-finder-page__productCard .ant-card-actions .ant-btn', 'finder-first-view'),
-        hitAt('.shop-mobile-popup-layer.ant-select-dropdown .ant-select-item-option:first-child', 'finder-select-first-option'),
+        hitAt('.pet-finder-page__productCard .pet-finder-page__productActions .ant-btn', 'finder-first-view'),
+        hitAt('.shop-mobile-popup-layer.shop-select__popup .shop-select__option:first-child', 'finder-select-first-option'),
         hitAt('.pet-gallery-card__like', 'gallery-first-like'),
         hitAt('.pet-gallery-card__delete', 'gallery-first-delete'),
         hitAt('.pet-gallery-delete-popconfirm .ant-popconfirm-buttons button:last-child', 'gallery-delete-confirm'),
-        hitAt('.pet-gallery-preview .ant-modal-close', 'gallery-preview-close'),
+        hitAt('.pet-gallery-preview .shop-modal__close', 'gallery-preview-close'),
         hitAt('.pet-gallery-preview__figure figcaption .ant-btn:last-child', 'gallery-preview-like'),
         hitAt('.product-compare-clear-popconfirm .ant-popconfirm-buttons button:last-child', 'compare-clear-confirm'),
         hitAt('.product-compare__difference-toggle .ant-switch', 'compare-difference-switch'),
-        hitAt('.product-compare-page .ant-table-cell .ant-btn', 'compare-table-first-action'),
+        hitAt('.product-compare__tableCell .ant-btn', 'compare-table-first-action'),
       ].filter(Boolean),
       stacks: [
         stackAt('.pet-gallery-delete-popconfirm .ant-popconfirm-buttons button:last-child', 'gallery-delete-confirm'),
-        stackAt('.pet-gallery-preview .ant-modal-close', 'gallery-preview-close'),
+        stackAt('.pet-gallery-preview .shop-modal__close', 'gallery-preview-close'),
         stackAt('.pet-gallery-preview__figure figcaption .ant-btn:last-child', 'gallery-preview-like'),
         stackAt('.product-compare-clear-popconfirm .ant-popconfirm-buttons button:last-child', 'compare-clear-confirm'),
         stackAt('.product-compare__difference-toggle .ant-switch', 'compare-difference-switch'),
@@ -672,17 +692,17 @@ async function collectSnapshot(page, viewport, stateName) {
         finderSignals: document.querySelectorAll('.pet-finder-page__signal').length,
         galleryCards: document.querySelectorAll('.pet-gallery-card').length,
         galleryDeleteButtons: document.querySelectorAll('.pet-gallery-card__delete').length,
-        compareProducts: document.querySelectorAll('.product-compare-page .ant-table-thead th').length - 1,
-        compareRows: document.querySelectorAll('.product-compare-page .ant-table-tbody tr').length,
-        comparePaymentLikeActions: document.querySelectorAll('.product-compare-page .ant-table-cell .ant-btn').length,
+        compareProducts: document.querySelectorAll('.product-compare__tableMatrix thead th').length - 1,
+        compareRows: document.querySelectorAll('.product-compare__tableMatrix tbody tr').length,
+        comparePaymentLikeActions: document.querySelectorAll('.product-compare__tableCell .ant-btn').length,
         visiblePopovers: Array.from(document.querySelectorAll('.ant-popover')).filter(visible).length,
-        visibleModals: Array.from(document.querySelectorAll('.ant-modal')).filter(visible).length,
+        visibleModals: Array.from(document.querySelectorAll('.ant-modal, .shop-modal')).filter(visible).length,
       },
       tableMetrics: tableContent ? {
         wrapper: tableWrapper,
         content: tableContent,
         needsHorizontalScroll: tableContent.scrollWidth > tableContent.clientWidth + 1,
-        atLeft: document.querySelector('.product-compare-page .ant-table-content')?.scrollLeft || 0,
+            atLeft: document.querySelector('.product-compare__tableScroll')?.scrollLeft || 0,
       } : null,
       smallTargets,
       tinyVisibleText,
@@ -724,8 +744,8 @@ async function runPetFinder(page, viewport, snapshots) {
   await gotoState(page, '/pet-finder', '.pet-finder-page');
   await page.waitForSelector('.pet-finder-page__productCard', { state: 'visible', timeout: 20000 });
   await capture(page, viewport, 'pet-finder-top', snapshots);
-  await page.locator('.pet-finder-page__fieldControl .ant-select-selector').first().click({ timeout: 10000 }).catch(() => undefined);
-  await page.waitForSelector('.shop-mobile-popup-layer.ant-select-dropdown', { state: 'visible', timeout: 7000 }).catch(() => undefined);
+  await page.locator('.pet-finder-page__fieldControl.shop-select').first().click({ timeout: 10000 }).catch(() => undefined);
+  await page.waitForSelector('.shop-mobile-popup-layer.shop-select__popup', { state: 'visible', timeout: 7000 }).catch(() => undefined);
   await page.waitForTimeout(400);
   await capture(page, viewport, 'pet-finder-select-open', snapshots);
   await page.keyboard.press('Escape').catch(() => undefined);
@@ -743,7 +763,7 @@ async function runPetGallery(page, viewport, snapshots) {
   await page.keyboard.press('Escape').catch(() => undefined);
   await page.waitForTimeout(250);
   await page.locator('.pet-gallery-card__imageButton').first().click({ timeout: 10000 }).catch(() => undefined);
-  await page.waitForSelector('.pet-gallery-preview .ant-modal-content', { state: 'visible', timeout: 8000 }).catch(() => undefined);
+  await page.waitForSelector('.pet-gallery-preview .shop-modal__content', { state: 'visible', timeout: 8000 }).catch(() => undefined);
   await page.waitForTimeout(500);
   await capture(page, viewport, 'pet-gallery-preview-open', snapshots);
   await page.keyboard.press('Escape').catch(() => undefined);
@@ -754,17 +774,17 @@ async function runPetGallery(page, viewport, snapshots) {
 
 async function runProductCompare(page, viewport, snapshots) {
   await gotoState(page, '/compare', '.product-compare-page');
-  await page.waitForSelector('.product-compare-page .ant-table-wrapper', { state: 'visible', timeout: 20000 });
+  await page.waitForSelector('.product-compare__tableMatrix', { state: 'visible', timeout: 20000 });
   await capture(page, viewport, 'compare-top', snapshots);
   await openFirstPopconfirm(page, '.product-compare__headerActions button:has-text("Clear")');
   await capture(page, viewport, 'compare-clear-popconfirm', snapshots);
   await page.keyboard.press('Escape').catch(() => undefined);
   await page.waitForTimeout(250);
-  await page.locator('.product-compare__difference-toggle .ant-switch').click({ timeout: 10000 }).catch(() => undefined);
+  await page.locator('.product-compare__difference-toggle .shop-switch').click({ timeout: 10000 }).catch(() => undefined);
   await page.waitForTimeout(500);
   await capture(page, viewport, 'compare-differences-only', snapshots);
   await page.evaluate(() => {
-    const table = document.querySelector('.product-compare-page .ant-table-content');
+    const table = document.querySelector('.product-compare__tableScroll');
     if (table) table.scrollLeft = table.scrollWidth;
   });
   await page.waitForTimeout(500);
@@ -794,9 +814,15 @@ async function runViewport(browser, viewport) {
   const snapshots = [];
   let error = null;
   try {
-    await runPetFinder(page, viewport, snapshots);
-    await runPetGallery(page, viewport, snapshots);
-    await runProductCompare(page, viewport, snapshots);
+    if (shouldRunSurface('finder', 'pet-finder')) {
+      await runPetFinder(page, viewport, snapshots);
+    }
+    if (shouldRunSurface('gallery', 'pet-gallery')) {
+      await runPetGallery(page, viewport, snapshots);
+    }
+    if (shouldRunSurface('compare', 'product-compare')) {
+      await runProductCompare(page, viewport, snapshots);
+    }
   } catch (runError) {
     error = {
       message: runError?.message || String(runError),
@@ -958,7 +984,7 @@ function analyze(results) {
         const captionOverlap = snapshot.overlaps.galleryPreviewCaptionVsBottomNav;
         const closeHit = snapshot.hits.find((hit) => hit.label === 'gallery-preview-close');
         const likeHit = snapshot.hits.find((hit) => hit.label === 'gallery-preview-like');
-        if (captionOverlap?.overlaps || hitMissesTarget(closeHit, ['ant-modal-close']) || hitMissesTarget(likeHit, ['pet-gallery-preview', 'ant-btn'])) {
+        if (captionOverlap?.overlaps || hitMissesTarget(closeHit, ['shop-modal__close']) || hitMissesTarget(likeHit, ['pet-gallery-preview', 'ant-btn'])) {
           issues.push({
             type: 'pet-gallery-preview-controls-conflict-with-app-chrome',
             severity: 'high',
@@ -1015,7 +1041,7 @@ function analyze(results) {
 
       if (stateName.startsWith('pet-finder-select')) {
         const optionHit = snapshot.hits.find((hit) => hit.label === 'finder-select-first-option');
-        if (hitMissesTarget(optionHit, ['ant-select-item-option', 'shop-mobile-popup-layer'])) {
+        if (hitMissesTarget(optionHit, ['shop-select__option', 'shop-mobile-popup-layer'])) {
           issues.push({
             type: 'pet-finder-select-dropdown-hit-test-fails',
             severity: 'high',
@@ -1062,7 +1088,7 @@ function writeReport(results, issues) {
   const report = {
     generatedAt: new Date().toISOString(),
     baseUrl,
-    viewports,
+    viewports: viewportsToRun,
     mockScope: [
       'authenticated pet finder candidate catalog',
       'authenticated pet gallery photos/quota/like/delete',
@@ -1126,10 +1152,14 @@ function writeReport(results, issues) {
 
 async function main() {
   ensureDirs();
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.SHOPTEST_PLAYWRIGHT_EXECUTABLE_PATH || undefined,
+    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+  });
   const results = [];
   try {
-    for (const viewport of viewports) {
+    for (const viewport of viewportsToRun) {
       results.push(await runViewport(browser, viewport));
     }
   } finally {

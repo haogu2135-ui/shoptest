@@ -5923,3 +5923,55 @@ ul.coupon-wallet__list {
 .coupon-claim-section__title--list {
   margin-bottom: 24px;
 }
+
+/* F2732: keep the coupon recovery alert readable in narrow WebViews. */
+@media (max-width: 560px) {
+  .coupon-center-page__loadAlert.shop-alert {
+    display: grid !important;
+    grid-template-columns: 20px minmax(0, 1fr) !important;
+    column-gap: 10px !important;
+    row-gap: 10px !important;
+    align-items: start !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+  }
+
+  .coupon-center-page__loadAlert.shop-alert > .shop-alert__icon {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .coupon-center-page__loadAlert.shop-alert > .shop-alert__content {
+    grid-column: 2;
+    grid-row: 1;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+  }
+
+  .coupon-center-page__loadAlert.shop-alert > .shop-alert__action {
+    grid-column: 1 / -1;
+    grid-row: 2;
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
+    margin: 0;
+    display: block;
+  }
+
+  .coupon-center-page__loadAlert .coupon-center-page__fallbackActions {
+    width: 100%;
+    min-width: 0;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 8px;
+  }
+
+  .coupon-center-page__loadAlert .coupon-center-page__fallbackActions .ant-btn {
+    width: 100%;
+    min-width: 0;
+    min-height: 44px;
+    height: auto;
+    white-space: normal;
+  }
+}

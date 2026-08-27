@@ -1,0 +1,798 @@
+{
+  "generatedAt": "2026-08-27T07:21:15.740Z",
+  "baseUrl": "http://127.0.0.1:4200",
+  "viewports": [
+    {
+      "name": "phone-390-app",
+      "width": 390,
+      "height": 844
+    }
+  ],
+  "mockScope": [
+    "authenticated profile APIs",
+    "addresses, pets, orders and order items",
+    "support sessions/messages/orders",
+    "nav count endpoints"
+  ],
+  "results": [
+    {
+      "viewport": {
+        "name": "phone-390-app",
+        "width": 390,
+        "height": 844
+      },
+      "snapshots": [
+        {
+          "viewportName": "phone-390-app",
+          "stateName": "profile-addresses-top",
+          "url": "http://127.0.0.1:4200/profile?tab=addresses",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android",
+          "htmlClasses": "shop-mobile-app-root",
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "scrollY": 0,
+          "docWidth": 390,
+          "bodyWidth": 390,
+          "rects": {
+            "bottomNav": {
+              "selector": "nav.shop-nav__bottomBar.shop-nav__bottomBar--en.shop-nav__bottomBar--native",
+              "text": "HomeProductsCouponsCartAccount",
+              "top": 772,
+              "bottom": 844,
+              "left": 0,
+              "right": 390,
+              "width": 390,
+              "height": 72,
+              "scrollWidth": 390,
+              "clientWidth": 390,
+              "scrollHeight": 71,
+              "clientHeight": 71,
+              "position": "fixed",
+              "zIndex": "5200",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "16px"
+            },
+            "profilePage": {
+              "selector": "div.profile-page.profile-page--en",
+              "text": "Profileprofile.ui.auditComplete Birthday for Nube so recommendations can work harder.My orders (4)Complete profile4All orders2Addresses (2)2Pets (2)100%Account readinessAccount action centerPick up payments, deliveries and pet care tasks quickly.1Pending payme",
+              "top": 114,
+              "bottom": 1901.796875,
+              "left": 0,
+              "right": 390,
+              "width": 390,
+              "height": 1787.796875,
+              "scrollWidth": 390,
+              "clientWidth": 390,
+              "scrollHeight": 1788,
+              "clientHeight": 1788,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "auto",
+              "fontSize": "16px"
+            },
+            "profileTabs": null,
+            "profileAddressModal": null,
+            "profileModal": null,
+            "profileModalBody": null,
+            "profileModalFooter": null,
+            "addressCascader": null,
+            "petDatePicker": null,
+            "cascaderDropdown": null,
+            "selectDropdown": null,
+            "pickerDropdown": null,
+            "supportPanel": null,
+            "supportBackdrop": null,
+            "supportComposer": null,
+            "supportOrderSelect": null,
+            "supportOrderPopup": null,
+            "supportOrderOption": null,
+            "supportOrderModal": null,
+            "supportOrderModalBody": null,
+            "supportOrderModalClose": null
+          },
+          "visibleRatios": {
+            "cascaderDropdown": null,
+            "selectDropdown": null,
+            "pickerDropdown": null,
+            "supportOrderPopup": null,
+            "supportOrderOption": null,
+            "supportOrderModal": null,
+            "supportOrderModalClose": null
+          },
+          "hits": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "stacks": [],
+          "visiblePopupRows": [],
+          "screenshot": null
+        },
+        {
+          "viewportName": "phone-390-app",
+          "stateName": "profile-address-modal-open",
+          "url": "http://127.0.0.1:4200/profile?tab=addresses",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android",
+          "htmlClasses": "shop-mobile-app-root",
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "scrollY": 0,
+          "docWidth": 390,
+          "bodyWidth": 390,
+          "rects": {
+            "bottomNav": {
+              "selector": "nav.shop-nav__bottomBar.shop-nav__bottomBar--en.shop-nav__bottomBar--native",
+              "text": "HomeProductsCouponsCartAccount",
+              "top": 772,
+              "bottom": 844,
+              "left": 0,
+              "right": 390,
+              "width": 390,
+              "height": 72,
+              "scrollWidth": 390,
+              "clientWidth": 390,
+              "scrollHeight": 71,
+              "clientHeight": 71,
+              "position": "fixed",
+              "zIndex": "5200",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "16px"
+            },
+            "profilePage": {
+              "selector": "div.profile-page.profile-page--en",
+              "text": "Profileprofile.ui.auditComplete Birthday for Nube so recommendations can work harder.My orders (4)Complete profile4All orders2Addresses (2)2Pets (2)100%Account readinessAccount action centerPick up payments, deliveries and pet care tasks quickly.1Pending payme",
+              "top": 114,
+              "bottom": 1901.796875,
+              "left": 0,
+              "right": 390,
+              "width": 390,
+              "height": 1787.796875,
+              "scrollWidth": 390,
+              "clientWidth": 390,
+              "scrollHeight": 1788,
+              "clientHeight": 1788,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "auto",
+              "fontSize": "16px"
+            },
+            "profileTabs": null,
+            "profileAddressModal": {
+              "selector": "div.shop-modal__content",
+              "text": "Add addressRecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0/260Use as default addressCancelSave",
+              "top": 54.40625,
+              "bottom": 777.59375,
+              "left": 8,
+              "right": 382,
+              "width": 374,
+              "height": 723.1875,
+              "scrollWidth": 374,
+              "clientWidth": 374,
+              "scrollHeight": 723,
+              "clientHeight": 723,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "16px"
+            },
+            "profileModal": {
+              "selector": "div.shop-modal__content",
+              "text": "Add addressRecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0/260Use as default addressCancelSave",
+              "top": 54.40625,
+              "bottom": 777.59375,
+              "left": 8,
+              "right": 382,
+              "width": 374,
+              "height": 723.1875,
+              "scrollWidth": 374,
+              "clientWidth": 374,
+              "scrollHeight": 723,
+              "clientHeight": 723,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "16px"
+            },
+            "profileModalBody": {
+              "selector": "div.shop-modal__body",
+              "text": "RecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0/260Use as default address",
+              "top": 104.203125,
+              "bottom": 708.59375,
+              "left": 8,
+              "right": 382,
+              "width": 374,
+              "height": 604.390625,
+              "scrollWidth": 374,
+              "clientWidth": 374,
+              "scrollHeight": 604,
+              "clientHeight": 604,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "auto",
+              "overflowY": "auto",
+              "fontSize": "16px"
+            },
+            "profileModalFooter": {
+              "selector": "div.shop-modal__footer",
+              "text": "CancelSave",
+              "top": 708.59375,
+              "bottom": 777.59375,
+              "left": 8,
+              "right": 382,
+              "width": 374,
+              "height": 69,
+              "scrollWidth": 374,
+              "clientWidth": 374,
+              "scrollHeight": 68,
+              "clientHeight": 68,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "16px"
+            },
+            "addressCascader": {
+              "selector": "button#region.shop-cascader",
+              "text": "Select region",
+              "top": 330.203125,
+              "bottom": 374.203125,
+              "left": 26,
+              "right": 364,
+              "width": 338,
+              "height": 44,
+              "scrollWidth": 336,
+              "clientWidth": 336,
+              "scrollHeight": 42,
+              "clientHeight": 42,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px"
+            },
+            "petDatePicker": null,
+            "cascaderDropdown": null,
+            "selectDropdown": null,
+            "pickerDropdown": null,
+            "supportPanel": null,
+            "supportBackdrop": null,
+            "supportComposer": null,
+            "supportOrderSelect": null,
+            "supportOrderPopup": null,
+            "supportOrderOption": null,
+            "supportOrderModal": null,
+            "supportOrderModalBody": null,
+            "supportOrderModalClose": null
+          },
+          "visibleRatios": {
+            "cascaderDropdown": null,
+            "selectDropdown": null,
+            "pickerDropdown": null,
+            "supportOrderPopup": null,
+            "supportOrderOption": null,
+            "supportOrderModal": null,
+            "supportOrderModalClose": null
+          },
+          "hits": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "stacks": [],
+          "visiblePopupRows": [],
+          "screenshot": null
+        }
+      ],
+      "consoleMessages": [],
+      "networkFailures": [],
+      "apiRequests": [
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/app/config",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/announcements/active",
+          "search": "?limit=4"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/addresses/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/pet-profiles",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/payments/channels",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/8801/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/901/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/8802/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/902/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/cart/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/notifications/me/unread-count",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/wishlist/me/count",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/coupons/me/available",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/support/unread-count",
+          "search": ""
+        }
+      ],
+      "error": {
+        "message": "page.waitForTimeout: Target page, context or browser has been closed",
+        "stack": "page.waitForTimeout: Target page, context or browser has been closed\n    at scrollModalTo (/home/guhao/shoptest/audit-mobile-app-profile-support-ui.js:549:14)\n    at async runProfileStates (/home/guhao/shoptest/audit-mobile-app-profile-support-ui.js:557:3)\n    at async runViewport (/home/guhao/shoptest/audit-mobile-app-profile-support-ui.js:640:29)\n    at async main (/home/guhao/shoptest/audit-mobile-app-profile-support-ui.js:815:18)",
+        "url": "http://127.0.0.1:4200/profile?tab=addresses"
+      }
+    }
+  ],
+  "issues": [],
+  "consoleMessageCount": 0,
+  "networkFailureCount": 0,
+  "runErrors": [
+    {
+      "viewport": {
+        "name": "phone-390-app",
+        "width": 390,
+        "height": 844
+      },
+      "snapshots": [
+        {
+          "viewportName": "phone-390-app",
+          "stateName": "profile-addresses-top",
+          "url": "http://127.0.0.1:4200/profile?tab=addresses",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android",
+          "htmlClasses": "shop-mobile-app-root",
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "scrollY": 0,
+          "docWidth": 390,
+          "bodyWidth": 390,
+          "rects": {
+            "bottomNav": {
+              "selector": "nav.shop-nav__bottomBar.shop-nav__bottomBar--en.shop-nav__bottomBar--native",
+              "text": "HomeProductsCouponsCartAccount",
+              "top": 772,
+              "bottom": 844,
+              "left": 0,
+              "right": 390,
+              "width": 390,
+              "height": 72,
+              "scrollWidth": 390,
+              "clientWidth": 390,
+              "scrollHeight": 71,
+              "clientHeight": 71,
+              "position": "fixed",
+              "zIndex": "5200",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "16px"
+            },
+            "profilePage": {
+              "selector": "div.profile-page.profile-page--en",
+              "text": "Profileprofile.ui.auditComplete Birthday for Nube so recommendations can work harder.My orders (4)Complete profile4All orders2Addresses (2)2Pets (2)100%Account readinessAccount action centerPick up payments, deliveries and pet care tasks quickly.1Pending payme",
+              "top": 114,
+              "bottom": 1901.796875,
+              "left": 0,
+              "right": 390,
+              "width": 390,
+              "height": 1787.796875,
+              "scrollWidth": 390,
+              "clientWidth": 390,
+              "scrollHeight": 1788,
+              "clientHeight": 1788,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "auto",
+              "fontSize": "16px"
+            },
+            "profileTabs": null,
+            "profileAddressModal": null,
+            "profileModal": null,
+            "profileModalBody": null,
+            "profileModalFooter": null,
+            "addressCascader": null,
+            "petDatePicker": null,
+            "cascaderDropdown": null,
+            "selectDropdown": null,
+            "pickerDropdown": null,
+            "supportPanel": null,
+            "supportBackdrop": null,
+            "supportComposer": null,
+            "supportOrderSelect": null,
+            "supportOrderPopup": null,
+            "supportOrderOption": null,
+            "supportOrderModal": null,
+            "supportOrderModalBody": null,
+            "supportOrderModalClose": null
+          },
+          "visibleRatios": {
+            "cascaderDropdown": null,
+            "selectDropdown": null,
+            "pickerDropdown": null,
+            "supportOrderPopup": null,
+            "supportOrderOption": null,
+            "supportOrderModal": null,
+            "supportOrderModalClose": null
+          },
+          "hits": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "stacks": [],
+          "visiblePopupRows": [],
+          "screenshot": null
+        },
+        {
+          "viewportName": "phone-390-app",
+          "stateName": "profile-address-modal-open",
+          "url": "http://127.0.0.1:4200/profile?tab=addresses",
+          "bodyClasses": "shop-mobile-app shop-mobile-app--android",
+          "htmlClasses": "shop-mobile-app-root",
+          "innerWidth": 390,
+          "innerHeight": 844,
+          "scrollY": 0,
+          "docWidth": 390,
+          "bodyWidth": 390,
+          "rects": {
+            "bottomNav": {
+              "selector": "nav.shop-nav__bottomBar.shop-nav__bottomBar--en.shop-nav__bottomBar--native",
+              "text": "HomeProductsCouponsCartAccount",
+              "top": 772,
+              "bottom": 844,
+              "left": 0,
+              "right": 390,
+              "width": 390,
+              "height": 72,
+              "scrollWidth": 390,
+              "clientWidth": 390,
+              "scrollHeight": 71,
+              "clientHeight": 71,
+              "position": "fixed",
+              "zIndex": "5200",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "16px"
+            },
+            "profilePage": {
+              "selector": "div.profile-page.profile-page--en",
+              "text": "Profileprofile.ui.auditComplete Birthday for Nube so recommendations can work harder.My orders (4)Complete profile4All orders2Addresses (2)2Pets (2)100%Account readinessAccount action centerPick up payments, deliveries and pet care tasks quickly.1Pending payme",
+              "top": 114,
+              "bottom": 1901.796875,
+              "left": 0,
+              "right": 390,
+              "width": 390,
+              "height": 1787.796875,
+              "scrollWidth": 390,
+              "clientWidth": 390,
+              "scrollHeight": 1788,
+              "clientHeight": 1788,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "auto",
+              "fontSize": "16px"
+            },
+            "profileTabs": null,
+            "profileAddressModal": {
+              "selector": "div.shop-modal__content",
+              "text": "Add addressRecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0/260Use as default addressCancelSave",
+              "top": 54.40625,
+              "bottom": 777.59375,
+              "left": 8,
+              "right": 382,
+              "width": 374,
+              "height": 723.1875,
+              "scrollWidth": 374,
+              "clientWidth": 374,
+              "scrollHeight": 723,
+              "clientHeight": 723,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "16px"
+            },
+            "profileModal": {
+              "selector": "div.shop-modal__content",
+              "text": "Add addressRecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0/260Use as default addressCancelSave",
+              "top": 54.40625,
+              "bottom": 777.59375,
+              "left": 8,
+              "right": 382,
+              "width": 374,
+              "height": 723.1875,
+              "scrollWidth": 374,
+              "clientWidth": 374,
+              "scrollHeight": 723,
+              "clientHeight": 723,
+              "position": "relative",
+              "zIndex": "auto",
+              "overflowX": "hidden",
+              "overflowY": "hidden",
+              "fontSize": "16px"
+            },
+            "profileModalBody": {
+              "selector": "div.shop-modal__body",
+              "text": "RecipientPhoneRegionSelect regionPostal / ZIP codeDetailed address0/260Use as default address",
+              "top": 104.203125,
+              "bottom": 708.59375,
+              "left": 8,
+              "right": 382,
+              "width": 374,
+              "height": 604.390625,
+              "scrollWidth": 374,
+              "clientWidth": 374,
+              "scrollHeight": 604,
+              "clientHeight": 604,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "auto",
+              "overflowY": "auto",
+              "fontSize": "16px"
+            },
+            "profileModalFooter": {
+              "selector": "div.shop-modal__footer",
+              "text": "CancelSave",
+              "top": 708.59375,
+              "bottom": 777.59375,
+              "left": 8,
+              "right": 382,
+              "width": 374,
+              "height": 69,
+              "scrollWidth": 374,
+              "clientWidth": 374,
+              "scrollHeight": 68,
+              "clientHeight": 68,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "16px"
+            },
+            "addressCascader": {
+              "selector": "button#region.shop-cascader",
+              "text": "Select region",
+              "top": 330.203125,
+              "bottom": 374.203125,
+              "left": 26,
+              "right": 364,
+              "width": 338,
+              "height": 44,
+              "scrollWidth": 336,
+              "clientWidth": 336,
+              "scrollHeight": 42,
+              "clientHeight": 42,
+              "position": "static",
+              "zIndex": "auto",
+              "overflowX": "visible",
+              "overflowY": "visible",
+              "fontSize": "14px"
+            },
+            "petDatePicker": null,
+            "cascaderDropdown": null,
+            "selectDropdown": null,
+            "pickerDropdown": null,
+            "supportPanel": null,
+            "supportBackdrop": null,
+            "supportComposer": null,
+            "supportOrderSelect": null,
+            "supportOrderPopup": null,
+            "supportOrderOption": null,
+            "supportOrderModal": null,
+            "supportOrderModalBody": null,
+            "supportOrderModalClose": null
+          },
+          "visibleRatios": {
+            "cascaderDropdown": null,
+            "selectDropdown": null,
+            "pickerDropdown": null,
+            "supportOrderPopup": null,
+            "supportOrderOption": null,
+            "supportOrderModal": null,
+            "supportOrderModalClose": null
+          },
+          "hits": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "stacks": [],
+          "visiblePopupRows": [],
+          "screenshot": null
+        }
+      ],
+      "consoleMessages": [],
+      "networkFailures": [],
+      "apiRequests": [
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/app/config",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/announcements/active",
+          "search": "?limit=4"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/addresses/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/pet-profiles",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/payments/channels",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/8801/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/901/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/8802/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/902/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/cart/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/notifications/me/unread-count",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/wishlist/me/count",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/coupons/me/available",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/support/unread-count",
+          "search": ""
+        }
+      ],
+      "error": {
+        "message": "page.waitForTimeout: Target page, context or browser has been closed",
+        "stack": "page.waitForTimeout: Target page, context or browser has been closed\n    at scrollModalTo (/home/guhao/shoptest/audit-mobile-app-profile-support-ui.js:549:14)\n    at async runProfileStates (/home/guhao/shoptest/audit-mobile-app-profile-support-ui.js:557:3)\n    at async runViewport (/home/guhao/shoptest/audit-mobile-app-profile-support-ui.js:640:29)\n    at async main (/home/guhao/shoptest/audit-mobile-app-profile-support-ui.js:815:18)",
+        "url": "http://127.0.0.1:4200/profile?tab=addresses"
+      }
+    }
+  ]
+}

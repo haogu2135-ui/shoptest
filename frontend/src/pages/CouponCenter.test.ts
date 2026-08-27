@@ -91,6 +91,18 @@ describe('CouponCenter mobile coupon rail contract', () => {
     expect(f2713Css).not.toMatch(/\.coupon-center-page__couponTags \.ant-tag[\s\S]*?text-overflow:\s*ellipsis/);
   });
 
+  it('stacks coupon recovery alert actions below readable alert content', () => {
+    const css = readCouponCenterCss();
+    const guardStart = css.indexOf('F2732: keep the coupon recovery alert readable in narrow WebViews.');
+    const guardCss = css.slice(guardStart);
+
+    expect(guardStart).toBeGreaterThan(-1);
+    expect(guardCss).toMatch(/\.coupon-center-page__loadAlert\.shop-alert\s*\{[\s\S]*?display:\s*grid\s*!important;[\s\S]*?grid-template-columns:\s*20px\s+minmax\(0,\s*1fr\)\s*!important;/);
+    expect(guardCss).toMatch(/\.coupon-center-page__loadAlert\.shop-alert\s*> \.shop-alert__action\s*\{[\s\S]*?grid-column:\s*1\s*\/\s*-1;[\s\S]*?width:\s*100%;[\s\S]*?display:\s*block;/);
+    expect(guardCss).toMatch(/\.coupon-center-page__loadAlert \.coupon-center-page__fallbackActions\s*\{[\s\S]*?display:\s*grid;[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/);
+    expect(guardCss).toMatch(/\.coupon-center-page__loadAlert \.coupon-center-page__fallbackActions \.ant-btn\s*\{[\s\S]*?min-height:\s*44px;/);
+  });
+
   it('keeps coupon panels on their outer layout classes instead of title-only classes', () => {
     const source = readCouponCenterSource();
 

@@ -64,6 +64,17 @@ describe('PetGallery mobile layout source contracts', () => {
     expect(source).not.toContain('unsplash.com');
   });
 
+  it('keeps App gallery previews above the fixed bottom navigation', () => {
+    const css = readPetGalleryCss();
+    const f3562Start = css.indexOf('/* F3562: keep App gallery previews above the fixed bottom navigation. */');
+    const f3562Css = css.slice(f3562Start);
+
+    expect(f3562Start).toBeGreaterThanOrEqual(0);
+    expect(f3562Css).toMatch(/body\.shop-mobile-app \.pet-gallery-preview-root \.shop-modal__wrap\s*\{[\s\S]*?align-items:\s*flex-end;[\s\S]*?padding:[\s\S]*?var\(--shop-mobile-bottom-nav-height,\s*72px\) \+ 8px/);
+    expect(f3562Css).toMatch(/body\.shop-mobile-app \.pet-gallery-preview-root \.pet-gallery-preview\.shop-modal__panel\s*\{[\s\S]*?top:\s*0;[\s\S]*?margin:\s*0 auto;/);
+    expect(f3562Css).toMatch(/body\.shop-mobile-app \.pet-gallery-preview-root \.pet-gallery-preview \.shop-modal__content\s*\{[\s\S]*?max-height:\s*calc\(100dvh - var\(--shop-mobile-bottom-nav-height,\s*72px\)/);
+  });
+
   it('keeps failed community loads distinct from live gallery content', () => {
     const source = readPetGallerySource();
 

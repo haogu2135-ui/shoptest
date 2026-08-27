@@ -9,6 +9,13 @@ const viewports = [
   { name: 'small-320-app', width: 320, height: 568 },
   { name: 'phone-390-app', width: 390, height: 844 },
 ];
+const requestedViewportNames = String(process.env.SHOPTEST_MOBILE_APP_VIEWPORTS || '')
+  .split(',')
+  .map((name) => name.trim())
+  .filter(Boolean);
+const viewportsToRun = requestedViewportNames.length
+  ? viewports.filter((viewport) => requestedViewportNames.includes(viewport.name))
+  : viewports;
 
 const product = {
   id: 101,
@@ -615,7 +622,7 @@ function writeReport(results, issues) {
   const report = {
     generatedAt: new Date().toISOString(),
     baseUrl,
-    viewports,
+    viewports: viewportsToRun,
     results,
     issues,
     consoleMessageCount: results.reduce((sum, result) => sum + result.consoleMessages.length, 0),
@@ -651,9 +658,13 @@ function writeReport(results, issues) {
 
 async function main() {
   ensureDirs();
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.SHOPTEST_PLAYWRIGHT_EXECUTABLE_PATH || undefined,
+    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+  });
   const results = [];
-  for (const viewport of viewports) {
+  for (const viewport of viewportsToRun) {
     results.push(await runViewport(browser, viewport));
   }
   await browser.close();
@@ -661,7 +672,7 @@ async function main() {
   writeReport(results, issues);
   console.log(JSON.stringify({
     outDir,
-    viewportCount: viewports.length,
+    viewportCount: viewportsToRun.length,
     issueCount: issues.length,
     issueTypes: [...new Set(issues.map((issue) => issue.type))],
   }, null, 2));

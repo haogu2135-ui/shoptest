@@ -8596,7 +8596,8 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-de
     min-width: 0 !important;
     min-height: 58px !important;
     display: grid !important;
-    grid-template-columns: 40px minmax(0, 1fr) !important;
+    /* Cart KPI cards contain only a label and value; reserve no icon column. */
+    grid-template-columns: minmax(0, 1fr) !important;
     gap: 8px !important;
     align-items: center !important;
     padding: 10px 12px !important;

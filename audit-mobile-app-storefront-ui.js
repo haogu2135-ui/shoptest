@@ -10,6 +10,13 @@ const viewports = [
   { name: 'phone-360-app', width: 360, height: 740 },
   { name: 'phone-390-app', width: 390, height: 844 },
 ];
+const requestedViewportNames = String(process.env.SHOPTEST_MOBILE_APP_VIEWPORTS || '')
+  .split(',')
+  .map((name) => name.trim())
+  .filter(Boolean);
+const viewportsToRun = requestedViewportNames.length
+  ? viewports.filter((viewport) => requestedViewportNames.includes(viewport.name))
+  : viewports;
 
 const now = Date.parse('2026-06-08T06:20:00Z');
 
@@ -1076,10 +1083,14 @@ function summarizeIssue(metric) {
 
 (async () => {
   fs.mkdirSync(outDir, { recursive: true });
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.SHOPTEST_PLAYWRIGHT_EXECUTABLE_PATH || undefined,
+    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+  });
   const results = [];
   try {
-    for (const viewport of viewports) {
+    for (const viewport of viewportsToRun) {
       results.push(await runViewport(browser, viewport));
     }
   } finally {
@@ -1109,7 +1120,7 @@ function summarizeIssue(metric) {
   const report = {
     generatedAt: new Date().toISOString(),
     baseUrl,
-    viewports,
+    viewports: viewportsToRun,
     results,
     metrics: flatMetrics,
     issueStates,

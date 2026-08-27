@@ -1903,3 +1903,24 @@
   font-weight: 800;
   line-height: 1.15;
 }
+
+/* F3562: keep App gallery previews above the fixed bottom navigation. */
+@media (max-width: 620px) {
+  body.shop-mobile-app .pet-gallery-preview-root .shop-modal__wrap {
+    align-items: flex-end;
+    box-sizing: border-box;
+    padding: max(8px, env(safe-area-inset-top, 0px))
+      max(6px, env(safe-area-inset-right, 0px))
+      calc(var(--shop-mobile-bottom-nav-height, 72px) + 8px + env(safe-area-inset-bottom, 0px))
+      max(6px, env(safe-area-inset-left, 0px));
+  }
+
+  body.shop-mobile-app .pet-gallery-preview-root .pet-gallery-preview.shop-modal__panel {
+    top: 0;
+    margin: 0 auto;
+  }
+
+  body.shop-mobile-app .pet-gallery-preview-root .pet-gallery-preview .shop-modal__content {
+    max-height: calc(100dvh - var(--shop-mobile-bottom-nav-height, 72px) - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  }
+}

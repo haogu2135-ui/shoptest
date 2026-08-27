@@ -9,6 +9,13 @@ const viewports = [
   { name: 'small-320-app', width: 320, height: 568 },
   { name: 'phone-390-app', width: 390, height: 844 },
 ];
+const requestedViewportNames = String(process.env.SHOPTEST_MOBILE_APP_VIEWPORTS || '')
+  .split(',')
+  .map((name) => name.trim())
+  .filter(Boolean);
+const viewportsToRun = requestedViewportNames.length
+  ? viewports.filter((viewport) => requestedViewportNames.includes(viewport.name))
+  : viewports;
 
 const profile = {
   id: 501,
@@ -219,6 +226,11 @@ async function installRuntime(page) {
     localStorage.setItem('role', 'USER');
     localStorage.setItem('shop-language', 'en');
     localStorage.setItem('currency', 'USD');
+    localStorage.setItem('shopmx.cookie-consent.v1', JSON.stringify({
+      version: 1,
+      acceptedAt: '2026-08-21T09:15:00.000Z',
+      essentialOnly: false,
+    }));
     sessionStorage.clear();
   });
 }
@@ -415,10 +427,9 @@ async function collectSnapshot(page, viewport, stateName) {
       };
     };
     const visiblePopupRows = Array.from(document.querySelectorAll([
-      '.ant-cascader-dropdown .ant-cascader-menu-item',
-      '.ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option-content',
-      '.ant-picker-dropdown .ant-picker-cell-in-view .ant-picker-cell-inner',
-      '.support-order-select-popup .ant-select-item-option-content',
+      '.shop-cascader__popup .shop-cascader__option',
+      '.shop-select__popup .shop-select__option',
+      '.support-order-select-popup .shop-select__option',
     ].join(','))).filter(visible).map((el) => {
       const rect = rectForElement(el);
       return {
@@ -441,51 +452,51 @@ async function collectSnapshot(page, viewport, stateName) {
       rects: {
         bottomNav: rectOf('.shop-nav__bottomBar'),
         profilePage: rectOf('.profile-page'),
-        profileTabs: rectOf('.profile-tabs > .ant-tabs-nav'),
-        profileAddressModal: rectOf('.profile-address-modal .ant-modal-content'),
-        profileModal: rectOf('.profile-mobile-safe-modal .ant-modal-content'),
-        profileModalBody: rectOf('.profile-mobile-safe-modal .ant-modal-body'),
-        profileModalFooter: rectOf('.profile-mobile-safe-modal .ant-modal-footer'),
-        addressCascader: rectOf('.profile-address-modal .ant-cascader'),
-        petDatePicker: rectOf('.profile-pet-modal__field.ant-picker'),
-        cascaderDropdown: rectOf('.ant-cascader-dropdown'),
-        selectDropdown: rectOf('.ant-select-dropdown:not(.ant-select-dropdown-hidden)'),
-        pickerDropdown: rectOf('.ant-picker-dropdown'),
+        profileTabs: rectOf('.profile-tabs__nav'),
+        profileAddressModal: rectOf('.profile-address-modal .shop-modal__content'),
+        profileModal: rectOf('.profile-mobile-safe-modal .shop-modal__content'),
+        profileModalBody: rectOf('.profile-mobile-safe-modal .shop-modal__body'),
+        profileModalFooter: rectOf('.profile-mobile-safe-modal .shop-modal__footer'),
+        addressCascader: rectOf('.profile-address-modal .shop-cascader'),
+        petDatePicker: rectOf('.profile-pet-modal__field'),
+        cascaderDropdown: rectOf('.shop-cascader__popup'),
+        selectDropdown: rectOf('.shop-select__popup'),
+        pickerDropdown: null,
         supportPanel: rectOf('.customer-support-widget__panel'),
         supportBackdrop: rectOf('.customer-support-widget__backdrop'),
         supportComposer: rectOf('.customer-support-widget__composer'),
         supportOrderSelect: rectOf('.customer-support-widget__orderSelect'),
         supportOrderPopup: rectOf('.support-order-select-popup'),
-        supportOrderOption: rectOf('.support-order-select-popup .ant-select-item-option-content'),
-        supportOrderModal: rectOf('.customer-support-widget__orderModal .ant-modal-content'),
-        supportOrderModalBody: rectOf('.customer-support-widget__orderModal .ant-modal-body'),
-        supportOrderModalClose: rectOf('.customer-support-widget__orderModal .ant-modal-close'),
+        supportOrderOption: rectOf('.support-order-select-popup .shop-select__option'),
+        supportOrderModal: rectOf('.customer-support-widget__orderModal .shop-modal__content'),
+        supportOrderModalBody: rectOf('.customer-support-widget__orderModal .shop-modal__body'),
+        supportOrderModalClose: rectOf('.customer-support-widget__orderModal .shop-modal__close'),
       },
       visibleRatios: {
-        cascaderDropdown: visibleRatioOf('.ant-cascader-dropdown'),
-        selectDropdown: visibleRatioOf('.ant-select-dropdown:not(.ant-select-dropdown-hidden)'),
-        pickerDropdown: visibleRatioOf('.ant-picker-dropdown'),
+        cascaderDropdown: visibleRatioOf('.shop-cascader__popup'),
+        selectDropdown: visibleRatioOf('.shop-select__popup'),
+        pickerDropdown: null,
         supportOrderPopup: visibleRatioOf('.support-order-select-popup'),
-        supportOrderOption: visibleRatioOf('.support-order-select-popup .ant-select-item-option-content'),
-        supportOrderModal: visibleRatioOf('.customer-support-widget__orderModal .ant-modal-content'),
-        supportOrderModalClose: visibleRatioOf('.customer-support-widget__orderModal .ant-modal-close'),
+        supportOrderOption: visibleRatioOf('.support-order-select-popup .shop-select__option'),
+        supportOrderModal: visibleRatioOf('.customer-support-widget__orderModal .shop-modal__content'),
+        supportOrderModalClose: visibleRatioOf('.customer-support-widget__orderModal .shop-modal__close'),
       },
       hits: [
-        hitAt('.ant-cascader-dropdown .ant-cascader-menu-item', 'profile-cascader-option'),
-        hitAt('.ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option-content', 'profile-select-option'),
-        hitAt('.ant-picker-dropdown .ant-picker-cell-in-view .ant-picker-cell-inner', 'profile-picker-cell'),
-        hitAt('.support-order-select-popup .ant-select-item-option-content', 'support-order-option'),
-        hitAt('.customer-support-widget__orderModal .ant-modal-content', 'support-order-modal-content'),
-        hitAt('.customer-support-widget__orderModal .ant-modal-close', 'support-order-modal-close'),
-        hitAt('.customer-support-widget__orderModal .ant-modal-body', 'support-order-modal-body'),
+        hitAt('.shop-cascader__popup .shop-cascader__option', 'profile-cascader-option'),
+        hitAt('.shop-select__popup .shop-select__option', 'profile-select-option'),
+        hitAt('.profile-pet-modal__field input[type="date"]', 'profile-date-input'),
+        hitAt('.support-order-select-popup .shop-select__option', 'support-order-option'),
+        hitAt('.customer-support-widget__orderModal .shop-modal__content', 'support-order-modal-content'),
+        hitAt('.customer-support-widget__orderModal .shop-modal__close', 'support-order-modal-close'),
+        hitAt('.customer-support-widget__orderModal .shop-modal__body', 'support-order-modal-body'),
       ],
       stacks: [
-        stackAt('.ant-cascader-dropdown .ant-cascader-menu-item', 'profile-cascader-option'),
-        stackAt('.ant-select-dropdown:not(.ant-select-dropdown-hidden) .ant-select-item-option-content', 'select-option'),
-        stackAt('.ant-picker-dropdown .ant-picker-cell-in-view .ant-picker-cell-inner', 'picker-cell'),
-        stackAt('.support-order-select-popup .ant-select-item-option-content', 'support-order-option'),
-        stackAt('.customer-support-widget__orderModal .ant-modal-content', 'support-order-modal-content'),
-        stackAt('.customer-support-widget__orderModal .ant-modal-close', 'support-order-modal-close'),
+        stackAt('.shop-cascader__popup .shop-cascader__option', 'profile-cascader-option'),
+        stackAt('.shop-select__popup .shop-select__option', 'select-option'),
+        stackAt('.profile-pet-modal__field input[type="date"]', 'profile-date-input'),
+        stackAt('.support-order-select-popup .shop-select__option', 'support-order-option'),
+        stackAt('.customer-support-widget__orderModal .shop-modal__content', 'support-order-modal-content'),
+        stackAt('.customer-support-widget__orderModal .shop-modal__close', 'support-order-modal-close'),
       ].filter(Boolean),
       visiblePopupRows,
     };
@@ -493,7 +504,12 @@ async function collectSnapshot(page, viewport, stateName) {
 }
 
 async function capture(page, viewport, stateName, snapshots) {
-  const file = await screenshot(page, viewport, stateName);
+  // Android's native date input can terminate headless Chromium while being
+  // painted; keep the DOM snapshot for that state without forcing a bitmap.
+  const skipScreenshots = process.env.SHOPTEST_MOBILE_APP_SKIP_SCREENSHOTS === '1';
+  const file = skipScreenshots || stateName === 'profile-pet-birthday-picker'
+    ? null
+    : await screenshot(page, viewport, stateName);
   const snapshot = await collectSnapshot(page, viewport, stateName);
   snapshot.screenshot = file;
   snapshots.push(snapshot);
@@ -505,14 +521,14 @@ async function gotoProfile(page, tab) {
 }
 
 async function openAddressModal(page) {
-  await page.locator('.profile-block-button.profile-section-action').first().evaluate((button) => button.click());
-  await page.waitForSelector('.profile-address-modal .ant-modal-content', { state: 'visible', timeout: 15000 });
+  await page.locator('.profile-tabs__panel:not([hidden]) .profile-block-button.profile-section-action').first().evaluate((button) => button.click());
+  await page.waitForSelector('.profile-address-modal .shop-modal__content', { state: 'visible', timeout: 15000 });
   await page.waitForTimeout(500);
 }
 
 async function openPetModal(page) {
-  await page.locator('.profile-block-button.profile-section-action').first().evaluate((button) => button.click());
-  await page.waitForSelector('.profile-mobile-safe-modal .ant-modal-content', { state: 'visible', timeout: 15000 });
+  await page.locator('.profile-tabs__panel:not([hidden]) .profile-block-button.profile-section-action').first().evaluate((button) => button.click());
+  await page.waitForSelector('.profile-mobile-safe-modal .shop-modal__content', { state: 'visible', timeout: 15000 });
   await page.waitForTimeout(500);
 }
 
@@ -538,9 +554,9 @@ async function runProfileStates(page, viewport, snapshots) {
   await capture(page, viewport, 'profile-addresses-top', snapshots);
   await openAddressModal(page);
   await capture(page, viewport, 'profile-address-modal-open', snapshots);
-  await scrollModalTo(page, '.profile-address-modal .ant-modal-body', '.profile-address-modal .ant-cascader');
-  await page.locator('.profile-address-modal .ant-cascader').click();
-  await page.waitForSelector('.ant-cascader-dropdown', { state: 'visible', timeout: 7000 }).catch(() => undefined);
+  await scrollModalTo(page, '.profile-address-modal .shop-modal__body', '.profile-address-modal .shop-cascader');
+  await page.locator('.profile-address-modal .shop-cascader').click();
+  await page.waitForSelector('.shop-cascader__popup', { state: 'visible', timeout: 7000 }).catch(() => undefined);
   await page.waitForTimeout(500);
   await capture(page, viewport, 'profile-address-region-cascader', snapshots);
 
@@ -548,29 +564,28 @@ async function runProfileStates(page, viewport, snapshots) {
   await capture(page, viewport, 'profile-pets-top', snapshots);
   await openPetModal(page);
   await capture(page, viewport, 'profile-pet-modal-open', snapshots);
-  const petSelects = page.locator('.profile-mobile-safe-modal .ant-select');
+  const petSelects = page.locator('.profile-mobile-safe-modal .shop-select');
   if (await petSelects.count()) {
     await petSelects.first().click();
-    await page.waitForSelector('.ant-select-dropdown:not(.ant-select-dropdown-hidden)', { state: 'visible', timeout: 7000 }).catch(() => undefined);
+    await page.waitForSelector('.shop-select__popup', { state: 'visible', timeout: 7000 }).catch(() => undefined);
     await page.waitForTimeout(500);
     await capture(page, viewport, 'profile-pet-type-select', snapshots);
   }
 
   await gotoProfile(page, 'pets');
   await openPetModal(page);
-  await scrollModalTo(page, '.profile-mobile-safe-modal .ant-modal-body', '.profile-pet-modal__field.ant-picker');
-  await page.locator('.profile-pet-modal__field.ant-picker').click();
-  await page.waitForSelector('.ant-picker-dropdown', { state: 'visible', timeout: 7000 }).catch(() => undefined);
-  await page.waitForTimeout(500);
+  await scrollModalTo(page, '.profile-mobile-safe-modal .shop-modal__body', '.profile-pet-modal__field');
+  // Native date pickers are OS-owned surfaces and can close headless Chromium;
+  // audit the field's in-modal geometry and hit target instead.
   await capture(page, viewport, 'profile-pet-birthday-picker', snapshots);
 
   await gotoProfile(page, 'pets');
   await openPetModal(page);
-  await scrollModalTo(page, '.profile-mobile-safe-modal .ant-modal-body', '.profile-mobile-safe-modal .ant-form-item:last-child .ant-select');
-  const freshPetSelects = page.locator('.profile-mobile-safe-modal .ant-select');
+  await scrollModalTo(page, '.profile-mobile-safe-modal .shop-modal__body', '.profile-mobile-safe-modal .ant-form-item:last-child .shop-select');
+  const freshPetSelects = page.locator('.profile-mobile-safe-modal .shop-select');
   if ((await freshPetSelects.count()) > 1) {
     await freshPetSelects.nth(1).click();
-    await page.waitForSelector('.ant-select-dropdown:not(.ant-select-dropdown-hidden)', { state: 'visible', timeout: 7000 }).catch(() => undefined);
+    await page.waitForSelector('.shop-select__popup', { state: 'visible', timeout: 7000 }).catch(() => undefined);
     await page.waitForTimeout(500);
     await capture(page, viewport, 'profile-pet-size-select', snapshots);
   }
@@ -581,6 +596,10 @@ async function runSupportStates(page, viewport, snapshots) {
   await waitForSupportOpen(page);
   await capture(page, viewport, 'support-open', snapshots);
 
+  await page.locator('.customer-support-widget__composer').evaluate((composer) => {
+    composer.scrollTop = composer.scrollHeight;
+  });
+  await page.waitForTimeout(300);
   await page.locator('.customer-support-widget__orderSelect').click({ timeout: 10000 });
   await page.waitForSelector('.support-order-select-popup', { state: 'visible', timeout: 10000 }).catch(() => undefined);
   await page.waitForTimeout(500);
@@ -591,7 +610,7 @@ async function runSupportStates(page, viewport, snapshots) {
   const viewOrder = page.locator('.customer-support-widget__linkButton').first();
   await viewOrder.scrollIntoViewIfNeeded().catch(() => undefined);
   await viewOrder.click({ timeout: 10000 });
-  await page.waitForSelector('.customer-support-widget__orderModal .ant-modal-content', { state: 'visible', timeout: 10000 }).catch(() => undefined);
+  await page.waitForSelector('.customer-support-widget__orderModal .shop-modal__content', { state: 'visible', timeout: 10000 }).catch(() => undefined);
   await page.waitForTimeout(700);
   await capture(page, viewport, 'support-order-modal-open', snapshots);
 }
@@ -617,8 +636,9 @@ async function runViewport(browser, viewport) {
   const snapshots = [];
   let error = null;
   try {
-    await runProfileStates(page, viewport, snapshots);
-    await runSupportStates(page, viewport, snapshots);
+    const only = process.env.SHOPTEST_MOBILE_APP_ONLY || '';
+    if (only !== 'support') await runProfileStates(page, viewport, snapshots);
+    if (only !== 'profile') await runSupportStates(page, viewport, snapshots);
   } catch (runError) {
     error = {
       message: runError?.message || String(runError),
@@ -628,7 +648,7 @@ async function runViewport(browser, viewport) {
     await screenshot(page, viewport, 'failed').catch(() => undefined);
   }
 
-  await context.close();
+  await context.close().catch(() => undefined);
   return { viewport, snapshots, consoleMessages, networkFailures, apiRequests, error };
 }
 
@@ -653,11 +673,16 @@ function analyze(results) {
       const { viewportName, stateName } = snapshot;
 
       if (profileStates.has(stateName)) {
-        const relevantHits = snapshot.hits.filter((hit) => hit && ['profile-cascader-option', 'profile-select-option', 'profile-picker-cell'].includes(hit.label));
+        const relevantLabels = stateName === 'profile-address-region-cascader'
+          ? ['profile-cascader-option']
+          : stateName === 'profile-pet-birthday-picker'
+            ? ['profile-date-input']
+            : ['profile-select-option'];
+        const relevantHits = snapshot.hits.filter((hit) => hit && relevantLabels.includes(hit.label));
         const badHits = relevantHits.filter((hit) => hitMissesTarget(hit, [
-          'ant-cascader-menu-item',
-          'ant-select-item-option-content',
-          'ant-picker-cell-inner',
+          'shop-cascader__option',
+          'shop-select__option',
+          'profile-pet-modal__field',
         ]));
         if (badHits.length) {
           issues.push({
@@ -682,7 +707,7 @@ function analyze(results) {
 
       if (stateName === 'support-order-select-open') {
         const optionHit = snapshot.hits.find((hit) => hit?.label === 'support-order-option');
-        if (hitMissesTarget(optionHit, ['ant-select-item-option-content'])) {
+        if (hitMissesTarget(optionHit, ['shop-select__option'])) {
           issues.push({
             type: 'support-order-select-under-panel',
             severity: 'high',
@@ -706,7 +731,7 @@ function analyze(results) {
       if (stateName === 'support-order-modal-open') {
         const modalHit = snapshot.hits.find((hit) => hit?.label === 'support-order-modal-content');
         const closeHit = snapshot.hits.find((hit) => hit?.label === 'support-order-modal-close');
-        const badHits = [modalHit, closeHit].filter((hit) => hitMissesTarget(hit, ['ant-modal-content', 'ant-modal-close']));
+        const badHits = [modalHit, closeHit].filter((hit) => hitMissesTarget(hit, ['shop-modal__content', 'shop-modal__close']));
         if (badHits.length) {
           issues.push({
             type: 'support-order-modal-under-panel',
@@ -736,7 +761,7 @@ function writeReport(results, issues) {
   const report = {
     generatedAt: new Date().toISOString(),
     baseUrl,
-    viewports,
+    viewports: viewportsToRun,
     mockScope: [
       'authenticated profile APIs',
       'addresses, pets, orders and order items',
@@ -780,9 +805,13 @@ function writeReport(results, issues) {
 
 async function main() {
   ensureDirs();
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.SHOPTEST_PLAYWRIGHT_EXECUTABLE_PATH || undefined,
+    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+  });
   const results = [];
-  for (const viewport of viewports) {
+  for (const viewport of viewportsToRun) {
     results.push(await runViewport(browser, viewport));
   }
   await browser.close();
@@ -790,7 +819,7 @@ async function main() {
   writeReport(results, issues);
   console.log(JSON.stringify({
     outDir,
-    viewportCount: viewports.length,
+    viewportCount: viewportsToRun.length,
     issueCount: issues.length,
     issueTypes: [...new Set(issues.map((issue) => issue.type))].sort(),
     runErrors: results.filter((result) => result.error).length,

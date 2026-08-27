@@ -9,6 +9,13 @@ const viewports = [
   { name: 'small-320-app', width: 320, height: 568 },
   { name: 'phone-390-app', width: 390, height: 844 },
 ];
+const requestedViewportNames = String(process.env.SHOPTEST_MOBILE_APP_VIEWPORTS || '')
+  .split(',')
+  .map((name) => name.trim())
+  .filter(Boolean);
+const viewportsToRun = requestedViewportNames.length
+  ? viewports.filter((viewport) => requestedViewportNames.includes(viewport.name))
+  : viewports;
 
 const now = Date.parse('2026-06-08T08:35:00Z');
 
@@ -880,7 +887,7 @@ function writeReport(results, issues) {
   const report = {
     generatedAt: new Date().toISOString(),
     baseUrl,
-    viewports,
+    viewports: viewportsToRun,
     mockScope: [
       'authenticated notification list/actions',
       'local stock alerts with product detail lookup',
@@ -945,10 +952,14 @@ function writeReport(results, issues) {
 
 async function main() {
   ensureDirs();
-  const browser = await chromium.launch({ headless: true });
+  const browser = await chromium.launch({
+    headless: true,
+    executablePath: process.env.SHOPTEST_PLAYWRIGHT_EXECUTABLE_PATH || undefined,
+    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+  });
   const results = [];
   try {
-    for (const viewport of viewports) {
+    for (const viewport of viewportsToRun) {
       results.push(await runViewport(browser, viewport));
     }
   } finally {
