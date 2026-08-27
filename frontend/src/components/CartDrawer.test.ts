@@ -77,4 +77,17 @@ describe('CartDrawer mobile overlay and trust-row contracts', () => {
     expect(source).toContain('if (hasStaleCartData) {');
     expect(source).toContain('open && items.length > 0 && !hasStaleCartData');
   });
+
+  it('guards suggested products before authenticated or guest add-to-cart paths', () => {
+    const source = readCartDrawerSource();
+    const start = source.indexOf('const addSuggestedProduct = async (product: Product) => {');
+    const end = source.indexOf('const drawerNextAction', start);
+    const addSource = source.slice(start, end);
+
+    expect(addSource).toContain('const productId = normalizePositiveProductId(product.id);');
+    expect(addSource).toContain("throw new Error(t('messages.addFailed'));");
+    expect(addSource).toContain('cartApi.addItem(0, productId, 1);');
+    expect(addSource).toContain('const addedItem = addGuestCartItem(productWithSafeId, 1);');
+    expect(addSource).toContain('if (!addedItem) {');
+  });
 });

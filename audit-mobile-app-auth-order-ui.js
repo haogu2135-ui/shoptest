@@ -523,11 +523,18 @@ async function runAuthStates(page, viewport, snapshots) {
   await page.waitForTimeout(800);
   await capture(page, viewport, 'login-password-server-error', snapshots);
 
-  await clickFirstVisible(page, ['.ant-tabs-tab:has-text("Email")', '[role="tab"]:has-text("Email")']);
+  await clickFirstVisible(page, [
+    '.shopee-login-tabs__tab[aria-controls="login-panel-email"]',
+    '[role="tab"][aria-controls="login-panel-email"]',
+    '.ant-tabs-tab:has-text("Email")',
+  ]);
   await page.waitForTimeout(450);
   await capture(page, viewport, 'login-email-initial', snapshots);
 
-  await clickFirstVisible(page, ['.shopee-login-emailSubmit', '.shopee-login-form--email button[type="submit"]']);
+  await clickFirstVisible(page, [
+    '.shopee-login-form--email .shopee-login-emailSubmit',
+    '.shopee-login-form--email button[type="submit"]',
+  ]);
   await page.waitForTimeout(500);
   await capture(page, viewport, 'login-email-validation', snapshots);
 
@@ -601,16 +608,30 @@ async function runOrderStates(page, viewport, snapshots) {
   await capture(page, viewport, 'order-logistics-widget', snapshots);
 }
 
-async function runViewport(browser, viewport) {
-  const context = await browser.newContext({
-    viewport: { width: viewport.width, height: viewport.height },
-    deviceScaleFactor: 1,
-    isMobile: true,
-    hasTouch: true,
-    userAgent: `Mozilla/5.0 (Linux; Android 14; Pixel Audit) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Mobile Safari/537.36 ShopTestAndroidApp/${viewport.name}`,
-  });
-  const page = await context.newPage();
-  page.setDefaultTimeout(12000);
+const browserLaunchOptions = {
+  headless: true,
+  executablePath: process.env.SHOPTEST_PLAYWRIGHT_EXECUTABLE_PATH || undefined,
+  args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+};
+
+function pageUrl(page) {
+  return page?.url?.() || '';
+}
+
+async function runScenario(viewport, scenarioName, runScenarioState) {
+  const browser = await chromium.launch(browserLaunchOptions);
+  let context;
+  let page;
+  try {
+    context = await browser.newContext({
+      viewport: { width: viewport.width, height: viewport.height },
+      deviceScaleFactor: 1,
+      isMobile: true,
+      hasTouch: true,
+      userAgent: `Mozilla/5.0 (Linux; Android 14; Pixel Audit) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Mobile Safari/537.36 ShopTestAndroidApp/${viewport.name}`,
+    });
+    page = await context.newPage();
+    page.setDefaultTimeout(12000);
 
   const consoleMessages = [];
   const networkFailures = [];
@@ -628,19 +649,43 @@ async function runViewport(browser, viewport) {
   let error = null;
 
   try {
-    await runAuthStates(page, viewport, snapshots);
-    await runOrderStates(page, viewport, snapshots);
+    await runScenarioState(page, viewport, snapshots);
   } catch (runError) {
     error = {
       message: runError?.message || String(runError),
       stack: runError?.stack ? String(runError.stack).slice(0, 1200) : '',
-      url: page.url(),
+      url: pageUrl(page),
     };
-    await screenshot(page, viewport, 'failed').catch(() => undefined);
+    await screenshot(page, viewport, `${scenarioName}-failed`).catch(() => undefined);
   }
 
-  await context.close();
-  return { viewport, snapshots, consoleMessages, networkFailures, apiRequests, error };
+    return { viewport, snapshots, consoleMessages, networkFailures, apiRequests, error };
+  } finally {
+    await context?.close().catch(() => undefined);
+    await browser.close().catch(() => undefined);
+  }
+}
+
+async function runScenarioWithRetry(viewport, scenarioName, runScenarioState) {
+  const first = await runScenario(viewport, scenarioName, runScenarioState);
+  if (!first.error || !/(Target page, context or browser has been closed|has been closed|browser disconnected|page .*closed|context .*closed|crash)/i.test(first.error.message)) {
+    return first;
+  }
+  process.stderr.write(`[auth-order-audit] retrying closed ${scenarioName} scenario at ${viewport.name}\n`);
+  return runScenario(viewport, scenarioName, runScenarioState);
+}
+
+async function runViewport(viewport) {
+  const auth = await runScenarioWithRetry(viewport, 'auth', runAuthStates);
+  const order = await runScenarioWithRetry(viewport, 'order', runOrderStates);
+  return {
+    viewport,
+    snapshots: [...auth.snapshots, ...order.snapshots],
+    consoleMessages: [...auth.consoleMessages, ...order.consoleMessages],
+    networkFailures: [...auth.networkFailures, ...order.networkFailures],
+    apiRequests: [...auth.apiRequests, ...order.apiRequests],
+    error: auth.error || order.error,
+  };
 }
 
 function isNoisySmallTarget(item) {
@@ -849,16 +894,10 @@ function writeReport(results, issues) {
 
 async function main() {
   ensureDirs();
-  const browser = await chromium.launch({
-    headless: true,
-    executablePath: process.env.SHOPTEST_PLAYWRIGHT_EXECUTABLE_PATH || undefined,
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-  });
   const results = [];
   for (const viewport of viewportsToRun) {
-    results.push(await runViewport(browser, viewport));
+    results.push(await runViewport(viewport));
   }
-  await browser.close();
   const issues = analyze(results);
   writeReport(results, issues);
   console.log(JSON.stringify({

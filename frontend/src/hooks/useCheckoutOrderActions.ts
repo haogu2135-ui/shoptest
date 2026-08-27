@@ -34,6 +34,7 @@ import { removeSessionStorageItem } from '../utils/safeStorage';
 import { navigateToCommercialPaymentUrl } from '../utils/paymentRecovery';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
+import { normalizePositiveProductId } from '../utils/cartUi';
 type PaymentMethodDetail = { value: string };
 
 type UseCheckoutOrderActionsParams = {
@@ -173,10 +174,15 @@ export const useCheckoutOrderActions = ({
   });
 
   const addSuggestedProduct = async (product: Product) => {
+    const productId = normalizePositiveProductId(product.id);
+    if (productId === null) {
+      throw new Error(t('messages.addFailed'));
+    }
+    const productWithSafeId = { ...product, id: productId };
     const hasToken = hasAuthenticatedCartSession();
     if (hasToken) {
       try {
-        await cartApi.addItem(0, product.id, 1);
+        await cartApi.addItem(0, productId, 1);
         const response = await cartApi.getItems(0);
         const purchasableItems = response.data.filter(isPurchasable);
         setCartItems(purchasableItems);
@@ -189,7 +195,10 @@ export const useCheckoutOrderActions = ({
         }
       }
     }
-    addGuestCartItem(product, 1);
+    const addedItem = addGuestCartItem(productWithSafeId, 1);
+    if (!addedItem) {
+      throw new Error(t('messages.addFailed'));
+    }
     const nextItems = readGuestCartSnapshot().filter(isPurchasable);
     setCartItems(nextItems);
     syncCheckoutCartItemIds(nextItems);

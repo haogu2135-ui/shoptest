@@ -35,6 +35,13 @@ describe('Seckill mobile purchase surface', () => {
     expect(css).toContain('display: none !important;');
   });
 
+  it('keeps mobile product names at a 44px touch target', () => {
+    const css = styleSource();
+    const mobileCss = css.slice(css.indexOf('@media (max-width: 640px)'));
+
+    expect(mobileCss).toMatch(/\.seckill-item__name\s*\{[\s\S]*?min-height:\s*44px;/);
+  });
+
   it('keeps purchase fields aligned with the backend validation contract', () => {
     const source = pageSource();
 

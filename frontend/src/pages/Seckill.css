@@ -573,6 +573,10 @@
     width: 92px;
   }
 
+  .seckill-item__name {
+    min-height: 44px;
+  }
+
   .seckill-item__priceRow strong {
     font-size: 20px;
   }

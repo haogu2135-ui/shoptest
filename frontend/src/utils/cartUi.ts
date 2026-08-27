@@ -6,6 +6,11 @@ export const cartImageFallback = productImageFallback;
 export const resolveCartImage = resolveProductImage;
 export const DEFAULT_CART_QUANTITY_LIMIT = 99;
 
+export const normalizePositiveProductId = (value: unknown) => {
+  const id = Number(value);
+  return Number.isSafeInteger(id) && id > 0 ? id : null;
+};
+
 const toNonNegativeFinite = (value: unknown) => {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? Math.max(0, numeric) : 0;

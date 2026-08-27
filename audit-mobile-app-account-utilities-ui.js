@@ -702,42 +702,64 @@ async function runPaymentInstructions(page, viewport, snapshots) {
   await capture(page, viewport, 'payment-instructions-bottom', snapshots);
 }
 
-async function runViewport(browser, viewport) {
-  const context = await browser.newContext(viewportConfig(viewport));
-  const page = await context.newPage();
-  page.setDefaultTimeout(12000);
-  await installRuntime(page);
-  const apiRequests = await installMocks(page);
+const browserLaunchOptions = {
+  headless: true,
+  executablePath: process.env.SHOPTEST_PLAYWRIGHT_EXECUTABLE_PATH || undefined,
+  args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+};
 
-  const consoleMessages = [];
-  const networkFailures = [];
-  page.on('console', (message) => {
-    if (['error', 'warning'].includes(message.type())) {
-      consoleMessages.push({ type: message.type(), text: message.text().slice(0, 500), url: page.url() });
-    }
-  });
-  page.on('requestfailed', (request) => {
-    networkFailures.push({ url: request.url(), method: request.method(), failure: request.failure()?.errorText || '' });
-  });
-
-  const snapshots = [];
-  let error = null;
+async function runViewport(viewport) {
+  const browser = await chromium.launch(browserLaunchOptions);
+  let context;
+  let page;
   try {
-    await runNotifications(page, viewport, snapshots);
-    await runStockAlerts(page, viewport, snapshots);
-    await runHistory(page, viewport, snapshots);
-    await runPaymentInstructions(page, viewport, snapshots);
-  } catch (runError) {
-    error = {
-      message: runError?.message || String(runError),
-      stack: runError?.stack ? String(runError.stack).slice(0, 1200) : '',
-      url: page.url(),
-    };
-    await screenshot(page, viewport, 'failed').catch(() => undefined);
-  }
+    context = await browser.newContext(viewportConfig(viewport));
+    page = await context.newPage();
+    page.setDefaultTimeout(12000);
+    await installRuntime(page);
+    const apiRequests = await installMocks(page);
 
-  await context.close();
-  return { viewport, snapshots, consoleMessages, networkFailures, apiRequests, error };
+    const consoleMessages = [];
+    const networkFailures = [];
+    page.on('console', (message) => {
+      if (['error', 'warning'].includes(message.type())) {
+        consoleMessages.push({ type: message.type(), text: message.text().slice(0, 500), url: page.url() });
+      }
+    });
+    page.on('requestfailed', (request) => {
+      networkFailures.push({ url: request.url(), method: request.method(), failure: request.failure()?.errorText || '' });
+    });
+
+    const snapshots = [];
+    let error = null;
+    try {
+      await runNotifications(page, viewport, snapshots);
+      await runStockAlerts(page, viewport, snapshots);
+      await runHistory(page, viewport, snapshots);
+      await runPaymentInstructions(page, viewport, snapshots);
+    } catch (runError) {
+      error = {
+        message: runError?.message || String(runError),
+        stack: runError?.stack ? String(runError.stack).slice(0, 1200) : '',
+        url: page?.url?.() || '',
+      };
+      await screenshot(page, viewport, 'failed').catch(() => undefined);
+    }
+
+    return { viewport, snapshots, consoleMessages, networkFailures, apiRequests, error };
+  } finally {
+    await context?.close().catch(() => undefined);
+    await browser.close().catch(() => undefined);
+  }
+}
+
+async function runViewportWithRetry(viewport) {
+  const first = await runViewport(viewport);
+  if (!first.error || !/(Target page, context or browser has been closed|has been closed|browser disconnected|page .*closed|context .*closed|crash)/i.test(first.error.message)) {
+    return first;
+  }
+  process.stderr.write(`[account-utilities-audit] retrying closed viewport at ${viewport.name}\n`);
+  return runViewport(viewport);
 }
 
 function isOnlyNavigationSmallTarget(item) {
@@ -952,18 +974,9 @@ function writeReport(results, issues) {
 
 async function main() {
   ensureDirs();
-  const browser = await chromium.launch({
-    headless: true,
-    executablePath: process.env.SHOPTEST_PLAYWRIGHT_EXECUTABLE_PATH || undefined,
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-  });
   const results = [];
-  try {
-    for (const viewport of viewportsToRun) {
-      results.push(await runViewport(browser, viewport));
-    }
-  } finally {
-    await browser.close();
+  for (const viewport of viewportsToRun) {
+    results.push(await runViewportWithRetry(viewport));
   }
   const issues = analyze(results);
   const report = writeReport(results, issues);

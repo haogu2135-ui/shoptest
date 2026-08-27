@@ -3814,6 +3814,7 @@ body .shop-nav__dropdown-popup.shop-dropdown__popup {
   .shop-nav__searchIntro,
   .shop-nav__searchSignals,
   .shop-nav__mobile-tools,
+  body:not(.shop-mobile-app) .shop-nav .shop-nav__mega,
   .shop-nav__bottomBar,
   body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-nav__bottomBar {
     display: none !important;

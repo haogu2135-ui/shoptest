@@ -68,10 +68,7 @@ export const normalizeSavedForLaterItems = (items: unknown): SavedForLaterItem[]
 
 export const getSavedForLaterItemsSnapshot = () => normalizeSavedForLaterItems(getSavedForLaterItems());
 
-export const normalizePositiveProductId = (value: unknown) => {
-  const id = Number(value);
-  return Number.isSafeInteger(id) && id > 0 ? id : null;
-};
+export { normalizePositiveProductId } from '../utils/cartUi';
 
 export const deriveCartCheckoutMetrics = (
   items: unknown,

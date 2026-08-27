@@ -187,6 +187,8 @@ describe('guestCart', () => {
         price: 12,
       }),
     ]);
+    expect(JSON.parse(localStorage.getItem('shop-guest-cart') || '[]')).toEqual(normalizedItems);
+    expect(localStorage.getItem('shop-guest-cart')).not.toContain('"product"');
   });
 
   it('removes only normalized numeric guest cart ids', () => {

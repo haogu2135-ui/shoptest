@@ -615,12 +615,26 @@ async function runSupportStates(page, viewport, snapshots) {
   await capture(page, viewport, 'support-order-modal-open', snapshots);
 }
 
-async function runViewport(browser, viewport) {
-  const context = await browser.newContext(viewportConfig(viewport));
-  const page = await context.newPage();
-  page.setDefaultTimeout(12000);
-  await installRuntime(page);
-  const apiRequests = await installMocks(page);
+const browserLaunchOptions = {
+  headless: true,
+  executablePath: process.env.SHOPTEST_PLAYWRIGHT_EXECUTABLE_PATH || undefined,
+  args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+};
+
+function pageUrl(page) {
+  return page?.url?.() || '';
+}
+
+async function runScenario(viewport, scenarioName, runScenarioState) {
+  const browser = await chromium.launch(browserLaunchOptions);
+  let context;
+  let page;
+  try {
+    context = await browser.newContext(viewportConfig(viewport));
+    page = await context.newPage();
+    page.setDefaultTimeout(12000);
+    await installRuntime(page);
+    const apiRequests = await installMocks(page);
 
   const consoleMessages = [];
   const networkFailures = [];
@@ -636,20 +650,49 @@ async function runViewport(browser, viewport) {
   const snapshots = [];
   let error = null;
   try {
-    const only = process.env.SHOPTEST_MOBILE_APP_ONLY || '';
-    if (only !== 'support') await runProfileStates(page, viewport, snapshots);
-    if (only !== 'profile') await runSupportStates(page, viewport, snapshots);
+    await runScenarioState(page, viewport, snapshots);
   } catch (runError) {
     error = {
       message: runError?.message || String(runError),
       stack: runError?.stack ? String(runError.stack).slice(0, 1200) : '',
-      url: page.url(),
+      url: pageUrl(page),
     };
-    await screenshot(page, viewport, 'failed').catch(() => undefined);
+    await screenshot(page, viewport, `${scenarioName}-failed`).catch(() => undefined);
   }
 
-  await context.close().catch(() => undefined);
-  return { viewport, snapshots, consoleMessages, networkFailures, apiRequests, error };
+    return { viewport, snapshots, consoleMessages, networkFailures, apiRequests, error };
+  } finally {
+    await context?.close().catch(() => undefined);
+    await browser.close().catch(() => undefined);
+  }
+}
+
+async function runScenarioWithRetry(viewport, scenarioName, runScenarioState) {
+  const first = await runScenario(viewport, scenarioName, runScenarioState);
+  if (!first.error || !/(Target page, context or browser has been closed|has been closed|browser disconnected|page .*closed|context .*closed|crash)/i.test(first.error.message)) {
+    return first;
+  }
+  process.stderr.write(`[profile-support-audit] retrying closed ${scenarioName} scenario at ${viewport.name}\n`);
+  return runScenario(viewport, scenarioName, runScenarioState);
+}
+
+async function runViewport(viewport) {
+  const only = process.env.SHOPTEST_MOBILE_APP_ONLY || '';
+  const results = [];
+  if (only !== 'support') {
+    results.push(await runScenarioWithRetry(viewport, 'profile', runProfileStates));
+  }
+  if (only !== 'profile') {
+    results.push(await runScenarioWithRetry(viewport, 'support', runSupportStates));
+  }
+  return {
+    viewport,
+    snapshots: results.flatMap((result) => result.snapshots),
+    consoleMessages: results.flatMap((result) => result.consoleMessages),
+    networkFailures: results.flatMap((result) => result.networkFailures),
+    apiRequests: results.flatMap((result) => result.apiRequests),
+    error: results.find((result) => result.error)?.error || null,
+  };
 }
 
 function hitMissesTarget(hit, expectedClassFragments) {
@@ -805,16 +848,10 @@ function writeReport(results, issues) {
 
 async function main() {
   ensureDirs();
-  const browser = await chromium.launch({
-    headless: true,
-    executablePath: process.env.SHOPTEST_PLAYWRIGHT_EXECUTABLE_PATH || undefined,
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-  });
   const results = [];
   for (const viewport of viewportsToRun) {
-    results.push(await runViewport(browser, viewport));
+    results.push(await runViewport(viewport));
   }
-  await browser.close();
   const issues = analyze(results);
   writeReport(results, issues);
   console.log(JSON.stringify({

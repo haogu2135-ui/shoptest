@@ -1,4 +1,5 @@
 const STYLE_ID = 'shop-mobile-contrast-guard';
+const ANDROID_FINAL_STYLE_ID = 'shop-android-ui-final-guard';
 
 const CONTRAST_GUARD_CSS = `
 body.shop-mobile-app {
@@ -2447,6 +2448,56 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-li
   fill: currentColor !important;
   stroke: currentColor !important;
 }
+
+/* A selected address is an input surface, not a dark action control; keep its
+   radio state visible without mixing dark and light text on one card. */
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .checkout-page__addressChoice.checkout-page__addressChoice--selected {
+  border-color: #124734 !important;
+  background: #f8fcf9 !important;
+  color: #173f2b !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .checkout-page__addressChoice.checkout-page__addressChoice--selected :where(
+  .ant-typography,
+  strong,
+  span,
+  small,
+  b,
+  .checkout-page__addressText,
+  .anticon
+) {
+  color: #173f2b !important;
+  -webkit-text-fill-color: #173f2b !important;
+}
+
+/* A coupon discount line is informational text on the light summary surface,
+   not a selected action state matched by the generic --success rule. */
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .checkout-page__couponSummary .checkout-page__text--success,
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .checkout-page__couponSummary .checkout-page__text--success .commerce-money {
+  background: transparent !important;
+  color: #2f4f3a !important;
+  -webkit-text-fill-color: #2f4f3a !important;
+}
+
+/* Checkout hero stats sit on a dark panel; keep the card and its text on the
+   same readable contrast treatment after the generic card scan runs. */
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .checkout-page__hero .checkout-page__heroStat {
+  border-color: rgba(255, 247, 240, 0.28) !important;
+  background: rgba(255, 255, 255, 0.12) !important;
+  color: #ffffff !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .checkout-page__hero .checkout-page__heroStat :where(
+  .ant-typography,
+  strong,
+  span,
+  small,
+  b,
+  .anticon
+) {
+  color: #ffffff !important;
+  -webkit-text-fill-color: #ffffff !important;
+}
 `;
 
 const isBrowser = () => typeof document !== 'undefined' && typeof window !== 'undefined';
@@ -2837,7 +2888,12 @@ export const refreshMobileContrastGuard = () => {
   if (style.textContent !== CONTRAST_GUARD_CSS) {
     style.textContent = CONTRAST_GUARD_CSS;
   }
-  if (style.parentElement !== document.head || document.head.lastElementChild !== style) {
+  const finalGuard = document.getElementById(ANDROID_FINAL_STYLE_ID);
+  if (finalGuard?.parentElement === document.head && finalGuard !== style) {
+    if (style.parentElement !== document.head || style.nextElementSibling !== finalGuard) {
+      document.head.insertBefore(style, finalGuard);
+    }
+  } else if (style.parentElement !== document.head || document.head.lastElementChild !== style) {
     document.head.appendChild(style);
   }
   scheduleMobileContrastScan();

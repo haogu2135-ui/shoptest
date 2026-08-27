@@ -25,6 +25,7 @@ import {
   getCartQuantityLimit,
   isCartItemAvailable as isAvailable,
   normalizeCartQuantity,
+  normalizePositiveProductId,
   resolveCartImage,
   roundCartMoney,
 } from '../utils/cartUi';
@@ -475,16 +476,24 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       announceAccessibleMessage(t('pages.cart.staleDataWarning'), 'warning');
       return;
     }
+    const productId = normalizePositiveProductId(product.id);
+    if (productId === null) {
+      throw new Error(t('messages.addFailed'));
+    }
+    const productWithSafeId = { ...product, id: productId };
     const authenticated = hasAuthenticatedCartSession();
     if (authenticated) {
-      await cartApi.addItem(0, product.id, 1);
+      await cartApi.addItem(0, productId, 1);
       const response = await cartApi.getItems(0);
       if (!mountedRef.current) return;
       setItems(response.data);
       dispatchDomEvent('shop:cart-updated', { items: response.data });
       return;
     }
-    addGuestCartItem(product, 1);
+    const addedItem = addGuestCartItem(productWithSafeId, 1);
+    if (!addedItem) {
+      throw new Error(t('messages.addFailed'));
+    }
     const nextItems = getGuestCartItems();
     setItems(nextItems);
     dispatchDomEvent('shop:cart-updated', { items: nextItems });

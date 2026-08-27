@@ -898,6 +898,8 @@ describe('cart to checkout flows', () => {
 
   it('keeps mobile cart delete controls commercially tappable and WebView-safe', () => {
     const css = fs.readFileSync(path.resolve(__dirname, 'Cart.css'), 'utf8');
+    const lineItems = readCartLineItemsSource();
+    const mobileList = lineItems.slice(lineItems.indexOf('className="cart-page__mobileList"'));
     const deleteButtonBlocks = css.match(/\.cart-page__mobileItemBottom \.ant-btn-dangerous\s*\{[^}]*\}/g) ?? [];
 
     expect(deleteButtonBlocks.length).toBeGreaterThan(0);
@@ -908,6 +910,7 @@ describe('cart to checkout flows', () => {
     expect(css).not.toMatch(/\.cart-page__mobileItemBottom\s*\{[^}]*grid-template-columns:[^;}]*(?:36|38|40)px/);
     expect(css).not.toContain('overflow-x: clip');
     expect(css).toMatch(/Mobile cart control stability pass[\s\S]*?\.cart-page\s*\{[\s\S]*?overflow-x:\s*hidden;/);
+    expect(mobileList).not.toMatch(/aria-label=\{deleteActionLabel\}[^>]*>\{t\('common\.delete'\)\}<\/ShopButton>/);
   });
 
   it('keeps cart surface color rules defined once', () => {

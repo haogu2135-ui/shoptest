@@ -380,7 +380,7 @@ export const CartLineItems: React.FC<CartLineItemsProps> = ({
                   okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
                   cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
                 >
-                  <ShopButton type="text" danger icon={<ShopIcon path={SI.delete} />} size="small" loading={removingItemIds.includes(item.id)} disabled={hasStaleCartData} aria-label={deleteActionLabel} title={deleteActionLabel}>{t('common.delete')}</ShopButton>
+                  <ShopButton type="text" danger icon={<ShopIcon path={SI.delete} />} size="small" loading={removingItemIds.includes(item.id)} disabled={hasStaleCartData} aria-label={deleteActionLabel} title={deleteActionLabel} />
                 </ShopPopconfirm>
               </div>
             </div>

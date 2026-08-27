@@ -38,6 +38,10 @@ describe('Checkout type-safety guards', () => {
     expect(submitSource).not.toMatch(/throw\s+(err|error)\s*;/);
     expect(suggestedSource).not.toContain('handleApiError(');
     expect(suggestedSource).not.toMatch(/handleApiError\s*\([^)]*rethrow:\s*true/);
+    expect(suggestedSource).toContain('const productId = normalizePositiveProductId(product.id);');
+    expect(suggestedSource).toContain("throw new Error(t('messages.addFailed'));");
+    expect(suggestedSource).toContain('const addedItem = addGuestCartItem(productWithSafeId, 1);');
+    expect(suggestedSource).toContain('if (!addedItem) {');
     expect(checkoutSurface).not.toContain('error: any');
     expect(checkoutSurface).not.toContain('paymentError: any');
     expect(checkoutSurface).not.toContain('values: any');

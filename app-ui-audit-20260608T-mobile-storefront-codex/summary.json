@@ -1,70 +1,13 @@
 {
-  "generatedAt": "2026-08-27T07:53:51.257Z",
+  "generatedAt": "2026-08-27T15:41:45.054Z",
   "baseUrl": "http://127.0.0.1:4200",
   "viewportCount": 3,
-  "routeStateCount": 7,
+  "routeStateCount": 69,
   "issueStateCount": 0,
   "issueCounts": {},
   "consoleMessageCount": 0,
   "networkFailureCount": 0,
-  "routeErrorCount": 8,
-  "routeErrors": [
-    {
-      "viewport": "phone-390-app",
-      "route": "cart",
-      "message": "page.waitForSelector: Target page, context or browser has been closed\nCall log:\n  - waiting for locator('.cart-page')\n    - locator resolved to visible <div role=\"status\" aria-busy=\"true\" aria-live=\"polite\" aria-label=\"Cargando...\" class=\"cart-page cart-page--es\">…</div>\n",
-      "stack": "page.waitForSelector: Target page, context or browser has been closed\nCall log:\n  - waiting for locator('.cart-page')\n    - locator resolved to visible <div role=\"status\" aria-busy=\"true\" aria-live=\"polite\" aria-label=\"Cargando...\" class=\"cart-page cart-page--es\">…</div>\n\n    at waitForSettled (/home/guhao/shoptest/audit-mobile-app-storefront-ui.js:934:14)\n    at runRoute (/home/guhao/shoptest/audit-mobile-app-storefront-ui.js:969:11)\n    at async runViewport (/home/guhao/shoptest/audit-mobile-app-storefront-ui.js:1049:23)\n    at async /home/guhao/shoptest/audit-mobile-app-storefront-ui.js:1094:20",
-      "url": "http://127.0.0.1:4200/cart"
-    },
-    {
-      "viewport": "phone-390-app",
-      "route": "checkout",
-      "message": "page.goto: Target page, context or browser has been closed",
-      "stack": "page.goto: Target page, context or browser has been closed\n    at runRoute (/home/guhao/shoptest/audit-mobile-app-storefront-ui.js:968:16)\n    at runViewport (/home/guhao/shoptest/audit-mobile-app-storefront-ui.js:1049:29)\n    at async /home/guhao/shoptest/audit-mobile-app-storefront-ui.js:1094:20",
-      "url": "http://127.0.0.1:4200/cart"
-    },
-    {
-      "viewport": "phone-390-app",
-      "route": "coupons",
-      "message": "page.goto: Target page, context or browser has been closed",
-      "stack": "page.goto: Target page, context or browser has been closed\n    at runRoute (/home/guhao/shoptest/audit-mobile-app-storefront-ui.js:968:16)\n    at runViewport (/home/guhao/shoptest/audit-mobile-app-storefront-ui.js:1049:29)\n    at async /home/guhao/shoptest/audit-mobile-app-storefront-ui.js:1094:20",
-      "url": "http://127.0.0.1:4200/cart"
-    },
-    {
-      "viewport": "phone-390-app",
-      "route": "wishlist",
-      "message": "page.goto: Target page, context or browser has been closed",
-      "stack": "page.goto: Target page, context or browser has been closed\n    at runRoute (/home/guhao/shoptest/audit-mobile-app-storefront-ui.js:968:16)\n    at runViewport (/home/guhao/shoptest/audit-mobile-app-storefront-ui.js:1049:29)\n    at async /home/guhao/shoptest/audit-mobile-app-storefront-ui.js:1094:20",
-      "url": "http://127.0.0.1:4200/cart"
-    },
-    {
-      "viewport": "phone-390-app",
-      "route": "notifications",
-      "message": "page.goto: Target page, context or browser has been closed",
-      "stack": "page.goto: Target page, context or browser has been closed\n    at runRoute (/home/guhao/shoptest/audit-mobile-app-storefront-ui.js:968:16)\n    at runViewport (/home/guhao/shoptest/audit-mobile-app-storefront-ui.js:1049:29)\n    at async /home/guhao/shoptest/audit-mobile-app-storefront-ui.js:1094:20",
-      "url": "http://127.0.0.1:4200/cart"
-    },
-    {
-      "viewport": "phone-390-app",
-      "route": "profile",
-      "message": "page.goto: Target page, context or browser has been closed",
-      "stack": "page.goto: Target page, context or browser has been closed\n    at runRoute (/home/guhao/shoptest/audit-mobile-app-storefront-ui.js:968:16)\n    at runViewport (/home/guhao/shoptest/audit-mobile-app-storefront-ui.js:1049:29)\n    at async /home/guhao/shoptest/audit-mobile-app-storefront-ui.js:1094:20",
-      "url": "http://127.0.0.1:4200/cart"
-    },
-    {
-      "viewport": "phone-390-app",
-      "route": "track-order",
-      "message": "page.goto: Target page, context or browser has been closed",
-      "stack": "page.goto: Target page, context or browser has been closed\n    at runRoute (/home/guhao/shoptest/audit-mobile-app-storefront-ui.js:968:16)\n    at runViewport (/home/guhao/shoptest/audit-mobile-app-storefront-ui.js:1049:29)\n    at async /home/guhao/shoptest/audit-mobile-app-storefront-ui.js:1094:20",
-      "url": "http://127.0.0.1:4200/cart"
-    },
-    {
-      "viewport": "phone-390-app",
-      "route": "pet-finder",
-      "message": "page.goto: Target page, context or browser has been closed",
-      "stack": "page.goto: Target page, context or browser has been closed\n    at runRoute (/home/guhao/shoptest/audit-mobile-app-storefront-ui.js:968:16)\n    at runViewport (/home/guhao/shoptest/audit-mobile-app-storefront-ui.js:1049:29)\n    at async /home/guhao/shoptest/audit-mobile-app-storefront-ui.js:1094:20",
-      "url": "http://127.0.0.1:4200/cart"
-    }
-  ],
+  "routeErrorCount": 0,
+  "routeErrors": [],
   "topIssues": []
 }

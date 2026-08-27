@@ -793,47 +793,85 @@ async function runProductCompare(page, viewport, snapshots) {
   await capture(page, viewport, 'compare-bottom', snapshots);
 }
 
-async function runViewport(browser, viewport) {
-  const context = await browser.newContext(viewportConfig(viewport));
-  const page = await context.newPage();
-  page.setDefaultTimeout(12000);
-  await installRuntime(page);
-  const apiRequests = await installMocks(page);
+const browserLaunchOptions = {
+  headless: true,
+  executablePath: process.env.SHOPTEST_PLAYWRIGHT_EXECUTABLE_PATH || undefined,
+  args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+};
 
-  const consoleMessages = [];
-  const networkFailures = [];
-  page.on('console', (message) => {
-    if (['error', 'warning'].includes(message.type())) {
-      consoleMessages.push({ type: message.type(), text: message.text().slice(0, 500), url: page.url() });
-    }
-  });
-  page.on('requestfailed', (request) => {
-    networkFailures.push({ url: request.url(), method: request.method(), failure: request.failure()?.errorText || '' });
-  });
-
-  const snapshots = [];
-  let error = null;
+async function runSurface(viewport, surfaceName, runSurfaceState) {
+  const browser = await chromium.launch(browserLaunchOptions);
+  let context;
+  let page;
   try {
-    if (shouldRunSurface('finder', 'pet-finder')) {
-      await runPetFinder(page, viewport, snapshots);
-    }
-    if (shouldRunSurface('gallery', 'pet-gallery')) {
-      await runPetGallery(page, viewport, snapshots);
-    }
-    if (shouldRunSurface('compare', 'product-compare')) {
-      await runProductCompare(page, viewport, snapshots);
-    }
-  } catch (runError) {
-    error = {
-      message: runError?.message || String(runError),
-      stack: runError?.stack ? String(runError.stack).slice(0, 1200) : '',
-      url: page.url(),
-    };
-    await screenshot(page, viewport, 'failed').catch(() => undefined);
-  }
+    context = await browser.newContext(viewportConfig(viewport));
+    page = await context.newPage();
+    page.setDefaultTimeout(12000);
+    await installRuntime(page);
+    const apiRequests = await installMocks(page);
+    const consoleMessages = [];
+    const networkFailures = [];
+    page.on('console', (message) => {
+      if (['error', 'warning'].includes(message.type())) {
+        consoleMessages.push({ type: message.type(), text: message.text().slice(0, 500), url: page.url() });
+      }
+    });
+    page.on('requestfailed', (request) => {
+      networkFailures.push({ url: request.url(), method: request.method(), failure: request.failure()?.errorText || '' });
+    });
 
-  await context.close();
-  return { viewport, snapshots, consoleMessages, networkFailures, apiRequests, error };
+    const snapshots = [];
+    let error = null;
+    try {
+      await runSurfaceState(page, viewport, snapshots);
+    } catch (runError) {
+      error = {
+        message: runError?.message || String(runError),
+        stack: runError?.stack ? String(runError.stack).slice(0, 1200) : '',
+        url: page.url(),
+      };
+      await screenshot(page, viewport, `${surfaceName}-failed`).catch(() => undefined);
+    }
+    return { snapshots, consoleMessages, networkFailures, apiRequests, error };
+  } finally {
+    await context?.close().catch(() => undefined);
+    await browser.close().catch(() => undefined);
+  }
+}
+
+async function runSurfaceWithRetry(viewport, surfaceName, runSurfaceState) {
+  const first = await runSurface(viewport, surfaceName, runSurfaceState);
+  if (!first.error || !/(Target page, context or browser has been closed|has been closed|browser disconnected|page .*closed|context .*closed|crash)/i.test(first.error.message)) {
+    return first;
+  }
+  process.stderr.write(`[pet-compare-audit] retrying closed ${surfaceName} surface at ${viewport.name}\n`);
+  return runSurface(viewport, surfaceName, runSurfaceState);
+}
+
+async function runViewport(viewport) {
+  const combined = {
+    viewport,
+    snapshots: [],
+    consoleMessages: [],
+    networkFailures: [],
+    apiRequests: [],
+    error: null,
+  };
+  const surfaces = [
+    ['finder', 'pet-finder', runPetFinder],
+    ['gallery', 'pet-gallery', runPetGallery],
+    ['compare', 'product-compare', runProductCompare],
+  ];
+  for (const [surfaceName, selectorName, runner] of surfaces) {
+    if (!shouldRunSurface(surfaceName, selectorName)) continue;
+    const result = await runSurfaceWithRetry(viewport, surfaceName, runner);
+    combined.snapshots.push(...result.snapshots);
+    combined.consoleMessages.push(...result.consoleMessages);
+    combined.networkFailures.push(...result.networkFailures);
+    combined.apiRequests.push(...result.apiRequests);
+    if (result.error && !combined.error) combined.error = result.error;
+  }
+  return combined;
 }
 
 function isOnlyNavigationSmallTarget(item) {
@@ -1152,18 +1190,9 @@ function writeReport(results, issues) {
 
 async function main() {
   ensureDirs();
-  const browser = await chromium.launch({
-    headless: true,
-    executablePath: process.env.SHOPTEST_PLAYWRIGHT_EXECUTABLE_PATH || undefined,
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-  });
   const results = [];
-  try {
-    for (const viewport of viewportsToRun) {
-      results.push(await runViewport(browser, viewport));
-    }
-  } finally {
-    await browser.close();
+  for (const viewport of viewportsToRun) {
+    results.push(await runViewport(viewport));
   }
   const issues = analyze(results);
   const report = writeReport(results, issues);

@@ -3,6 +3,7 @@ import { createLocalId } from './localIds';
 import { dispatchDomEvent } from './domEvents';
 import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 import { reportNonBlockingError } from './nonBlockingError';
+import { normalizePositiveProductId } from './cartUi';
 
 const GUEST_CART_KEY = 'shop-guest-cart';
 const MAX_GUEST_CART_QUANTITY = 99;
@@ -22,11 +23,6 @@ const normalizeGuestCartQuantity = (quantity: unknown, stock?: unknown) => {
 const normalizeSafeId = (value: unknown) => {
   const id = Number(value);
   return Number.isSafeInteger(id) ? id : null;
-};
-
-const normalizePositiveProductId = (value: unknown) => {
-  const id = normalizeSafeId(value);
-  return id !== null && id > 0 ? id : null;
 };
 
 const hasLocalStorage = () => {
@@ -117,8 +113,15 @@ const normalizeCartItem = (item: unknown): NormalizedGuestCartItem | null => {
 
 const readGuestCart = (): NormalizedGuestCartItem[] => {
   try {
-    const parsed = JSON.parse(getLocalStorageItem(GUEST_CART_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed.map(normalizeCartItem).filter(isNormalizedGuestCartItem) : [];
+    const raw = getLocalStorageItem(GUEST_CART_KEY) || '[]';
+    const parsed = JSON.parse(raw);
+    if (!Array.isArray(parsed)) return [];
+    const normalizedItems = parsed.map(normalizeCartItem).filter(isNormalizedGuestCartItem);
+    const hasLegacyNestedProduct = parsed.some((item) => isRecord(item) && Object.prototype.hasOwnProperty.call(item, 'product'));
+    if (hasLegacyNestedProduct) {
+      setLocalStorageItem(GUEST_CART_KEY, JSON.stringify(normalizedItems));
+    }
+    return normalizedItems;
   } catch (error) {
     reportNonBlockingError('guestCart.readGuestCart parse failed', error);
     return [];

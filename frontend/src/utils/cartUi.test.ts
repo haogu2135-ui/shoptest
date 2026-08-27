@@ -6,6 +6,7 @@ import {
   getCartQuantityLimit,
   isCartItemFreeShippingQualified,
   isCartItemAvailable,
+  normalizePositiveProductId,
   normalizeCartQuantity,
 } from './cartUi';
 import type { CartItem } from '../types';
@@ -26,6 +27,15 @@ const cartItem = (overrides: Partial<CartItem>): CartItem => ({
 });
 
 describe('cartUi', () => {
+  it('accepts only positive safe integer product ids for recovery and add-on actions', () => {
+    expect(normalizePositiveProductId(42)).toBe(42);
+    expect(normalizePositiveProductId('42')).toBe(42);
+    expect(normalizePositiveProductId(0)).toBeNull();
+    expect(normalizePositiveProductId(-1)).toBeNull();
+    expect(normalizePositiveProductId(1.5)).toBeNull();
+    expect(normalizePositiveProductId(Number.MAX_SAFE_INTEGER + 1)).toBeNull();
+  });
+
   it('treats invalid stock snapshots as unavailable', () => {
     expect(isCartItemAvailable(cartItem({ stock: Number.NaN }))).toBe(false);
   });

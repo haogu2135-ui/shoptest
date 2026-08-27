@@ -3,7 +3,7 @@ const path = require('path');
 const { chromium } = require('./frontend/node_modules/playwright');
 
 const outDir = path.join(__dirname, 'app-ui-audit-20260608T-mobile-storefront-codex');
-const baseUrl = 'http://127.0.0.1:4200';
+const baseUrl = process.env.SHOPTEST_UI_BASE || 'http://127.0.0.1:4200';
 
 const viewports = [
   { name: 'small-320-app', width: 320, height: 568 },
@@ -17,6 +17,10 @@ const requestedViewportNames = String(process.env.SHOPTEST_MOBILE_APP_VIEWPORTS 
 const viewportsToRun = requestedViewportNames.length
   ? viewports.filter((viewport) => requestedViewportNames.includes(viewport.name))
   : viewports;
+const requestedRouteNames = String(process.env.SHOPTEST_MOBILE_APP_ROUTES || '')
+  .split(',')
+  .map((name) => name.trim())
+  .filter(Boolean);
 
 const now = Date.parse('2026-06-08T06:20:00Z');
 
@@ -1019,17 +1023,13 @@ async function runRoute(page, viewport, route) {
   return { route, metrics, consoleMessages, networkFailures, routeError };
 }
 
-async function runViewport(browser, viewport) {
-  const context = await browser.newContext({
-    viewport: { width: viewport.width, height: viewport.height },
-    deviceScaleFactor: 1,
-    isMobile: true,
-    hasTouch: true,
-    userAgent: `Mozilla/5.0 (Linux; Android 14; Pixel Audit) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Mobile Safari/537.36 ShopTestAndroidApp/${viewport.name}`,
-  });
-  const page = await context.newPage();
-  await installMocks(page);
+const browserLaunchOptions = {
+  headless: true,
+  executablePath: process.env.SHOPTEST_PLAYWRIGHT_EXECUTABLE_PATH || undefined,
+  args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+};
 
+async function runViewport(viewport) {
   const routes = [
     { name: 'home', path: '/', waitFor: '.shop-nav__bottomBar' },
     { name: 'products', path: '/products?keyword=bed&discount=true', waitFor: '.product-list' },
@@ -1043,13 +1043,51 @@ async function runViewport(browser, viewport) {
     { name: 'track-order', path: '/track-order', waitFor: '.order-tracking-page', action: 'track-result' },
     { name: 'pet-finder', path: '/pet-finder', waitFor: '.pet-finder-page' },
   ];
+  const routesToRun = requestedRouteNames.length
+    ? routes.filter((route) => requestedRouteNames.includes(route.name))
+    : routes;
 
   const routeResults = [];
-  for (const route of routes) {
-    routeResults.push(await runRoute(page, viewport, route));
+  for (const route of routesToRun) {
+    let routeResult;
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      // Isolate route state and renderer resources in a fresh browser process.
+      let browser;
+      let context;
+      let page;
+      try {
+        browser = await chromium.launch(browserLaunchOptions);
+        context = await browser.newContext({
+          viewport: { width: viewport.width, height: viewport.height },
+          deviceScaleFactor: 1,
+          isMobile: true,
+          hasTouch: true,
+          userAgent: `Mozilla/5.0 (Linux; Android 14; Pixel Audit) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Mobile Safari/537.36 ShopTestAndroidApp/${viewport.name}`,
+        });
+        page = await context.newPage();
+        await installMocks(page);
+        routeResult = await runRoute(page, viewport, route);
+      } catch (error) {
+        routeResult = {
+          route,
+          metrics: [],
+          consoleMessages: [],
+          networkFailures: [],
+          routeError: {
+            message: error?.message || String(error),
+            stack: error?.stack ? String(error.stack).slice(0, 1200) : '',
+            url: page?.url?.() || '',
+          },
+        };
+      } finally {
+        await context?.close().catch(() => undefined);
+        await browser?.close().catch(() => undefined);
+      }
+      if (!routeResult.routeError || attempt === 1) break;
+    }
+    routeResults.push(routeResult);
   }
 
-  await context.close();
   return { viewport, routeResults };
 }
 
@@ -1083,18 +1121,9 @@ function summarizeIssue(metric) {
 
 (async () => {
   fs.mkdirSync(outDir, { recursive: true });
-  const browser = await chromium.launch({
-    headless: true,
-    executablePath: process.env.SHOPTEST_PLAYWRIGHT_EXECUTABLE_PATH || undefined,
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-  });
   const results = [];
-  try {
-    for (const viewport of viewportsToRun) {
-      results.push(await runViewport(browser, viewport));
-    }
-  } finally {
-    await browser.close();
+  for (const viewport of viewportsToRun) {
+    results.push(await runViewport(viewport));
   }
 
   const flatMetrics = results.flatMap((result) => result.routeResults.flatMap((routeResult) => routeResult.metrics));
@@ -1133,7 +1162,7 @@ function summarizeIssue(metric) {
   const summary = {
     generatedAt: report.generatedAt,
     baseUrl,
-    viewportCount: viewports.length,
+    viewportCount: viewportsToRun.length,
     routeStateCount: flatMetrics.length,
     issueStateCount: issueStates.length,
     issueCounts: issueStates.reduce((acc, state) => {

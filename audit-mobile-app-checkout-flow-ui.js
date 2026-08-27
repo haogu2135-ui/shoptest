@@ -431,74 +431,96 @@ async function fillCheckoutForm(page) {
   await page.locator('input[placeholder="e.g. 10001"]').first().fill('01000').catch(() => undefined);
 }
 
-async function runViewport(browser, viewport) {
-  const context = await browser.newContext({
-    viewport: { width: viewport.width, height: viewport.height },
-    deviceScaleFactor: 1,
-    isMobile: true,
-    hasTouch: true,
-    userAgent: `Mozilla/5.0 (Linux; Android 14; Pixel Audit) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Mobile Safari/537.36 ShopTestAndroidApp/${viewport.name}`,
-  });
-  const page = await context.newPage();
-  page.setDefaultTimeout(12000);
-  const consoleMessages = [];
-  const networkFailures = [];
-  page.on('console', (message) => {
-    if (['error', 'warning'].includes(message.type())) {
-      consoleMessages.push({ type: message.type(), text: message.text().slice(0, 500), url: page.url() });
-    }
-  });
-  page.on('requestfailed', (request) => {
-    networkFailures.push({ url: request.url(), method: request.method(), failure: request.failure()?.errorText || '' });
-  });
-  const apiRequests = await installMocks(page);
+const browserLaunchOptions = {
+  headless: true,
+  executablePath: process.env.SHOPTEST_PLAYWRIGHT_EXECUTABLE_PATH || undefined,
+  args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
+};
 
-  const snapshots = [];
-  let error = null;
+async function runViewport(viewport) {
+  const browser = await chromium.launch(browserLaunchOptions);
+  let context;
+  let page;
   try {
-    await page.goto(`${baseUrl}/checkout`, { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await page.waitForSelector('.checkout-page', { state: 'attached', timeout: 30000 });
-    await page.waitForTimeout(1500);
-    await capture(page, viewport, 'checkout-loaded', snapshots);
+    context = await browser.newContext({
+      viewport: { width: viewport.width, height: viewport.height },
+      deviceScaleFactor: 1,
+      isMobile: true,
+      hasTouch: true,
+      userAgent: `Mozilla/5.0 (Linux; Android 14; Pixel Audit) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0 Mobile Safari/537.36 ShopTestAndroidApp/${viewport.name}`,
+    });
+    page = await context.newPage();
+    page.setDefaultTimeout(12000);
+    const consoleMessages = [];
+    const networkFailures = [];
+    page.on('console', (message) => {
+      if (['error', 'warning'].includes(message.type())) {
+        consoleMessages.push({ type: message.type(), text: message.text().slice(0, 500), url: page.url() });
+      }
+    });
+    page.on('requestfailed', (request) => {
+      networkFailures.push({ url: request.url(), method: request.method(), failure: request.failure()?.errorText || '' });
+    });
+    const apiRequests = await installMocks(page);
 
-    await page.locator('#checkout-address-card').scrollIntoViewIfNeeded().catch(() => undefined);
-    await page.waitForTimeout(300);
-    await capture(page, viewport, 'address-card', snapshots);
+    const snapshots = [];
+    let error = null;
+    try {
+      await page.goto(`${baseUrl}/checkout`, { waitUntil: 'domcontentloaded', timeout: 30000 });
+      await page.waitForSelector('.checkout-page', { state: 'attached', timeout: 30000 });
+      await page.waitForTimeout(1500);
+      await capture(page, viewport, 'checkout-loaded', snapshots);
 
-    const cascader = page.locator('#checkout-address-card .ant-cascader, #checkout-address-card .ant-cascader-picker').first();
-    if (await cascader.isVisible().catch(() => false)) {
-      await cascader.click();
-      await page.waitForTimeout(500);
-      await capture(page, viewport, 'address-cascader-open', snapshots);
-      await page.keyboard.press('Escape').catch(() => undefined);
-      await page.waitForTimeout(250);
+      await page.locator('#checkout-address-card').scrollIntoViewIfNeeded().catch(() => undefined);
+      await page.waitForTimeout(300);
+      await capture(page, viewport, 'address-card', snapshots);
+
+      const cascader = page.locator('#checkout-address-card .ant-cascader, #checkout-address-card .ant-cascader-picker').first();
+      if (await cascader.isVisible().catch(() => false)) {
+        await cascader.click();
+        await page.waitForTimeout(500);
+        await capture(page, viewport, 'address-cascader-open', snapshots);
+        await page.keyboard.press('Escape').catch(() => undefined);
+        await page.waitForTimeout(250);
+      }
+
+      await fillCheckoutForm(page);
+      await page.locator('#checkout-payment-card').scrollIntoViewIfNeeded().catch(() => undefined);
+      await page.waitForTimeout(600);
+      await capture(page, viewport, 'payment-section-filled', snapshots);
+
+      const submit = page.locator('.checkout-page__mobilePayBar .ant-btn, .checkout-page__submitButton').first();
+      await submit.click({ trial: true }).catch(() => undefined);
+      await page.waitForTimeout(400);
+      await capture(page, viewport, 'submit-ready-trial', snapshots);
+
+      await page.locator('input[placeholder="name@example.com"]').first().fill('bad-email').catch(() => undefined);
+      await submit.click().catch(() => undefined);
+      await page.waitForTimeout(800);
+      await capture(page, viewport, 'validation-errors', snapshots);
+    } catch (runError) {
+      error = {
+        message: runError?.message || String(runError),
+        stack: runError?.stack ? String(runError.stack).slice(0, 1200) : '',
+        url: page?.url?.() || '',
+      };
+      await screenshot(page, viewport, 'failed').catch(() => undefined);
     }
 
-    await fillCheckoutForm(page);
-    await page.locator('#checkout-payment-card').scrollIntoViewIfNeeded().catch(() => undefined);
-    await page.waitForTimeout(600);
-    await capture(page, viewport, 'payment-section-filled', snapshots);
-
-    const submit = page.locator('.checkout-page__mobilePayBar .ant-btn, .checkout-page__submitButton').first();
-    await submit.click({ trial: true }).catch(() => undefined);
-    await page.waitForTimeout(400);
-    await capture(page, viewport, 'submit-ready-trial', snapshots);
-
-    await page.locator('input[placeholder="name@example.com"]').first().fill('bad-email').catch(() => undefined);
-    await submit.click().catch(() => undefined);
-    await page.waitForTimeout(800);
-    await capture(page, viewport, 'validation-errors', snapshots);
-  } catch (runError) {
-    error = {
-      message: runError?.message || String(runError),
-      stack: runError?.stack ? String(runError.stack).slice(0, 1200) : '',
-      url: page.url(),
-    };
-    await screenshot(page, viewport, 'failed').catch(() => undefined);
+    return { viewport, snapshots, consoleMessages, networkFailures, apiRequests, error };
+  } finally {
+    await context?.close().catch(() => undefined);
+    await browser.close().catch(() => undefined);
   }
+}
 
-  await context.close();
-  return { viewport, snapshots, consoleMessages, networkFailures, apiRequests, error };
+async function runViewportWithRetry(viewport) {
+  const first = await runViewport(viewport);
+  if (!first.error || !/(Target page, context or browser has been closed|has been closed|browser disconnected|page .*closed|context .*closed|crash)/i.test(first.error.message)) {
+    return first;
+  }
+  process.stderr.write(`[checkout-flow-audit] retrying closed viewport at ${viewport.name}\n`);
+  return runViewport(viewport);
 }
 
 function analyze(results) {
@@ -658,16 +680,10 @@ function writeReport(results, issues) {
 
 async function main() {
   ensureDirs();
-  const browser = await chromium.launch({
-    headless: true,
-    executablePath: process.env.SHOPTEST_PLAYWRIGHT_EXECUTABLE_PATH || undefined,
-    args: ['--no-sandbox', '--disable-dev-shm-usage', '--disable-gpu'],
-  });
   const results = [];
   for (const viewport of viewportsToRun) {
-    results.push(await runViewport(browser, viewport));
+    results.push(await runViewportWithRetry(viewport));
   }
-  await browser.close();
   const issues = analyze(results);
   writeReport(results, issues);
   console.log(JSON.stringify({

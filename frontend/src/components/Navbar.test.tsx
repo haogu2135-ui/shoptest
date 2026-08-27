@@ -484,6 +484,7 @@ describe('Navbar Android app download entry', () => {
     const finalMobileApp = mobileAppCss.slice(mobileAppCss.lastIndexOf('/* F3670'));
 
     expect(finalNavbar).toMatch(/@media \(max-width:\s*900px\) and \(max-height:\s*430px\)\s*\{/);
+    expect(finalNavbar).toMatch(/body:not\(\.shop-mobile-app\) \.shop-nav \.shop-nav__mega[\s\S]*?display:\s*none\s*!important;/);
     expect(finalNavbar).toMatch(/\.shop-nav__mega,[\s\S]*?\.shop-nav__bottomBar[\s\S]*?display:\s*none\s*!important;/);
     expect(finalNavbar).toMatch(/\.shop-nav__inner--main\s*\{[\s\S]*?grid-template-columns:\s*minmax\(104px,\s*auto\) minmax\(0,\s*1fr\) auto\s*!important;[\s\S]*?grid-template-areas:\s*"brand search actions"\s*!important;[\s\S]*?grid-template-rows:\s*44px\s*!important;/);
     expect(finalNavbar).toMatch(/\.shop-nav__actions\s*\{[\s\S]*?width:\s*auto\s*!important;[\s\S]*?flex:\s*0 0 auto\s*!important;[\s\S]*?overflow:\s*visible\s*!important;/);
