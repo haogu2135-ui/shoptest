@@ -16,9 +16,12 @@ services:
       CANONICAL_SERVER_NAME: ${CANONICAL_SERVER_NAME:-petsanything.com}
       CANONICAL_REDIRECT_NAMES: ${CANONICAL_REDIRECT_NAMES:-www.petsanything.com}
       SUB2API_SERVER_NAME: ${SUB2API_SERVER_NAME:-api.petsanything.com}
+      PDF_SERVER_NAME: ${PDF_SERVER_NAME:-pdf.petsanything.com}
       HTTPS_LISTEN_PORT: ${HTTPS_LISTEN_PORT:-443}
       SSL_CERTIFICATE: ${SSL_CERTIFICATE:-/etc/nginx/ssl/petsanything.com.crt}
       SSL_CERTIFICATE_KEY: ${SSL_CERTIFICATE_KEY:-/etc/nginx/ssl/petsanything.com.key}
+      PDF_SSL_CERTIFICATE: ${PDF_SSL_CERTIFICATE:-/etc/nginx/ssl/pdf.petsanything.com.crt}
+      PDF_SSL_CERTIFICATE_KEY: ${PDF_SSL_CERTIFICATE_KEY:-/etc/nginx/ssl/pdf.petsanything.com.key}
       BACKEND_ORIGIN: ${BACKEND_ORIGIN:?BACKEND_ORIGIN is required}
       CLIENT_MAX_BODY_SIZE: ${CLIENT_MAX_BODY_SIZE:-6m}
       CSP_EXTRA_CONNECT_SRC: ${CSP_EXTRA_CONNECT_SRC:-}
@@ -28,3 +31,5 @@ services:
       - ./nginx/shoptest-edge.conf.template:/etc/nginx/templates/default.conf.template:ro
       - ${SSL_CERTIFICATE_HOST_PATH:-/etc/letsencrypt/live/petsanything.com/fullchain.pem}:${SSL_CERTIFICATE:-/etc/nginx/ssl/petsanything.com.crt}:ro
       - ${SSL_CERTIFICATE_KEY_HOST_PATH:-/etc/letsencrypt/live/petsanything.com/privkey.pem}:${SSL_CERTIFICATE_KEY:-/etc/nginx/ssl/petsanything.com.key}:ro
+      - ${PDF_SSL_CERTIFICATE_HOST_PATH:-/etc/letsencrypt/live/pdf.petsanything.com/fullchain.pem}:${PDF_SSL_CERTIFICATE:-/etc/nginx/ssl/pdf.petsanything.com.crt}:ro
+      - ${PDF_SSL_CERTIFICATE_KEY_HOST_PATH:-/etc/letsencrypt/live/pdf.petsanything.com/privkey.pem}:${PDF_SSL_CERTIFICATE_KEY:-/etc/nginx/ssl/pdf.petsanything.com.key}:ro
