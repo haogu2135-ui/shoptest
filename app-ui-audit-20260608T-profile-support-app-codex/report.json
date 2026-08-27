@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-27T15:23:08.019Z",
+  "generatedAt": "2026-08-27T19:51:25.058Z",
   "baseUrl": "http://127.0.0.1:4200",
   "viewports": [
     {
@@ -2755,181 +2755,6 @@
         },
         {
           "method": "GET",
-          "pathname": "/api/cart/me",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/orders/8801/items",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/orders/901/items",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/orders/8802/items",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/orders/902/items",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/notifications/me/unread-count",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/wishlist/me/count",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/coupons/me/available",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/support/unread-count",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/users/profile",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/users/profile",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/app/config",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/announcements/active",
-          "search": "?limit=4"
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/users/profile",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/orders/me",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/addresses/me",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/pet-profiles",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/payments/channels",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/orders/8801/items",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/orders/901/items",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/orders/8802/items",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/orders/902/items",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/cart/me",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/notifications/me/unread-count",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/wishlist/me/count",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/support/unread-count",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/coupons/me/available",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/users/profile",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/app/config",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/announcements/active",
-          "search": "?limit=4"
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/users/profile",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/orders/me",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/addresses/me",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/pet-profiles",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/payments/channels",
-          "search": ""
-        },
-        {
-          "method": "GET",
           "pathname": "/api/orders/8801/items",
           "search": ""
         },
@@ -3061,6 +2886,186 @@
         {
           "method": "GET",
           "pathname": "/api/support/unread-count",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/app/config",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/announcements/active",
+          "search": "?limit=4"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/addresses/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/pet-profiles",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/payments/channels",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/cart/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/8801/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/901/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/8802/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/902/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/notifications/me/unread-count",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/wishlist/me/count",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/coupons/me/available",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/support/unread-count",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/app/config",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/announcements/active",
+          "search": "?limit=4"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/addresses/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/pet-profiles",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/payments/channels",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/cart/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/8801/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/901/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/8802/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/902/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/notifications/me/unread-count",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/wishlist/me/count",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/support/unread-count",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/coupons/me/available",
           "search": ""
         },
         {
@@ -3115,21 +3120,6 @@
         },
         {
           "method": "GET",
-          "pathname": "/api/products/personalized-recommendations",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/pet-gallery",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/pet-gallery/quota",
-          "search": ""
-        },
-        {
-          "method": "GET",
           "pathname": "/api/notifications/me/unread-count",
           "search": ""
         },
@@ -3141,6 +3131,21 @@
         {
           "method": "GET",
           "pathname": "/api/coupons/me/available",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/products/personalized-recommendations",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/pet-gallery",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/pet-gallery/quota",
           "search": ""
         },
         {
@@ -3179,13 +3184,13 @@
           "search": "?limit=12"
         },
         {
-          "method": "POST",
-          "pathname": "/api/support/websocket-ticket",
+          "method": "GET",
+          "pathname": "/api/orders/me",
           "search": ""
         },
         {
-          "method": "GET",
-          "pathname": "/api/orders/me",
+          "method": "POST",
+          "pathname": "/api/support/websocket-ticket",
           "search": ""
         },
         {
@@ -6026,11 +6031,6 @@
         },
         {
           "method": "GET",
-          "pathname": "/api/cart/me",
-          "search": ""
-        },
-        {
-          "method": "GET",
           "pathname": "/api/orders/8801/items",
           "search": ""
         },
@@ -6047,6 +6047,11 @@
         {
           "method": "GET",
           "pathname": "/api/orders/902/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/cart/me",
           "search": ""
         },
         {
@@ -6206,11 +6211,6 @@
         },
         {
           "method": "GET",
-          "pathname": "/api/cart/me",
-          "search": ""
-        },
-        {
-          "method": "GET",
           "pathname": "/api/orders/8801/items",
           "search": ""
         },
@@ -6231,6 +6231,11 @@
         },
         {
           "method": "GET",
+          "pathname": "/api/cart/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
           "pathname": "/api/notifications/me/unread-count",
           "search": ""
         },
@@ -6241,12 +6246,12 @@
         },
         {
           "method": "GET",
-          "pathname": "/api/coupons/me/available",
+          "pathname": "/api/support/unread-count",
           "search": ""
         },
         {
           "method": "GET",
-          "pathname": "/api/support/unread-count",
+          "pathname": "/api/coupons/me/available",
           "search": ""
         },
         {
@@ -6320,13 +6325,13 @@
           "search": ""
         },
         {
-          "method": "GET",
-          "pathname": "/api/orders/me",
+          "method": "POST",
+          "pathname": "/api/support/session",
           "search": ""
         },
         {
-          "method": "POST",
-          "pathname": "/api/support/session",
+          "method": "GET",
+          "pathname": "/api/orders/me",
           "search": ""
         },
         {

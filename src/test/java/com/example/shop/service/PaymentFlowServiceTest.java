@@ -1466,6 +1466,7 @@ class PaymentFlowServiceTest {
         request.setSignature(service.expectedSignature(request));
 
         when(paymentRepository.findByOrderNoAndChannel(payment.getOrderNo(), payment.getChannel())).thenReturn(payment);
+        when(orderRepository.findByIdForUpdate(42L)).thenReturn(order);
         when(orderRepository.findById(42L)).thenReturn(order);
         when(orderRepository.updateStatusIfCurrent(42L, "PENDING_PAYMENT", "PENDING_SHIPMENT")).thenReturn(1);
         when(paymentRepository.markPaidDetailed(eq(9L), eq("provider-txn-1"), eq("provider-ref-1"), any())).thenReturn(1);
@@ -1475,6 +1476,7 @@ class PaymentFlowServiceTest {
 
         assertEquals("PAID", result.getStatus());
         InOrder inOrder = inOrder(orderRepository, paymentRepository);
+        inOrder.verify(orderRepository).findByIdForUpdate(42L);
         inOrder.verify(orderRepository).updateStatusIfCurrent(42L, "PENDING_PAYMENT", "PENDING_SHIPMENT");
         inOrder.verify(paymentRepository).markPaidDetailed(eq(9L), eq("provider-txn-1"), eq("provider-ref-1"), any());
     }
@@ -1692,10 +1694,10 @@ class PaymentFlowServiceTest {
 
         RestTemplate restTemplate = (RestTemplate) ReflectionTestUtils.getField(service, "restTemplate");
         MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
-        server.expect(requestTo("https://api.mercadopago.com/v1/payments/mp_pay_1"))
+                server.expect(requestTo("https://api.mercadopago.com/v1/payments/mp_pay_1"))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess(
-                        "{\"id\":\"mp_pay_1\",\"status\":\"approved\",\"transaction_amount\":49.90,\"external_reference\":\"SO202607200001\"}",
+                        "{\"id\":\"mp_pay_1\",\"status\":\"approved\",\"transaction_amount\":49.90,\"currency_id\":\"MXN\",\"external_reference\":\"SO202607200001\"}",
                         MediaType.APPLICATION_JSON));
 
         String payload = "{\"type\":\"payment\",\"data\":{\"id\":\"mp_pay_1\"}}";
@@ -1707,6 +1709,54 @@ class PaymentFlowServiceTest {
         InOrder inOrder = inOrder(orderService, paymentRepository);
         inOrder.verify(orderService).updateOrderStatus(77L, "PENDING_SHIPMENT");
         inOrder.verify(paymentRepository).markPaidDetailed(eq(11L), any(), eq("mp_pay_1"), any());
+    }
+
+    @Test
+    void mercadoPagoWebhookRejectsCurrencyMismatchBeforeOrderMutation() {
+        PaymentRepository paymentRepository = mock(PaymentRepository.class);
+        OrderService orderService = mock(OrderService.class);
+        RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        PaymentChannelConfig channelConfig = new PaymentChannelConfig();
+        String webhookSecret = "mp-webhook-secret-32chars-min-ok";
+
+        Payment payment = new Payment();
+        payment.setId(12L);
+        payment.setOrderId(78L);
+        payment.setOrderNo("SO202607200002");
+        payment.setChannel("MERCADO_PAGO");
+        payment.setStatus("PENDING");
+        payment.setAmount(new BigDecimal("49.90"));
+
+        when(runtimeConfig.getString("payment.mercado-pago.webhook-secret", "")).thenReturn(webhookSecret);
+        when(runtimeConfig.getString("payment.mercado-pago.access-token", "")).thenReturn("TEST-MP-ACCESS-TOKEN");
+        when(runtimeConfig.getString("mercadopago.webhook-secret", "")).thenReturn("");
+        when(runtimeConfig.getString("mercadopago.access-token", "")).thenReturn("");
+        when(paymentRepository.findByOrderNoAndChannel(payment.getOrderNo(), payment.getChannel())).thenReturn(payment);
+
+        PaymentService service = new PaymentService();
+        ReflectionTestUtils.setField(service, "paymentRepository", paymentRepository);
+        ReflectionTestUtils.setField(service, "orderService", orderService);
+        ReflectionTestUtils.setField(service, "paymentChannelConfig", channelConfig);
+        ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
+
+        RestTemplate restTemplate = (RestTemplate) ReflectionTestUtils.getField(service, "restTemplate");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(restTemplate).build();
+        server.expect(requestTo("https://api.mercadopago.com/v1/payments/mp_pay_2"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(
+                        "{\"id\":\"mp_pay_2\",\"status\":\"approved\",\"transaction_amount\":49.90,\"currency_id\":\"USD\",\"external_reference\":\"SO202607200002\"}",
+                        MediaType.APPLICATION_JSON));
+
+        String payload = "{\"type\":\"payment\",\"data\":{\"id\":\"mp_pay_2\"}}";
+        String signature = mercadoPagoSignatureHeader("mp_pay_2", "req-currency", webhookSecret);
+        IllegalArgumentException error = assertThrows(IllegalArgumentException.class,
+                () -> service.handleMercadoPagoWebhook(payload, signature, "req-currency", null, null));
+
+        assertEquals("Mercado Pago payment currency mismatch", error.getMessage());
+        verify(orderService, never()).getOrderByIdForUpdate(78L);
+        verify(orderService, never()).updateOrderStatus(78L, "PENDING_SHIPMENT");
+        verify(paymentRepository, never()).markPaidDetailed(eq(12L), any(), any(), any());
+        server.verify();
     }
 
     @Test

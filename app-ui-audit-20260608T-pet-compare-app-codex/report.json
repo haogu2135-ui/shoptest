@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-27T15:10:18.908Z",
+  "generatedAt": "2026-08-27T19:50:10.457Z",
   "baseUrl": "http://127.0.0.1:4200",
   "viewports": [
     {
@@ -1906,7 +1906,7 @@
             "finderSelectDropdown": null,
             "petGalleryPage": {
               "selector": "main.pet-gallery-page.pet-gallery-page--en",
-              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 03:08 PMRefreshCommunity proofGallery momentum@ve",
+              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 07:48 PMRefreshCommunity proofGallery momentum@ve",
               "top": 114,
               "bottom": 2764.109375,
               "left": 0,
@@ -1956,7 +1956,7 @@
             },
             "galleryToolbar": {
               "selector": "section.pet-gallery-toolbar",
-              "text": "Latest community momentsUpdated 03:08 PMRefresh",
+              "text": "Latest community momentsUpdated 07:48 PMRefresh",
               "top": 541.640625,
               "bottom": 665.640625,
               "left": 12,
@@ -2694,7 +2694,7 @@
             "finderSelectDropdown": null,
             "petGalleryPage": {
               "selector": "main.pet-gallery-page.pet-gallery-page--en",
-              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 03:08 PMRefreshCommunity proofGallery momentum@ve",
+              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 07:48 PMRefreshCommunity proofGallery momentum@ve",
               "top": -1636,
               "bottom": 1014.109375,
               "left": 0,
@@ -2744,7 +2744,7 @@
             },
             "galleryToolbar": {
               "selector": "section.pet-gallery-toolbar",
-              "text": "Latest community momentsUpdated 03:08 PMRefresh",
+              "text": "Latest community momentsUpdated 07:48 PMRefresh",
               "top": -1208.359375,
               "bottom": -1084.359375,
               "left": 12,
@@ -3602,7 +3602,7 @@
             "finderSelectDropdown": null,
             "petGalleryPage": {
               "selector": "main.pet-gallery-page.pet-gallery-page--en",
-              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 03:08 PMRefreshCommunity proofGallery momentum@ve",
+              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 07:48 PMRefreshCommunity proofGallery momentum@ve",
               "top": -1636,
               "bottom": 1014.109375,
               "left": 0,
@@ -3652,7 +3652,7 @@
             },
             "galleryToolbar": {
               "selector": "section.pet-gallery-toolbar",
-              "text": "Latest community momentsUpdated 03:08 PMRefresh",
+              "text": "Latest community momentsUpdated 07:48 PMRefresh",
               "top": -1208.359375,
               "bottom": -1084.359375,
               "left": 12,
@@ -4634,7 +4634,7 @@
             "finderSelectDropdown": null,
             "petGalleryPage": {
               "selector": "main.pet-gallery-page.pet-gallery-page--en",
-              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 03:08 PMRefreshCommunity proofGallery momentum@ve",
+              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 07:48 PMRefreshCommunity proofGallery momentum@ve",
               "top": -2082,
               "bottom": 568.109375,
               "left": 0,
@@ -4684,7 +4684,7 @@
             },
             "galleryToolbar": {
               "selector": "section.pet-gallery-toolbar",
-              "text": "Latest community momentsUpdated 03:08 PMRefresh",
+              "text": "Latest community momentsUpdated 07:48 PMRefresh",
               "top": -1654.359375,
               "bottom": -1530.359375,
               "left": 12,
@@ -9601,7 +9601,18 @@
           "screenshot": "small-320-app-compare-bottom.png"
         }
       ],
-      "consoleMessages": [],
+      "consoleMessages": [
+        {
+          "type": "warning",
+          "text": "The resource http://127.0.0.1:4200/assets/home/hero-mobile-pet.webp was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+          "url": "http://127.0.0.1:4200/pet-gallery"
+        },
+        {
+          "type": "warning",
+          "text": "The resource http://127.0.0.1:4200/assets/home/hero-mobile-pet.webp was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+          "url": "http://127.0.0.1:4200/compare"
+        }
+      ],
       "networkFailures": [],
       "apiRequests": [
         {
@@ -11005,7 +11016,7 @@
             "finderSelectDropdown": null,
             "petGalleryPage": {
               "selector": "main.pet-gallery-page.pet-gallery-page--en",
-              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 03:09 PMRefreshCommunity proofGallery momentum@ve",
+              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 07:49 PMRefreshCommunity proofGallery momentum@ve",
               "top": 114,
               "bottom": 2616.90625,
               "left": 0,
@@ -11055,7 +11066,7 @@
             },
             "galleryToolbar": {
               "selector": "section.pet-gallery-toolbar",
-              "text": "Latest community momentsUpdated 03:09 PMRefresh",
+              "text": "Latest community momentsUpdated 07:49 PMRefresh",
               "top": 541.640625,
               "bottom": 665.640625,
               "left": 12,
@@ -11074,7 +11085,7 @@
               "lineHeight": "normal",
               "centerHit": {
                 "selector": "section.pet-gallery-toolbar",
-                "text": "Latest community momentsUpdated 03:09 PMRefresh",
+                "text": "Latest community momentsUpdated 07:49 PMRefresh",
                 "inside": true
               }
             },
@@ -11601,7 +11612,7 @@
             "finderSelectDropdown": null,
             "petGalleryPage": {
               "selector": "main.pet-gallery-page.pet-gallery-page--en",
-              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 03:09 PMRefreshCommunity proofGallery momentum@ve",
+              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 07:49 PMRefreshCommunity proofGallery momentum@ve",
               "top": -1363,
               "bottom": 1139.90625,
               "left": 0,
@@ -11651,7 +11662,7 @@
             },
             "galleryToolbar": {
               "selector": "section.pet-gallery-toolbar",
-              "text": "Latest community momentsUpdated 03:09 PMRefresh",
+              "text": "Latest community momentsUpdated 07:49 PMRefresh",
               "top": -935.359375,
               "bottom": -811.359375,
               "left": 12,
@@ -12309,7 +12320,7 @@
             "finderSelectDropdown": null,
             "petGalleryPage": {
               "selector": "main.pet-gallery-page.pet-gallery-page--en",
-              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 03:09 PMRefreshCommunity proofGallery momentum@ve",
+              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 07:49 PMRefreshCommunity proofGallery momentum@ve",
               "top": -1363,
               "bottom": 1139.90625,
               "left": 0,
@@ -12359,7 +12370,7 @@
             },
             "galleryToolbar": {
               "selector": "section.pet-gallery-toolbar",
-              "text": "Latest community momentsUpdated 03:09 PMRefresh",
+              "text": "Latest community momentsUpdated 07:49 PMRefresh",
               "top": -935.359375,
               "bottom": -811.359375,
               "left": 12,
@@ -13173,7 +13184,7 @@
             "finderSelectDropdown": null,
             "petGalleryPage": {
               "selector": "main.pet-gallery-page.pet-gallery-page--en",
-              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 03:09 PMRefreshCommunity proofGallery momentum@ve",
+              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 07:49 PMRefreshCommunity proofGallery momentum@ve",
               "top": -1659,
               "bottom": 843.90625,
               "left": 0,
@@ -13223,7 +13234,7 @@
             },
             "galleryToolbar": {
               "selector": "section.pet-gallery-toolbar",
-              "text": "Latest community momentsUpdated 03:09 PMRefresh",
+              "text": "Latest community momentsUpdated 07:49 PMRefresh",
               "top": -1231.359375,
               "bottom": -1107.359375,
               "left": 12,
@@ -16767,7 +16778,18 @@
           "screenshot": "phone-390-app-compare-bottom.png"
         }
       ],
-      "consoleMessages": [],
+      "consoleMessages": [
+        {
+          "type": "warning",
+          "text": "The resource http://127.0.0.1:4200/assets/home/hero-mobile-pet.webp was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+          "url": "http://127.0.0.1:4200/pet-gallery"
+        },
+        {
+          "type": "warning",
+          "text": "The resource http://127.0.0.1:4200/assets/home/hero-mobile-pet.webp was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
+          "url": "http://127.0.0.1:4200/compare"
+        }
+      ],
       "networkFailures": [],
       "apiRequests": [
         {
@@ -16946,7 +16968,7 @@
   ],
   "issues": [],
   "issueGroups": [],
-  "consoleMessageCount": 0,
+  "consoleMessageCount": 4,
   "networkFailureCount": 0,
   "runErrors": []
 }

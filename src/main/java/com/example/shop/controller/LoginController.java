@@ -142,6 +142,7 @@ public class LoginController {
             tokenBlacklistService.recordLoginFailure(clientIp, accountLockKey(login, loginAccount));
             return invalidLoginResponse();
         } catch (IllegalStateException e) {
+            SecurityContextHolder.clearContext();
             auditLogService.record("LOGIN", "FAILURE",
                     loginAccount != null ? loginAccount.getId() : null,
                     login,
@@ -233,7 +234,21 @@ public class LoginController {
             UserDetailsImpl userDetails = UserDetailsImpl.build(user);
             String jwt = jwtService.generateToken(userDetails);
             String refreshToken = tokenBlacklistService.generateRefreshToken();
-            tokenBlacklistService.storeRefreshToken(refreshToken, normalizeLogin(userDetails.getUsername()));
+            try {
+                tokenBlacklistService.storeRefreshToken(refreshToken, normalizeLogin(userDetails.getUsername()));
+            } catch (IllegalStateException e) {
+                auditLogService.record("EMAIL_LOGIN", "FAILURE",
+                        user.getId(),
+                        user.getUsername(),
+                        user.getRole(),
+                        "USER",
+                        user.getId(),
+                        request,
+                        "Login session store unavailable",
+                        e.getMessage());
+                return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                        .body(emailCodeError("LOGIN_SERVICE_UNAVAILABLE", "Login service is temporarily unavailable"));
+            }
 
             auditLogService.record("EMAIL_LOGIN", "SUCCESS",
                     userDetails.getId(),
@@ -340,7 +355,18 @@ public class LoginController {
         UserDetailsImpl userDetails = UserDetailsImpl.build(user);
         String newAccessToken = jwtService.generateToken(userDetails);
         String newRefreshToken = tokenBlacklistService.generateRefreshToken();
-        tokenBlacklistService.storeRefreshToken(newRefreshToken, username);
+        try {
+            tokenBlacklistService.storeRefreshToken(newRefreshToken, username);
+        } catch (IllegalStateException e) {
+            auditLogService.record("TOKEN_REFRESH", "FAILURE",
+                    user.getId(), user.getUsername(), user.getRole(),
+                    "USER", user.getId(), request,
+                    "Refresh session store unavailable", e.getMessage());
+            return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+                    .body(Map.of(
+                            "error", "Login service is temporarily unavailable. Please try again later.",
+                            "code", "REFRESH_SERVICE_UNAVAILABLE"));
+        }
 
         auditLogService.record("TOKEN_REFRESH", "SUCCESS",
                 userDetails.getId(), userDetails.getUsername(), user.getRole(),

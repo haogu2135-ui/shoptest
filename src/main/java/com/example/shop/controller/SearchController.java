@@ -5,6 +5,7 @@ import com.example.shop.dto.ProductPublicListItemResponse;
 import com.example.shop.dto.ProductPublicPageResponse;
 import com.example.shop.entity.Product;
 import com.example.shop.service.ProductService;
+import com.example.shop.util.ProductListQueryValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -66,6 +67,7 @@ public class SearchController {
         query.setPage(safePage);
         query.setSize(safeSize);
         query.setSort(sort);
+        ProductListQueryValidator.validate(query);
         Page<Product> result = productService.findPublicProductPage(query);
         return ResponseEntity.ok(ProductPublicPageResponse.of(
                 toPublicListItems(result.getContent()),

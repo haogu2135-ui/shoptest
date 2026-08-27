@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -55,7 +56,7 @@ class LoginControllerRefreshTest {
     @Test
     void refreshTestsAndClientUseCurrentRefreshEndpoint() throws Exception {
         String controllerSource = Files.readString(Path.of("src/main/java/com/example/shop/controller/LoginController.java"));
-        String frontendApi = Files.readString(Path.of("frontend/src/api/index.ts"));
+        String frontendApi = Files.readString(Path.of("frontend/src/api/core.ts"));
 
         assertFalse(Files.exists(Path.of("src/test/java/com/example/shop/controller/AuthControllerTest.java")));
         assertFalse(controllerSource.contains("/api/auth/refresh-token"));
@@ -108,6 +109,25 @@ class LoginControllerRefreshTest {
         Map<?, ?> body = (Map<?, ?>) response.getBody();
         assertEquals("USER", body.get("role"));
         assertFalse(body.containsKey("roleCode"));
+        verify(tokenBlacklistService).storeRefreshToken("refresh-new", "mia");
+    }
+
+    @Test
+    void refreshTokenReturnsServiceUnavailableWhenReplacementCannotBeStored() {
+        MockHttpServletRequest request = new MockHttpServletRequest("POST", "/auth/refresh");
+        User user = user();
+
+        when(tokenBlacklistService.consumeRefreshToken("refresh-old")).thenReturn("mia");
+        when(userService.findByUsernameOrPhoneOrEmail("mia")).thenReturn(user);
+        when(jwtService.generateToken(any(UserDetailsImpl.class))).thenReturn("access-new");
+        when(tokenBlacklistService.generateRefreshToken()).thenReturn("refresh-new");
+        doThrow(new IllegalStateException("Refresh token store is unavailable"))
+                .when(tokenBlacklistService).storeRefreshToken("refresh-new", "mia");
+
+        ResponseEntity<?> response = controller.refreshToken(Map.of("refreshToken", "refresh-old"), request);
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
+        assertEquals("REFRESH_SERVICE_UNAVAILABLE", ((Map<?, ?>) response.getBody()).get("code"));
         verify(tokenBlacklistService).storeRefreshToken("refresh-new", "mia");
     }
 

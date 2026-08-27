@@ -27,6 +27,8 @@ import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.util.Currency;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -164,9 +166,50 @@ public class RefundService {
                     .setPaymentIntent(paymentIntent)
                     .build(),
                     stripeRequestOptions(secretKey, "return-refund-" + order.getId() + "-" + payment.getId()));
+            validateStripeRefund(refund, payment);
             return refund.getId();
         } catch (StripeException e) {
             throw stripeProviderUnavailable("Stripe refund failed", e);
+        }
+    }
+
+    private void validateStripeRefund(Refund refund, Payment payment) {
+        if (refund == null || isBlank(refund.getId())) {
+            throw new IllegalStateException("Stripe refund response is missing refund reference");
+        }
+        if (!"succeeded".equalsIgnoreCase(trimToNull(refund.getStatus()))) {
+            throw new IllegalStateException("Stripe refund is not completed");
+        }
+        PaymentChannelConfig.Channel channel = paymentChannelConfig.findConfigured(payment.getChannel()).orElse(null);
+        if (channel == null) {
+            throw new IllegalStateException("Stripe payment channel is not configured");
+        }
+        String expectedCurrency = resolveCurrency(channel);
+        String actualCurrency = trimToNull(refund.getCurrency());
+        if (actualCurrency == null || !expectedCurrency.equalsIgnoreCase(actualCurrency)) {
+            throw new IllegalStateException("Stripe refund currency mismatch");
+        }
+        long expectedAmount = toStripeMinorUnit(payment.getAmount(), expectedCurrency);
+        if (refund.getAmount() == null || refund.getAmount().longValue() != expectedAmount) {
+            throw new IllegalStateException("Stripe refund amount mismatch");
+        }
+    }
+
+    private long toStripeMinorUnit(BigDecimal amount, String currency) {
+        if (amount == null || amount.compareTo(BigDecimal.ZERO) <= 0) {
+            throw new IllegalStateException("Payment amount is invalid");
+        }
+        return amount.movePointRight(currencyFractionDigits(currency))
+                .setScale(0, RoundingMode.HALF_UP)
+                .longValueExact();
+    }
+
+    private int currencyFractionDigits(String currency) {
+        try {
+            int digits = Currency.getInstance(currency).getDefaultFractionDigits();
+            return digits < 0 ? 2 : digits;
+        } catch (IllegalArgumentException e) {
+            return 2;
         }
     }
 

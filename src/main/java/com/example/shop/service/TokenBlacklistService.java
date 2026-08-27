@@ -63,14 +63,33 @@ public class TokenBlacklistService {
     }
 
     public void storeRefreshToken(String refreshToken, String username) {
-        StringRedisTemplate redis = redisTemplate();
-        if (redis == null) return;
-        redis.opsForValue().set(
-                REFRESH_TOKEN_PREFIX + refreshToken,
-                username,
-                REFRESH_TOKEN_EXPIRE_DAYS,
-                TimeUnit.DAYS
-        );
+        if (refreshToken == null || refreshToken.isBlank()) {
+            throw new IllegalArgumentException("Refresh token is required");
+        }
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("Refresh token owner is required");
+        }
+        StringRedisTemplate redis;
+        try {
+            redis = redisTemplate();
+        } catch (RuntimeException ex) {
+            log.error("Redis refresh token store lookup failed; refusing to issue session", ex);
+            throw new IllegalStateException("Refresh token store is unavailable", ex);
+        }
+        if (redis == null) {
+            throw new IllegalStateException("Refresh token store is unavailable");
+        }
+        try {
+            redis.opsForValue().set(
+                    REFRESH_TOKEN_PREFIX + refreshToken,
+                    username,
+                    REFRESH_TOKEN_EXPIRE_DAYS,
+                    TimeUnit.DAYS
+            );
+        } catch (RuntimeException ex) {
+            log.error("Redis refresh token write failed; refusing to issue session", ex);
+            throw new IllegalStateException("Refresh token store is unavailable", ex);
+        }
     }
 
     public String consumeRefreshToken(String refreshToken) {

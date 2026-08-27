@@ -293,9 +293,9 @@ body.shop-mobile-app .shopee-hero__main {
   min-height: 176px;
   padding: 18px;
   border-radius: 8px;
-  background:
+  background-image:
     linear-gradient(90deg, rgba(18, 71, 52, 0.94), rgba(18, 71, 52, 0.45)),
-    url("data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 width=%27320%27 height=%27240%27 viewBox=%270 0 320 240%27%3E%3Crect width=%27320%27 height=%27240%27 fill=%27%23f8fafc%27/%3E%3Cpath d=%27M0 190 90 110 145 155 210 80 320 190v50H0z%27 fill=%27%23e2e8f0%27/%3E%3Ccircle cx=%27104%27 cy=%2784%27 r=%2726%27 fill=%27%2394a3b8%27/%3E%3C/svg%3E");
+    var(--shop-home-hero-mobile-pet, none);
   background-position: center right;
   background-size: cover;
   box-shadow: 0 12px 26px rgba(18, 71, 52, 0.14);
@@ -11252,4 +11252,27 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .product-li
     min-height: 44px !important;
     max-height: 44px !important;
   }
+}
+
+/* Short Android screens: keep the first quick-entry row above the fixed
+   bottom rail after localized labels are allowed to wrap naturally. */
+@media (max-width: 390px) and (max-height: 620px) {
+  body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .shopee-mobile-priority {
+    margin-top: -8px !important;
+  }
+}
+
+/* Keep the native home hero grounded in the real storefront. The late App
+   polish layer used an inline placeholder, which made the first screen look
+   like an empty panel even though the mobile hero asset ships with the build. */
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .shopee-home .shopee-hero__main {
+  background-image: var(--shop-home-hero-mobile-pet, none) !important;
+  background-position: center 44% !important;
+  background-size: cover !important;
+  background-color: #124734 !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .shopee-home .shopee-hero__main::before {
+  display: block !important;
+  background: rgba(18, 71, 52, 0.54) !important;
 }

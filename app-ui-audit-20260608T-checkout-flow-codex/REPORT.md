@@ -1,6 +1,6 @@
 # Mobile App Checkout Flow UI Audit
 
-Date: 2026-08-27T15:01:54.584Z
+Date: 2026-08-27T20:03:38.633Z
 Base URL: `http://127.0.0.1:4200`
 Mode: Playwright, mocked APIs, Android App WebView simulation.
 
@@ -9,7 +9,7 @@ Mode: Playwright, mocked APIs, Android App WebView simulation.
 - Viewports: `320x568`, `390x844`.
 - States: guest checkout loaded, address card, address cascader open, filled payment section, submit-ready trial, validation errors.
 - Evidence: `report.json` plus viewport screenshots in this directory.
-- Console warnings/errors: 0; network failures: 0.
+- Console warnings/errors: 2; network failures: 0.
 
 ## Automated Findings
 

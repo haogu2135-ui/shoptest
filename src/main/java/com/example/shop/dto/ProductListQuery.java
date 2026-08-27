@@ -13,6 +13,7 @@ import java.util.List;
 public class ProductListQuery {
     @Size(max = 120)
     private String keyword;
+    @Min(1)
     private Long categoryId;
     private Boolean includeChildren;
     private Boolean discount;
@@ -22,11 +23,11 @@ public class ProductListQuery {
     @DecimalMin("0.00")
     private BigDecimal maxPrice;
     @Size(max = 32)
-    private List<String> petSizes;
+    private List<@Size(max = 64) String> petSizes;
     @Size(max = 32)
-    private List<String> materials;
+    private List<@Size(max = 64) String> materials;
     @Size(max = 32)
-    private List<String> colors;
+    private List<@Size(max = 64) String> colors;
     @Size(max = 80)
     private String collection;
     @Size(max = 40)

@@ -1285,6 +1285,11 @@ public class OrderService {
         return enrichReturnInfo(orderRepository.findById(id));
     }
 
+    /** Reads and locks an order row for state changes inside the caller's transaction. */
+    public Order getOrderByIdForUpdate(Long id) {
+        return enrichReturnInfo(orderRepository.findByIdForUpdate(id));
+    }
+
     @Transactional(rollbackFor = Exception.class, readOnly = true)
     public Order getTrackableOrderForInternalUse(String orderNo, String email) {
         return enrichReturnInfo(findTrackableOrder(orderNo, email));
@@ -1473,7 +1478,7 @@ public class OrderService {
 
     @Transactional(rollbackFor = Exception.class)
     public Payment confirmPayment(Long id, String transactionId) {
-        Order order = orderRepository.findById(id);
+        Order order = findOrderForUpdate(id);
         if (order == null) {
             throw new IllegalArgumentException("Order not found");
         }
@@ -1560,7 +1565,7 @@ public class OrderService {
     }
 
     private boolean cancelPendingPaymentOrder(Long id, boolean closePendingPayments) {
-        Order order = orderRepository.findById(id);
+        Order order = findOrderForUpdate(id);
         if (order == null) {
             return false;
         }
@@ -1589,6 +1594,11 @@ public class OrderService {
                 safeOrderNo(order)
         ));
         return true;
+    }
+
+    private Order findOrderForUpdate(Long id) {
+        Order locked = orderRepository.findByIdForUpdate(id);
+        return locked != null ? locked : orderRepository.findById(id);
     }
 
     @Scheduled(fixedDelayString = "${order.expiry-scan-ms:60000}")

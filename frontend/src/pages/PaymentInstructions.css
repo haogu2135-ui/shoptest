@@ -439,7 +439,7 @@
 
 @media (max-width: 780px) {
   .payment-instructions-page {
-    padding-bottom: calc(92px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(168px + env(safe-area-inset-bottom, 0px));
   }
 
   .payment-instructions-page__trustBar {
@@ -450,10 +450,9 @@
     position: fixed;
     left: 0;
     right: 0;
-    bottom: 0;
+    bottom: calc(var(--shop-mobile-bottom-nav-height, 72px) + 10px);
     z-index: 40;
     display: flex;
-    align-items: center;
     justify-content: space-between;
     gap: 10px;
     padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px));
@@ -461,6 +460,8 @@
     border-top: 1px solid #dce8e0;
     box-shadow: 0 -8px 24px rgba(16, 47, 34, 0.08);
     backdrop-filter: blur(8px);
+    flex-wrap: wrap;
+    align-items: stretch;
   }
 
   body.shop-mobile-app .payment-instructions-page__stickyBar {
@@ -470,21 +471,32 @@
 
   .payment-instructions-page__stickyMeta {
     min-width: 0;
+    flex: 1 1 100%;
     display: flex;
     flex-direction: column;
     gap: 2px;
   }
 
   .payment-instructions-page__stickyActions {
-    display: flex;
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
     align-items: center;
     gap: 8px;
-    flex-shrink: 0;
+    flex: 1 1 100%;
+    width: 100%;
+    min-width: 0;
   }
 
   .payment-instructions-page__stickyActions .ant-btn,
   .payment-instructions-page__stickyActions .ant-btn-primary {
+    width: 100%;
+    min-width: 0;
+    max-width: 100%;
     min-height: 44px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    line-height: 1.2;
+    padding-inline: 8px;
   }
 }
 

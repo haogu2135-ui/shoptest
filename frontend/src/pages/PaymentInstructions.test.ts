@@ -106,6 +106,17 @@ describe('PaymentInstructions step readability guards', () => {
     expect(textRuleMatch?.[1]).not.toMatch(/border-radius:\s*50%/);
   });
 
+  it('keeps narrow mobile payment sticky actions inside the viewport', () => {
+    const mobileStickyCss = cssSource.slice(cssSource.indexOf('@media (max-width: 780px)'));
+
+    expect(mobileStickyCss).toContain('padding-bottom: calc(168px + env(safe-area-inset-bottom, 0px));');
+    expect(mobileStickyCss).toMatch(/\.payment-instructions-page__stickyBar\s*\{[\s\S]*?bottom:\s*calc\(var\(--shop-mobile-bottom-nav-height,\s*72px\) \+ 10px\);[\s\S]*?flex-wrap:\s*wrap;[\s\S]*?align-items:\s*stretch;/);
+    expect(mobileStickyCss).toMatch(/body\.shop-mobile-app \.payment-instructions-page__stickyBar\s*\{[\s\S]*?bottom:\s*calc\(var\(--shop-mobile-bottom-nav-height,\s*72px\)\);/);
+    expect(mobileStickyCss).toMatch(/\.payment-instructions-page__stickyMeta\s*\{[\s\S]*?flex:\s*1 1 100%;/);
+    expect(mobileStickyCss).toMatch(/\.payment-instructions-page__stickyActions\s*\{[\s\S]*?display:\s*grid;[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);[\s\S]*?width:\s*100%;[\s\S]*?min-width:\s*0;/);
+    expect(mobileStickyCss).toMatch(/\.payment-instructions-page__stickyActions \.ant-btn,[\s\S]*?\.payment-instructions-page__stickyActions \.ant-btn-primary\s*\{[\s\S]*?width:\s*100%;[\s\S]*?min-width:\s*0;[\s\S]*?max-width:\s*100%;[\s\S]*?white-space:\s*normal;[\s\S]*?overflow-wrap:\s*anywhere;/);
+  });
+
   it('keeps APP payment instructions next steps content-sized above the native bottom rail', () => {
     const closureStart = mobileAppCssSource.indexOf('UI-20260607-56: PaymentInstructions APP next steps must size to content');
     const closureCss = mobileAppCssSource.slice(closureStart);

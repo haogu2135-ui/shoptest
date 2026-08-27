@@ -28,6 +28,7 @@ public interface OrderRepository {
                          @Param("quick") String quick);
     Map<String, Object> countAdminOrderSummary(@Param("search") String search);
     Order findById(Long id);
+    Order findByIdForUpdate(@Param("id") Long id);
     Order findByOrderNo(String orderNo);
     Order findByOrderNoAndEmail(@Param("orderNo") String orderNo,
                                 @Param("email") String email,

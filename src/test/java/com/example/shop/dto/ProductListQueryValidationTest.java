@@ -6,6 +6,7 @@ import javax.validation.ConstraintViolation;
 import javax.validation.Validation;
 import javax.validation.Validator;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -44,5 +45,31 @@ class ProductListQueryValidationTest {
                 .collect(Collectors.toSet());
 
         assertTrue(invalidFields.contains("size"));
+    }
+
+    @Test
+    void rejectsInvalidCategoryId() {
+        ProductListQuery query = new ProductListQuery();
+        query.setCategoryId(0L);
+
+        Set<String> invalidFields = validator.validate(query).stream()
+                .map(ConstraintViolation::getPropertyPath)
+                .map(Object::toString)
+                .collect(Collectors.toSet());
+
+        assertTrue(invalidFields.contains("categoryId"));
+    }
+
+    @Test
+    void rejectsOversizedFilterValues() {
+        ProductListQuery query = new ProductListQuery();
+        query.setColors(List.of("x".repeat(65)));
+
+        Set<String> invalidFields = validator.validate(query).stream()
+                .map(ConstraintViolation::getPropertyPath)
+                .map(Object::toString)
+                .collect(Collectors.toSet());
+
+        assertTrue(invalidFields.stream().anyMatch(field -> field.startsWith("colors[")));
     }
 }

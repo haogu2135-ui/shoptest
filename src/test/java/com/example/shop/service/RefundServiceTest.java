@@ -38,6 +38,10 @@ class RefundServiceTest {
         assertTrue(source.contains("Gateway refund response is missing refund reference"));
         assertTrue(source.contains("Gateway refund response amount mismatch"));
         assertTrue(source.contains("Gateway refund response currency mismatch"));
+        assertTrue(source.contains("validateStripeRefund(refund, payment);"));
+        assertTrue(source.contains("Stripe refund is not completed"));
+        assertTrue(source.contains("Stripe refund currency mismatch"));
+        assertTrue(source.contains("Stripe refund amount mismatch"));
         assertTrue(source.contains("return \"return-refund-\" + order.getId() + \"-\" + payment.getId();"));
         assertTrue(source.contains("Manual refund reference must be 128 characters or less"));
     }

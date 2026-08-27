@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-27T15:43:30.081Z",
+  "generatedAt": "2026-08-27T19:48:30.038Z",
   "baseUrl": "http://127.0.0.1:4200",
   "viewports": [
     {
@@ -4059,12 +4059,12 @@
         },
         {
           "method": "GET",
-          "pathname": "/api/support/unread-count",
+          "pathname": "/api/coupons/me/available",
           "search": ""
         },
         {
           "method": "GET",
-          "pathname": "/api/coupons/me/available",
+          "pathname": "/api/support/unread-count",
           "search": ""
         },
         {
@@ -4119,13 +4119,13 @@
         },
         {
           "method": "GET",
-          "pathname": "/api/support/unread-count",
-          "search": ""
+          "pathname": "/api/products/by-ids",
+          "search": "?ids=6103&ids=6104&ids=6102"
         },
         {
           "method": "GET",
-          "pathname": "/api/products/by-ids",
-          "search": "?ids=6103&ids=6104&ids=6102"
+          "pathname": "/api/support/unread-count",
+          "search": ""
         },
         {
           "method": "GET",
@@ -4163,13 +4163,13 @@
           "search": ""
         },
         {
-          "method": "POST",
-          "pathname": "/api/payments/guest/order/8101/latest",
+          "method": "GET",
+          "pathname": "/api/cart/me",
           "search": ""
         },
         {
-          "method": "GET",
-          "pathname": "/api/cart/me",
+          "method": "POST",
+          "pathname": "/api/payments/guest/order/8101/latest",
           "search": ""
         },
         {
@@ -8061,13 +8061,13 @@
           "search": ""
         },
         {
-          "method": "POST",
-          "pathname": "/api/payments/guest/order/8101/latest",
+          "method": "GET",
+          "pathname": "/api/cart/me",
           "search": ""
         },
         {
-          "method": "GET",
-          "pathname": "/api/cart/me",
+          "method": "POST",
+          "pathname": "/api/payments/guest/order/8101/latest",
           "search": ""
         },
         {

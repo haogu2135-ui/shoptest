@@ -1216,7 +1216,7 @@ public class PaymentService {
     }
 
     private SessionCreateParams buildStripeCheckoutSession(Order order, PaymentChannelConfig.Channel channelConfig) {
-        long amountInCents = order.getTotalAmount().multiply(BigDecimal.valueOf(100)).setScale(0, RoundingMode.HALF_UP).longValue();
+        long amountInMinorUnit = toStripeMinorUnit(order.getTotalAmount(), resolveCurrency(channelConfig));
         Map<String, String> metadata = new HashMap<>();
         metadata.put("orderId", String.valueOf(order.getId()));
         metadata.put("orderNo", order.getOrderNo());
@@ -1232,7 +1232,7 @@ public class PaymentService {
                         .setQuantity(1L)
                         .setPriceData(SessionCreateParams.LineItem.PriceData.builder()
                                 .setCurrency(resolveCurrency(channelConfig).toLowerCase(Locale.ROOT))
-                                .setUnitAmount(amountInCents)
+                                .setUnitAmount(amountInMinorUnit)
                                 .setProductData(SessionCreateParams.LineItem.PriceData.ProductData.builder()
                                         .setName("ShopMX order " + order.getOrderNo())
                                         .build())
@@ -1461,7 +1461,12 @@ public class PaymentService {
     }
 
     private void claimOrderForPaymentSuccess(Long orderId) {
-        Order order = orderService.getOrderById(orderId);
+        Order order = orderService.getOrderByIdForUpdate(orderId);
+        // Keep service-level test doubles and older deployments compatible while the
+        // production mapper provides the row lock above.
+        if (order == null) {
+            order = orderService.getOrderById(orderId);
+        }
         if (order == null) {
             throw new IllegalStateException("Order not found");
         }
@@ -1843,25 +1848,39 @@ public class PaymentService {
         if (payment == null || providerPayment == null) {
             throw new IllegalArgumentException("Mercado Pago payment payload is required");
         }
-        BigDecimal paidAmount = null;
-        JsonNode transactionAmount = providerPayment.get("transaction_amount");
-        if (transactionAmount != null && !transactionAmount.isNull()) {
-            try {
-                paidAmount = new BigDecimal(transactionAmount.asText()).setScale(2, RoundingMode.HALF_UP);
-            } catch (Exception ignored) {
-                paidAmount = null;
-            }
+        PaymentChannelConfig.Channel channel = paymentChannelConfig.findConfigured(payment.getChannel()).orElse(null);
+        if (channel == null) {
+            throw new IllegalStateException("Mercado Pago payment channel is not configured");
         }
-        if (paidAmount != null && payment.getAmount() != null) {
+        String expectedCurrency = resolveCurrency(channel);
+        String actualCurrency = trimToNull(readText(providerPayment, "currency_id"));
+        if (actualCurrency == null) {
+            throw new IllegalArgumentException("Mercado Pago payment currency is missing");
+        }
+        if (!expectedCurrency.equalsIgnoreCase(actualCurrency)) {
+            throw new IllegalArgumentException("Mercado Pago payment currency mismatch");
+        }
+
+        BigDecimal paidAmount;
+        JsonNode transactionAmount = providerPayment.get("transaction_amount");
+        if (transactionAmount == null || transactionAmount.isNull()) {
+            throw new IllegalArgumentException("Mercado Pago payment amount is missing");
+        }
+        try {
+            paidAmount = new BigDecimal(transactionAmount.asText()).setScale(2, RoundingMode.HALF_UP);
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Mercado Pago payment amount is invalid", e);
+        }
+        if (payment.getAmount() == null) {
+            throw new IllegalStateException("Payment amount is invalid");
+        }
+        {
             BigDecimal expected = payment.getAmount().setScale(2, RoundingMode.HALF_UP);
             if (paidAmount.compareTo(expected) != 0) {
                 throw new IllegalArgumentException("Mercado Pago paid amount mismatch");
             }
         }
-        String currency = firstNonBlank(readText(providerPayment, "currency_id"), "MXN").toUpperCase(Locale.ROOT);
-        if (!isBlank(currency)) {
-            log.debug("Mercado Pago currency observed: {}", currency);
-        }
+        log.debug("Mercado Pago currency observed: {}", actualCurrency.toUpperCase(Locale.ROOT));
     }
 
     private String readNestedText(JsonNode root, String parent, String child) {

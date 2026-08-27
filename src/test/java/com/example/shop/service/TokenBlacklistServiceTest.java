@@ -19,6 +19,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
@@ -51,6 +52,30 @@ class TokenBlacklistServiceTest {
         verify(redis, never()).delete("refresh:refresh-token");
         assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/entity/RefreshToken.java")));
         assertFalse(Files.exists(Path.of("src/main/java/com/example/shop/service/RefreshTokenService.java")));
+    }
+
+    @Test
+    void refreshTokenStoreFailsClosedWhenRedisIsUnavailable() {
+        TokenBlacklistService service = new TokenBlacklistService(
+                redisProvider(null), mock(RuntimeConfigService.class), mock(ClientIpResolver.class));
+
+        assertThrows(IllegalStateException.class,
+                () -> service.storeRefreshToken("refresh-token", "mia"));
+    }
+
+    @Test
+    void refreshTokenStoreFailsClosedWhenRedisWriteFails() {
+        StringRedisTemplate redis = mock(StringRedisTemplate.class);
+        ValueOperations<String, String> valueOperations = mockValueOperations();
+        when(redis.opsForValue()).thenReturn(valueOperations);
+        org.mockito.Mockito.doThrow(new RuntimeException("redis unavailable"))
+                .when(valueOperations)
+                .set("refresh:refresh-token", "mia", 7L, TimeUnit.DAYS);
+        TokenBlacklistService service = new TokenBlacklistService(
+                redisProvider(redis), mock(RuntimeConfigService.class), mock(ClientIpResolver.class));
+
+        assertThrows(IllegalStateException.class,
+                () -> service.storeRefreshToken("refresh-token", "mia"));
     }
 
     @Test

@@ -10,6 +10,7 @@ import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.AdminRoleService;
 import com.example.shop.service.ProductService;
 import com.example.shop.service.SecurityAuditLogService;
+import com.example.shop.util.ProductListQueryValidator;
 import org.springframework.data.domain.Page;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -81,6 +82,7 @@ public class ProductController {
         query.setPage(safePage);
         query.setSize(safeSize);
         query.setSort(sort);
+        ProductListQueryValidator.validate(query);
         Page<Product> result = productService.findPublicProductPage(query);
         return ResponseEntity.ok(ProductPublicPageResponse.of(
                 toPublicListItems(result.getContent()),

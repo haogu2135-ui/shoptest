@@ -58,6 +58,7 @@ import com.example.shop.service.LogisticsCarrierService;
 import com.example.shop.repository.PaymentRepository;
 import com.example.shop.util.CsvUtils;
 import com.example.shop.util.ProductStatusUtils;
+import com.example.shop.util.ProductListQueryValidator;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
@@ -155,6 +156,7 @@ public class AdminController {
         query.setPage(page == null ? DEFAULT_ADMIN_PRODUCT_PAGE : page);
         query.setSize(size == null ? DEFAULT_ADMIN_PRODUCT_PAGE_SIZE : size);
         query.setSort(sort == null || sort.isBlank() ? DEFAULT_ADMIN_PRODUCT_SORT : sort);
+        ProductListQueryValidator.validate(query);
         Page<Product> result = productService.findAdminProductPage(query);
         return ResponseEntity.ok(ProductAdminPageResponse.of(
                 result.getContent(),

@@ -1,6 +1,7 @@
 package com.example.shop.controller;
 
 import com.example.shop.dto.EmailLoginCodeRequest;
+import com.example.shop.dto.EmailLoginRequest;
 import com.example.shop.dto.LoginRequest;
 import com.example.shop.entity.User;
 import com.example.shop.security.JwtService;
@@ -158,6 +159,72 @@ class LoginControllerPasswordLoginTest {
         ArgumentCaptor<Authentication> authenticationRequest = ArgumentCaptor.forClass(Authentication.class);
         verify(authenticationManager).authenticate(authenticationRequest.capture());
         assertEquals("mia", authenticationRequest.getValue().getPrincipal());
+    }
+
+    @Test
+    void passwordLoginReturnsServiceUnavailableWhenRefreshTokenCannotBeStored() {
+        MockHttpServletRequest servletRequest = new MockHttpServletRequest("POST", "/auth/login");
+        LoginRequest loginRequest = new LoginRequest();
+        loginRequest.setUsername("mia@example.com");
+        loginRequest.setPassword("secret123");
+        UserDetailsImpl principal = new UserDetailsImpl(
+                7L,
+                "mia",
+                "mia@example.com",
+                "ACTIVE",
+                "encoded-password",
+                List.of(new SimpleGrantedAuthority("ROLE_USER")));
+        UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
+                principal, null, principal.getAuthorities());
+        User user = new User();
+        user.setId(7L);
+        user.setUsername("mia");
+        user.setEmail("mia@example.com");
+        user.setRole("USER");
+        user.setStatus("ACTIVE");
+
+        when(clientIpResolver.resolve(servletRequest)).thenReturn("203.0.113.37");
+        when(authenticationManager.authenticate(any())).thenReturn(authentication);
+        when(jwtService.generateToken(principal)).thenReturn("access-token");
+        when(tokenBlacklistService.generateRefreshToken()).thenReturn("refresh-token");
+        when(userService.findByUsernameOrPhoneOrEmail("mia@example.com")).thenReturn(user);
+        when(userService.findById(7L)).thenReturn(user);
+        doThrow(new IllegalStateException("Refresh token store is unavailable"))
+                .when(tokenBlacklistService).storeRefreshToken("refresh-token", "mia");
+
+        ResponseEntity<?> response = controller.login(loginRequest, servletRequest);
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
+        assertEquals("LOGIN_SERVICE_UNAVAILABLE", ((Map<?, ?>) response.getBody()).get("code"));
+        verify(tokenBlacklistService).storeRefreshToken("refresh-token", "mia");
+    }
+
+    @Test
+    void emailLoginReturnsServiceUnavailableWhenRefreshTokenCannotBeStored() {
+        MockHttpServletRequest servletRequest = new MockHttpServletRequest("POST", "/auth/email-login");
+        EmailLoginRequest loginRequest = new EmailLoginRequest();
+        loginRequest.setEmail("mia@example.com");
+        loginRequest.setCode("123456");
+        User user = new User();
+        user.setId(7L);
+        user.setUsername("mia");
+        user.setEmail("mia@example.com");
+        user.setRole("USER");
+        user.setStatus("ACTIVE");
+
+        when(clientIpResolver.resolve(servletRequest)).thenReturn("203.0.113.38");
+        when(emailLoginService.verifyLoginCode("mia@example.com", "123456", "203.0.113.38"))
+                .thenReturn(user);
+        when(jwtService.generateToken(any(UserDetailsImpl.class))).thenReturn("access-token");
+        when(tokenBlacklistService.generateRefreshToken()).thenReturn("refresh-token");
+        doThrow(new IllegalStateException("Refresh token store is unavailable"))
+                .when(tokenBlacklistService).storeRefreshToken("refresh-token", "mia");
+
+        ResponseEntity<?> response = controller.emailLogin(loginRequest, servletRequest);
+
+        assertEquals(HttpStatus.SERVICE_UNAVAILABLE, response.getStatusCode());
+        assertEquals("LOGIN_SERVICE_UNAVAILABLE", ((Map<?, ?>) response.getBody()).get("code"));
+        verify(tokenBlacklistService).storeRefreshToken("refresh-token", "mia");
     }
 
     @Test

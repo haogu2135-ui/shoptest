@@ -109,6 +109,16 @@ class ProductControllerPaginationTest {
     }
 
     @Test
+    void publicProductListRejectsOversizedFilterPayload() throws Exception {
+        mockMvc.perform(get("/products")
+                        .param("keyword", "x".repeat(121)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("keyword must be 120 characters or fewer"));
+
+        verify(productService, never()).findPublicProductPage(any());
+    }
+
+    @Test
     void publicProductListUsesLightweightItemsInsteadOfDetailPayload() throws Exception {
         com.example.shop.entity.Product product = new com.example.shop.entity.Product();
         product.setId(9L);

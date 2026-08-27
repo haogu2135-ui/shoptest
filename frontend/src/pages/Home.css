@@ -5777,7 +5777,7 @@ body.shop-mobile-app .shop-app-shell .shopee-hero__actions .home-btn {
 @media (max-width: 600px) {
   .shopee-mobile-quick-panel,
   .shopee-mobile-quick-panel--skeleton {
-    grid-template-columns: repeat(5, minmax(0, 1fr));
+    grid-template-columns: repeat(4, minmax(0, 1fr));
   }
 
   .shopee-mobile-quick-panel__button--seckill {
@@ -5837,5 +5837,26 @@ body .shopee-home-popconfirm.shop-popconfirm {
 
   body.shop-cookie-consent-visible.shop-cookie-consent-visible .shop-app-shell--home .shopee-home .shopee-hero p {
     margin-bottom: 0 !important;
+  }
+}
+
+/* Commercial mobile quick-entry labels: localized names must remain readable
+   after the one-line atomic-text rules above. */
+@media (max-width: 600px) {
+  .shopee-mobile-quick-panel button {
+    overflow: visible !important;
+  }
+
+  .shopee-mobile-quick-panel button > .shopee-mobile-quick-panel__label {
+    display: block !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    min-height: 28px !important;
+    overflow: visible !important;
+    text-overflow: clip !important;
+    overflow-wrap: normal !important;
+    word-break: normal !important;
+    white-space: normal !important;
+    line-height: 1.2 !important;
   }
 }
