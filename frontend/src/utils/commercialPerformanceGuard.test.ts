@@ -326,8 +326,22 @@ describe('commercial performance contracts', () => {
     expect(home).not.toContain('@ant-design/icons');
     expect(home).toContain('HomeIcon');
     expect(home).toContain('export const HI');
-    expect(indexHtml).toContain('hero-mobile-pet.webp');
-    expect(indexHtml).toContain('type="image/webp"');
+    expect(indexHtml).toContain('home-hero-preload.js');
+  });
+
+  it('only injects hero preloads on the home document path', () => {
+    const indexHtml = fs.readFileSync(path.join(__dirname, '..', '..', 'public', 'index.html'), 'utf8');
+    const heroPreload = fs.readFileSync(path.join(__dirname, '..', '..', 'public', 'home-hero-preload.js'), 'utf8');
+
+    expect(indexHtml).toContain('<script src="%PUBLIC_URL%/home-hero-preload.js"></script>');
+    expect(heroPreload).toContain("var pathname = window.location.pathname.replace(/\\/+$/, '') || '/';");
+    expect(heroPreload).toContain("if (pathname !== '/' && pathname !== '/index.html') return;");
+    expect(heroPreload).toContain("link.rel = 'preload';");
+    expect(heroPreload).toContain("link.as = 'image';");
+    expect(heroPreload).toContain("link.setAttribute('fetchpriority', 'high');");
+    expect(heroPreload).toContain("/assets/home/hero-mobile-pet.webp");
+    expect(heroPreload).toContain("/assets/home/hero-dog.webp");
+    expect(indexHtml).not.toMatch(/^\s*<link rel="preload"[^>]+hero-(?:mobile-pet|dog)\.webp/m);
   });
 
 

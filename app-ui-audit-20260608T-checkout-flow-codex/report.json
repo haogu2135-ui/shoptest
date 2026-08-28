@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-27T20:03:38.633Z",
+  "generatedAt": "2026-08-27T23:14:12.246Z",
   "baseUrl": "http://127.0.0.1:4200",
   "viewports": [
     {
@@ -1437,13 +1437,7 @@
           "screenshot": "small-320-app-validation-errors.png"
         }
       ],
-      "consoleMessages": [
-        {
-          "type": "warning",
-          "text": "The resource http://127.0.0.1:4200/assets/home/hero-mobile-pet.webp was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
-          "url": "http://127.0.0.1:4200/checkout"
-        }
-      ],
+      "consoleMessages": [],
       "networkFailures": [],
       "apiRequests": [
         {
@@ -2861,13 +2855,7 @@
           "screenshot": "phone-390-app-validation-errors.png"
         }
       ],
-      "consoleMessages": [
-        {
-          "type": "warning",
-          "text": "The resource http://127.0.0.1:4200/assets/home/hero-mobile-pet.webp was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
-          "url": "http://127.0.0.1:4200/checkout"
-        }
-      ],
+      "consoleMessages": [],
       "networkFailures": [],
       "apiRequests": [
         {
@@ -2900,6 +2888,6 @@
     }
   ],
   "issues": [],
-  "consoleMessageCount": 2,
+  "consoleMessageCount": 0,
   "networkFailureCount": 0
 }

@@ -238,7 +238,13 @@
       "technology": "Tecnología para mascotas",
       "bestSellers": "Más vendidos",
       "favorites": "Favoritos",
-      "mall": "Tienda"
+      "mall": "Tienda",
+      "orders": "Pedidos",
+      "cart": "Carrito",
+      "track": "Rastreo",
+      "support": "Soporte",
+      "finder": "Guía",
+      "history": "Historial"
     },
     "heroEyebrow": "Ofertas para mascotas",
     "heroTitle": "Accesorios para mascotas hasta 50% off",

@@ -336,7 +336,13 @@
       "technology": "智能用品",
       "bestSellers": "热销",
       "favorites": "收藏",
-      "mall": "商城"
+      "mall": "商城",
+      "orders": "订单",
+      "cart": "购物车",
+      "track": "追踪",
+      "support": "客服",
+      "finder": "选宠",
+      "history": "历史"
     },
     "heroEyebrow": "宠物好物限时优惠",
     "heroTitle": "宠物用品低至5折",

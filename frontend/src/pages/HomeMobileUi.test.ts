@@ -20,6 +20,56 @@ describe('Home mobile quick-entry UI contracts', () => {
     expect(homeCss).toMatch(/Keep the high-intent flash-sale entry visible in the mobile home rail[\s\S]*?\.shopee-mobile-quick-panel\s*,[\s\S]*?grid-template-columns:\s*repeat\(4,\s*minmax\(0,\s*1fr\)\);/);
   });
 
+  it('keeps Spanish quick-entry words intact without splitting labels', () => {
+    const spanishRuleStart = homeCss.lastIndexOf('Spanish quick entries contain longer words');
+    const spanishRule = homeCss.slice(spanishRuleStart);
+
+    expect(spanishRuleStart).toBeGreaterThan(-1);
+    expect(spanishRule).toMatch(/@media \(max-width:\s*600px\)/);
+    expect(spanishRule).toMatch(/\.shopee-home\.shopee-home--es \.shopee-mobile-quick-panel button\s*\{[\s\S]*?padding-inline:\s*1px\s*!important;/);
+    expect(spanishRule).toMatch(/\.shopee-home\.shopee-home--es \.shopee-mobile-quick-panel__label\s*\{[\s\S]*?overflow-wrap:\s*normal\s*!important;[\s\S]*?word-break:\s*keep-all\s*!important;[\s\S]*?hyphens:\s*none\s*!important;/);
+  });
+
+  it('keeps the Web mobile quick-entry row clear of the fixed bottom rail', () => {
+    const webRailRuleStart = homeCss.lastIndexOf('Web mobile home: the hero stats duplicate');
+    const webRailRule = homeCss.slice(webRailRuleStart);
+
+    expect(webRailRuleStart).toBeGreaterThan(-1);
+    expect(webRailRule).toMatch(/@media \(max-width:\s*600px\)/);
+    expect(webRailRule).toMatch(/body:not\(\.shop-mobile-app\) \.shop-app-shell--home \.shopee-hero__signalRow\s*\{[\s\S]*?display:\s*none\s*!important;/);
+    expect(webRailRule).toMatch(/body:not\(\.shop-mobile-app\) \.shop-app-shell--home \.shopee-mobile-priority\s*\{[\s\S]*?margin-top:\s*-48px\s*!important;/);
+  });
+
+  it('compacts the Web hero on short phones before the quick-entry rail', () => {
+    const shortWebRuleStart = homeCss.lastIndexOf('@media (max-width: 390px) and (max-height: 620px)');
+    const shortWebRule = homeCss.slice(shortWebRuleStart);
+
+    expect(shortWebRuleStart).toBeGreaterThan(-1);
+    expect(shortWebRule).toMatch(/body:not\(\.shop-mobile-app\) \.shop-app-shell--home \.shopee-hero__categoryRail\s*\{[\s\S]*?display:\s*none\s*!important;/);
+    expect(shortWebRule).toMatch(/body:not\(\.shop-mobile-app\) \.shop-app-shell--home \.shopee-mobile-priority\s*\{[\s\S]*?margin-top:\s*-20px\s*!important;/);
+    expect(shortWebRule).toMatch(/body\.shop-cookie-consent-visible:not\(\.shop-mobile-app\) \.shop-app-shell--home \.shopee-home \.shopee-hero \.shopee-hero__main > div\s*\{[\s\S]*?transform:\s*translateY\(-52px\)\s*!important;/);
+  });
+
+  it('keeps both mobile web hero actions above first-visit consent', () => {
+    const webHeroRuleStart = homeCss.lastIndexOf('Mobile web keeps both first-viewport hero actions');
+    const webHeroRule = homeCss.slice(webHeroRuleStart);
+
+    expect(webHeroRuleStart).toBeGreaterThan(-1);
+    expect(webHeroRule).toMatch(/@media \(max-width:\s*600px\)/);
+    expect(webHeroRule).toMatch(/body:not\(\.shop-mobile-app\) \.shop-app-shell--home \.shopee-hero__actions\s*\{[\s\S]*?display:\s*grid\s*!important;[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;/);
+    expect(webHeroRule).toMatch(/body:not\(\.shop-mobile-app\) \.shop-app-shell--home \.shopee-hero__actions \.home-btn\s*\{[\s\S]*?min-height:\s*44px\s*!important;[\s\S]*?height:\s*44px\s*!important;/);
+    expect(webHeroRule).toMatch(/body:not\(\.shop-mobile-app\) \.shop-app-shell--home \.shopee-hero__actions \.home-btn > span[^\{]*\{[\s\S]*?white-space:\s*normal\s*!important;/);
+  });
+
+  it('reserves short-phone scroll room below the quick-entry rail', () => {
+    const clearanceRuleStart = homeCss.lastIndexOf('Short mobile pages need their own scroll buffer');
+    const clearanceRule = homeCss.slice(clearanceRuleStart);
+
+    expect(clearanceRuleStart).toBeGreaterThan(-1);
+    expect(clearanceRule).toMatch(/@media \(max-width:\s*600px\) and \(max-height:\s*760px\)/);
+    expect(clearanceRule).toMatch(/\.shopee-home \.shopee-mobile-priority,[\s\S]*?body\.shop-mobile-app \.shop-app-shell--home \.shopee-mobile-priority\s*\{[\s\S]*?padding-bottom:\s*calc\(var\(--shop-mobile-bottom-nav-height,\s*72px\) \+ 24px \+ env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;/);
+  });
+
   it('keeps the first App quick-entry row above the fixed rail on short phones', () => {
     const shortScreenRuleStart = mobileAppCss.indexOf('Short Android screens: keep the first quick-entry row above the fixed');
     const shortScreenRule = mobileAppCss.slice(shortScreenRuleStart);

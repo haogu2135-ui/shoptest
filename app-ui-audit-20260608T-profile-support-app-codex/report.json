@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-27T19:51:25.058Z",
+  "generatedAt": "2026-08-27T23:15:18.483Z",
   "baseUrl": "http://127.0.0.1:4200",
   "viewports": [
     {
@@ -1998,7 +1998,7 @@
             "petDatePicker": null,
             "cascaderDropdown": null,
             "selectDropdown": {
-              "selector": "div#:rm:.shop-select__popup.shop-mobile-popup-layer.support-order-select-popup",
+              "selector": "div#:rl:.shop-select__popup.shop-mobile-popup-layer.support-order-select-popup",
               "text": "6/8/2026 - SO-CUSTOMER-20260608-00008801-LONG - $131.276/8/2026 - PROF-UI-20260608-PENDING-PAYMENT-LONG - $9.296/7/2026 - SO-CUSTOMER-20260608-00008802-DELAY - $7.156/7/2026 - PROF-UI-20260608-SHIPPED - $4.32",
               "top": 152,
               "bottom": 395.921875,
@@ -2094,7 +2094,7 @@
               "fontSize": "16px"
             },
             "supportOrderPopup": {
-              "selector": "div#:rm:.shop-select__popup.shop-mobile-popup-layer.support-order-select-popup",
+              "selector": "div#:rl:.shop-select__popup.shop-mobile-popup-layer.support-order-select-popup",
               "text": "6/8/2026 - SO-CUSTOMER-20260608-00008801-LONG - $131.276/8/2026 - PROF-UI-20260608-PENDING-PAYMENT-LONG - $9.296/7/2026 - SO-CUSTOMER-20260608-00008802-DELAY - $7.156/7/2026 - PROF-UI-20260608-SHIPPED - $4.32",
               "top": 152,
               "bottom": 395.921875,
@@ -2195,7 +2195,7 @@
                   "text": "6/8/2026 - SO-CUSTOMER-20260608-00008801-LONG - $131.27"
                 },
                 {
-                  "selector": "div#:rm:.shop-select__popup.shop-mobile-popup-layer.support-order-select-popup",
+                  "selector": "div#:rl:.shop-select__popup.shop-mobile-popup-layer.support-order-select-popup",
                   "text": "6/8/2026 - SO-CUSTOMER-20260608-00008801-LONG - $131.276/8/2026 - PROF-UI-20260608-PENDING-PAYMENT-LONG - $9.296/7/2026 "
                 },
                 {
@@ -2237,7 +2237,7 @@
                   "text": "6/8/2026 - SO-CUSTOMER-20260608-00008801-LONG - $131.27"
                 },
                 {
-                  "selector": "div#:rm:.shop-select__popup.shop-mobile-popup-layer.support-order-select-popup",
+                  "selector": "div#:rl:.shop-select__popup.shop-mobile-popup-layer.support-order-select-popup",
                   "text": "6/8/2026 - SO-CUSTOMER-20260608-00008801-LONG - $131.276/8/2026 - PROF-UI-20260608-PENDING-PAYMENT-LONG - $9.296/7/2026 "
                 },
                 {
@@ -2679,7 +2679,7 @@
                   "text": ""
                 },
                 {
-                  "selector": "div#:rl:.shop-modal__title",
+                  "selector": "div#:rk:.shop-modal__title",
                   "text": "Order SO-CUSTOMER-20260608-00008801-LONG"
                 },
                 {
@@ -3025,11 +3025,6 @@
         },
         {
           "method": "GET",
-          "pathname": "/api/cart/me",
-          "search": ""
-        },
-        {
-          "method": "GET",
           "pathname": "/api/orders/8801/items",
           "search": ""
         },
@@ -3050,17 +3045,22 @@
         },
         {
           "method": "GET",
+          "pathname": "/api/cart/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
           "pathname": "/api/notifications/me/unread-count",
           "search": ""
         },
         {
           "method": "GET",
-          "pathname": "/api/wishlist/me/count",
+          "pathname": "/api/support/unread-count",
           "search": ""
         },
         {
           "method": "GET",
-          "pathname": "/api/support/unread-count",
+          "pathname": "/api/wishlist/me/count",
           "search": ""
         },
         {
@@ -3135,21 +3135,6 @@
         },
         {
           "method": "GET",
-          "pathname": "/api/products/personalized-recommendations",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/pet-gallery",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/pet-gallery/quota",
-          "search": ""
-        },
-        {
-          "method": "GET",
           "pathname": "/api/support/unread-count",
           "search": ""
         },
@@ -3185,12 +3170,27 @@
         },
         {
           "method": "GET",
-          "pathname": "/api/orders/me",
+          "pathname": "/api/products/personalized-recommendations",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/pet-gallery",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/pet-gallery/quota",
           "search": ""
         },
         {
           "method": "POST",
           "pathname": "/api/support/websocket-ticket",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/me",
           "search": ""
         },
         {
@@ -5941,186 +5941,6 @@
         },
         {
           "method": "GET",
-          "pathname": "/api/orders/8801/items",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/orders/901/items",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/orders/8802/items",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/orders/902/items",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/cart/me",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/notifications/me/unread-count",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/wishlist/me/count",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/coupons/me/available",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/support/unread-count",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/users/profile",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/users/profile",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/app/config",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/announcements/active",
-          "search": "?limit=4"
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/users/profile",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/orders/me",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/addresses/me",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/pet-profiles",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/payments/channels",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/orders/8801/items",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/orders/901/items",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/orders/8802/items",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/orders/902/items",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/cart/me",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/notifications/me/unread-count",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/wishlist/me/count",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/coupons/me/available",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/support/unread-count",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/users/profile",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/users/profile",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/app/config",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/announcements/active",
-          "search": "?limit=4"
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/users/profile",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/orders/me",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/addresses/me",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/pet-profiles",
-          "search": ""
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/payments/channels",
-          "search": ""
-        },
-        {
-          "method": "GET",
           "pathname": "/api/cart/me",
           "search": ""
         },
@@ -6241,6 +6061,96 @@
         },
         {
           "method": "GET",
+          "pathname": "/api/support/unread-count",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/wishlist/me/count",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/coupons/me/available",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/app/config",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/announcements/active",
+          "search": "?limit=4"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/addresses/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/pet-profiles",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/payments/channels",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/8801/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/901/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/8802/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/902/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/cart/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/notifications/me/unread-count",
+          "search": ""
+        },
+        {
+          "method": "GET",
           "pathname": "/api/wishlist/me/count",
           "search": ""
         },
@@ -6252,6 +6162,96 @@
         {
           "method": "GET",
           "pathname": "/api/coupons/me/available",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/app/config",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/announcements/active",
+          "search": "?limit=4"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/addresses/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/pet-profiles",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/payments/channels",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/8801/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/901/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/8802/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/orders/902/items",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/cart/me",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/notifications/me/unread-count",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/wishlist/me/count",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/coupons/me/available",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/support/unread-count",
           "search": ""
         },
         {
@@ -6325,13 +6325,13 @@
           "search": ""
         },
         {
-          "method": "POST",
-          "pathname": "/api/support/session",
+          "method": "GET",
+          "pathname": "/api/orders/me",
           "search": ""
         },
         {
-          "method": "GET",
-          "pathname": "/api/orders/me",
+          "method": "POST",
+          "pathname": "/api/support/session",
           "search": ""
         },
         {

@@ -20,7 +20,7 @@ describe('home mobile quick actions', () => {
       'history',
     ]);
     expect(actions.find((action) => action.key === 'seckill')).toMatchObject({
-      label: 'nav.seckill',
+      label: 'home.quick.flashDeals',
       iconKey: 'thunder',
       intent: 'seckill',
     });

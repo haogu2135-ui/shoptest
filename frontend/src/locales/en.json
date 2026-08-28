@@ -336,7 +336,13 @@
       "technology": "Pet tech",
       "bestSellers": "Best sellers",
       "favorites": "Favorites",
-      "mall": "Mall"
+      "mall": "Mall",
+      "orders": "Orders",
+      "cart": "Cart",
+      "track": "Track",
+      "support": "Support",
+      "finder": "Pet guide",
+      "history": "History"
     },
     "heroEyebrow": "Pet deals for every day",
     "heroTitle": "Pet essentials up to 50% off",

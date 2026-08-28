@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-27T19:48:30.038Z",
+  "generatedAt": "2026-08-27T23:22:34.594Z",
   "baseUrl": "http://127.0.0.1:4200",
   "viewports": [
     {
@@ -3933,23 +3933,7 @@
           "screenshot": "small-320-app-payment-instructions-bottom.png"
         }
       ],
-      "consoleMessages": [
-        {
-          "type": "warning",
-          "text": "The resource http://127.0.0.1:4200/assets/home/hero-mobile-pet.webp was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
-          "url": "http://127.0.0.1:4200/notifications"
-        },
-        {
-          "type": "warning",
-          "text": "The resource http://127.0.0.1:4200/assets/home/hero-mobile-pet.webp was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
-          "url": "http://127.0.0.1:4200/stock-alerts"
-        },
-        {
-          "type": "warning",
-          "text": "The resource http://127.0.0.1:4200/assets/home/hero-mobile-pet.webp was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
-          "url": "http://127.0.0.1:4200/history"
-        }
-      ],
+      "consoleMessages": [],
       "networkFailures": [],
       "apiRequests": [
         {
@@ -4114,6 +4098,11 @@
         },
         {
           "method": "GET",
+          "pathname": "/api/support/unread-count",
+          "search": ""
+        },
+        {
+          "method": "GET",
           "pathname": "/api/coupons/me/available",
           "search": ""
         },
@@ -4121,11 +4110,6 @@
           "method": "GET",
           "pathname": "/api/products/by-ids",
           "search": "?ids=6103&ids=6104&ids=6102"
-        },
-        {
-          "method": "GET",
-          "pathname": "/api/support/unread-count",
-          "search": ""
         },
         {
           "method": "GET",
@@ -4163,13 +4147,13 @@
           "search": ""
         },
         {
-          "method": "GET",
-          "pathname": "/api/cart/me",
+          "method": "POST",
+          "pathname": "/api/payments/guest/order/8101/latest",
           "search": ""
         },
         {
-          "method": "POST",
-          "pathname": "/api/payments/guest/order/8101/latest",
+          "method": "GET",
+          "pathname": "/api/cart/me",
           "search": ""
         },
         {
@@ -7831,23 +7815,7 @@
           "screenshot": "phone-390-app-payment-instructions-bottom.png"
         }
       ],
-      "consoleMessages": [
-        {
-          "type": "warning",
-          "text": "The resource http://127.0.0.1:4200/assets/home/hero-mobile-pet.webp was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
-          "url": "http://127.0.0.1:4200/notifications"
-        },
-        {
-          "type": "warning",
-          "text": "The resource http://127.0.0.1:4200/assets/home/hero-mobile-pet.webp was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
-          "url": "http://127.0.0.1:4200/stock-alerts"
-        },
-        {
-          "type": "warning",
-          "text": "The resource http://127.0.0.1:4200/assets/home/hero-mobile-pet.webp was preloaded using link preload but not used within a few seconds from the window's load event. Please make sure it has an appropriate `as` value and it is preloaded intentionally.",
-          "url": "http://127.0.0.1:4200/history"
-        }
-      ],
+      "consoleMessages": [],
       "networkFailures": [],
       "apiRequests": [
         {
@@ -7902,13 +7870,13 @@
         },
         {
           "method": "GET",
-          "pathname": "/api/products/by-ids",
-          "search": "?ids=6103&ids=6104&ids=6102"
+          "pathname": "/api/support/unread-count",
+          "search": ""
         },
         {
           "method": "GET",
-          "pathname": "/api/support/unread-count",
-          "search": ""
+          "pathname": "/api/products/by-ids",
+          "search": "?ids=6103&ids=6104&ids=6102"
         },
         {
           "method": "GET",
@@ -8017,13 +7985,13 @@
         },
         {
           "method": "GET",
-          "pathname": "/api/support/unread-count",
-          "search": ""
+          "pathname": "/api/products/by-ids",
+          "search": "?ids=6103&ids=6104&ids=6102"
         },
         {
           "method": "GET",
-          "pathname": "/api/products/by-ids",
-          "search": "?ids=6103&ids=6104&ids=6102"
+          "pathname": "/api/support/unread-count",
+          "search": ""
         },
         {
           "method": "GET",
@@ -8061,13 +8029,13 @@
           "search": ""
         },
         {
-          "method": "GET",
-          "pathname": "/api/cart/me",
+          "method": "POST",
+          "pathname": "/api/payments/guest/order/8101/latest",
           "search": ""
         },
         {
-          "method": "POST",
-          "pathname": "/api/payments/guest/order/8101/latest",
+          "method": "GET",
+          "pathname": "/api/cart/me",
           "search": ""
         },
         {
@@ -8087,13 +8055,13 @@
         },
         {
           "method": "GET",
-          "pathname": "/api/support/unread-count",
-          "search": ""
+          "pathname": "/api/products/by-ids",
+          "search": "?ids=6103&ids=6104&ids=6102"
         },
         {
           "method": "GET",
-          "pathname": "/api/products/by-ids",
-          "search": "?ids=6103&ids=6104&ids=6102"
+          "pathname": "/api/support/unread-count",
+          "search": ""
         }
       ],
       "error": null
@@ -8101,7 +8069,7 @@
   ],
   "issues": [],
   "issueGroups": [],
-  "consoleMessageCount": 6,
+  "consoleMessageCount": 0,
   "networkFailureCount": 0,
   "runErrors": []
 }

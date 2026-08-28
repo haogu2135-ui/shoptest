@@ -40,6 +40,7 @@ describe('commercial SEO contracts', () => {
     const productDetail = readFrontend('pages', 'ProductDetail.tsx');
     const couponCenter = readFrontend('pages', 'CouponCenter.tsx');
     const indexHtml = fs.readFileSync(path.join(__dirname, '..', '..', 'public', 'index.html'), 'utf8');
+    const heroPreload = fs.readFileSync(path.join(__dirname, '..', '..', 'public', 'home-hero-preload.js'), 'utf8');
 
     expect(home).toContain("from '../hooks/useDocumentMeta'");
     expect(home).toContain('buildWebsiteStructuredData');
@@ -65,8 +66,8 @@ describe('commercial SEO contracts', () => {
     expect(indexHtml).toContain('name="twitter:image"');
     expect(indexHtml).toContain('images.unsplash.com');
     expect(indexHtml).toContain('rel="preconnect"');
-    expect(indexHtml).toContain('assets/home/hero-mobile-pet.webp');
-    expect(indexHtml).toContain('assets/home/hero-dog.webp');
+    expect(heroPreload).toContain('assets/home/hero-mobile-pet.webp');
+    expect(heroPreload).toContain('assets/home/hero-dog.webp');
   });
 
   it('keeps product offers Mexico-first with areaServed and Spanish language', () => {
