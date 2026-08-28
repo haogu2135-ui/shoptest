@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-27T23:20:30.421Z",
+  "generatedAt": "2026-08-28T18:16:05.676Z",
   "baseUrl": "http://127.0.0.1:4200",
   "viewports": [
     {
@@ -541,7 +541,7 @@
           "bodyClasses": "shop-mobile-app shop-mobile-app--android",
           "innerWidth": 320,
           "innerHeight": 568,
-          "scrollY": 114,
+          "scrollY": 344,
           "docWidth": 320,
           "bodyWidth": 320,
           "horizontalOverflow": false,
@@ -549,16 +549,16 @@
             "primaryPage": {
               "selector": "main.shopee-login-root",
               "text": "Login benefitsLog inRecover your cart, track every order, and keep checkout ready.Recover guest cartTrack every orderSecure account0Recover guest cart24/7Track orderSSLSecure accountRegisterTrack orderShopMX AppSecure mobile loginProtectedT",
-              "top": -114,
-              "bottom": 1091.828125,
+              "top": -344,
+              "bottom": 870.828125,
               "left": 0,
               "right": 320,
               "width": 320,
-              "height": 1205.828125,
+              "height": 1214.828125,
               "scrollWidth": 320,
               "clientWidth": 320,
-              "scrollHeight": 1206,
-              "clientHeight": 1206,
+              "scrollHeight": 1215,
+              "clientHeight": 1215,
               "position": "relative",
               "zIndex": "auto",
               "overflowX": "hidden",
@@ -574,16 +574,16 @@
             "loginRoot": {
               "selector": "main.shopee-login-root",
               "text": "Login benefitsLog inRecover your cart, track every order, and keep checkout ready.Recover guest cartTrack every orderSecure account0Recover guest cart24/7Track orderSSLSecure accountRegisterTrack orderShopMX AppSecure mobile loginProtectedT",
-              "top": -114,
-              "bottom": 1091.828125,
+              "top": -344,
+              "bottom": 870.828125,
               "left": 0,
               "right": 320,
               "width": 320,
-              "height": 1205.828125,
+              "height": 1214.828125,
               "scrollWidth": 320,
               "clientWidth": 320,
-              "scrollHeight": 1206,
-              "clientHeight": 1206,
+              "scrollHeight": 1215,
+              "clientHeight": 1215,
               "position": "relative",
               "zIndex": "auto",
               "overflowX": "hidden",
@@ -599,16 +599,16 @@
             "loginCard": {
               "selector": "section.shopee-login-card",
               "text": "ShopMX AppSecure mobile loginProtectedTrack orderLive supportShopMXLog inRecover your cart, track every order, and keep checkout ready.0Recover guest cart24/7Track every orderSSLSecure accountRecover guest cartTrack every orderSecure accoun",
-              "top": -96,
-              "bottom": 991.828125,
+              "top": -326,
+              "bottom": 770.828125,
               "left": 12,
               "right": 308,
               "width": 296,
-              "height": 1087.828125,
+              "height": 1096.828125,
               "scrollWidth": 296,
               "clientWidth": 296,
-              "scrollHeight": 1088,
-              "clientHeight": 1088,
+              "scrollHeight": 1097,
+              "clientHeight": 1097,
               "position": "relative",
               "zIndex": "1",
               "overflowX": "visible",
@@ -625,16 +625,16 @@
             "loginTabs": {
               "selector": "div.shopee-login-tabs.shopee-login-tabs--password",
               "text": "Password loginEmail code loginPhone / username / emailInvalid username or passwordPasswordInvalid username or passwordLog inBy continuing you agree to our Terms of service and Privacy policy.Use the email linked to your account. The code is",
-              "top": 354.78125,
-              "bottom": 757.828125,
+              "top": 124.78125,
+              "bottom": 536.828125,
               "left": 22,
               "right": 298,
               "width": 276,
-              "height": 403.046875,
+              "height": 412.046875,
               "scrollWidth": 274,
               "clientWidth": 274,
-              "scrollHeight": 401,
-              "clientHeight": 401,
+              "scrollHeight": 410,
+              "clientHeight": 410,
               "position": "static",
               "zIndex": "auto",
               "overflowX": "visible",
@@ -650,8 +650,8 @@
             "loginQuickLinks": {
               "selector": "div.shopee-login-quickLinks",
               "text": "Track orderRegister",
-              "top": 777.828125,
-              "bottom": 821.828125,
+              "top": 556.828125,
+              "bottom": 600.828125,
               "left": 22,
               "right": 298,
               "width": 276,
@@ -667,16 +667,16 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "input#login_password.shop-input__control",
-                "text": "",
-                "inside": false
+                "selector": "div.shopee-login-quickLinks",
+                "text": "Track orderRegister",
+                "inside": true
               }
             },
             "loginLinks": {
               "selector": "div.shopee-login-links",
               "text": "Forgot passwordRegister",
-              "top": 843.828125,
-              "bottom": 887.828125,
+              "top": 622.828125,
+              "bottom": 666.828125,
               "left": 22,
               "right": 298,
               "width": 276,
@@ -692,8 +692,8 @@
               "fontSize": "12px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "input#login_password.shop-input__control",
-                "text": "",
+                "selector": "div.shopee-login-quickLinks",
+                "text": "Track orderRegister",
                 "inside": false
               }
             },
@@ -733,8 +733,8 @@
               "fontSize": "16px",
               "lineHeight": "19.2px",
               "centerHit": {
-                "selector": "span.shopee-login-appHeader__status",
-                "text": "Protected",
+                "selector": "p.shopee-login-card__intro",
+                "text": "Recover your cart, track every order, and keep checkout ready.",
                 "inside": false
               }
             }
@@ -758,7 +758,7 @@
             {
               "selector": "div.app-message-live-region",
               "text": "Invalid username or password",
-              "top": -115,
+              "top": -345,
               "left": -1,
               "right": 0,
               "width": 1,
@@ -771,7 +771,7 @@
             {
               "selector": "input#login_username.shop-input__control",
               "text": "",
-              "top": 467.4375,
+              "top": 237.4375,
               "left": 72,
               "right": 270,
               "width": 198,
@@ -784,7 +784,7 @@
             {
               "selector": "span",
               "text": "Track order",
-              "top": 789.828125,
+              "top": 568.828125,
               "left": 51,
               "right": 149,
               "width": 98,
@@ -800,8 +800,8 @@
             {
               "selector": "div.ant-form-item-explain-error",
               "text": "Invalid username or password",
-              "top": 514.4375,
-              "bottom": 529.4375,
+              "top": 284.4375,
+              "bottom": 299.4375,
               "width": 250,
               "height": 15,
               "fontSize": "12px",
@@ -810,8 +810,8 @@
             {
               "selector": "div.ant-form-item-explain-error",
               "text": "Invalid username or password",
-              "top": 607.4375,
-              "bottom": 622.4375,
+              "top": 386.4375,
+              "bottom": 401.4375,
               "width": 250,
               "height": 15,
               "fontSize": "12px",
@@ -828,7 +828,7 @@
           "bodyClasses": "shop-mobile-app shop-mobile-app--android",
           "innerWidth": 320,
           "innerHeight": 568,
-          "scrollY": 114,
+          "scrollY": 344,
           "docWidth": 320,
           "bodyWidth": 320,
           "horizontalOverflow": false,
@@ -836,8 +836,8 @@
             "primaryPage": {
               "selector": "main.shopee-login-root",
               "text": "Login benefitsLog inRecover your cart, track every order, and keep checkout ready.Recover guest cartTrack every orderSecure account0Recover guest cart24/7Track orderSSLSecure accountRegisterTrack orderShopMX AppSecure mobile loginProtectedT",
-              "top": -114,
-              "bottom": 1219.234375,
+              "top": -344,
+              "bottom": 989.234375,
               "left": 0,
               "right": 320,
               "width": 320,
@@ -861,8 +861,8 @@
             "loginRoot": {
               "selector": "main.shopee-login-root",
               "text": "Login benefitsLog inRecover your cart, track every order, and keep checkout ready.Recover guest cartTrack every orderSecure account0Recover guest cart24/7Track orderSSLSecure accountRegisterTrack orderShopMX AppSecure mobile loginProtectedT",
-              "top": -114,
-              "bottom": 1219.234375,
+              "top": -344,
+              "bottom": 989.234375,
               "left": 0,
               "right": 320,
               "width": 320,
@@ -886,8 +886,8 @@
             "loginCard": {
               "selector": "section.shopee-login-card",
               "text": "ShopMX AppSecure mobile loginProtectedTrack orderLive supportShopMXLog inRecover your cart, track every order, and keep checkout ready.0Recover guest cart24/7Track every orderSSLSecure accountRecover guest cartTrack every orderSecure accoun",
-              "top": -96,
-              "bottom": 1119.234375,
+              "top": -326,
+              "bottom": 889.234375,
               "left": 12,
               "right": 308,
               "width": 296,
@@ -912,8 +912,8 @@
             "loginTabs": {
               "selector": "div.shopee-login-tabs.shopee-login-tabs--email",
               "text": "Password loginEmail code loginPhone / username / emailInvalid username or passwordPasswordInvalid username or passwordLog inBy continuing you agree to our Terms of service and Privacy policy.Use the email linked to your account. The code is",
-              "top": 268.78125,
-              "bottom": 885.234375,
+              "top": 38.78125,
+              "bottom": 655.234375,
               "left": 22,
               "right": 298,
               "width": 276,
@@ -937,8 +937,8 @@
             "loginQuickLinks": {
               "selector": "div.shopee-login-quickLinks",
               "text": "Track orderRegister",
-              "top": 905.234375,
-              "bottom": 949.234375,
+              "top": 675.234375,
+              "bottom": 719.234375,
               "left": 22,
               "right": 298,
               "width": 276,
@@ -954,16 +954,16 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "input#email-login_code.shop-input__control",
-                "text": "",
+                "selector": "form#email-login.ant-form.ant-form-vertical.css-qlmvhk.shopee-login-form.shopee-login-form--email",
+                "text": "Use the email linked to your account. The code is valid for a short time.EmailVerification codeSend code0/6 digits enteredNo password needed",
                 "inside": false
               }
             },
             "loginLinks": {
               "selector": "div.shopee-login-links",
               "text": "Forgot passwordRegister",
-              "top": 971.234375,
-              "bottom": 1015.234375,
+              "top": 741.234375,
+              "bottom": 785.234375,
               "left": 22,
               "right": 298,
               "width": 276,
@@ -979,8 +979,8 @@
               "fontSize": "12px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "input#email-login_code.shop-input__control",
-                "text": "",
+                "selector": "form#email-login.ant-form.ant-form-vertical.css-qlmvhk.shopee-login-form.shopee-login-form--email",
+                "text": "Use the email linked to your account. The code is valid for a short time.EmailVerification codeSend code0/6 digits enteredNo password needed",
                 "inside": false
               }
             },
@@ -1020,8 +1020,8 @@
               "fontSize": "16px",
               "lineHeight": "19.2px",
               "centerHit": {
-                "selector": "span.shopee-login-appHeader__status",
-                "text": "Protected",
+                "selector": "p.shopee-login-card__intro",
+                "text": "Recover your cart, track every order, and keep checkout ready.",
                 "inside": false
               }
             }
@@ -1045,7 +1045,7 @@
             {
               "selector": "div.app-message-live-region",
               "text": "Invalid username or password",
-              "top": -115,
+              "top": -345,
               "left": -1,
               "right": 0,
               "width": 1,
@@ -1058,7 +1058,7 @@
             {
               "selector": "button.shop-button.ant-btn.ant-btn-link.ant-btn-sm.shop-button--small.shop-button--link.shopee-login-codeButton",
               "text": "Send code",
-              "top": 553,
+              "top": 323,
               "left": 215,
               "right": 284,
               "width": 69,
@@ -1071,7 +1071,7 @@
             {
               "selector": "span.shop-button__label",
               "text": "Send code",
-              "top": 568.203125,
+              "top": 338.203125,
               "left": 220,
               "right": 279,
               "width": 59,
@@ -1084,7 +1084,7 @@
             {
               "selector": "span",
               "text": "Track order",
-              "top": 917.234375,
+              "top": 687.234375,
               "left": 51,
               "right": 149,
               "width": 98,
@@ -1107,7 +1107,7 @@
           "bodyClasses": "shop-mobile-app shop-mobile-app--android",
           "innerWidth": 320,
           "innerHeight": 568,
-          "scrollY": 114,
+          "scrollY": 344,
           "docWidth": 320,
           "bodyWidth": 320,
           "horizontalOverflow": false,
@@ -1115,8 +1115,8 @@
             "primaryPage": {
               "selector": "main.shopee-login-root",
               "text": "Login benefitsLog inRecover your cart, track every order, and keep checkout ready.Recover guest cartTrack every orderSecure account0Recover guest cart24/7Track orderSSLSecure accountRegisterTrack orderShopMX AppSecure mobile loginProtectedT",
-              "top": -114,
-              "bottom": 1219.234375,
+              "top": -344,
+              "bottom": 989.234375,
               "left": 0,
               "right": 320,
               "width": 320,
@@ -1140,8 +1140,8 @@
             "loginRoot": {
               "selector": "main.shopee-login-root",
               "text": "Login benefitsLog inRecover your cart, track every order, and keep checkout ready.Recover guest cartTrack every orderSecure account0Recover guest cart24/7Track orderSSLSecure accountRegisterTrack orderShopMX AppSecure mobile loginProtectedT",
-              "top": -114,
-              "bottom": 1219.234375,
+              "top": -344,
+              "bottom": 989.234375,
               "left": 0,
               "right": 320,
               "width": 320,
@@ -1165,8 +1165,8 @@
             "loginCard": {
               "selector": "section.shopee-login-card",
               "text": "ShopMX AppSecure mobile loginProtectedTrack orderLive supportShopMXLog inRecover your cart, track every order, and keep checkout ready.0Recover guest cart24/7Track every orderSSLSecure accountRecover guest cartTrack every orderSecure accoun",
-              "top": -96,
-              "bottom": 1119.234375,
+              "top": -326,
+              "bottom": 889.234375,
               "left": 12,
               "right": 308,
               "width": 296,
@@ -1191,8 +1191,8 @@
             "loginTabs": {
               "selector": "div.shopee-login-tabs.shopee-login-tabs--email",
               "text": "Password loginEmail code loginPhone / username / emailInvalid username or passwordPasswordInvalid username or passwordLog inBy continuing you agree to our Terms of service and Privacy policy.Use the email linked to your account. The code is",
-              "top": 268.78125,
-              "bottom": 885.234375,
+              "top": 38.78125,
+              "bottom": 655.234375,
               "left": 22,
               "right": 298,
               "width": 276,
@@ -1216,8 +1216,8 @@
             "loginQuickLinks": {
               "selector": "div.shopee-login-quickLinks",
               "text": "Track orderRegister",
-              "top": 905.234375,
-              "bottom": 949.234375,
+              "top": 675.234375,
+              "bottom": 719.234375,
               "left": 22,
               "right": 298,
               "width": 276,
@@ -1233,16 +1233,16 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "input#email-login_code.shop-input__control",
-                "text": "",
+                "selector": "form#email-login.ant-form.ant-form-vertical.css-qlmvhk.shopee-login-form.shopee-login-form--email",
+                "text": "Use the email linked to your account. The code is valid for a short time.EmailVerification codeSend code0/6 digits enteredNo password needed",
                 "inside": false
               }
             },
             "loginLinks": {
               "selector": "div.shopee-login-links",
               "text": "Forgot passwordRegister",
-              "top": 971.234375,
-              "bottom": 1015.234375,
+              "top": 741.234375,
+              "bottom": 785.234375,
               "left": 22,
               "right": 298,
               "width": 276,
@@ -1258,8 +1258,8 @@
               "fontSize": "12px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "input#email-login_code.shop-input__control",
-                "text": "",
+                "selector": "form#email-login.ant-form.ant-form-vertical.css-qlmvhk.shopee-login-form.shopee-login-form--email",
+                "text": "Use the email linked to your account. The code is valid for a short time.EmailVerification codeSend code0/6 digits enteredNo password needed",
                 "inside": false
               }
             },
@@ -1299,8 +1299,8 @@
               "fontSize": "16px",
               "lineHeight": "19.2px",
               "centerHit": {
-                "selector": "span.shopee-login-appHeader__status",
-                "text": "Protected",
+                "selector": "p.shopee-login-card__intro",
+                "text": "Recover your cart, track every order, and keep checkout ready.",
                 "inside": false
               }
             }
@@ -1324,7 +1324,7 @@
             {
               "selector": "button.shop-button.ant-btn.ant-btn-link.ant-btn-sm.shop-button--small.shop-button--link.shopee-login-codeButton",
               "text": "Send code",
-              "top": 553,
+              "top": 323,
               "left": 215,
               "right": 284,
               "width": 69,
@@ -1337,7 +1337,7 @@
             {
               "selector": "span.shop-button__label",
               "text": "Send code",
-              "top": 568.203125,
+              "top": 338.203125,
               "left": 220,
               "right": 279,
               "width": 59,
@@ -1350,7 +1350,7 @@
             {
               "selector": "span",
               "text": "Track order",
-              "top": 917.234375,
+              "top": 687.234375,
               "left": 51,
               "right": 149,
               "width": 98,
@@ -1373,7 +1373,7 @@
           "bodyClasses": "shop-mobile-app shop-mobile-app--android",
           "innerWidth": 320,
           "innerHeight": 568,
-          "scrollY": 487,
+          "scrollY": 344,
           "docWidth": 320,
           "bodyWidth": 320,
           "horizontalOverflow": false,
@@ -1381,8 +1381,8 @@
             "primaryPage": {
               "selector": "main.shopee-login-root",
               "text": "Login benefitsLog inRecover your cart, track every order, and keep checkout ready.Recover guest cartTrack every orderSecure account0Recover guest cart24/7Track orderSSLSecure accountRegisterTrack orderShopMX AppSecure mobile loginProtectedT",
-              "top": -487,
-              "bottom": 926.921875,
+              "top": -344,
+              "bottom": 1069.921875,
               "left": 0,
               "right": 320,
               "width": 320,
@@ -1406,8 +1406,8 @@
             "loginRoot": {
               "selector": "main.shopee-login-root",
               "text": "Login benefitsLog inRecover your cart, track every order, and keep checkout ready.Recover guest cartTrack every orderSecure account0Recover guest cart24/7Track orderSSLSecure accountRegisterTrack orderShopMX AppSecure mobile loginProtectedT",
-              "top": -487,
-              "bottom": 926.921875,
+              "top": -344,
+              "bottom": 1069.921875,
               "left": 0,
               "right": 320,
               "width": 320,
@@ -1431,8 +1431,8 @@
             "loginCard": {
               "selector": "section.shopee-login-card",
               "text": "ShopMX AppSecure mobile loginProtectedTrack orderLive supportShopMXLog inRecover your cart, track every order, and keep checkout ready.0Recover guest cart24/7Track every orderSSLSecure accountRecover guest cartTrack every orderSecure accoun",
-              "top": -469,
-              "bottom": 826.921875,
+              "top": -326,
+              "bottom": 969.921875,
               "left": 12,
               "right": 308,
               "width": 296,
@@ -1457,8 +1457,8 @@
             "loginTabs": {
               "selector": "div.shopee-login-tabs.shopee-login-tabs--email",
               "text": "Password loginEmail code loginPhone / username / emailInvalid username or passwordPasswordInvalid username or passwordLog inBy continuing you agree to our Terms of service and Privacy policy.Use the email linked to your account. The code is",
-              "top": -104.21875,
-              "bottom": 592.921875,
+              "top": 38.78125,
+              "bottom": 735.921875,
               "left": 22,
               "right": 298,
               "width": 276,
@@ -1482,8 +1482,8 @@
             "loginQuickLinks": {
               "selector": "div.shopee-login-quickLinks",
               "text": "Track orderRegister",
-              "top": 612.921875,
-              "bottom": 656.921875,
+              "top": 755.921875,
+              "bottom": 799.921875,
               "left": 22,
               "right": 298,
               "width": 276,
@@ -1499,16 +1499,16 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "p.shopee-login-legalNotice",
-                "text": "By continuing you agree to our Terms of service and Privacy policy.",
+                "selector": "span",
+                "text": "Fast checkout access",
                 "inside": false
               }
             },
             "loginLinks": {
               "selector": "div.shopee-login-links",
               "text": "Forgot passwordRegister",
-              "top": 678.921875,
-              "bottom": 722.921875,
+              "top": 821.921875,
+              "bottom": 865.921875,
               "left": 22,
               "right": 298,
               "width": 276,
@@ -1524,8 +1524,8 @@
               "fontSize": "12px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "p.shopee-login-legalNotice",
-                "text": "By continuing you agree to our Terms of service and Privacy policy.",
+                "selector": "span",
+                "text": "Fast checkout access",
                 "inside": false
               }
             },
@@ -1565,8 +1565,8 @@
               "fontSize": "16px",
               "lineHeight": "19.2px",
               "centerHit": {
-                "selector": "span",
-                "text": "Use the email linked to your account. The code is valid for a short time.",
+                "selector": "p.shopee-login-card__intro",
+                "text": "Recover your cart, track every order, and keep checkout ready.",
                 "inside": false
               }
             }
@@ -1590,7 +1590,7 @@
             {
               "selector": "div.app-message-live-region",
               "text": "Code sent to c***@example.com",
-              "top": -488,
+              "top": -345,
               "left": -1,
               "right": 0,
               "width": 1,
@@ -1603,7 +1603,7 @@
             {
               "selector": "input#email-login_email.shop-input__control",
               "text": "",
-              "top": 173.6875,
+              "top": 316.6875,
               "left": 72,
               "right": 222,
               "width": 150,
@@ -1616,7 +1616,7 @@
             {
               "selector": "span",
               "text": "Track order",
-              "top": 624.921875,
+              "top": 767.921875,
               "left": 51,
               "right": 149,
               "width": 98,
@@ -3176,7 +3176,7 @@
           "bodyClasses": "shop-mobile-app shop-mobile-app--android",
           "innerWidth": 320,
           "innerHeight": 568,
-          "scrollY": 32,
+          "scrollY": 260,
           "docWidth": 320,
           "bodyWidth": 320,
           "horizontalOverflow": false,
@@ -3184,8 +3184,8 @@
             "primaryPage": {
               "selector": "div.order-tracking-page.order-tracking-page--en",
               "text": "Track orderTrack orderEnter an order number and checkout email to view order status.Order numberCheckout emailTrack orderDelivery confidenceWhere your order is nowTracking 1Z999SHOPTESTMOBILE is available. Follow the latest carrier updates ",
-              "top": 38,
-              "bottom": 3161.515625,
+              "top": -190,
+              "bottom": 2933.515625,
               "left": 0,
               "right": 320,
               "width": 320,
@@ -3201,8 +3201,8 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "div.order-tracking-page__stack",
-                "text": "Delivery confidenceWhere your order is nowTracking 1Z999SHOPTESTMOBILE is available. Follow the latest carrier updates below.Order placedPre",
+                "selector": "span.order-tracking-page__text.order-tracking-page__text--secondary",
+                "text": "Use tracking number 1Z999SHOPTESTMOBILE below and check delivery updates.",
                 "inside": true
               }
             },
@@ -3219,8 +3219,8 @@
             "orderTrackingPage": {
               "selector": "div.order-tracking-page.order-tracking-page--en",
               "text": "Track orderTrack orderEnter an order number and checkout email to view order status.Order numberCheckout emailTrack orderDelivery confidenceWhere your order is nowTracking 1Z999SHOPTESTMOBILE is available. Follow the latest carrier updates ",
-              "top": 38,
-              "bottom": 3161.515625,
+              "top": -190,
+              "bottom": 2933.515625,
               "left": 0,
               "right": 320,
               "width": 320,
@@ -3236,16 +3236,16 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "div.order-tracking-page__stack",
-                "text": "Delivery confidenceWhere your order is nowTracking 1Z999SHOPTESTMOBILE is available. Follow the latest carrier updates below.Order placedPre",
+                "selector": "span.order-tracking-page__text.order-tracking-page__text--secondary",
+                "text": "Use tracking number 1Z999SHOPTESTMOBILE below and check delivery updates.",
                 "inside": true
               }
             },
             "orderLookupCard": {
               "selector": "section.order-tracking-page__lookupCard",
               "text": "Track orderEnter an order number and checkout email to view order status.Order numberCheckout emailTrack order",
-              "top": 75.1875,
-              "bottom": 273.1875,
+              "top": -152.8125,
+              "bottom": 45.1875,
               "left": 12,
               "right": 308,
               "width": 296,
@@ -3261,16 +3261,16 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "div.shop-input__shell",
-                "text": "",
+                "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary.shop-button--block.ant-btn-block.order-tracking-page__lookupButton",
+                "text": "Track order",
                 "inside": true
               }
             },
             "orderResultStack": {
               "selector": "section.order-tracking-page__journey",
               "text": "Delivery confidenceWhere your order is nowTracking 1Z999SHOPTESTMOBILE is available. Follow the latest carrier updates below.Order placedPreparingIn transitDelivered",
-              "top": 281.1875,
-              "bottom": 565.9375,
+              "top": 53.1875,
+              "bottom": 337.9375,
               "left": 12,
               "right": 308,
               "width": 296,
@@ -3294,8 +3294,8 @@
             "orderNextAction": {
               "selector": "section.order-tracking-page__nextAction.order-tracking-page__nextAction--success",
               "text": "Track the carrierUse tracking number 1Z999SHOPTESTMOBILE below and check delivery updates.Confirm receiptRequest returnContact support",
-              "top": 719.5,
-              "bottom": 969.875,
+              "top": 491.5,
+              "bottom": 741.875,
               "left": 12,
               "right": 308,
               "width": 296,
@@ -3311,16 +3311,16 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "div.order-tracking-page__stack",
-                "text": "Delivery confidenceWhere your order is nowTracking 1Z999SHOPTESTMOBILE is available. Follow the latest carrier updates below.Order placedPre",
-                "inside": false
+                "selector": "span.order-tracking-page__text.order-tracking-page__text--secondary",
+                "text": "Use tracking number 1Z999SHOPTESTMOBILE below and check delivery updates.",
+                "inside": true
               }
             },
             "orderSteps": {
               "selector": "div.order-tracking-page__steps",
               "text": "Order placedPreparingIn transitDelivered",
-              "top": 428.9375,
-              "bottom": 552.9375,
+              "top": 200.9375,
+              "bottom": 324.9375,
               "left": 25,
               "right": 295,
               "width": 270,
@@ -3344,8 +3344,8 @@
             "orderItem": {
               "selector": "li.order-tracking-page__item",
               "text": "Ultra-comfort orthopedic dog sofa bed with removable washable cover and reinforced bolstersSize: Large / Color: Sage green with extra-long option naming$7.15x 1$7.15",
-              "top": 2056.8125,
-              "bottom": 2387.78125,
+              "top": 1828.8125,
+              "bottom": 2159.78125,
               "left": 29,
               "right": 291,
               "width": 262,
@@ -3361,16 +3361,16 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "div.order-tracking-page__stack",
-                "text": "Delivery confidenceWhere your order is nowTracking 1Z999SHOPTESTMOBILE is available. Follow the latest carrier updates below.Order placedPre",
+                "selector": "span.order-tracking-page__text.order-tracking-page__text--secondary",
+                "text": "Use tracking number 1Z999SHOPTESTMOBILE below and check delivery updates.",
                 "inside": false
               }
             },
             "trackWidget": {
               "selector": "div.seventeen-track-widget",
               "text": "TrackIN_TRANSITUPS1Z999SHOPTESTMOBILEPackage is moving through the carrier network.Departed regional facility6/8/2026, 6:55:00 AM · San Francisco, CAShipment picked up6/7/2026, 5:20:00 PM · Oakland, CA",
-              "top": 2637.96875,
-              "bottom": 3036.515625,
+              "top": 2409.96875,
+              "bottom": 2808.515625,
               "left": 29,
               "right": 291,
               "width": 262,
@@ -3386,8 +3386,8 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "div.order-tracking-page__stack",
-                "text": "Delivery confidenceWhere your order is nowTracking 1Z999SHOPTESTMOBILE is available. Follow the latest carrier updates below.Order placedPre",
+                "selector": "span.order-tracking-page__text.order-tracking-page__text--secondary",
+                "text": "Use tracking number 1Z999SHOPTESTMOBILE below and check delivery updates.",
                 "inside": false
               }
             },
@@ -3416,8 +3416,8 @@
               "fontSize": "16px",
               "lineHeight": "19.2px",
               "centerHit": {
-                "selector": "strong",
-                "text": "ShopMX",
+                "selector": "button.shop-button.ant-btn.ant-btn-primary.shop-button--primary.shop-button--block.ant-btn-block.order-tracking-page__lookupButton",
+                "text": "Track order",
                 "inside": false
               }
             }
@@ -3441,7 +3441,7 @@
             {
               "selector": "input#orderNo.shop-input__control",
               "text": "",
-              "top": 121.1875,
+              "top": -106.8125,
               "left": 26,
               "right": 294,
               "width": 268,
@@ -3454,7 +3454,7 @@
             {
               "selector": "section.order-tracking-page__journey",
               "text": "Delivery confidenceWhere your order is nowTracking 1Z999SHOPTESTMOBILE is available. Follow the latest carrier updates below.Order placedPre",
-              "top": 281.1875,
+              "top": 53.1875,
               "left": 12,
               "right": 308,
               "width": 296,
@@ -3467,7 +3467,7 @@
             {
               "selector": "section.order-tracking-page__confidence",
               "text": "Delivery visibilityCarrier tracking is available. Keep this page for the latest shipment view.Support is readyNeed help with address, carrie",
-              "top": 577.9375,
+              "top": 349.9375,
               "left": 12,
               "right": 308,
               "width": 296,
@@ -3480,7 +3480,7 @@
             {
               "selector": "div.order-tracking-page__confidenceCard",
               "text": "Support is readyNeed help with address, carrier or after-sales? Support can review this order.",
-              "top": 577.9375,
+              "top": 349.9375,
               "left": 220,
               "right": 416,
               "width": 196,
@@ -3493,7 +3493,7 @@
             {
               "selector": "span",
               "text": "Support is readyNeed help with address, carrier or after-sales? Support can review this order.",
-              "top": 588.9375,
+              "top": 360.9375,
               "left": 271,
               "right": 405,
               "width": 134,
@@ -3506,7 +3506,7 @@
             {
               "selector": "span.order-tracking-page__text.order-tracking-page__text--strong",
               "text": "Support is ready",
-              "top": 588.9375,
+              "top": 360.9375,
               "left": 271,
               "right": 405,
               "width": 134,
@@ -3519,7 +3519,7 @@
             {
               "selector": "span.order-tracking-page__text.order-tracking-page__text--secondary",
               "text": "Need help with address, carrier or after-sales? Support can review this order.",
-              "top": 632.125,
+              "top": 404.125,
               "left": 271,
               "right": 405,
               "width": 134,
@@ -3532,7 +3532,7 @@
             {
               "selector": "section.order-tracking-page__assurance",
               "text": "Order assuranceKeep this order moving2 item(s) are on the way. Keep tracking visible and contact support if delivery stalls. 2 item(s) Track",
-              "top": 981.875,
+              "top": 753.875,
               "left": 12,
               "right": 308,
               "width": 296,
@@ -3545,7 +3545,7 @@
             {
               "selector": "div.order-tracking-page__assuranceSignals",
               "text": "2 item(s) Tracking ready Support ready",
-              "top": 1116.03125,
+              "top": 888.03125,
               "left": 21,
               "right": 291,
               "width": 270,
@@ -3558,7 +3558,7 @@
             {
               "selector": "span",
               "text": "Support ready",
-              "top": 1116.03125,
+              "top": 888.03125,
               "left": 280.109375,
               "right": 416.125,
               "width": 136.015625,
@@ -3571,7 +3571,7 @@
             {
               "selector": "dl.order-tracking-page__descList",
               "text": "Order numberSO-MOBILE-20260608-AUTH-ORDER-LONGStatusShippedAmount$10.36Payment methodStripeShipping address123 Long Mobile Test Avenue, Apar",
-              "top": 1260.03125,
+              "top": 1032.03125,
               "left": 29,
               "right": 291,
               "width": 262,
@@ -3584,7 +3584,7 @@
             {
               "selector": "div.order-tracking-page__descRow",
               "text": "Tracking number1Z999SHOPTESTMOBILE",
-              "top": 1799.265625,
+              "top": 1571.265625,
               "left": 30,
               "right": 290,
               "width": 260,
@@ -3597,7 +3597,7 @@
             {
               "selector": "dd.order-tracking-page__descValue",
               "text": "1Z999SHOPTESTMOBILE",
-              "top": 1809.265625,
+              "top": 1581.265625,
               "left": 174,
               "right": 278,
               "width": 104,
@@ -3620,7 +3620,7 @@
           "bodyClasses": "shop-mobile-app shop-mobile-app--android",
           "innerWidth": 320,
           "innerHeight": 568,
-          "scrollY": 657,
+          "scrollY": 561,
           "docWidth": 320,
           "bodyWidth": 320,
           "horizontalOverflow": false,
@@ -3628,8 +3628,8 @@
             "primaryPage": {
               "selector": "div.order-tracking-page.order-tracking-page--en",
               "text": "Track orderTrack orderEnter an order number and checkout email to view order status.Order numberCheckout emailTrack orderDelivery confidenceWhere your order is nowTracking 1Z999SHOPTESTMOBILE is available. Follow the latest carrier updates ",
-              "top": -587,
-              "bottom": 2536.515625,
+              "top": -491,
+              "bottom": 2632.515625,
               "left": 0,
               "right": 320,
               "width": 320,
@@ -3645,8 +3645,8 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "span.shop-button__label",
-                "text": "Contact support",
+                "selector": "span.order-tracking-page__text.order-tracking-page__text--secondary",
+                "text": "2 item(s) are on the way. Keep tracking visible and contact support if delivery stalls.",
                 "inside": true
               }
             },
@@ -3663,8 +3663,8 @@
             "orderTrackingPage": {
               "selector": "div.order-tracking-page.order-tracking-page--en",
               "text": "Track orderTrack orderEnter an order number and checkout email to view order status.Order numberCheckout emailTrack orderDelivery confidenceWhere your order is nowTracking 1Z999SHOPTESTMOBILE is available. Follow the latest carrier updates ",
-              "top": -587,
-              "bottom": 2536.515625,
+              "top": -491,
+              "bottom": 2632.515625,
               "left": 0,
               "right": 320,
               "width": 320,
@@ -3680,16 +3680,16 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "span.shop-button__label",
-                "text": "Contact support",
+                "selector": "span.order-tracking-page__text.order-tracking-page__text--secondary",
+                "text": "2 item(s) are on the way. Keep tracking visible and contact support if delivery stalls.",
                 "inside": true
               }
             },
             "orderLookupCard": {
               "selector": "section.order-tracking-page__lookupCard",
               "text": "Track orderEnter an order number and checkout email to view order status.Order numberCheckout emailTrack order",
-              "top": -549.8125,
-              "bottom": -351.8125,
+              "top": -453.8125,
+              "bottom": -255.8125,
               "left": 12,
               "right": 308,
               "width": 296,
@@ -3705,16 +3705,16 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "span.order-tracking-page__text.order-tracking-page__text--strong",
-                "text": "Delivery visibility",
+                "selector": "div.order-tracking-page__steps",
+                "text": "Order placedPreparingIn transitDelivered",
                 "inside": false
               }
             },
             "orderResultStack": {
               "selector": "section.order-tracking-page__journey",
               "text": "Delivery confidenceWhere your order is nowTracking 1Z999SHOPTESTMOBILE is available. Follow the latest carrier updates below.Order placedPreparingIn transitDelivered",
-              "top": -343.8125,
-              "bottom": -59.0625,
+              "top": -247.8125,
+              "bottom": 36.9375,
               "left": 12,
               "right": 308,
               "width": 296,
@@ -3730,16 +3730,16 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "span.order-tracking-page__text.order-tracking-page__text--strong",
-                "text": "Delivery visibility",
-                "inside": false
+                "selector": "div.order-tracking-page__steps",
+                "text": "Order placedPreparingIn transitDelivered",
+                "inside": true
               }
             },
             "orderNextAction": {
               "selector": "section.order-tracking-page__nextAction.order-tracking-page__nextAction--success",
               "text": "Track the carrierUse tracking number 1Z999SHOPTESTMOBILE below and check delivery updates.Confirm receiptRequest returnContact support",
-              "top": 94.5,
-              "bottom": 344.875,
+              "top": 190.5,
+              "bottom": 440.875,
               "left": 12,
               "right": 308,
               "width": 296,
@@ -3763,8 +3763,8 @@
             "orderSteps": {
               "selector": "div.order-tracking-page__steps",
               "text": "Order placedPreparingIn transitDelivered",
-              "top": -196.0625,
-              "bottom": -72.0625,
+              "top": -100.0625,
+              "bottom": 23.9375,
               "left": 25,
               "right": 295,
               "width": 270,
@@ -3780,16 +3780,16 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "span.order-tracking-page__text.order-tracking-page__text--strong",
-                "text": "Delivery visibility",
-                "inside": false
+                "selector": "div.order-tracking-page__steps",
+                "text": "Order placedPreparingIn transitDelivered",
+                "inside": true
               }
             },
             "orderItem": {
               "selector": "li.order-tracking-page__item",
               "text": "Ultra-comfort orthopedic dog sofa bed with removable washable cover and reinforced bolstersSize: Large / Color: Sage green with extra-long option naming$7.15x 1$7.15",
-              "top": 1431.8125,
-              "bottom": 1762.78125,
+              "top": 1527.8125,
+              "bottom": 1858.78125,
               "left": 29,
               "right": 291,
               "width": 262,
@@ -3805,16 +3805,16 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "span.shop-button__label",
-                "text": "Contact support",
+                "selector": "span.order-tracking-page__text.order-tracking-page__text--secondary",
+                "text": "2 item(s) are on the way. Keep tracking visible and contact support if delivery stalls.",
                 "inside": false
               }
             },
             "trackWidget": {
               "selector": "div.seventeen-track-widget",
               "text": "TrackIN_TRANSITUPS1Z999SHOPTESTMOBILEPackage is moving through the carrier network.Departed regional facility6/8/2026, 6:55:00 AM · San Francisco, CAShipment picked up6/7/2026, 5:20:00 PM · Oakland, CA",
-              "top": 2012.96875,
-              "bottom": 2411.515625,
+              "top": 2108.96875,
+              "bottom": 2507.515625,
               "left": 29,
               "right": 291,
               "width": 262,
@@ -3830,8 +3830,8 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "span.shop-button__label",
-                "text": "Contact support",
+                "selector": "span.order-tracking-page__text.order-tracking-page__text--secondary",
+                "text": "2 item(s) are on the way. Keep tracking visible and contact support if delivery stalls.",
                 "inside": false
               }
             },
@@ -3860,8 +3860,8 @@
               "fontSize": "16px",
               "lineHeight": "19.2px",
               "centerHit": {
-                "selector": "span.order-tracking-page__text.order-tracking-page__text--strong",
-                "text": "Delivery visibility",
+                "selector": "span",
+                "text": "In transit",
                 "inside": false
               }
             }
@@ -3885,7 +3885,7 @@
             {
               "selector": "input#orderNo.shop-input__control",
               "text": "",
-              "top": -503.8125,
+              "top": -407.8125,
               "left": 26,
               "right": 294,
               "width": 268,
@@ -3898,7 +3898,7 @@
             {
               "selector": "section.order-tracking-page__journey",
               "text": "Delivery confidenceWhere your order is nowTracking 1Z999SHOPTESTMOBILE is available. Follow the latest carrier updates below.Order placedPre",
-              "top": -343.8125,
+              "top": -247.8125,
               "left": 12,
               "right": 308,
               "width": 296,
@@ -3911,7 +3911,7 @@
             {
               "selector": "section.order-tracking-page__confidence",
               "text": "Delivery visibilityCarrier tracking is available. Keep this page for the latest shipment view.Support is readyNeed help with address, carrie",
-              "top": -47.0625,
+              "top": 48.9375,
               "left": 12,
               "right": 308,
               "width": 296,
@@ -3924,7 +3924,7 @@
             {
               "selector": "div.order-tracking-page__confidenceCard",
               "text": "Support is readyNeed help with address, carrier or after-sales? Support can review this order.",
-              "top": -47.0625,
+              "top": 48.9375,
               "left": 220,
               "right": 416,
               "width": 196,
@@ -3937,7 +3937,7 @@
             {
               "selector": "span",
               "text": "Support is readyNeed help with address, carrier or after-sales? Support can review this order.",
-              "top": -36.0625,
+              "top": 59.9375,
               "left": 271,
               "right": 405,
               "width": 134,
@@ -3950,7 +3950,7 @@
             {
               "selector": "span.order-tracking-page__text.order-tracking-page__text--strong",
               "text": "Support is ready",
-              "top": -36.0625,
+              "top": 59.9375,
               "left": 271,
               "right": 405,
               "width": 134,
@@ -3963,7 +3963,7 @@
             {
               "selector": "span.order-tracking-page__text.order-tracking-page__text--secondary",
               "text": "Need help with address, carrier or after-sales? Support can review this order.",
-              "top": 7.125,
+              "top": 103.125,
               "left": 271,
               "right": 405,
               "width": 134,
@@ -3976,7 +3976,7 @@
             {
               "selector": "section.order-tracking-page__assurance",
               "text": "Order assuranceKeep this order moving2 item(s) are on the way. Keep tracking visible and contact support if delivery stalls. 2 item(s) Track",
-              "top": 356.875,
+              "top": 452.875,
               "left": 12,
               "right": 308,
               "width": 296,
@@ -3989,7 +3989,7 @@
             {
               "selector": "div.order-tracking-page__assuranceSignals",
               "text": "2 item(s) Tracking ready Support ready",
-              "top": 491.03125,
+              "top": 587.03125,
               "left": 21,
               "right": 291,
               "width": 270,
@@ -4002,7 +4002,7 @@
             {
               "selector": "span",
               "text": "Support ready",
-              "top": 491.03125,
+              "top": 587.03125,
               "left": 280.109375,
               "right": 416.125,
               "width": 136.015625,
@@ -4015,7 +4015,7 @@
             {
               "selector": "dl.order-tracking-page__descList",
               "text": "Order numberSO-MOBILE-20260608-AUTH-ORDER-LONGStatusShippedAmount$10.36Payment methodStripeShipping address123 Long Mobile Test Avenue, Apar",
-              "top": 635.03125,
+              "top": 731.03125,
               "left": 29,
               "right": 291,
               "width": 262,
@@ -4028,7 +4028,7 @@
             {
               "selector": "div.order-tracking-page__descRow",
               "text": "Tracking number1Z999SHOPTESTMOBILE",
-              "top": 1174.265625,
+              "top": 1270.265625,
               "left": 30,
               "right": 290,
               "width": 260,
@@ -4041,7 +4041,7 @@
             {
               "selector": "dd.order-tracking-page__descValue",
               "text": "1Z999SHOPTESTMOBILE",
-              "top": 1184.265625,
+              "top": 1280.265625,
               "left": 174,
               "right": 278,
               "width": 104,
@@ -5071,7 +5071,7 @@
           "bodyClasses": "shop-mobile-app shop-mobile-app--android",
           "innerWidth": 390,
           "innerHeight": 844,
-          "scrollY": 0,
+          "scrollY": 269,
           "docWidth": 390,
           "bodyWidth": 390,
           "horizontalOverflow": false,
@@ -5079,8 +5079,8 @@
             "primaryPage": {
               "selector": "main.shopee-login-root",
               "text": "Login benefitsLog inRecover your cart, track every order, and keep checkout ready.Recover guest cartTrack every orderSecure account0Recover guest cart24/7Track orderSSLSecure accountRegisterTrack orderShopMX AppSecure mobile loginProtectedT",
-              "top": 0,
-              "bottom": 1219.28125,
+              "top": -269,
+              "bottom": 950.28125,
               "left": 0,
               "right": 390,
               "width": 390,
@@ -5104,8 +5104,8 @@
             "loginRoot": {
               "selector": "main.shopee-login-root",
               "text": "Login benefitsLog inRecover your cart, track every order, and keep checkout ready.Recover guest cartTrack every orderSecure account0Recover guest cart24/7Track orderSSLSecure accountRegisterTrack orderShopMX AppSecure mobile loginProtectedT",
-              "top": 0,
-              "bottom": 1219.28125,
+              "top": -269,
+              "bottom": 950.28125,
               "left": 0,
               "right": 390,
               "width": 390,
@@ -5129,8 +5129,8 @@
             "loginCard": {
               "selector": "section.shopee-login-card",
               "text": "ShopMX AppSecure mobile loginProtectedTrack orderLive supportShopMXLog inRecover your cart, track every order, and keep checkout ready.0Recover guest cart24/7Track every orderSSLSecure accountRecover guest cartTrack every orderSecure accoun",
-              "top": 18,
-              "bottom": 1119.28125,
+              "top": -251,
+              "bottom": 850.28125,
               "left": 12,
               "right": 378,
               "width": 366,
@@ -5155,8 +5155,8 @@
             "loginTabs": {
               "selector": "div.shopee-login-tabs.shopee-login-tabs--password",
               "text": "Password loginEmail code loginPhone / username / emailInvalid username or passwordPasswordInvalid username or passwordLog inBy continuing you agree to our Terms of service and Privacy policy.Use the email linked to your account. The code is",
-              "top": 447.28125,
-              "bottom": 885.28125,
+              "top": 178.28125,
+              "bottom": 616.28125,
               "left": 28,
               "right": 362,
               "width": 334,
@@ -5180,8 +5180,8 @@
             "loginQuickLinks": {
               "selector": "div.shopee-login-quickLinks",
               "text": "Track orderRegister",
-              "top": 905.28125,
-              "bottom": 949.28125,
+              "top": 636.28125,
+              "bottom": 680.28125,
               "left": 28,
               "right": 362,
               "width": 334,
@@ -5197,16 +5197,16 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "p.shopee-login-legalNotice",
-                "text": "By continuing you agree to our Terms of service and Privacy policy.",
-                "inside": false
+                "selector": "div.shopee-login-quickLinks",
+                "text": "Track orderRegister",
+                "inside": true
               }
             },
             "loginLinks": {
               "selector": "div.shopee-login-links",
               "text": "Forgot passwordRegister",
-              "top": 971.28125,
-              "bottom": 1015.28125,
+              "top": 702.28125,
+              "bottom": 746.28125,
               "left": 28,
               "right": 362,
               "width": 334,
@@ -5222,9 +5222,9 @@
               "fontSize": "12px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "p.shopee-login-legalNotice",
-                "text": "By continuing you agree to our Terms of service and Privacy policy.",
-                "inside": false
+                "selector": "a",
+                "text": "Forgot password",
+                "inside": true
               }
             },
             "registerPage": null,
@@ -5263,8 +5263,8 @@
               "fontSize": "16px",
               "lineHeight": "19.2px",
               "centerHit": {
-                "selector": "main.shopee-login-root",
-                "text": "Login benefitsLog inRecover your cart, track every order, and keep checkout ready.Recover guest cartTrack every orderSecure account0Recover ",
+                "selector": "div.shopee-login-subtitle",
+                "text": "Log in",
                 "inside": false
               }
             }
@@ -5288,7 +5288,7 @@
             {
               "selector": "div.app-message-live-region",
               "text": "Invalid username or password",
-              "top": -1,
+              "top": -270,
               "left": -1,
               "right": 0,
               "width": 1,
@@ -5304,8 +5304,8 @@
             {
               "selector": "div.ant-form-item-explain-error",
               "text": "Invalid username or password",
-              "top": 604.28125,
-              "bottom": 619.28125,
+              "top": 335.28125,
+              "bottom": 350.28125,
               "width": 308,
               "height": 15,
               "fontSize": "12px",
@@ -5314,8 +5314,8 @@
             {
               "selector": "div.ant-form-item-explain-error",
               "text": "Invalid username or password",
-              "top": 707.28125,
-              "bottom": 722.28125,
+              "top": 428.28125,
+              "bottom": 443.28125,
               "width": 308,
               "height": 15,
               "fontSize": "12px",
@@ -5332,7 +5332,7 @@
           "bodyClasses": "shop-mobile-app shop-mobile-app--android",
           "innerWidth": 390,
           "innerHeight": 844,
-          "scrollY": 0,
+          "scrollY": 269,
           "docWidth": 390,
           "bodyWidth": 390,
           "horizontalOverflow": false,
@@ -5340,8 +5340,8 @@
             "primaryPage": {
               "selector": "main.shopee-login-root",
               "text": "Login benefitsLog inRecover your cart, track every order, and keep checkout ready.Recover guest cartTrack every orderSecure account0Recover guest cart24/7Track orderSSLSecure accountRegisterTrack orderShopMX AppSecure mobile loginProtectedT",
-              "top": 0,
-              "bottom": 1322.5,
+              "top": -269,
+              "bottom": 1053.5,
               "left": 0,
               "right": 390,
               "width": 390,
@@ -5365,8 +5365,8 @@
             "loginRoot": {
               "selector": "main.shopee-login-root",
               "text": "Login benefitsLog inRecover your cart, track every order, and keep checkout ready.Recover guest cartTrack every orderSecure account0Recover guest cart24/7Track orderSSLSecure accountRegisterTrack orderShopMX AppSecure mobile loginProtectedT",
-              "top": 0,
-              "bottom": 1322.5,
+              "top": -269,
+              "bottom": 1053.5,
               "left": 0,
               "right": 390,
               "width": 390,
@@ -5390,8 +5390,8 @@
             "loginCard": {
               "selector": "section.shopee-login-card",
               "text": "ShopMX AppSecure mobile loginProtectedTrack orderLive supportShopMXLog inRecover your cart, track every order, and keep checkout ready.0Recover guest cart24/7Track every orderSSLSecure accountRecover guest cartTrack every orderSecure accoun",
-              "top": 18,
-              "bottom": 1222.5,
+              "top": -251,
+              "bottom": 953.5,
               "left": 12,
               "right": 378,
               "width": 366,
@@ -5416,8 +5416,8 @@
             "loginTabs": {
               "selector": "div.shopee-login-tabs.shopee-login-tabs--email",
               "text": "Password loginEmail code loginPhone / username / emailInvalid username or passwordPasswordInvalid username or passwordLog inBy continuing you agree to our Terms of service and Privacy policy.Use the email linked to your account. The code is",
-              "top": 361.28125,
-              "bottom": 988.5,
+              "top": 92.28125,
+              "bottom": 719.5,
               "left": 28,
               "right": 362,
               "width": 334,
@@ -5441,8 +5441,8 @@
             "loginQuickLinks": {
               "selector": "div.shopee-login-quickLinks",
               "text": "Track orderRegister",
-              "top": 1008.5,
-              "bottom": 1052.5,
+              "top": 739.5,
+              "bottom": 783.5,
               "left": 28,
               "right": 362,
               "width": 334,
@@ -5458,16 +5458,16 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "span.shop-button__label",
-                "text": "Email code login",
-                "inside": false
+                "selector": "div.shopee-login-quickLinks",
+                "text": "Track orderRegister",
+                "inside": true
               }
             },
             "loginLinks": {
               "selector": "div.shopee-login-links",
               "text": "Forgot passwordRegister",
-              "top": 1074.5,
-              "bottom": 1118.5,
+              "top": 805.5,
+              "bottom": 849.5,
               "left": 28,
               "right": 362,
               "width": 334,
@@ -5483,9 +5483,9 @@
               "fontSize": "12px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "span.shop-button__label",
-                "text": "Email code login",
-                "inside": false
+                "selector": "a",
+                "text": "Forgot password",
+                "inside": true
               }
             },
             "registerPage": null,
@@ -5524,8 +5524,8 @@
               "fontSize": "16px",
               "lineHeight": "19.2px",
               "centerHit": {
-                "selector": "main.shopee-login-root",
-                "text": "Login benefitsLog inRecover your cart, track every order, and keep checkout ready.Recover guest cartTrack every orderSecure account0Recover ",
+                "selector": "div.shopee-login-subtitle",
+                "text": "Log in",
                 "inside": false
               }
             }
@@ -5549,7 +5549,7 @@
             {
               "selector": "div.app-message-live-region",
               "text": "Invalid username or password",
-              "top": -1,
+              "top": -270,
               "left": -1,
               "right": 0,
               "width": 1,
@@ -5562,7 +5562,7 @@
             {
               "selector": "span.shop-button__label",
               "text": "Send code",
-              "top": 642.859375,
+              "top": 373.859375,
               "left": 278,
               "right": 343,
               "width": 65,
@@ -5585,7 +5585,7 @@
           "bodyClasses": "shop-mobile-app shop-mobile-app--android",
           "innerWidth": 390,
           "innerHeight": 844,
-          "scrollY": 0,
+          "scrollY": 269,
           "docWidth": 390,
           "bodyWidth": 390,
           "horizontalOverflow": false,
@@ -5593,8 +5593,8 @@
             "primaryPage": {
               "selector": "main.shopee-login-root",
               "text": "Login benefitsLog inRecover your cart, track every order, and keep checkout ready.Recover guest cartTrack every orderSecure account0Recover guest cart24/7Track orderSSLSecure accountRegisterTrack orderShopMX AppSecure mobile loginProtectedT",
-              "top": 0,
-              "bottom": 1322.5,
+              "top": -269,
+              "bottom": 1053.5,
               "left": 0,
               "right": 390,
               "width": 390,
@@ -5618,8 +5618,8 @@
             "loginRoot": {
               "selector": "main.shopee-login-root",
               "text": "Login benefitsLog inRecover your cart, track every order, and keep checkout ready.Recover guest cartTrack every orderSecure account0Recover guest cart24/7Track orderSSLSecure accountRegisterTrack orderShopMX AppSecure mobile loginProtectedT",
-              "top": 0,
-              "bottom": 1322.5,
+              "top": -269,
+              "bottom": 1053.5,
               "left": 0,
               "right": 390,
               "width": 390,
@@ -5643,8 +5643,8 @@
             "loginCard": {
               "selector": "section.shopee-login-card",
               "text": "ShopMX AppSecure mobile loginProtectedTrack orderLive supportShopMXLog inRecover your cart, track every order, and keep checkout ready.0Recover guest cart24/7Track every orderSSLSecure accountRecover guest cartTrack every orderSecure accoun",
-              "top": 18,
-              "bottom": 1222.5,
+              "top": -251,
+              "bottom": 953.5,
               "left": 12,
               "right": 378,
               "width": 366,
@@ -5669,8 +5669,8 @@
             "loginTabs": {
               "selector": "div.shopee-login-tabs.shopee-login-tabs--email",
               "text": "Password loginEmail code loginPhone / username / emailInvalid username or passwordPasswordInvalid username or passwordLog inBy continuing you agree to our Terms of service and Privacy policy.Use the email linked to your account. The code is",
-              "top": 361.28125,
-              "bottom": 988.5,
+              "top": 92.28125,
+              "bottom": 719.5,
               "left": 28,
               "right": 362,
               "width": 334,
@@ -5694,8 +5694,8 @@
             "loginQuickLinks": {
               "selector": "div.shopee-login-quickLinks",
               "text": "Track orderRegister",
-              "top": 1008.5,
-              "bottom": 1052.5,
+              "top": 739.5,
+              "bottom": 783.5,
               "left": 28,
               "right": 362,
               "width": 334,
@@ -5711,16 +5711,16 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "span.shop-button__label",
-                "text": "Email code login",
-                "inside": false
+                "selector": "div.shopee-login-quickLinks",
+                "text": "Track orderRegister",
+                "inside": true
               }
             },
             "loginLinks": {
               "selector": "div.shopee-login-links",
               "text": "Forgot passwordRegister",
-              "top": 1074.5,
-              "bottom": 1118.5,
+              "top": 805.5,
+              "bottom": 849.5,
               "left": 28,
               "right": 362,
               "width": 334,
@@ -5736,9 +5736,9 @@
               "fontSize": "12px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "span.shop-button__label",
-                "text": "Email code login",
-                "inside": false
+                "selector": "a",
+                "text": "Forgot password",
+                "inside": true
               }
             },
             "registerPage": null,
@@ -5777,8 +5777,8 @@
               "fontSize": "16px",
               "lineHeight": "19.2px",
               "centerHit": {
-                "selector": "main.shopee-login-root",
-                "text": "Login benefitsLog inRecover your cart, track every order, and keep checkout ready.Recover guest cartTrack every orderSecure account0Recover ",
+                "selector": "div.shopee-login-subtitle",
+                "text": "Log in",
                 "inside": false
               }
             }
@@ -5802,7 +5802,7 @@
             {
               "selector": "span.shop-button__label",
               "text": "Send code",
-              "top": 642.859375,
+              "top": 373.859375,
               "left": 278,
               "right": 343,
               "width": 65,
@@ -5825,7 +5825,7 @@
           "bodyClasses": "shop-mobile-app shop-mobile-app--android",
           "innerWidth": 390,
           "innerHeight": 844,
-          "scrollY": 0,
+          "scrollY": 269,
           "docWidth": 390,
           "bodyWidth": 390,
           "horizontalOverflow": false,
@@ -5833,8 +5833,8 @@
             "primaryPage": {
               "selector": "main.shopee-login-root",
               "text": "Login benefitsLog inRecover your cart, track every order, and keep checkout ready.Recover guest cartTrack every orderSecure account0Recover guest cart24/7Track orderSSLSecure accountRegisterTrack orderShopMX AppSecure mobile loginProtectedT",
-              "top": 0,
-              "bottom": 1385.640625,
+              "top": -269,
+              "bottom": 1116.640625,
               "left": 0,
               "right": 390,
               "width": 390,
@@ -5858,8 +5858,8 @@
             "loginRoot": {
               "selector": "main.shopee-login-root",
               "text": "Login benefitsLog inRecover your cart, track every order, and keep checkout ready.Recover guest cartTrack every orderSecure account0Recover guest cart24/7Track orderSSLSecure accountRegisterTrack orderShopMX AppSecure mobile loginProtectedT",
-              "top": 0,
-              "bottom": 1385.640625,
+              "top": -269,
+              "bottom": 1116.640625,
               "left": 0,
               "right": 390,
               "width": 390,
@@ -5883,8 +5883,8 @@
             "loginCard": {
               "selector": "section.shopee-login-card",
               "text": "ShopMX AppSecure mobile loginProtectedTrack orderLive supportShopMXLog inRecover your cart, track every order, and keep checkout ready.0Recover guest cart24/7Track every orderSSLSecure accountRecover guest cartTrack every orderSecure accoun",
-              "top": 18,
-              "bottom": 1285.640625,
+              "top": -251,
+              "bottom": 1016.640625,
               "left": 12,
               "right": 378,
               "width": 366,
@@ -5909,8 +5909,8 @@
             "loginTabs": {
               "selector": "div.shopee-login-tabs.shopee-login-tabs--email",
               "text": "Password loginEmail code loginPhone / username / emailInvalid username or passwordPasswordInvalid username or passwordLog inBy continuing you agree to our Terms of service and Privacy policy.Use the email linked to your account. The code is",
-              "top": 361.28125,
-              "bottom": 1051.640625,
+              "top": 92.28125,
+              "bottom": 782.640625,
               "left": 28,
               "right": 362,
               "width": 334,
@@ -5934,8 +5934,8 @@
             "loginQuickLinks": {
               "selector": "div.shopee-login-quickLinks",
               "text": "Track orderRegister",
-              "top": 1071.640625,
-              "bottom": 1115.640625,
+              "top": 802.640625,
+              "bottom": 846.640625,
               "left": 28,
               "right": 362,
               "width": 334,
@@ -5951,16 +5951,16 @@
               "fontSize": "16px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "span",
-                "text": "Fast checkout access",
-                "inside": false
+                "selector": "div.shopee-login-quickLinks",
+                "text": "Track orderRegister",
+                "inside": true
               }
             },
             "loginLinks": {
               "selector": "div.shopee-login-links",
               "text": "Forgot passwordRegister",
-              "top": 1137.640625,
-              "bottom": 1181.640625,
+              "top": 868.640625,
+              "bottom": 912.640625,
               "left": 28,
               "right": 362,
               "width": 334,
@@ -5976,8 +5976,8 @@
               "fontSize": "12px",
               "lineHeight": "normal",
               "centerHit": {
-                "selector": "span",
-                "text": "Fast checkout access",
+                "selector": "div.shopee-login-quickLinks",
+                "text": "Track orderRegister",
                 "inside": false
               }
             },
@@ -6017,8 +6017,8 @@
               "fontSize": "16px",
               "lineHeight": "19.2px",
               "centerHit": {
-                "selector": "main.shopee-login-root",
-                "text": "Login benefitsLog inRecover your cart, track every order, and keep checkout ready.Recover guest cartTrack every orderSecure account0Recover ",
+                "selector": "div.shopee-login-subtitle",
+                "text": "Log in",
                 "inside": false
               }
             }
@@ -6042,7 +6042,7 @@
             {
               "selector": "div.app-message-live-region",
               "text": "Code sent to c***@example.com",
-              "top": -1,
+              "top": -270,
               "left": -1,
               "right": 0,
               "width": 1,
@@ -6981,7 +6981,7 @@
               "width": 334,
               "height": 15,
               "fontSize": "12px",
-              "color": "rgb(143, 45, 23)"
+              "color": "rgb(16, 47, 34)"
             },
             {
               "selector": "div.ant-form-item-explain-error",
@@ -6991,7 +6991,7 @@
               "width": 334,
               "height": 15,
               "fontSize": "12px",
-              "color": "rgb(143, 45, 23)"
+              "color": "rgb(16, 47, 34)"
             },
             {
               "selector": "div.ant-form-item-explain-error",
@@ -7001,7 +7001,7 @@
               "width": 334,
               "height": 15,
               "fontSize": "12px",
-              "color": "rgb(143, 45, 23)"
+              "color": "rgb(16, 47, 34)"
             },
             {
               "selector": "div.ant-form-item-explain-error",
@@ -7011,7 +7011,7 @@
               "width": 334,
               "height": 15,
               "fontSize": "12px",
-              "color": "rgb(143, 45, 23)"
+              "color": "rgb(16, 47, 34)"
             },
             {
               "selector": "div.ant-form-item-explain-error",
@@ -7021,7 +7021,7 @@
               "width": 334,
               "height": 15,
               "fontSize": "12px",
-              "color": "rgb(143, 45, 23)"
+              "color": "rgb(16, 47, 34)"
             }
           ],
           "visibleMessage": "",
@@ -7034,7 +7034,7 @@
           "bodyClasses": "shop-mobile-app shop-mobile-app--android",
           "innerWidth": 390,
           "innerHeight": 844,
-          "scrollY": 0,
+          "scrollY": 82,
           "docWidth": 390,
           "bodyWidth": 390,
           "horizontalOverflow": false,
@@ -7042,8 +7042,8 @@
             "primaryPage": {
               "selector": "main.shopee-login-root.shopee-login-root--reset",
               "text": "ShopMXReset passwordMatch account emailProtect your accountLog in after resetCode sent to c***@example.comValid for 5 minutes60sEnter your new passwordConfirm your passwordReset passwordBack to log in",
-              "top": 0,
-              "bottom": 926,
+              "top": -82,
+              "bottom": 844,
               "left": 0,
               "right": 390,
               "width": 390,
@@ -7067,8 +7067,8 @@
             "loginRoot": {
               "selector": "main.shopee-login-root.shopee-login-root--reset",
               "text": "ShopMXReset passwordMatch account emailProtect your accountLog in after resetCode sent to c***@example.comValid for 5 minutes60sEnter your new passwordConfirm your passwordReset passwordBack to log in",
-              "top": 0,
-              "bottom": 926,
+              "top": -82,
+              "bottom": 844,
               "left": 0,
               "right": 390,
               "width": 390,
@@ -7092,8 +7092,8 @@
             "loginCard": {
               "selector": "section.shopee-login-card.shopee-login-card--reset",
               "text": "ShopMXReset passwordMatch account emailProtect your accountLog in after resetCode sent to c***@example.comValid for 5 minutes60sEnter your new passwordConfirm your passwordReset passwordBack to log in",
-              "top": 18,
-              "bottom": 826,
+              "top": -64,
+              "bottom": 744,
               "left": 12,
               "right": 378,
               "width": 366,
@@ -7120,8 +7120,8 @@
             "loginLinks": {
               "selector": "div.shopee-login-links.shopee-login-links--single",
               "text": "Back to log in",
-              "top": 671.140625,
-              "bottom": 715.140625,
+              "top": 589.140625,
+              "bottom": 633.140625,
               "left": 28,
               "right": 362,
               "width": 334,
@@ -7178,8 +7178,8 @@
               "fontSize": "16px",
               "lineHeight": "19.2px",
               "centerHit": {
-                "selector": "main.shopee-login-root.shopee-login-root--reset",
-                "text": "ShopMXReset passwordMatch account emailProtect your accountLog in after resetCode sent to c***@example.comValid for 5 minutes60sEnter your n",
+                "selector": "h1.shopee-login-subtitle.shopee-login-subtitle--h1",
+                "text": "Reset password",
                 "inside": false
               }
             }
@@ -7203,7 +7203,7 @@
             {
               "selector": "div.app-message-live-region",
               "text": "Code sent to c***@example.com",
-              "top": -1,
+              "top": -83,
               "left": -1,
               "right": 0,
               "width": 1,
@@ -7219,8 +7219,8 @@
             {
               "selector": "div.ant-form-item-explain-error",
               "text": "Enter your new password",
-              "top": 517.140625,
-              "bottom": 532.140625,
+              "top": 435.140625,
+              "bottom": 450.140625,
               "width": 334,
               "height": 15,
               "fontSize": "12px",
@@ -7229,8 +7229,8 @@
             {
               "selector": "div.ant-form-item-explain-error",
               "text": "Confirm your password",
-              "top": 580.140625,
-              "bottom": 595.140625,
+              "top": 498.140625,
+              "bottom": 513.140625,
               "width": 334,
               "height": 15,
               "fontSize": "12px",
@@ -7576,7 +7576,7 @@
           "bodyClasses": "shop-mobile-app shop-mobile-app--android",
           "innerWidth": 390,
           "innerHeight": 844,
-          "scrollY": 0,
+          "scrollY": 32,
           "docWidth": 390,
           "bodyWidth": 390,
           "horizontalOverflow": false,
@@ -7584,8 +7584,8 @@
             "primaryPage": {
               "selector": "div.order-tracking-page.order-tracking-page--en",
               "text": "Track orderTrack orderEnter an order number and checkout email to view order status.Order numberCheckout emailTrack orderDelivery confidenceWhere your order is nowTracking 1Z999SHOPTESTMOBILE is available. Follow the latest carrier updates ",
-              "top": 70,
-              "bottom": 2800.234375,
+              "top": 38,
+              "bottom": 2768.234375,
               "left": 0,
               "right": 390,
               "width": 390,
@@ -7619,8 +7619,8 @@
             "orderTrackingPage": {
               "selector": "div.order-tracking-page.order-tracking-page--en",
               "text": "Track orderTrack orderEnter an order number and checkout email to view order status.Order numberCheckout emailTrack orderDelivery confidenceWhere your order is nowTracking 1Z999SHOPTESTMOBILE is available. Follow the latest carrier updates ",
-              "top": 70,
-              "bottom": 2800.234375,
+              "top": 38,
+              "bottom": 2768.234375,
               "left": 0,
               "right": 390,
               "width": 390,
@@ -7644,8 +7644,8 @@
             "orderLookupCard": {
               "selector": "section.order-tracking-page__lookupCard",
               "text": "Track orderEnter an order number and checkout email to view order status.Order numberCheckout emailTrack order",
-              "top": 107.1875,
-              "bottom": 305.1875,
+              "top": 75.1875,
+              "bottom": 273.1875,
               "left": 12,
               "right": 378,
               "width": 366,
@@ -7669,8 +7669,8 @@
             "orderResultStack": {
               "selector": "section.order-tracking-page__journey",
               "text": "Delivery confidenceWhere your order is nowTracking 1Z999SHOPTESTMOBILE is available. Follow the latest carrier updates below.Order placedPreparingIn transitDelivered",
-              "top": 313.1875,
-              "bottom": 557.15625,
+              "top": 281.1875,
+              "bottom": 525.15625,
               "left": 12,
               "right": 378,
               "width": 366,
@@ -7694,8 +7694,8 @@
             "orderNextAction": {
               "selector": "section.order-tracking-page__nextAction.order-tracking-page__nextAction--success",
               "text": "Track the carrierUse tracking number 1Z999SHOPTESTMOBILE below and check delivery updates.Confirm receiptRequest returnContact support",
-              "top": 710.71875,
-              "bottom": 945.5,
+              "top": 678.71875,
+              "bottom": 913.5,
               "left": 12,
               "right": 378,
               "width": 366,
@@ -7719,8 +7719,8 @@
             "orderSteps": {
               "selector": "div.order-tracking-page__steps",
               "text": "Order placedPreparingIn transitDelivered",
-              "top": 420.15625,
-              "bottom": 544.15625,
+              "top": 388.15625,
+              "bottom": 512.15625,
               "left": 25,
               "right": 365,
               "width": 340,
@@ -7744,8 +7744,8 @@
             "orderItem": {
               "selector": "li.order-tracking-page__item",
               "text": "Ultra-comfort orthopedic dog sofa bed with removable washable cover and reinforced bolstersSize: Large / Color: Sage green with extra-long option naming$7.15x 1$7.15",
-              "top": 1883.109375,
-              "bottom": 2086.890625,
+              "top": 1851.109375,
+              "bottom": 2054.890625,
               "left": 29,
               "right": 361,
               "width": 332,
@@ -7769,8 +7769,8 @@
             "trackWidget": {
               "selector": "div.seventeen-track-widget",
               "text": "TrackIN_TRANSITUPS1Z999SHOPTESTMOBILEPackage is moving through the carrier network.Departed regional facility6/8/2026, 6:55:00 AM · San Francisco, CAShipment picked up6/7/2026, 5:20:00 PM · Oakland, CA",
-              "top": 2313.078125,
-              "bottom": 2675.234375,
+              "top": 2281.078125,
+              "bottom": 2643.234375,
               "left": 29,
               "right": 361,
               "width": 332,
@@ -7816,8 +7816,8 @@
               "fontSize": "16px",
               "lineHeight": "19.2px",
               "centerHit": {
-                "selector": "div.shop-nav__main",
-                "text": "ShopMXPet deals for every dayPet essentials up to 50% offFree shipping on orders over $49.45 / Flash deals / Live supportdog toyscat litterp",
+                "selector": "strong",
+                "text": "ShopMX",
                 "inside": false
               }
             }
@@ -7841,7 +7841,7 @@
             {
               "selector": "input#orderNo.shop-input__control",
               "text": "",
-              "top": 153.1875,
+              "top": 121.1875,
               "left": 26,
               "right": 364,
               "width": 338,
@@ -7854,7 +7854,7 @@
             {
               "selector": "section.order-tracking-page__journey",
               "text": "Delivery confidenceWhere your order is nowTracking 1Z999SHOPTESTMOBILE is available. Follow the latest carrier updates below.Order placedPre",
-              "top": 313.1875,
+              "top": 281.1875,
               "left": 12,
               "right": 378,
               "width": 366,
@@ -7867,7 +7867,7 @@
             {
               "selector": "section.order-tracking-page__confidence",
               "text": "Delivery visibilityCarrier tracking is available. Keep this page for the latest shipment view.Support is readyNeed help with address, carrie",
-              "top": 569.15625,
+              "top": 537.15625,
               "left": 12,
               "right": 378,
               "width": 366,
@@ -7880,7 +7880,7 @@
             {
               "selector": "div.order-tracking-page__confidenceCard",
               "text": "Support is readyNeed help with address, carrier or after-sales? Support can review this order.",
-              "top": 569.15625,
+              "top": 537.15625,
               "left": 234,
               "right": 444,
               "width": 210,
@@ -7893,7 +7893,7 @@
             {
               "selector": "span",
               "text": "Support is readyNeed help with address, carrier or after-sales? Support can review this order.",
-              "top": 580.15625,
+              "top": 548.15625,
               "left": 285,
               "right": 433,
               "width": 148,
@@ -7906,7 +7906,7 @@
             {
               "selector": "span.order-tracking-page__text.order-tracking-page__text--strong",
               "text": "Support is ready",
-              "top": 580.15625,
+              "top": 548.15625,
               "left": 285,
               "right": 433,
               "width": 148,
@@ -7919,7 +7919,7 @@
             {
               "selector": "span.order-tracking-page__text.order-tracking-page__text--secondary",
               "text": "Need help with address, carrier or after-sales? Support can review this order.",
-              "top": 623.34375,
+              "top": 591.34375,
               "left": 285,
               "right": 433,
               "width": 148,
@@ -7932,7 +7932,7 @@
             {
               "selector": "section.order-tracking-page__assurance",
               "text": "Order assuranceKeep this order moving2 item(s) are on the way. Keep tracking visible and contact support if delivery stalls. 2 item(s) Track",
-              "top": 957.5,
+              "top": 925.5,
               "left": 12,
               "right": 378,
               "width": 366,
@@ -7945,7 +7945,7 @@
             {
               "selector": "div.order-tracking-page__assuranceSignals",
               "text": "2 item(s) Tracking ready Support ready",
-              "top": 1066.46875,
+              "top": 1034.46875,
               "left": 21,
               "right": 361,
               "width": 340,
@@ -7958,7 +7958,7 @@
             {
               "selector": "span",
               "text": "Support ready",
-              "top": 1066.46875,
+              "top": 1034.46875,
               "left": 280.109375,
               "right": 416.125,
               "width": 136.015625,

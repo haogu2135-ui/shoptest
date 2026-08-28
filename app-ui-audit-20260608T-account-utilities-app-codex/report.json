@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-27T23:22:34.594Z",
+  "generatedAt": "2026-08-28T18:14:35.061Z",
   "baseUrl": "http://127.0.0.1:4200",
   "viewports": [
     {
@@ -4098,11 +4098,6 @@
         },
         {
           "method": "GET",
-          "pathname": "/api/support/unread-count",
-          "search": ""
-        },
-        {
-          "method": "GET",
           "pathname": "/api/coupons/me/available",
           "search": ""
         },
@@ -4110,6 +4105,11 @@
           "method": "GET",
           "pathname": "/api/products/by-ids",
           "search": "?ids=6103&ids=6104&ids=6102"
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/support/unread-count",
+          "search": ""
         },
         {
           "method": "GET",
@@ -7870,13 +7870,13 @@
         },
         {
           "method": "GET",
-          "pathname": "/api/support/unread-count",
-          "search": ""
+          "pathname": "/api/products/by-ids",
+          "search": "?ids=6103&ids=6104&ids=6102"
         },
         {
           "method": "GET",
-          "pathname": "/api/products/by-ids",
-          "search": "?ids=6103&ids=6104&ids=6102"
+          "pathname": "/api/support/unread-count",
+          "search": ""
         },
         {
           "method": "GET",

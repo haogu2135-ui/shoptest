@@ -10,7 +10,7 @@ const logError = (...parts) => {
  * Commercial mobile-device viewport smoke (Playwright).
  * Advances storefront mobile commercial readiness without a physical handset:
  * - Android WebView-like UA + Capacitor shell markers
- * - Conversion routes at 320 / 360 / 390 widths
+ * - Conversion routes at 320 / 360 / 390 widths plus short landscape phones
  * - Primary CTA 44px touch targets
  * - Product/checkout sticky rails not covered by bottom nav
  *
@@ -28,6 +28,8 @@ const VIEWPORTS = [
   { name: '320x568', width: 320, height: 568 },
   { name: '360x740', width: 360, height: 740 },
   { name: '390x844', width: 390, height: 844 },
+  { name: 'landscape-568x320', width: 568, height: 320 },
+  { name: 'landscape-667x375', width: 667, height: 375 },
 ];
 const requestedViewportNames = String(process.env.SHOPTEST_MOBILE_VIEWPORTS || '')
   .split(',')

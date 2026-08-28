@@ -70,6 +70,18 @@ describe('Home mobile quick-entry UI contracts', () => {
     expect(clearanceRule).toMatch(/\.shopee-home \.shopee-mobile-priority,[\s\S]*?body\.shop-mobile-app \.shop-app-shell--home \.shopee-mobile-priority\s*\{[\s\S]*?padding-bottom:\s*calc\(var\(--shop-mobile-bottom-nav-height,\s*72px\) \+ 24px \+ env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;/);
   });
 
+  it('keeps hero actions visible above consent in short mobile landscape', () => {
+    const shortLandscapeStart = homeCss.lastIndexOf('Short mobile landscape: keep the first conversion actions');
+    const shortLandscape = homeCss.slice(shortLandscapeStart);
+
+    expect(shortLandscapeStart).toBeGreaterThan(-1);
+    expect(shortLandscape).toContain('@media (max-width: 900px) and (max-height: 430px)');
+    expect(shortLandscape).toMatch(/\.shopee-home \.shopee-hero__grid\s*\{[\s\S]*?display:\s*block\s*!important;/);
+    expect(shortLandscape).toMatch(/\.shopee-home \.shopee-hero p\s*\{[\s\S]*?display:\s*none\s*!important;/);
+    expect(shortLandscape).toMatch(/\.shopee-home \.shopee-hero__actions\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\)\s*!important;/);
+    expect(shortLandscape).toMatch(/\.shopee-home \.shopee-hero__actions \.ant-btn\s*\{[\s\S]*?height:\s*44px\s*!important;/);
+  });
+
   it('keeps the first App quick-entry row above the fixed rail on short phones', () => {
     const shortScreenRuleStart = mobileAppCss.indexOf('Short Android screens: keep the first quick-entry row above the fixed');
     const shortScreenRule = mobileAppCss.slice(shortScreenRuleStart);

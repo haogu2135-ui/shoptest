@@ -1,5 +1,5 @@
 {
-  "generatedAt": "2026-08-27T23:18:37.625Z",
+  "generatedAt": "2026-08-28T18:17:22.512Z",
   "baseUrl": "http://127.0.0.1:4200",
   "viewports": [
     {
@@ -1906,7 +1906,7 @@
             "finderSelectDropdown": null,
             "petGalleryPage": {
               "selector": "main.pet-gallery-page.pet-gallery-page--en",
-              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 11:17 PMRefreshCommunity proofGallery momentum@ve",
+              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 06:16 PMRefreshCommunity proofGallery momentum@ve",
               "top": 114,
               "bottom": 2764.109375,
               "left": 0,
@@ -1956,7 +1956,7 @@
             },
             "galleryToolbar": {
               "selector": "section.pet-gallery-toolbar",
-              "text": "Latest community momentsUpdated 11:17 PMRefresh",
+              "text": "Latest community momentsUpdated 06:16 PMRefresh",
               "top": 541.640625,
               "bottom": 665.640625,
               "left": 12,
@@ -2694,7 +2694,7 @@
             "finderSelectDropdown": null,
             "petGalleryPage": {
               "selector": "main.pet-gallery-page.pet-gallery-page--en",
-              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 11:17 PMRefreshCommunity proofGallery momentum@ve",
+              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 06:16 PMRefreshCommunity proofGallery momentum@ve",
               "top": -1636,
               "bottom": 1014.109375,
               "left": 0,
@@ -2744,7 +2744,7 @@
             },
             "galleryToolbar": {
               "selector": "section.pet-gallery-toolbar",
-              "text": "Latest community momentsUpdated 11:17 PMRefresh",
+              "text": "Latest community momentsUpdated 06:16 PMRefresh",
               "top": -1208.359375,
               "bottom": -1084.359375,
               "left": 12,
@@ -3602,7 +3602,7 @@
             "finderSelectDropdown": null,
             "petGalleryPage": {
               "selector": "main.pet-gallery-page.pet-gallery-page--en",
-              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 11:17 PMRefreshCommunity proofGallery momentum@ve",
+              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 06:16 PMRefreshCommunity proofGallery momentum@ve",
               "top": -1636,
               "bottom": 1014.109375,
               "left": 0,
@@ -3652,7 +3652,7 @@
             },
             "galleryToolbar": {
               "selector": "section.pet-gallery-toolbar",
-              "text": "Latest community momentsUpdated 11:17 PMRefresh",
+              "text": "Latest community momentsUpdated 06:16 PMRefresh",
               "top": -1208.359375,
               "bottom": -1084.359375,
               "left": 12,
@@ -4634,7 +4634,7 @@
             "finderSelectDropdown": null,
             "petGalleryPage": {
               "selector": "main.pet-gallery-page.pet-gallery-page--en",
-              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 11:17 PMRefreshCommunity proofGallery momentum@ve",
+              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 06:16 PMRefreshCommunity proofGallery momentum@ve",
               "top": -2082,
               "bottom": 568.109375,
               "left": 0,
@@ -4684,7 +4684,7 @@
             },
             "galleryToolbar": {
               "selector": "section.pet-gallery-toolbar",
-              "text": "Latest community momentsUpdated 11:17 PMRefresh",
+              "text": "Latest community momentsUpdated 06:16 PMRefresh",
               "top": -1654.359375,
               "bottom": -1530.359375,
               "left": 12,
@@ -9651,12 +9651,12 @@
         },
         {
           "method": "GET",
-          "pathname": "/api/support/unread-count",
+          "pathname": "/api/coupons/me/available",
           "search": ""
         },
         {
           "method": "GET",
-          "pathname": "/api/coupons/me/available",
+          "pathname": "/api/support/unread-count",
           "search": ""
         },
         {
@@ -9717,6 +9717,11 @@
         {
           "method": "GET",
           "pathname": "/api/support/unread-count",
+          "search": ""
+        },
+        {
+          "method": "GET",
+          "pathname": "/api/users/profile",
           "search": ""
         },
         {
@@ -11000,7 +11005,7 @@
             "finderSelectDropdown": null,
             "petGalleryPage": {
               "selector": "main.pet-gallery-page.pet-gallery-page--en",
-              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 11:18 PMRefreshCommunity proofGallery momentum@ve",
+              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 06:16 PMRefreshCommunity proofGallery momentum@ve",
               "top": 114,
               "bottom": 2616.90625,
               "left": 0,
@@ -11050,7 +11055,7 @@
             },
             "galleryToolbar": {
               "selector": "section.pet-gallery-toolbar",
-              "text": "Latest community momentsUpdated 11:18 PMRefresh",
+              "text": "Latest community momentsUpdated 06:16 PMRefresh",
               "top": 541.640625,
               "bottom": 665.640625,
               "left": 12,
@@ -11069,7 +11074,7 @@
               "lineHeight": "normal",
               "centerHit": {
                 "selector": "section.pet-gallery-toolbar",
-                "text": "Latest community momentsUpdated 11:18 PMRefresh",
+                "text": "Latest community momentsUpdated 06:16 PMRefresh",
                 "inside": true
               }
             },
@@ -11596,7 +11601,7 @@
             "finderSelectDropdown": null,
             "petGalleryPage": {
               "selector": "main.pet-gallery-page.pet-gallery-page--en",
-              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 11:18 PMRefreshCommunity proofGallery momentum@ve",
+              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 06:16 PMRefreshCommunity proofGallery momentum@ve",
               "top": -1363,
               "bottom": 1139.90625,
               "left": 0,
@@ -11646,7 +11651,7 @@
             },
             "galleryToolbar": {
               "selector": "section.pet-gallery-toolbar",
-              "text": "Latest community momentsUpdated 11:18 PMRefresh",
+              "text": "Latest community momentsUpdated 06:16 PMRefresh",
               "top": -935.359375,
               "bottom": -811.359375,
               "left": 12,
@@ -12304,7 +12309,7 @@
             "finderSelectDropdown": null,
             "petGalleryPage": {
               "selector": "main.pet-gallery-page.pet-gallery-page--en",
-              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 11:18 PMRefreshCommunity proofGallery momentum@ve",
+              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 06:16 PMRefreshCommunity proofGallery momentum@ve",
               "top": -1363,
               "bottom": 1139.90625,
               "left": 0,
@@ -12354,7 +12359,7 @@
             },
             "galleryToolbar": {
               "selector": "section.pet-gallery-toolbar",
-              "text": "Latest community momentsUpdated 11:18 PMRefresh",
+              "text": "Latest community momentsUpdated 06:16 PMRefresh",
               "top": -935.359375,
               "bottom": -811.359375,
               "left": 12,
@@ -13168,7 +13173,7 @@
             "finderSelectDropdown": null,
             "petGalleryPage": {
               "selector": "main.pet-gallery-page.pet-gallery-page--en",
-              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 11:18 PMRefreshCommunity proofGallery momentum@ve",
+              "text": "Community galleryPet galleryBrowse customer pet moments, upload your own photo, and shop the products behind the feed.Upload photo (2 left)Shop the feedPhotos3Active members3Left2Latest community momentsUpdated 06:16 PMRefreshCommunity proofGallery momentum@ve",
               "top": -1659,
               "bottom": 843.90625,
               "left": 0,
@@ -13218,7 +13223,7 @@
             },
             "galleryToolbar": {
               "selector": "section.pet-gallery-toolbar",
-              "text": "Latest community momentsUpdated 11:18 PMRefresh",
+              "text": "Latest community momentsUpdated 06:16 PMRefresh",
               "top": -1231.359375,
               "bottom": -1107.359375,
               "left": 12,

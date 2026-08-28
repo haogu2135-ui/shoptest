@@ -2498,6 +2498,48 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .checkout-p
   color: #ffffff !important;
   -webkit-text-fill-color: #ffffff !important;
 }
+
+/* Hero statistic cards are light information panels. Keep their explicit
+   foreground after the broad dark-Hero and generic state rules above. */
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell :is(
+  .profile-overview__stat,
+  .pet-gallery-hero__stats,
+  .pet-gallery-hero__stats .pet-gallery-hero__stat,
+  .coupon-center-page__statCard
+) {
+  border-color: rgba(18, 71, 52, 0.22) !important;
+  background: #fbfdfb !important;
+  color: #102f22 !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell :is(
+  .profile-overview__stat,
+  .pet-gallery-hero__stats,
+  .pet-gallery-hero__stats .pet-gallery-hero__stat,
+  .coupon-center-page__statCard
+) :where(strong, span, .ant-typography, .anticon) {
+  color: #102f22 !important;
+  -webkit-text-fill-color: #102f22 !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell :is(
+  .profile-overview__stat span,
+  .pet-gallery-hero__statTitle,
+  .coupon-center-page__statCard > span:not(.coupon-center-page__statIcon)
+) {
+  color: #3f5147 !important;
+  -webkit-text-fill-color: #3f5147 !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .coupon-center-page__statCard .coupon-center-page__statIcon,
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .coupon-center-page__statCard .coupon-center-page__statIcon :where(.anticon, svg, svg *) {
+  border-color: rgba(18, 71, 52, 0.18) !important;
+  background: #e6f3ec !important;
+  color: #124734 !important;
+  -webkit-text-fill-color: #124734 !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
 `;
 
 const isBrowser = () => typeof document !== 'undefined' && typeof window !== 'undefined';

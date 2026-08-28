@@ -39,6 +39,28 @@ describe('CookieConsentBanner short-screen layout contract', () => {
     expect(css).toMatch(/body\.shop-cookie-consent-visible:has\(\.shop-app-shell--auth-flow\) \.shopee-login-quickLinks[\s\S]*?display:\s*none !important/);
   });
 
+  it('uses a compact horizontal consent panel in short mobile landscape', () => {
+    const css = readLocal('CookieConsentBanner.css');
+    const shortLandscapeStart = css.indexOf('Short mobile landscape has little vertical room');
+    const shortLandscape = css.slice(shortLandscapeStart);
+
+    expect(shortLandscapeStart).toBeGreaterThan(-1);
+    expect(shortLandscape).toContain('@media (max-width: 900px) and (max-height: 430px)');
+    expect(shortLandscape).toMatch(/\.cookie-consent-banner\s*\{[\s\S]*?bottom:\s*calc\(8px \+ env\(safe-area-inset-bottom, 0px\)\)/);
+    expect(shortLandscape).toMatch(/\.cookie-consent-banner__inner\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) minmax\(220px, 0\.72fr\)/);
+    expect(shortLandscape).toMatch(/\.cookie-consent-banner__text\s*\{[\s\S]*?-webkit-line-clamp:\s*1/);
+    expect(shortLandscape).toMatch(/\.cookie-consent-banner__actions\s*\{[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+    expect(shortLandscape).toMatch(/\.cookie-consent-banner__button\.ant-btn\s*\{[\s\S]*?min-height:\s*44px !important/);
+  });
+
+  it('keeps short-landscape cart and checkout recovery actions above consent', () => {
+    const cartCss = fs.readFileSync(path.resolve(__dirname, '../pages/Cart.css'), 'utf8');
+    const checkoutCss = fs.readFileSync(path.resolve(__dirname, '../pages/Checkout.css'), 'utf8');
+
+    expect(cartCss).toMatch(/@media \(max-width: 900px\) and \(max-height: 430px\)[\s\S]*?\.cart-page--empty \.cart-page__emptyHero[\s\S]*?grid-template-columns:\s*44px minmax\(0, 1fr\)[\s\S]*?\.cart-page--empty \.cart-page__emptyActions[\s\S]*?grid-template-columns:\s*repeat\(4, minmax\(0, 1fr\)\)[\s\S]*?shop-button__label[\s\S]*?white-space:\s*normal !important[\s\S]*?\.cart-page--empty \.cart-page__emptySignals[\s\S]*?display:\s*none !important/);
+    expect(checkoutCss).toMatch(/@media \(max-width: 900px\) and \(max-height: 430px\)[\s\S]*?\.checkout-page--empty \.checkout-page__emptyHero[\s\S]*?grid-template-columns:\s*44px minmax\(0, 1fr\)[\s\S]*?\.checkout-page--empty \.checkout-page__emptyActions[\s\S]*?grid-template-columns:\s*repeat\(5, minmax\(0, 1fr\)\)[\s\S]*?shop-button__label[\s\S]*?white-space:\s*normal !important[\s\S]*?\.checkout-page--empty \.checkout-page__emptySignals[\s\S]*?display:\s*none !important/);
+  });
+
   it('lifts native browsing history action above first-visit consent', () => {
     const css = readLocal('CookieConsentBanner.css');
 
