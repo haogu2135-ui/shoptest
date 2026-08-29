@@ -53,6 +53,19 @@ describe('CookieConsentBanner short-screen layout contract', () => {
     expect(shortLandscape).toMatch(/\.cookie-consent-banner__button\.ant-btn\s*\{[\s\S]*?min-height:\s*44px !important/);
   });
 
+  it('keeps regular phone portraits from losing the lower quarter to consent', () => {
+    const css = readLocal('CookieConsentBanner.css');
+    const compactPortraitStart = css.indexOf('Keep the first-visit consent surface compact on regular phone portraits');
+    const compactPortrait = css.slice(compactPortraitStart);
+
+    expect(compactPortraitStart).toBeGreaterThan(-1);
+    expect(compactPortrait).toContain('@media (min-width: 351px) and (max-width: 780px) and (min-height: 431px)');
+    expect(compactPortrait).toMatch(/\.cookie-consent-banner__inner\s*\{[\s\S]*?grid-template-columns:\s*minmax\(0, 1fr\) minmax\(124px, 0\.68fr\)/);
+    expect(compactPortrait).toMatch(/\.cookie-consent-banner__text\s*\{[\s\S]*?max-height:\s*calc\(1 \* 12px \* 1\.25\)[\s\S]*?-webkit-line-clamp:\s*1/);
+    expect(compactPortrait).toMatch(/\.cookie-consent-banner__actions\s*\{[\s\S]*?display:\s*grid;[\s\S]*?grid-template-columns:\s*repeat\(2, minmax\(0, 1fr\)\)/);
+    expect(compactPortrait).toMatch(/\.cookie-consent-banner__link\s*\{[\s\S]*?min-height:\s*44px/);
+  });
+
   it('keeps short-landscape cart and checkout recovery actions above consent', () => {
     const cartCss = fs.readFileSync(path.resolve(__dirname, '../pages/Cart.css'), 'utf8');
     const checkoutCss = fs.readFileSync(path.resolve(__dirname, '../pages/Checkout.css'), 'utf8');

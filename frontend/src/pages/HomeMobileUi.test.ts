@@ -40,6 +40,15 @@ describe('Home mobile quick-entry UI contracts', () => {
     expect(webRailRule).toMatch(/body:not\(\.shop-mobile-app\) \.shop-app-shell--home \.shopee-mobile-priority\s*\{[\s\S]*?margin-top:\s*-48px\s*!important;/);
   });
 
+  it('keeps every quick-entry destination above first-visit consent', () => {
+    const consentRuleStart = homeCss.lastIndexOf('First-visit consent should not leave the ninth quick entry');
+    const consentRule = homeCss.slice(consentRuleStart);
+
+    expect(consentRuleStart).toBeGreaterThan(-1);
+    expect(consentRule).toMatch(/@media \(max-width:\s*600px\)/);
+    expect(consentRule).toMatch(/body\.shop-cookie-consent-visible:has\(\.shopee-home\) \.shopee-mobile-quick-panel[\s\S]*?grid-template-columns:\s*repeat\(5,\s*minmax\(0,\s*1fr\)\) !important;/);
+  });
+
   it('compacts the Web hero on short phones before the quick-entry rail', () => {
     const shortWebRuleStart = homeCss.lastIndexOf('@media (max-width: 390px) and (max-height: 620px)');
     const shortWebRule = homeCss.slice(shortWebRuleStart);

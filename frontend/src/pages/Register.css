@@ -1397,6 +1397,23 @@
   }
 }
 
+/* First-visit consent must not cover the registration CTA on phone portraits.
+   The card hint repeats the consent surface, so remove that duplicate and
+   reclaim the inter-field gaps only while the fixed banner is visible. */
+@media (max-width: 640px) {
+  body.shop-cookie-consent-visible:has(.register-page) .register-page__cardHint {
+    display: none !important;
+  }
+
+  body.shop-cookie-consent-visible:has(.register-page) .register-page__legalNotice {
+    display: none !important;
+  }
+
+  body.shop-cookie-consent-visible:has(.register-page) .register-page__card .ant-form-item {
+    margin-bottom: 0 !important;
+  }
+}
+
 
 /* Commercial register order/account agreement notice */
 .register-page__legalNotice {

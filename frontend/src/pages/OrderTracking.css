@@ -1877,3 +1877,24 @@
   padding: 16px;
   margin-bottom: 16px;
 }
+
+/* Keep empty-state recovery actions above the first-visit consent rail on
+   phone widths. The illustration is decorative; two columns preserve every
+   recovery destination in the available viewport. */
+@media (max-width: 780px) {
+  body.shop-cookie-consent-visible:has(.order-tracking-page) .order-tracking-page__emptyPanel .page-feedback__emptyImage {
+    display: none !important;
+  }
+
+  body.shop-cookie-consent-visible:has(.order-tracking-page) .order-tracking-page__emptyPanel .page-feedback__actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px !important;
+  }
+
+  body.shop-cookie-consent-visible:has(.order-tracking-page) .order-tracking-page__emptyPanel .page-feedback__actions .ant-btn {
+    width: 100%;
+    min-width: 0;
+  }
+}

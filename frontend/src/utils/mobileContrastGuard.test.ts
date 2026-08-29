@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 
 const readSource = () => fs.readFileSync(path.resolve(__dirname, 'mobileContrastGuard.ts'), 'utf8');
+const readMobileAppSource = () => fs.readFileSync(path.resolve(__dirname, '../mobile-app.css'), 'utf8');
 
 describe('mobileContrastGuard source contract', () => {
   it('keeps scan scheduler state scoped to the installed guard element', () => {
@@ -48,6 +49,31 @@ describe('mobileContrastGuard source contract', () => {
 
     expect(source).toMatch(/checkout-page__couponSummary \.checkout-page__text--success[\s\S]*?background:\s*transparent !important;[\s\S]*?color:\s*#2f4f3a !important;/);
     expect(source).toMatch(/checkout-page__couponSummary \.checkout-page__text--success \.commerce-money[\s\S]*?-webkit-text-fill-color:\s*#2f4f3a !important;/);
+  });
+
+  it('keeps App Hero statistic cards on light readable surfaces', () => {
+    const source = readSource();
+    const mobileApp = readMobileAppSource();
+    const finalMobileAppGuard = mobileApp.slice(mobileApp.indexOf('Keep Hero statistics readable'));
+
+    expect(source).toContain('.profile-overview__stat');
+    expect(source).toContain('.pet-gallery-hero__stats .pet-gallery-hero__stat');
+    expect(source).toContain('.coupon-center-page__statCard');
+    expect(source).toMatch(/Hero statistic cards are light information panels[\s\S]*?background:\s*#fbfdfb !important;[\s\S]*?color:\s*#102f22 !important;/);
+    expect(finalMobileAppGuard).toMatch(/\.coupon-center-page__statGrid\s*\{[\s\S]*?display:\s*flex !important;/);
+    expect(finalMobileAppGuard).toMatch(/\.coupon-center-page__statGrid > \.coupon-center-page__statCard\s*\{[\s\S]*?flex:\s*0 0 124px !important;[\s\S]*?min-width:\s*124px !important;/);
+    expect(finalMobileAppGuard).toMatch(/\.coupon-center-page__statGrid > \.coupon-center-page__statCard > span:not\(\.coupon-center-page__statIcon\)\s*\{[\s\S]*?grid-column:\s*2 !important;[\s\S]*?grid-row:\s*2 !important;[\s\S]*?word-break:\s*normal !important;/);
+  });
+
+  it('keeps light Hero badges and secondary actions on dark readable text', () => {
+    const source = readSource();
+    const mobileApp = readMobileAppSource();
+    const finalMobileAppGuard = mobileApp.slice(mobileApp.indexOf('Keep Hero statistics readable'));
+
+    expect(source).toMatch(/profile-overview \.ant-btn-default,[\s\S]*?pet-gallery-hero \.ant-btn-default,[\s\S]*?coupon-center-page__heroBadge[\s\S]*?background:\s*#fff4e8 !important;[\s\S]*?color:\s*#173f2b !important;/);
+    expect(source).toMatch(/coupon-center-page__heroBadge--primary\s*\{[\s\S]*?background:\s*#fff4e8 !important;[\s\S]*?color:\s*#8f2d17 !important;/);
+    expect(finalMobileAppGuard).toContain('.coupon-center-page__heroBadge--muted');
+    expect(finalMobileAppGuard).toContain('.pet-gallery-hero .ant-btn-default');
   });
 
   it('keeps the contrast guard before the final Android cascade guard', () => {

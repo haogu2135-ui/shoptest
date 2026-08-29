@@ -2540,6 +2540,40 @@ body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .coupon-cen
   fill: currentColor !important;
   stroke: currentColor !important;
 }
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell :is(
+  .profile-overview .ant-btn-default,
+  .pet-gallery-hero .ant-btn-default,
+  .coupon-center-page__heroBadge
+) {
+  border-color: rgba(18, 71, 52, 0.22) !important;
+  background: #fff4e8 !important;
+  color: #173f2b !important;
+  -webkit-text-fill-color: #173f2b !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell :is(
+  .profile-overview .ant-btn-default,
+  .pet-gallery-hero .ant-btn-default,
+  .coupon-center-page__heroBadge
+) :where(span, strong, small, .anticon, svg, svg *) {
+  color: inherit !important;
+  -webkit-text-fill-color: inherit !important;
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .coupon-center-page__heroBadge--muted {
+  background: #fbfdfb !important;
+  color: #3f5147 !important;
+  -webkit-text-fill-color: #3f5147 !important;
+}
+
+body.shop-mobile-app.shop-mobile-app.shop-mobile-app .shop-app-shell .coupon-center-page__heroBadge--primary {
+  background: #fff4e8 !important;
+  color: #8f2d17 !important;
+  -webkit-text-fill-color: #8f2d17 !important;
+}
 `;
 
 const isBrowser = () => typeof document !== 'undefined' && typeof window !== 'undefined';

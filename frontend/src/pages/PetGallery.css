@@ -1924,3 +1924,12 @@
     max-height: calc(100dvh - var(--shop-mobile-bottom-nav-height, 72px) - 16px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
   }
 }
+
+/* First-visit consent covers the utility row below the hero. The same upload
+   and browse destinations are already available in the hero, so defer the
+   refresh/login shortcuts until the visitor closes the consent panel. */
+@media (max-width: 620px) {
+  body.shop-cookie-consent-visible:has(.pet-gallery-page) .pet-gallery-toolbar .pet-gallery-page__actionRow {
+    display: none !important;
+  }
+}

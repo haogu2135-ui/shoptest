@@ -1,6 +1,6 @@
 # Mobile App Pet Tools and Compare UI Audit
 
-Date: 2026-08-28T18:17:22.512Z
+Date: 2026-08-28T21:41:01.042Z
 Base URL: `http://127.0.0.1:4200`
 Mode: Playwright, mocked APIs/local storage, Android App WebView simulation.
 
@@ -12,7 +12,7 @@ Mode: Playwright, mocked APIs/local storage, Android App WebView simulation.
 
 ## Summary
 
-- Snapshots: 24
+- Snapshots: 8
 - Issues: 0
 - Console warnings/errors: 0
 - Network failures: 0
@@ -25,30 +25,14 @@ Mode: Playwright, mocked APIs/local storage, Android App WebView simulation.
 ## Screenshots
 
 ### small-320-app (320x568)
-- pet-finder-top: `small-320-app-pet-finder-top.png`
-- pet-finder-select-open: `small-320-app-pet-finder-select-open.png`
-- pet-finder-bottom: `small-320-app-pet-finder-bottom.png`
 - pet-gallery-top: `small-320-app-pet-gallery-top.png`
 - pet-gallery-delete-popconfirm: `small-320-app-pet-gallery-delete-popconfirm.png`
 - pet-gallery-preview-open: `small-320-app-pet-gallery-preview-open.png`
 - pet-gallery-bottom: `small-320-app-pet-gallery-bottom.png`
-- compare-top: `small-320-app-compare-top.png`
-- compare-clear-popconfirm: `small-320-app-compare-clear-popconfirm.png`
-- compare-differences-only: `small-320-app-compare-differences-only.png`
-- compare-table-scrolled: `small-320-app-compare-table-scrolled.png`
-- compare-bottom: `small-320-app-compare-bottom.png`
 
 ### phone-390-app (390x844)
-- pet-finder-top: `phone-390-app-pet-finder-top.png`
-- pet-finder-select-open: `phone-390-app-pet-finder-select-open.png`
-- pet-finder-bottom: `phone-390-app-pet-finder-bottom.png`
 - pet-gallery-top: `phone-390-app-pet-gallery-top.png`
 - pet-gallery-delete-popconfirm: `phone-390-app-pet-gallery-delete-popconfirm.png`
 - pet-gallery-preview-open: `phone-390-app-pet-gallery-preview-open.png`
 - pet-gallery-bottom: `phone-390-app-pet-gallery-bottom.png`
-- compare-top: `phone-390-app-compare-top.png`
-- compare-clear-popconfirm: `phone-390-app-compare-clear-popconfirm.png`
-- compare-differences-only: `phone-390-app-compare-differences-only.png`
-- compare-table-scrolled: `phone-390-app-compare-table-scrolled.png`
-- compare-bottom: `phone-390-app-compare-bottom.png`
 

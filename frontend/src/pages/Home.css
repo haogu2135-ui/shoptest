@@ -6006,3 +6006,12 @@ body .shopee-home-popconfirm.shop-popconfirm {
     white-space: normal !important;
   }
 }
+
+/* First-visit consent should not leave the ninth quick entry under the
+   fixed panel. Keep all mobile destinations in two compact rows. */
+@media (max-width: 600px) {
+  body.shop-cookie-consent-visible:has(.shopee-home) .shopee-mobile-quick-panel,
+  body.shop-cookie-consent-visible:has(.shopee-home) .shopee-mobile-quick-panel--skeleton {
+    grid-template-columns: repeat(5, minmax(0, 1fr)) !important;
+  }
+}

@@ -20,6 +20,16 @@ describe('PetGallery mobile layout source contracts', () => {
     expect(f2858Css).toMatch(/\.pet-gallery-insights\s*\{[\s\S]*?scroll-margin-bottom:\s*calc\(var\(--shop-mobile-bottom-nav-height,\s*72px\) \+ 24px \+ env\(safe-area-inset-bottom,\s*0px\)\);/);
   });
 
+  it('defers duplicate toolbar actions while first-visit consent is open', () => {
+    const css = readPetGalleryCss();
+    const consentRuleStart = css.lastIndexOf('First-visit consent covers the utility row below the hero.');
+    const consentRule = css.slice(consentRuleStart);
+
+    expect(consentRuleStart).toBeGreaterThan(-1);
+    expect(consentRule).toMatch(/@media \(max-width:\s*620px\)/);
+    expect(consentRule).toMatch(/body\.shop-cookie-consent-visible:has\(\.pet-gallery-page\) \.pet-gallery-toolbar \.pet-gallery-page__actionRow\s*\{[\s\S]*?display:\s*none\s*!important;/);
+  });
+
   it('keeps social-proof copy readable in short landscape viewports', () => {
     const source = readPetGallerySource();
     const css = readPetGalleryCss();

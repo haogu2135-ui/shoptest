@@ -254,6 +254,17 @@ describe('OrderTracking mobile next-action layout', () => {
     expect(fixCss).toMatch(/\.order-tracking-page__returnModal \.ant-modal-content\s*\{[\s\S]*?max-height:\s*calc\(100svh - 92px - env\(safe-area-inset-bottom,\s*0px\)\)\s*!important;/);
     expect(fixCss).toMatch(/\.order-tracking-page__returnModal \.ant-modal-footer\s*\{[\s\S]*?position:\s*static\s*!important;/);
   });
+
+  it('keeps empty recovery actions above first-visit consent on phones', () => {
+    const css = readOrderTrackingCss();
+    const consentRuleStart = css.indexOf('Keep empty-state recovery actions above the first-visit consent rail');
+    const consentRule = css.slice(consentRuleStart);
+
+    expect(consentRuleStart).toBeGreaterThanOrEqual(0);
+    expect(consentRule).toMatch(/@media \(max-width:\s*780px\)/);
+    expect(consentRule).toMatch(/body\.shop-cookie-consent-visible:has\(\.order-tracking-page\) \.order-tracking-page__emptyPanel \.page-feedback__emptyImage\s*\{[\s\S]*?display:\s*none\s*!important;/);
+    expect(consentRule).toMatch(/body\.shop-cookie-consent-visible:has\(\.order-tracking-page\) \.order-tracking-page__emptyPanel \.page-feedback__actions\s*\{[\s\S]*?display:\s*grid\s*!important;[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/);
+  });
 });
 
 describe('OrderTracking auto refresh', () => {

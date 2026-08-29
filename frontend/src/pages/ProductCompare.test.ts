@@ -16,6 +16,17 @@ const extractCssRulesFor = (css: string, selectorPart: string) => (
 );
 
 describe('ProductCompare responsive CSS', () => {
+  it('keeps empty comparison recovery actions above first-visit consent', () => {
+    const css = readProductCompareCss();
+    const consentRuleStart = css.indexOf('Keep empty comparison recovery actions above first-visit consent.');
+    const consentRule = css.slice(consentRuleStart);
+
+    expect(consentRuleStart).toBeGreaterThanOrEqual(0);
+    expect(consentRule).toMatch(/@media \(max-width:\s*780px\)/);
+    expect(consentRule).toMatch(/body\.shop-cookie-consent-visible:has\(\.product-compare-page\) \.product-compare__emptyPanel \.page-feedback__emptyImage\s*\{[\s\S]*?display:\s*none\s*!important;/);
+    expect(consentRule).toMatch(/body\.shop-cookie-consent-visible:has\(\.product-compare-page\) \.product-compare__emptyPanel \.page-feedback__actions\s*\{[\s\S]*?display:\s*grid\s*!important;[\s\S]*?grid-template-columns:\s*repeat\(2,\s*minmax\(0,\s*1fr\)\);/);
+  });
+
   it('keeps mobile decision metrics in a visible two-by-two grid', () => {
     const css = readProductCompareCss();
     const decisionGridRules = extractCssRulesFor(css, '.product-compare__decisionGrid').join('\n');

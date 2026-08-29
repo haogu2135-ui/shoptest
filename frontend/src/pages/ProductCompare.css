@@ -1926,3 +1926,24 @@
 .product-compare-page .commerce-money--accent {
   color: #ee4d2d;
 }
+
+/* Keep empty comparison recovery actions above first-visit consent. The
+   illustration yields the vertical space while the two-column rail retains
+   all browse, wishlist, coupon, and pet-finder destinations. */
+@media (max-width: 780px) {
+  body.shop-cookie-consent-visible:has(.product-compare-page) .product-compare__emptyPanel .page-feedback__emptyImage {
+    display: none !important;
+  }
+
+  body.shop-cookie-consent-visible:has(.product-compare-page) .product-compare__emptyPanel .page-feedback__actions {
+    display: grid !important;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    gap: 8px !important;
+  }
+
+  body.shop-cookie-consent-visible:has(.product-compare-page) .product-compare__emptyPanel .page-feedback__actions .ant-btn {
+    width: 100%;
+    min-width: 0;
+  }
+}

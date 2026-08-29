@@ -124,6 +124,17 @@ describe('Register mobile validation scroll', () => {
     expect(fixCss).toMatch(/\.register-page__codeField \.ant-input-group-addon\s*\{[\s\S]*?width:\s*100%\s*!important;[\s\S]*?display:\s*block\s*!important;[\s\S]*?background:\s*transparent\s*!important;/);
     expect(fixCss).toMatch(/\.register-page__codeField \.ant-input-group-addon \.ant-btn\s*\{[\s\S]*?width:\s*100%\s*!important;[\s\S]*?min-height:\s*44px\s*!important;[\s\S]*?white-space:\s*normal\s*!important;/);
   });
+
+  it('keeps the first-visit consent rail clear of the mobile registration CTA', () => {
+    const css = readRegisterCss();
+    const fixStart = css.indexOf('First-visit consent must not cover the registration CTA on phone portraits.');
+    const fixCss = css.slice(fixStart);
+
+    expect(fixStart).toBeGreaterThanOrEqual(0);
+    expect(fixCss).toContain('@media (max-width: 640px)');
+    expect(fixCss).toMatch(/body\.shop-cookie-consent-visible:has\(\.register-page\) \.register-page__cardHint\s*\{[\s\S]*?display:\s*none\s*!important/);
+    expect(fixCss).toMatch(/body\.shop-cookie-consent-visible:has\(\.register-page\) \.register-page__card \.ant-form-item\s*\{[\s\S]*?margin-bottom:\s*0\s*!important/);
+  });
 });
 
 describe('Register accessibility labels', () => {
