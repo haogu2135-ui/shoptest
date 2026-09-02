@@ -219,6 +219,78 @@ server {
 }
 
 server {
+    # Codex Switcher is a host-network service, so the edge container reaches it
+    # through the host loopback address.
+    listen 80;
+    server_name ${SWITCHER_SERVER_NAME};
+
+    client_max_body_size 2m;
+
+    location ^~ /.well-known/acme-challenge/ {
+        default_type "text/plain";
+        add_header Cache-Control "no-store" always;
+        root /var/www/certbot;
+        try_files $uri =404;
+    }
+
+    location / {
+        # The session cookie is Secure. Redirect plain HTTP clients while
+        # allowing Cloudflare HTTPS requests that terminate at origin :80.
+        if ($http_x_forwarded_proto != "https") {
+            return 301 https://$host$request_uri;
+        }
+        proxy_pass http://127.0.0.1:8765;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_buffering off;
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+server {
+    listen ${HTTPS_LISTEN_PORT} ssl;
+    http2 on;
+    server_name ${SWITCHER_SERVER_NAME};
+
+    ssl_certificate ${SWITCHER_SSL_CERTIFICATE};
+    ssl_certificate_key ${SWITCHER_SSL_CERTIFICATE_KEY};
+    ssl_protocols TLSv1.2 TLSv1.3;
+    ssl_ciphers ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384;
+    ssl_prefer_server_ciphers off;
+    ssl_session_cache shared:SSL:10m;
+    ssl_session_timeout 1d;
+
+    client_max_body_size 2m;
+
+    location ^~ /.well-known/acme-challenge/ {
+        default_type "text/plain";
+        add_header Cache-Control "no-store" always;
+        root /var/www/certbot;
+        try_files $uri =404;
+    }
+
+    location / {
+        proxy_pass http://127.0.0.1:8765;
+        proxy_http_version 1.1;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Host $host;
+        proxy_buffering off;
+        proxy_connect_timeout 10s;
+        proxy_send_timeout 60s;
+        proxy_read_timeout 60s;
+    }
+}
+
+server {
     # default_server: unknown Host / bare-IP probes still serve the storefront so Cloudflare
     # origin health checks and mis-set Host headers do not 301-loop into 521/522.
     listen 80 default_server;
