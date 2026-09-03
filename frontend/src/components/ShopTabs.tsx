@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { handleRovingTablistKeyDown } from '../utils/tablistKeyboard';
 import './ShopTabs.css';
 
@@ -29,27 +29,33 @@ const ShopTabs: React.FC<ShopTabsProps> = ({
   tabBarGutter = 16,
 }) => {
   const firstKey = items[0]?.key;
-  const [internalKey, setInternalKey] = useState<string | undefined>(defaultActiveKey || firstKey);
+  const firstEnabledKey = items.find((item) => !item.disabled)?.key || firstKey;
+  const normalizedTabBarGutter = Number.isFinite(tabBarGutter)
+    ? Math.max(0, Math.min(Math.floor(tabBarGutter), 96))
+    : 16;
+  const [internalKey, setInternalKey] = useState<string | undefined>(defaultActiveKey || firstEnabledKey);
   const currentKey = activeKey != null ? activeKey : internalKey;
+  const enabledKeys = useMemo(() => items.filter((item) => !item.disabled).map((item) => item.key), [items]);
   const activeItem = useMemo(
-    () => items.find((item) => item.key === currentKey) || items[0],
+    () => items.find((item) => item.key === currentKey && !item.disabled)
+      || items.find((item) => !item.disabled)
+      || items[0],
     [items, currentKey],
   );
 
-  const select = (key: string, disabled?: boolean) => {
+  const select = useCallback((key: string, disabled?: boolean) => {
     if (disabled) return;
     if (activeKey == null) setInternalKey(key);
     onChange?.(key);
-  };
+  }, [activeKey, onChange]);
 
   return (
     <div className={['shop-tabs', 'ant-tabs', 'ant-tabs-top', className].filter(Boolean).join(' ')} style={style}>
       <div className="shop-tabs__nav ant-tabs-nav" role="tablist" aria-orientation="horizontal">
         <div className="shop-tabs__navWrap ant-tabs-nav-wrap">
-          <div className="shop-tabs__navList ant-tabs-nav-list" style={{ gap: tabBarGutter }}>
+          <div className="shop-tabs__navList ant-tabs-nav-list" style={{ gap: normalizedTabBarGutter }}>
             {items.map((item) => {
               const selected = activeItem?.key === item.key;
-              const enabledKeys = items.filter((entry) => !entry.disabled).map((entry) => entry.key);
               return (
                 <button
                   key={item.key}
@@ -71,7 +77,7 @@ const ShopTabs: React.FC<ShopTabsProps> = ({
                     if (item.disabled) return;
                     handleRovingTablistKeyDown(event, {
                       tabKeys: enabledKeys,
-                      activeKey: String(currentKey || item.key),
+                      activeKey: String(activeItem?.key || item.key),
                       onActivate: (key) => select(key),
                       getTabElementId: (key) => `shop-tab-${key}`,
                     });

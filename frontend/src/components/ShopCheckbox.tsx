@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useId, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useId, useMemo, useState } from 'react';
 import './ShopCheckbox.css';
 
 export type ShopCheckboxChangeEvent = {
@@ -88,7 +88,7 @@ export const ShopCheckbox: React.FC<ShopCheckboxProps> = ({
     : (typeof checked === 'boolean' ? checked : uncontrolledChecked);
   const isDisabled = disabled || Boolean(group?.disabled);
   const inputId = id || generatedId;
-  const label = ariaLabel || ariaLabelAttr || title;
+  const label = ariaLabel || ariaLabelAttr || title || (typeof children === 'string' ? children : 'Checkbox');
 
   const emitChange = (nextChecked: boolean) => {
     if (isDisabled) return;
@@ -153,10 +153,13 @@ export const ShopCheckboxGroup: React.FC<ShopCheckboxGroupProps> = ({
   const isControlled = Array.isArray(value);
   const groupLabel = ariaLabel || ariaLabelAttr;
   const [uncontrolledValue, setUncontrolledValue] = useState<string[]>(defaultValue.map(String));
-  const resolvedValue = (isControlled ? value || [] : uncontrolledValue).map(String);
+  const resolvedValue = useMemo(
+    () => (isControlled ? value || [] : uncontrolledValue).map(String),
+    [isControlled, uncontrolledValue, value],
+  );
   const normalizedOptions = useMemo(() => normalizeOptions(options), [options]);
 
-  const toggle = (optionValue: string, nextChecked: boolean) => {
+  const toggle = useCallback((optionValue: string, nextChecked: boolean) => {
     if (disabled) return;
     const set = new Set(resolvedValue);
     if (nextChecked) set.add(optionValue);
@@ -164,13 +167,13 @@ export const ShopCheckboxGroup: React.FC<ShopCheckboxGroupProps> = ({
     const next = Array.from(set);
     if (!isControlled) setUncontrolledValue(next);
     onChange?.(next);
-  };
+  }, [disabled, isControlled, onChange, resolvedValue]);
 
   const contextValue = useMemo<GroupContextValue>(() => ({
     value: resolvedValue,
     disabled,
     toggle,
-  }), [disabled, resolvedValue]);
+  }), [disabled, resolvedValue, toggle]);
 
   return (
     <ShopCheckboxGroupContext.Provider value={contextValue}>

@@ -30,4 +30,9 @@ describe('ShopInputNumber', () => {
     expect(screen.getByTestId('suffix')).toBeInTheDocument();
     expect(screen.getByTestId('addon')).toBeInTheDocument();
   });
+
+  it('fails closed for non-finite controlled values and extreme precision', () => {
+    render(<ShopInputNumber aria-label="Quantity" value={Number.NaN} precision={99} />);
+    expect(screen.getByLabelText('Quantity')).toHaveValue(null);
+  });
 });

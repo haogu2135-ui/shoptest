@@ -61,6 +61,16 @@ describe('ShopModal', () => {
     expect(onClose).toHaveBeenCalled();
   });
 
+  it('keeps non-text titles accessible when no explicit label is supplied', () => {
+    render(
+      <ShopModal open onClose={jest.fn()} title={<span aria-hidden="true">Rich title</span>} titleAriaLabel="Rich preview" footer={null} closeLabel="Close preview">
+        Preview body
+      </ShopModal>,
+    );
+
+    expect(screen.getByRole('dialog', { name: 'Rich preview' })).toBeInTheDocument();
+  });
+
   it('mounts an open dialog directly in the document body', () => {
     const onClose = jest.fn();
     const { container } = render(

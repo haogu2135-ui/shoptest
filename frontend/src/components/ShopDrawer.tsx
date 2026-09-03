@@ -18,6 +18,7 @@ export type ShopDrawerProps = {
   bodyClassName?: string;
   children?: React.ReactNode;
   ariaLabel?: string;
+  titleAriaLabel?: string;
   closeLabel?: string;
 };
 
@@ -39,15 +40,17 @@ const ShopDrawer: React.FC<ShopDrawerProps> = ({
   bodyClassName = '',
   children,
   ariaLabel,
+  titleAriaLabel,
   closeLabel = 'Close',
 }) => {
   const panelRef = useRef<HTMLDivElement | null>(null);
   const closeRef = useRef<HTMLButtonElement | null>(null);
   const titleId = useId();
   const hasTitle = Boolean(title);
-  const labelledBy = !ariaLabel && hasTitle ? titleId : undefined;
+  const labelledBy = !ariaLabel && !titleAriaLabel && hasTitle ? titleId : undefined;
   const resolvedAriaLabel = ariaLabel
-    || (!hasTitle ? closeLabel : (typeof title === 'string' ? title : undefined));
+    || titleAriaLabel
+    || (!hasTitle ? closeLabel : (typeof title === 'string' ? title : closeLabel));
 
   useEffect(() => {
     if (!open) return;

@@ -48,3 +48,41 @@ describe('ShopTabs', () => {
     expect(screen.getByRole('tab', { name: 'Beta' })).toHaveFocus();
     jest.useRealTimers();
   });
+
+  it('starts on the first enabled tab when the default tab is disabled', () => {
+    render(
+      <ShopTabs
+        defaultActiveKey="disabled"
+        items={[
+          { key: 'disabled', label: 'Disabled', disabled: true, children: <div>Disabled panel</div> },
+          { key: 'enabled', label: 'Enabled', children: <div>Enabled panel</div> },
+        ]}
+      />,
+    );
+
+    expect(screen.getByRole('tab', { name: 'Enabled' })).toHaveAttribute('aria-selected', 'true');
+    expect(screen.getByText('Enabled panel')).toBeInTheDocument();
+  });
+
+  it('normalizes an invalid tab gutter to a stable non-negative value', () => {
+    render(<ShopTabs tabBarGutter={Number.NaN} items={[{ key: 'a', label: 'Alpha' }]} />);
+    expect(screen.getByRole('tab', { name: 'Alpha' }).parentElement).toHaveStyle({ gap: '16px' });
+  });
+
+  it('keeps arrow navigation anchored to the enabled fallback tab', () => {
+    jest.useFakeTimers();
+    render(
+      <ShopTabs
+        defaultActiveKey="disabled"
+        items={[
+          { key: 'disabled', label: 'Disabled', disabled: true },
+          { key: 'enabled', label: 'Enabled' },
+          { key: 'last', label: 'Last' },
+        ]}
+      />,
+    );
+    fireEvent.keyDown(screen.getByRole('tab', { name: 'Enabled' }), { key: 'ArrowRight' });
+    jest.runOnlyPendingTimers();
+    expect(screen.getByRole('tab', { name: 'Last' })).toHaveAttribute('aria-selected', 'true');
+    jest.useRealTimers();
+  });

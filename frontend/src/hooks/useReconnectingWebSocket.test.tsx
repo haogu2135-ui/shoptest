@@ -166,6 +166,20 @@ describe('useReconnectingWebSocket', () => {
     expect(onOpen).toHaveBeenCalledWith('open');
   });
 
+  it('ignores a close event from a socket replaced by a newer connection', () => {
+    const onClose = jest.fn();
+    const { rerender } = render(<SocketProbe connectionKey="first" onClose={onClose} />);
+    const firstSocket = FakeSocket.instances[0];
+
+    rerender(<SocketProbe connectionKey="second" onClose={onClose} />);
+    const secondSocket = FakeSocket.instances[1];
+    onClose.mockClear();
+    firstSocket.emitClose();
+
+    expect(onClose).not.toHaveBeenCalled();
+    expect(secondSocket.close).not.toHaveBeenCalled();
+  });
+
   it('keeps support websocket reconnect state shared between customer and admin surfaces', () => {
     const componentFiles = [
       path.resolve(__dirname, '../components/CustomerSupportWidget.tsx'),

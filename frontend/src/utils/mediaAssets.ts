@@ -177,9 +177,15 @@ export const buildResponsiveImageSrcSet = (
   if (!safeValue) return undefined;
   try {
     const url = new URL(safeValue, window.location.origin);
-    const canResize = url.hostname.includes('images.unsplash.com') || url.searchParams.has('w');
+    const canResize = url.hostname === 'images.unsplash.com' || url.searchParams.has('w');
     if (!canResize) return undefined;
-    return widths
+    const safeWidths = Array.from(new Set(widths
+      .map((width) => Number(width))
+      .filter((width) => Number.isFinite(width) && width > 0)
+      .map((width) => Math.min(Math.floor(width), 2000))))
+      .sort((left, right) => left - right);
+    if (!safeWidths.length) return undefined;
+    return safeWidths
       .map((width) => {
         const nextUrl = new URL(url.toString());
         nextUrl.searchParams.set('auto', 'format');
@@ -205,7 +211,7 @@ export const getOptimizedImageUrl = (
   if (!safeValue) return '';
   try {
     const url = new URL(safeValue, window.location.origin);
-    const canResize = url.hostname.includes('images.unsplash.com') || url.searchParams.has('w');
+    const canResize = url.hostname === 'images.unsplash.com' || url.searchParams.has('w');
     if (!canResize) return safeValue;
     const safeWidth = Math.max(96, Math.min(Math.floor(Number(width) || 900), 2000));
     url.searchParams.set('auto', 'format');

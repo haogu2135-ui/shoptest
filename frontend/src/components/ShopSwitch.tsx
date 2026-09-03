@@ -39,6 +39,7 @@ const ShopSwitch: React.FC<ShopSwitchProps> = ({
   const labelId = `${id || generatedId}-label`;
   const hasChildren = checkedChildren != null || unCheckedChildren != null;
   const activeChild = resolvedChecked ? checkedChildren : unCheckedChildren;
+  const resolvedAriaLabel = ariaLabel || (!hasChildren ? 'Switch' : undefined);
 
   const toggle = () => {
     if (isDisabled) return;
@@ -64,9 +65,9 @@ const ShopSwitch: React.FC<ShopSwitchProps> = ({
       ].filter(Boolean).join(' ')}
       aria-checked={resolvedChecked}
       aria-busy={loading || undefined}
-      aria-label={ariaLabel}
-      aria-labelledby={!ariaLabel && hasChildren ? labelId : undefined}
-      title={title || ariaLabel}
+      aria-label={resolvedAriaLabel}
+      aria-labelledby={!resolvedAriaLabel && hasChildren ? labelId : undefined}
+      title={title || resolvedAriaLabel}
       disabled={isDisabled}
       onClick={toggle}
     >

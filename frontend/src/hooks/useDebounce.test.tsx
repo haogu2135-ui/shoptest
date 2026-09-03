@@ -6,11 +6,13 @@ import { useDebounce } from './useDebounce';
 const DebounceProbe = ({
   value,
   onDebounced,
+  delayMs = 300,
 }: {
   value: string;
   onDebounced?: (value: string) => void;
+  delayMs?: number;
 }) => {
-  const debouncedValue = useDebounce(value, 300, onDebounced);
+  const debouncedValue = useDebounce(value, delayMs, onDebounced);
   return <div data-testid="debounced-value">{debouncedValue}</div>;
 };
 
@@ -69,5 +71,18 @@ describe('useDebounce', () => {
       expect(source).not.toContain('setDebouncedSearchText');
       expect(source).not.toMatch(/setTimeout\s*\(\s*\(\)\s*=>\s*setDebounced/);
     });
+  });
+
+  it('uses a bounded fallback for invalid delays', () => {
+    const onDebounced = jest.fn();
+    render(<DebounceProbe value="safe" delayMs={Number.NaN} onDebounced={onDebounced} />);
+    act(() => {
+      jest.advanceTimersByTime(299);
+    });
+    expect(onDebounced).not.toHaveBeenCalled();
+    act(() => {
+      jest.advanceTimersByTime(1);
+    });
+    expect(onDebounced).toHaveBeenCalledWith('safe');
   });
 });

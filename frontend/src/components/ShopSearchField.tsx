@@ -13,6 +13,7 @@ export type ShopSearchFieldProps = {
   className?: string;
   inputClassName?: string;
   allowClear?: boolean;
+  clearLabel?: string;
   showSubmit?: boolean;
   submitLabel?: string;
   disabled?: boolean;
@@ -35,6 +36,7 @@ const ShopSearchField: React.FC<ShopSearchFieldProps> = ({
   className = '',
   inputClassName = '',
   allowClear = true,
+  clearLabel = 'Clear',
   showSubmit = true,
   submitLabel,
   disabled = false,
@@ -94,11 +96,10 @@ const ShopSearchField: React.FC<ShopSearchFieldProps> = ({
           <button
             type="button"
             className="shop-search-field__clear"
-            aria-label="Clear"
-            title="Clear"
+            aria-label={clearLabel}
+            title={clearLabel}
             onClick={() => {
               setValue('');
-              onChange?.('');
             }}
           >
             ×

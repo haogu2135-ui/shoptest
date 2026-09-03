@@ -16,6 +16,7 @@ export type ShopImageProps = {
   onClick?: React.MouseEventHandler<HTMLImageElement>;
   onError?: React.ReactEventHandler<HTMLImageElement>;
   loading?: 'eager' | 'lazy';
+  previewCloseLabel?: string;
 } & Omit<React.ImgHTMLAttributes<HTMLImageElement>, 'width' | 'height' | 'loading' | 'src' | 'alt' | 'title' | 'onClick' | 'onError'>;
 
 const ShopImage: React.FC<ShopImageProps> = ({
@@ -31,6 +32,7 @@ const ShopImage: React.FC<ShopImageProps> = ({
   onClick,
   onError,
   loading = 'lazy',
+  previewCloseLabel = 'Close',
   ...rest
 }) => {
   const [broken, setBroken] = React.useState(false);
@@ -41,6 +43,7 @@ const ShopImage: React.FC<ShopImageProps> = ({
 
   React.useEffect(() => {
     setBroken(false);
+    setPreviewOpen(false);
   }, [src, fallback]);
 
   const sizeStyle: React.CSSProperties = {
@@ -93,6 +96,7 @@ const ShopImage: React.FC<ShopImageProps> = ({
             width={typeof width === 'number' ? width : undefined}
             height={typeof height === 'number' ? height : undefined}
             loading={loading}
+            decoding={rest.decoding || 'async'}
             style={sizeStyle}
             role={canPreview ? 'button' : undefined}
             tabIndex={canPreview ? 0 : undefined}
@@ -132,10 +136,10 @@ const ShopImage: React.FC<ShopImageProps> = ({
             if (event.target === event.currentTarget) setPreviewOpen(false);
           }}
         >
-          <button ref={previewCloseRef} type="button" className="shop-image-preview__close" aria-label="Close" onClick={() => setPreviewOpen(false)}>
+          <button ref={previewCloseRef} type="button" className="shop-image-preview__close" aria-label={previewCloseLabel} title={previewCloseLabel} onClick={() => setPreviewOpen(false)}>
             <ShopIcon path={SI.close} />
           </button>
-          <img className="shop-image-preview__img" src={resolvedSrc} alt={alt} onClick={(event) => event.stopPropagation()} />
+          <img className="shop-image-preview__img" src={resolvedSrc} alt={alt} loading="eager" decoding="async" onClick={(event) => event.stopPropagation()} />
         </div>
       ) : null}
     </>

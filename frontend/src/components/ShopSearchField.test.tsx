@@ -34,6 +34,16 @@ describe('ShopSearchField', () => {
     );
 
     fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange).toHaveBeenCalledWith('');
+  });
+
+  it('allows localized clear labels without emitting duplicate changes', () => {
+    const onChange = jest.fn();
+    render(<ShopSearchField value="perro" onChange={onChange} clearLabel="Limpiar" />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Limpiar' }));
+    expect(onChange).toHaveBeenCalledTimes(1);
     expect(onChange).toHaveBeenCalledWith('');
   });
 

@@ -23,4 +23,10 @@ describe('ShopRate', () => {
     fireEvent.click(screen.getByRole('radio', { name: '4' }));
     expect(onChange).toHaveBeenCalledWith(4);
   });
+
+  it('clamps invalid star counts instead of throwing during render', () => {
+    expect(() => render(<ShopRate value={3} count={Number.POSITIVE_INFINITY} />)).not.toThrow();
+    expect(screen.getAllByRole('img')[0].querySelectorAll('.shop-rate__star')).toHaveLength(5);
+    expect(() => render(<ShopRate value={3} count={-4} />)).not.toThrow();
+  });
 });

@@ -49,4 +49,15 @@ describe('ShopImage', () => {
     expect(cssSource).toMatch(/\.shop-image-preview__close\s*\{[^}]*width:\s*44px;[^}]*min-width:\s*44px;[^}]*height:\s*44px;[^}]*min-height:\s*44px/);
     expect(cssSource).not.toMatch(/\.shop-image-preview__close\s*\{[^}]*?(?:width|height|min-width|min-height):\s*(?:3[0-9]|4[0-3])px/);
   });
+
+  it('closes a stale preview when the source changes and supports localized close text', () => {
+    const { rerender } = render(
+      <ShopImage src="https://example.com/first.png" alt="First" previewCloseLabel="Cerrar" />,
+    );
+    fireEvent.keyDown(screen.getByRole('button', { name: 'First' }), { key: 'Enter' });
+    expect(screen.getByRole('button', { name: 'Cerrar' })).toBeInTheDocument();
+
+    rerender(<ShopImage src="https://example.com/second.png" alt="Second" previewCloseLabel="Cerrar" />);
+    expect(screen.queryByRole('dialog')).not.toBeInTheDocument();
+  });
 });

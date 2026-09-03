@@ -59,6 +59,16 @@ describe('ShopDrawer', () => {
     expect(screen.getByText('Menu body').parentElement).toHaveClass('admin-layout__mobileDrawerBody');
   });
 
+  it('keeps a non-text title dialog accessible without an explicit label', () => {
+    render(
+      <ShopDrawer open onClose={jest.fn()} title={<span aria-hidden="true">Rich filters</span>} titleAriaLabel="Rich filter panel">
+        Filter body
+      </ShopDrawer>,
+    );
+
+    expect(screen.getByRole('dialog', { name: 'Rich filter panel' })).toBeInTheDocument();
+  });
+
   it('traps keyboard focus inside the drawer and restores trigger focus on close', () => {
     jest.useFakeTimers();
     const onClose = jest.fn();

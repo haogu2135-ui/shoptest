@@ -36,8 +36,8 @@ const clamp = (value: number, min?: number, max?: number) => {
 };
 
 const roundPrecision = (value: number, precision?: number) => {
-  if (typeof precision !== 'number' || precision < 0) return value;
-  const factor = 10 ** precision;
+  if (typeof precision !== 'number' || !Number.isFinite(precision) || precision < 0) return value;
+  const factor = 10 ** Math.min(Math.floor(precision), 10);
   return Math.round(value * factor) / factor;
 };
 
@@ -72,9 +72,11 @@ const ShopInputNumber = forwardRef<HTMLInputElement, ShopInputNumberProps>(({
   const inputId = id || generatedId;
   const isControlled = value !== undefined;
   const resolvedValue = isControlled
-    ? (value == null ? '' : String(value))
+    ? (value == null || !Number.isFinite(value) ? '' : String(value))
     : undefined;
-  const resolvedDefault = !isControlled && defaultValue != null ? String(defaultValue) : undefined;
+  const resolvedDefault = !isControlled && defaultValue != null && Number.isFinite(defaultValue)
+    ? String(defaultValue)
+    : undefined;
 
   const commit = (raw: string) => {
     if (raw.trim() === '') {

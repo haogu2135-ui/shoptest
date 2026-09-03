@@ -78,10 +78,12 @@ export const activateFocusTrap = (options: ActivateFocusTrapOptions): (() => voi
   const focusInitial = () => {
     const panel = getPanel();
     if (!panel) return;
-    const preferred = getInitialFocus?.()
-      || getFocusableElements(panel, { excludeClassNames })[0]
-      || panel;
-    preferred.focus();
+    const focusables = getFocusableElements(panel, { excludeClassNames });
+    const preferred = getInitialFocus?.();
+    const target = preferred && (preferred === panel || focusables.includes(preferred))
+      ? preferred
+      : focusables[0] || panel;
+    target.focus();
   };
 
   const timerId = window.setTimeout(focusInitial, initialFocusDelayMs);
@@ -125,7 +127,7 @@ export const activateFocusTrap = (options: ActivateFocusTrapOptions): (() => voi
       body.style.overflow = previousOverflow;
     }
     window.removeEventListener('keydown', onKeyDown);
-    if (previouslyFocused && typeof previouslyFocused.focus === 'function') {
+    if (previouslyFocused?.isConnected && typeof previouslyFocused.focus === 'function') {
       previouslyFocused.focus();
     }
   };

@@ -7,6 +7,9 @@ export const useDebounce = <T,>(
   delayMs: number = DEFAULT_DEBOUNCE_MS,
   onDebounced?: (value: T) => void,
 ) => {
+  const normalizedDelayMs = Number.isFinite(delayMs)
+    ? Math.max(0, Math.min(Math.floor(delayMs), 60_000))
+    : DEFAULT_DEBOUNCE_MS;
   const [debouncedValue, setDebouncedValue] = useState(value);
   const onDebouncedRef = useRef(onDebounced);
 
@@ -18,9 +21,9 @@ export const useDebounce = <T,>(
     const timer = window.setTimeout(() => {
       setDebouncedValue(value);
       onDebouncedRef.current?.(value);
-    }, delayMs);
+    }, normalizedDelayMs);
     return () => window.clearTimeout(timer);
-  }, [delayMs, value]);
+  }, [normalizedDelayMs, value]);
 
   return debouncedValue;
 };

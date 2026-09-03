@@ -15,6 +15,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, placeholder, deb
     const [value, setValue] = useState('');
     const didMountRef = useRef(false);
     const onSearchRef = useRef(onSearch);
+    const normalizedDebounceMs = Number.isFinite(debounceMs)
+        ? Math.max(0, Math.min(Math.floor(debounceMs), 60_000))
+        : 300;
 
     useEffect(() => {
         onSearchRef.current = onSearch;
@@ -27,9 +30,9 @@ export const SearchBar: React.FC<SearchBarProps> = ({ onSearch, placeholder, deb
         }
         const timer = window.setTimeout(() => {
             onSearchRef.current(value);
-        }, Math.max(0, debounceMs));
+        }, normalizedDebounceMs);
         return () => window.clearTimeout(timer);
-    }, [debounceMs, value]);
+    }, [normalizedDebounceMs, value]);
 
     return (
         <div className="shop-search-bar">

@@ -243,7 +243,9 @@ describe('api parameter normalization', () => {
     expect(cacheSource).toContain('trimMapToSize(map, MAX_API_CACHE_ENTRIES)');
     expect(cacheSource).toContain('export const setBoundedMapEntry');
     expect(cacheSource).toContain('trimMapToSize(map, maxEntries)');
-    expect(cacheSource).toContain('.finally(() => requests.delete(cacheKey))');
+    expect(cacheSource).toContain('if (requests.get(cacheKey) === request) requests.delete(cacheKey);');
+    expect(cacheSource).toContain('const shouldTrackRequest = !options?.bypassCache;');
+    expect(cacheSource).toContain('if (shouldTrackRequest) setBoundedMapEntry(requests, cacheKey, request);');
     expect(source).toContain('PRODUCT_DETAIL_CACHE_MS = 30_000');
     expect(source).toContain('PERSONALIZED_RECOMMENDATION_CACHE_MS = 45_000');
     expect(source).toContain('ADMIN_ORDER_CACHE_MS = 15_000');

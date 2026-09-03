@@ -89,6 +89,8 @@ describe('mediaAssets', () => {
     expect(buildResponsiveImageSrcSet('https://images.unsplash.com/%5cadmin?w=900')).toBeUndefined();
     expect(buildResponsiveImageSrcSet('https://192.168.1.10/pet.jpg?w=900')).toBeUndefined();
     expect(buildResponsiveImageSrcSet('http://[::ffff:127.0.0.1]/pet.jpg?w=900')).toBeUndefined();
+    const normalized = buildResponsiveImageSrcSet('https://images.unsplash.com/photo-1?w=900', [640, 320, 640, Infinity, -20]);
+    expect(normalized?.match(/\b(?:320|640)w/g)).toEqual(['320w', '640w']);
   });
 
   it('returns optimized primary image URLs for resize-aware providers', () => {

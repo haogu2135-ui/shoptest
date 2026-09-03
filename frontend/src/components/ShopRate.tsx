@@ -29,11 +29,12 @@ const ShopRate: React.FC<ShopRateProps> = ({
   className = '',
   ariaLabel,
 }) => {
+  const normalizedCount = Number.isFinite(count) ? Math.max(0, Math.min(Math.floor(count), 100)) : 5;
   const interactive = Boolean(onChange) && !disabled;
   const [hoverValue, setHoverValue] = useState<number | null>(null);
-  const stars = useMemo(() => Array.from({ length: count }, (_, index) => index + 1), [count]);
-  const displayValue = normalizeValue(hoverValue ?? value, count, allowHalf);
-  const label = ariaLabel || `${displayValue} / ${count}`;
+  const stars = useMemo(() => Array.from({ length: normalizedCount }, (_, index) => index + 1), [normalizedCount]);
+  const displayValue = normalizeValue(hoverValue ?? value, normalizedCount, allowHalf);
+  const label = ariaLabel || `${displayValue} / ${normalizedCount}`;
 
   const pickValue = (star: number, event: React.MouseEvent | React.KeyboardEvent) => {
     if (!allowHalf) return star;
@@ -47,7 +48,7 @@ const ShopRate: React.FC<ShopRateProps> = ({
 
   const commit = (next: number) => {
     if (!interactive || !onChange) return;
-    const normalized = normalizeValue(next, count, allowHalf);
+    const normalized = normalizeValue(next, normalizedCount, allowHalf);
     if (normalized !== value) onChange(normalized);
   };
 

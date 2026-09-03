@@ -103,6 +103,7 @@ export const useReconnectingWebSocket = ({
           onOpenRef.current?.(socket, event);
         };
         socket.onclose = (event) => {
+          if (socketRef.current !== socket) return;
           onCloseRef.current?.(event);
           scheduleReconnect();
         };

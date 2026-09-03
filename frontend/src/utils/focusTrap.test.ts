@@ -60,4 +60,22 @@ describe('focusTrap', () => {
     trigger.remove();
     jest.useRealTimers();
   });
+
+  it('falls back when the preferred focus target is disabled', () => {
+    jest.useFakeTimers();
+    const panel = document.createElement('div');
+    panel.tabIndex = -1;
+    panel.innerHTML = '<button type="button" disabled>Disabled</button><button type="button">Enabled</button>';
+    document.body.appendChild(panel);
+
+    const cleanup = activateFocusTrap({
+      getPanel: () => panel,
+      getInitialFocus: () => panel.querySelector('button') as HTMLElement,
+    });
+    jest.runOnlyPendingTimers();
+    expect(panel.querySelectorAll('button')[1]).toHaveFocus();
+    cleanup();
+    panel.remove();
+    jest.useRealTimers();
+  });
 });

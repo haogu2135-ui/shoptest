@@ -109,17 +109,24 @@ export const cachedGet = <T,>(
     options?: CacheOptions,
 ) => {
     if (options?.signal?.aborted) return Promise.reject(createAbortError());
+    const shouldTrackRequest = !options?.bypassCache;
+    const normalizedTtlMs = Number.isFinite(ttlMs) ? Math.max(0, Math.floor(ttlMs)) : 0;
     const cached = cache.get(cacheKey);
     if (!options?.bypassCache && cached && cached.expiresAt > Date.now()) return withAbortSignal(Promise.resolve(cached.response), options?.signal);
     const pending = options?.bypassCache ? undefined : requests.get(cacheKey);
     if (pending) return withAbortSignal(pending, options?.signal);
-    const request = loader()
+    const loaded = loader()
         .then((response) => {
-            setTimedCacheEntry(cache, cacheKey, { response, expiresAt: Date.now() + ttlMs });
+            setTimedCacheEntry(cache, cacheKey, { response, expiresAt: Date.now() + normalizedTtlMs });
             return response;
+        });
+    let request: Promise<AxiosResponse<T>>;
+    request = shouldTrackRequest
+        ? loaded.finally(() => {
+            if (requests.get(cacheKey) === request) requests.delete(cacheKey);
         })
-        .finally(() => requests.delete(cacheKey));
-    setBoundedMapEntry(requests, cacheKey, request);
+        : loaded;
+    if (shouldTrackRequest) setBoundedMapEntry(requests, cacheKey, request);
     return withAbortSignal(request, options?.signal);
 };
 
@@ -131,11 +138,18 @@ export const cachedTypedGet = <K, T>(
     options?: CacheOptions,
 ) => {
     if (options?.signal?.aborted) return Promise.reject(createAbortError());
+    const shouldTrackRequest = !options?.bypassCache;
     const cached = cache.get(cacheKey);
     if (!options?.bypassCache && cached && cached.expiresAt > Date.now()) return withAbortSignal(Promise.resolve(cached.response), options?.signal);
     const pending = options?.bypassCache ? undefined : requests.get(cacheKey);
     if (pending) return withAbortSignal(pending, options?.signal);
-    const request = loader().finally(() => requests.delete(cacheKey));
-    setBoundedMapEntry(requests, cacheKey, request);
+    const loaded = loader();
+    let request: Promise<AxiosResponse<T>>;
+    request = shouldTrackRequest
+        ? loaded.finally(() => {
+            if (requests.get(cacheKey) === request) requests.delete(cacheKey);
+        })
+        : loaded;
+    if (shouldTrackRequest) setBoundedMapEntry(requests, cacheKey, request);
     return withAbortSignal(request, options?.signal);
 };

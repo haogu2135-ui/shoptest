@@ -40,4 +40,9 @@ describe('ShopSwitch', () => {
     expect(screen.getByRole('switch', { name: 'Free shipping' })).toHaveTextContent('Free');
     expect(container.querySelector('.shop-switch.ant-switch.ant-switch-checked')).toBeTruthy();
   });
+
+  it('provides a fallback accessible name for icon-only switches', () => {
+    render(<ShopSwitch />);
+    expect(screen.getByRole('switch', { name: 'Switch' })).toBeInTheDocument();
+  });
 });
