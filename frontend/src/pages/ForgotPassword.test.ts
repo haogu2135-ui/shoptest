@@ -80,6 +80,19 @@ describe('ForgotPassword responsive reset guide', () => {
     expect(source).toMatch(/<ShopButton type="primary" htmlType="submit"[\s\S]{0,160}loading={loading} disabled={loading \|\| codeSending \|\| !emailCodeEnabled}/);
   });
 
+  it('suppresses reset-code and password-reset effects after unmount', () => {
+    const source = readPageOnly();
+
+    expect(source).toContain('const mountedRef = useRef(true);');
+    expect(source).toContain('mountedRef.current = false;');
+    expect(source).toContain('if (!mountedRef.current) return;');
+    expect(source).toContain('if (resetCodeSendingRef.current) return;');
+    expect(source).toContain('if (resetSubmittingRef.current) return;');
+    expect(source).toContain('if (mountedRef.current) setCodeSending(false);');
+    expect(source).toContain('if (mountedRef.current) setLoading(false);');
+    expect(source).toContain('if (!mountedRef.current) return;');
+  });
+
   it('keeps reset-code action labels aligned with the visible countdown state', () => {
     const source = readPageSource();
     const css = readLoginCss();

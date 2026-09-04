@@ -64,7 +64,9 @@ const StockAlerts: React.FC = () => {
   ) => resolveStockAlertProductName(item, t);
 
   useEffect(() => {
-    const refresh = () => setAlerts(readStockAlerts());
+    const refresh = () => {
+      if (mountedRef.current) setAlerts(readStockAlerts());
+    };
     window.addEventListener('shop:stock-alerts-updated', refresh);
     return () => window.removeEventListener('shop:stock-alerts-updated', refresh);
   }, []);
@@ -122,17 +124,20 @@ const StockAlerts: React.FC = () => {
   }, [alerts, language, reloadKey, t]);
 
   const removeAlert = (productId: number) => {
+    if (!mountedRef.current) return;
     removeStockAlert(productId);
     setAlerts(readStockAlerts());
   };
 
   const clearAll = () => {
+    if (!mountedRef.current) return;
     clearStockAlerts();
     setAlerts([]);
     setProducts({});
   };
 
   const addToCart = async (product: Product, quiet = false) => {
+    if (!mountedRef.current) return false;
     if (product.stock !== undefined && product.stock <= 0) {
       announceAccessibleMessage(t('pages.productDetail.insufficientStock'), 'error');
       return false;
@@ -149,25 +154,31 @@ const StockAlerts: React.FC = () => {
     try {
       if (token) {
         await cartApi.addItem(0, product.id, 1);
+        if (!mountedRef.current) return false;
         dispatchDomEvent('shop:cart-updated');
       } else {
         addGuestCartItem({ ...product, imageUrl: resolveStockAlertImage(product.imageUrl) }, 1, undefined, product.effectivePrice ?? product.price);
       }
+      if (!mountedRef.current) return false;
       if (!quiet) {
         announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
         dispatchDomEvent('shop:open-cart');
       }
       return true;
     } catch (error: unknown) {
-      announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error');
+      if (mountedRef.current) {
+        announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error');
+      }
       return false;
     } finally {
       inFlightCartProductIds.current.delete(product.id);
-      setAddingProductIds((current) => {
-        const next = new Set(current);
-        next.delete(product.id);
-        return next;
-      });
+      if (mountedRef.current) {
+        setAddingProductIds((current) => {
+          const next = new Set(current);
+          next.delete(product.id);
+          return next;
+        });
+      }
     }
   };
 
@@ -187,6 +198,7 @@ const StockAlerts: React.FC = () => {
   });
 
   const addReadyItemsToCart = async () => {
+    if (!mountedRef.current) return;
     if (hasStaleProductData) {
       setReloadKey((value) => value + 1);
       return;
@@ -208,13 +220,13 @@ const StockAlerts: React.FC = () => {
         (product) => addToCart(product, true),
       );
       const added = results.filter((result) => result.status === 'fulfilled' && result.value).length;
-      if (added > 0) {
+      if (mountedRef.current && added > 0) {
         announceAccessibleMessage(t('pages.stockAlerts.addedReadyCount', { count: added }), 'success');
         dispatchDomEvent('shop:open-cart');
       }
     } finally {
       addingReadyRef.current = false;
-      setAddingReady(false);
+      if (mountedRef.current) setAddingReady(false);
     }
   };
 

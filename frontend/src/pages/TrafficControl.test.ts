@@ -17,7 +17,7 @@ describe('TrafficControl source guards', () => {
 
   it('keeps traffic-control first-load failures from masquerading as healthy zero data', () => {
     expect(pageSource).toContain('const [loadError, setLoadError] = useState<string | null>(null);');
-    expect(pageSource).toContain('const actionDisabled = !status || loading || Boolean(loadError);');
+    expect(pageSource).toContain('const actionDisabled = !status || loading || Boolean(loadError) || actionPending;');
     expect(pageSource).toContain("{loadError && status ? (");
     expect(pageSource).toContain("description={t('pages.trafficControl.staleDataWarning')}");
     expect(pageSource).toContain('data-admin-traffic-stale-recovery');
@@ -36,5 +36,18 @@ describe('TrafficControl source guards', () => {
     expect(touchTargetGuard).toMatch(/@media \(max-width:\s*720px\)/);
     expect(touchTargetGuard).toMatch(/\.traffic-control \.ant-btn,[^}]*\.traffic-control \.ant-input,[^}]*\.traffic-control \.ant-input-affix-wrapper,[^}]*\.traffic-control \.ant-select-selector\s*\{[^}]*min-height:\s*44px/);
     expect(touchTargetGuard).not.toMatch(/min-height:\s*(?:3[0-9]|4[0-3])px/);
+  });
+
+  it('latches traffic-control writes and suppresses post-unmount feedback and refreshes', () => {
+    expect(pageSource).toContain('const actionRef = useRef(false);');
+    expect(pageSource).toContain('const [actionPending, setActionPending] = useState(false);');
+    expect(pageSource).toContain('const actionDisabled = !status || loading || Boolean(loadError) || actionPending;');
+    expect(pageSource).toContain('if (!mountedRef.current || actionRef.current) return;');
+    expect(pageSource).toContain('actionRef.current = true;');
+    expect(pageSource).toContain('if (!mountedRef.current) return;');
+    expect(pageSource).toContain('actionRef.current = false;');
+    expect(pageSource).toContain('disabled={actionPending}');
+    expect(pageSource).toContain('disabled: actionDisabled');
+    expect(pageSource).toContain('if (mountedRef.current) {\n        setActing(null);\n        setActionPending(false);\n      }');
   });
 });

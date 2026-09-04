@@ -51,10 +51,12 @@ const ProductQuestionManagement: React.FC = () => {
   const mountedRef = useRef(true);
   const questionsAbortRef = useRef<AbortController | null>(null);
   const permissionsAbortRef = useRef<AbortController | null>(null);
+  const mutationRef = useRef(false);
+  const [mutationPending, setMutationPending] = useState(false);
   const { t, language } = useLanguage();
   const canAnswerQuestions = hasAdminPermission(adminPermissions, currentRole, QUESTIONS_ANSWER_PERMISSION);
   const canDeleteQuestions = hasAdminPermission(adminPermissions, currentRole, QUESTIONS_DELETE_PERMISSION);
-  const actionsDisabledByStaleData = Boolean(loadError);
+  const actionsDisabledByStaleData = Boolean(loadError) || mutationPending;
 
   const locale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const adminQuestionProductName = (record: ProductQuestion) => (
@@ -68,6 +70,7 @@ const ProductQuestionManagement: React.FC = () => {
   );
 
   const loadQuestions = useCallback(async () => {
+    if (!mountedRef.current) return;
     questionsAbortRef.current?.abort();
     const abortController = createApiAbortController();
     questionsAbortRef.current = abortController;
@@ -79,6 +82,7 @@ const ProductQuestionManagement: React.FC = () => {
       const normalizedStatus = normalizeStatus(statusFilter);
       const normalizedSearch = searchText.trim() || undefined;
       const summaryRes = await adminApi.getQuestionSummary({ status: normalizedStatus, search: normalizedSearch }, { signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       const limit = summaryRes.data.maxAdminRows || 200;
       const questionsRes = await adminApi.getQuestions({ status: normalizedStatus, search: normalizedSearch, limit }, { signal: abortController.signal });
       if (!isCurrentRequest()) return;
@@ -109,6 +113,7 @@ const ProductQuestionManagement: React.FC = () => {
       permissionsAbortRef.current?.abort();
       questionsAbortRef.current = null;
       permissionsAbortRef.current = null;
+      mutationRef.current = false;
     };
   }, []);
 
@@ -178,6 +183,7 @@ const ProductQuestionManagement: React.FC = () => {
   };
 
   const handleAnswer = async () => {
+    if (!mountedRef.current || mutationRef.current) return;
     if (actionsDisabledByStaleData) {
       message.warning(t('pages.adminQuestions.staleActionBlocked'));
       return;
@@ -191,27 +197,36 @@ const ProductQuestionManagement: React.FC = () => {
       message.warning(t('pages.adminQuestions.answerRequired'));
       return;
     }
+    mutationRef.current = true;
+    setMutationPending(true);
     try {
       setAnswering(true);
       await adminApi.answerQuestion(answerTarget.id, answerText.trim());
+      if (!mountedRef.current) return;
       message.success(t('pages.adminQuestions.answerSuccess'));
       setAnswerTarget(null);
       setAnswerText('');
-      loadQuestions();
+      if (mountedRef.current) await loadQuestions();
     } catch (err: unknown) {
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(err, t('pages.adminQuestions.answerFailed'), language));
     } finally {
-      setAnswering(false);
+      mutationRef.current = false;
+      if (mountedRef.current) {
+        setAnswering(false);
+        setMutationPending(false);
+      }
     }
   };
 
   const closeAnswerModal = () => {
-    if (answering) return;
+    if (answering || mutationRef.current) return;
     setAnswerTarget(null);
     setAnswerText('');
   };
 
   const deleteQuestion = async (question: ProductQuestion) => {
+    if (!mountedRef.current || mutationRef.current) return;
     if (actionsDisabledByStaleData) {
       message.warning(t('pages.adminQuestions.staleActionBlocked'));
       return;
@@ -220,15 +235,23 @@ const ProductQuestionManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    mutationRef.current = true;
+    setMutationPending(true);
     try {
       setDeletingId(question.id);
       await adminApi.deleteQuestion(question.id);
+      if (!mountedRef.current) return;
       message.success(t('messages.deleteSuccess'));
-      await loadQuestions();
+      if (mountedRef.current) await loadQuestions();
     } catch (err: unknown) {
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));
     } finally {
-      setDeletingId(null);
+      mutationRef.current = false;
+      if (mountedRef.current) {
+        setDeletingId(null);
+        setMutationPending(false);
+      }
     }
   };
 

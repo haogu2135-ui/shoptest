@@ -1918,6 +1918,36 @@ const { adminApi } = require('./admin');
     });
   });
 
+  it('propagates lifecycle abort signals through coupon and support mutations', async () => {
+    const { adminApi } = require('./admin');
+    const { adminSupportApi } = require('./admin');
+    const controller = new AbortController();
+    const options = { signal: controller.signal };
+
+    await adminApi.createCoupon({ name: 'Spring', couponType: 'FULL_REDUCTION' }, options);
+    await adminApi.updateCoupon(7, { name: 'Spring', couponType: 'FULL_REDUCTION' }, options);
+    await adminApi.deleteCoupon(7, options);
+    await adminApi.grantCoupon(7, [11], 10, options);
+    await adminApi.runPetBirthdayCoupons(options);
+    await adminApi.updatePetBirthdayCouponConfig({ enabled: true }, options);
+    await adminSupportApi.sendMessage(8, 'reply', options);
+    await adminSupportApi.markRead(8, options);
+    await adminSupportApi.closeSession(8, options);
+    await adminSupportApi.assignSession(8, options);
+    await adminSupportApi.reopenSession(8, options);
+    await adminSupportApi.reissueBirthdayCoupons(8, options);
+    await adminSupportApi.getUnreadCount(options);
+
+    const callsWithSignal = [
+      ...mockPost.mock.calls,
+      ...mockPut.mock.calls,
+      ...mockDelete.mock.calls,
+      ...mockGet.mock.calls,
+    ].filter((call: unknown[]) => call.some((value: unknown) => value && typeof value === 'object' && 'signal' in value && value.signal === controller.signal));
+
+    expect(callsWithSignal).toHaveLength(13);
+  });
+
   it('rejects admin coupon upsert payloads missing backend required fields', () => {
     const { adminApi } = require('./admin');
 
@@ -2180,6 +2210,26 @@ const { adminApi } = require('./admin');
       '/admin/ip-blacklist/batch/release',
       { ids: [8, 9], note: 'release note' },
     ]);
+  });
+
+  it('passes cancellation signals through blacklist, review, and logistics mutations', async () => {
+    const { logisticsApi, reviewApi } = require('./index');
+    const { adminApi } = require('./admin');
+    const signal = new AbortController().signal;
+
+    await adminApi.blockIpAddress({ ipAddress: '203.0.113.20' }, { signal });
+    await adminApi.releaseIpBlacklistEntry(8, { signal });
+    await adminApi.releaseIpBlacklistEntries([8], 'release', 100, { signal });
+    await reviewApi.uploadImage(new File(['image'], 'review.png', { type: 'image/png' }), { signal });
+    await reviewApi.create(9, 8, 5, 'Helpful', [], { signal });
+    await logisticsApi.track('4Z999', undefined, undefined, undefined, undefined, { signal, bypassCache: true });
+
+    expect(mockPost.mock.calls[0][2]).toEqual({ signal });
+    expect(mockPost.mock.calls[1][2]).toEqual({ signal });
+    expect(mockPost.mock.calls[2][2]).toEqual({ signal });
+    expect(mockPost.mock.calls[3][2]).toEqual({ signal });
+    expect(mockPost.mock.calls[4][2]).toEqual({ signal });
+    expect(mockGet.mock.calls[0][1]).toEqual(expect.objectContaining({ signal }));
   });
 
   it('normalizes audit log filters, summary params, export params, and purge retention', async () => {
@@ -2594,6 +2644,7 @@ const { adminApi } = require('./admin');
     const { adminApi, adminSupportApi } = require('./admin');
 
     await adminApi.getBug(7, { signal: detailController.signal });
+    await adminApi.getOrder(9, { signal: detailController.signal });
     await adminSupportApi.getMessages(42, { limit: 80 }, { signal: messageController.signal });
 
     expect(mockGet.mock.calls[0]).toEqual([
@@ -2601,12 +2652,43 @@ const { adminApi } = require('./admin');
       expect.objectContaining({ signal: detailController.signal }),
     ]);
     expect(mockGet.mock.calls[1]).toEqual([
+      '/admin/orders/9',
+      expect.objectContaining({ signal: detailController.signal }),
+    ]);
+    expect(mockGet.mock.calls[2]).toEqual([
       '/admin/support/sessions/42/messages',
       expect.objectContaining({
         params: { limit: 80, afterId: undefined },
         signal: messageController.signal,
       }),
     ]);
+  });
+
+  it('passes abort signals through customer support mutations and order details', async () => {
+    jest.resetModules();
+    const controller = new AbortController();
+    mockGet.mockResolvedValue({ data: [] });
+    mockPost.mockResolvedValue({ data: {} });
+    mockPut.mockResolvedValue({ data: {} });
+
+    const { orderApi, supportApi } = require('./index');
+    const options = { signal: controller.signal };
+
+    await supportApi.sendMessage('reply', 12, options);
+    await supportApi.sendGuestMessage('guest reply', 'SO-12', 'guest@example.com', 12, options);
+    await supportApi.markRead(12, options);
+    await supportApi.closeSession(12, options);
+    await supportApi.markGuestRead(12, 'SO-12', 'guest@example.com', options);
+    await orderApi.getById(12, undefined, undefined, options);
+    await orderApi.getItems(12, undefined, undefined, options);
+
+    expect(mockPost.mock.calls.some((call) => call[0] === '/support/messages' && call[2].signal === controller.signal)).toBe(true);
+    expect(mockPost.mock.calls.some((call) => call[0] === '/support/guest/messages' && call[2].signal === controller.signal)).toBe(true);
+    expect(mockPut.mock.calls.some((call) => call[0] === '/support/sessions/12/read' && call[2].signal === controller.signal)).toBe(true);
+    expect(mockPut.mock.calls.some((call) => call[0] === '/support/sessions/12/close' && call[2].signal === controller.signal)).toBe(true);
+    expect(mockPut.mock.calls.some((call) => call[0] === '/support/guest/sessions/12/read' && call[2].signal === controller.signal)).toBe(true);
+    expect(mockGet.mock.calls.some((call) => call[0] === '/orders/12' && call[1].signal === controller.signal)).toBe(true);
+    expect(mockGet.mock.calls.some((call) => call[0] === '/orders/12/items' && call[1].signal === controller.signal)).toBe(true);
   });
 
   it('passes abort signals through storefront mutation request configs', async () => {

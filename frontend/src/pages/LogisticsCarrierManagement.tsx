@@ -54,11 +54,13 @@ const LogisticsCarrierManagement: React.FC = () => {
   const carriersRequestSeqRef = useRef(0);
   const carriersAbortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
+  const mutationRef = useRef(false);
+  const [mutationPending, setMutationPending] = useState(false);
   const [form] = Form.useForm<LogisticsCarrierFormValues>();
   const { t, language } = useLanguage();
   const canWriteCarriers = hasAdminPermission(adminPermissions, currentRole, LOGISTICS_CARRIERS_WRITE_PERMISSION);
   const canDeleteCarriers = hasAdminPermission(adminPermissions, currentRole, LOGISTICS_CARRIERS_DELETE_PERMISSION);
-  const carrierActionDisabled = loading || Boolean(carrierLoadError) || !carrierSnapshotLoaded;
+  const carrierActionDisabled = loading || Boolean(carrierLoadError) || !carrierSnapshotLoaded || mutationPending;
   const carrierActionUnavailableMessage = carrierLoadError || (loading ? t('common.loading') : t('pages.logisticsCarriers.fetchFailed'));
   const formatCarrierStatus = useCallback((status?: string) => {
     const rawStatus = String(status || '').trim();
@@ -161,6 +163,7 @@ const LogisticsCarrierManagement: React.FC = () => {
     carriersRequestSeqRef.current += 1;
     carriersAbortRef.current?.abort();
     carriersAbortRef.current = null;
+    mutationRef.current = false;
     };
   }, []);
 
@@ -204,13 +207,14 @@ const LogisticsCarrierManagement: React.FC = () => {
   };
 
   const closeModal = () => {
-    if (saving) return;
+    if (saving || mutationRef.current) return;
     setModalOpen(false);
     setEditingCarrier(null);
     form.resetFields();
   };
 
   const handleSave = async () => {
+    if (!mountedRef.current || mutationRef.current) return;
     if (!canWriteCarriers) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -219,28 +223,38 @@ const LogisticsCarrierManagement: React.FC = () => {
       message.warning(carrierActionUnavailableMessage);
       return;
     }
+    mutationRef.current = true;
+    setMutationPending(true);
     try {
       const values = await form.validateFields();
+      if (!mountedRef.current) return;
       setSaving(true);
       if (editingCarrier) {
         await logisticsCarrierApi.update(editingCarrier.id, values);
       } else {
         await logisticsCarrierApi.create(values);
       }
+      if (!mountedRef.current) return;
       message.success(t('pages.logisticsCarriers.saved'));
       setModalOpen(false);
       setEditingCarrier(null);
       form.resetFields();
-      fetchCarriers();
+      if (mountedRef.current) await fetchCarriers();
     } catch (err: unknown) {
       if (isFormValidationError(err)) return;
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(err, t('pages.logisticsCarriers.saveFailed'), language));
     } finally {
-      setSaving(false);
+      mutationRef.current = false;
+      if (mountedRef.current) {
+        setSaving(false);
+        setMutationPending(false);
+      }
     }
   };
 
   const handleDelete = async (id: number) => {
+    if (!mountedRef.current || mutationRef.current) return;
     if (!canDeleteCarriers) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -249,12 +263,19 @@ const LogisticsCarrierManagement: React.FC = () => {
       message.warning(carrierActionUnavailableMessage);
       return;
     }
+    mutationRef.current = true;
+    setMutationPending(true);
     try {
       await logisticsCarrierApi.delete(id);
+      if (!mountedRef.current) return;
       message.success(t('pages.logisticsCarriers.deleted'));
-      fetchCarriers();
+      if (mountedRef.current) await fetchCarriers();
     } catch (err: unknown) {
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(err, t('pages.logisticsCarriers.deleteFailed'), language));
+    } finally {
+      mutationRef.current = false;
+      if (mountedRef.current) setMutationPending(false);
     }
   };
 

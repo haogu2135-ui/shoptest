@@ -71,8 +71,11 @@ const SeckillManagement: React.FC = () => {
   const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
   const mountedRef = useRef(true);
   const dataAbortRef = useRef<AbortController | null>(null);
+  const savingRef = useRef(false);
+  const statusUpdatingRef = useRef(false);
 
   const loadData = useCallback(async () => {
+    if (!mountedRef.current) return;
     dataAbortRef.current?.abort();
     const abortController = createApiAbortController();
     dataAbortRef.current = abortController;
@@ -109,6 +112,8 @@ const SeckillManagement: React.FC = () => {
       mountedRef.current = false;
       dataAbortRef.current?.abort();
       dataAbortRef.current = null;
+      savingRef.current = false;
+      statusUpdatingRef.current = false;
     };
   }, []);
 
@@ -198,8 +203,12 @@ const SeckillManagement: React.FC = () => {
   };
 
   const handleSave = async () => {
+    if (!mountedRef.current || savingRef.current || statusUpdatingRef.current) return;
+    savingRef.current = true;
+    setSaving(true);
     try {
       const values = await form.validateFields();
+      if (!mountedRef.current) return;
       const itemError = validateItems();
       if (!values.startAt || !values.endAt || !values.endAt.isAfter(values.startAt)) {
         message.error(t('pages.adminSeckill.timeInvalid'));
@@ -218,35 +227,42 @@ const SeckillManagement: React.FC = () => {
         endAt: normalizeDate(values.endAt),
         items: items.map(({ id: _id, ...item }) => item),
       };
-      setSaving(true);
+      if (!mountedRef.current) return;
       if (editing?.id) {
         await adminApi.updateSeckillCampaign(editing.id, payload);
       } else {
         await adminApi.createSeckillCampaign(payload);
       }
+      if (!mountedRef.current) return;
       message.success(t('pages.adminSeckill.saved'));
       closeEditor();
-      await loadData();
+      if (mountedRef.current) await loadData();
     } catch (requestError) {
+      if (!mountedRef.current) return;
       if (!isValidationError(requestError)) {
         message.error(getApiErrorMessage(requestError, t('pages.adminSeckill.saveFailed'), language));
       }
     } finally {
-      setSaving(false);
+      savingRef.current = false;
+      if (mountedRef.current) setSaving(false);
     }
   };
 
   const updateStatus = async (campaign: SeckillCampaign, status: CampaignFormValues['status']) => {
-    if (!campaign.id) return;
+    if (!mountedRef.current || !campaign.id || savingRef.current || statusUpdatingRef.current) return;
+    statusUpdatingRef.current = true;
     setStatusUpdatingId(campaign.id);
     try {
       await adminApi.updateSeckillStatus(campaign.id, status);
+      if (!mountedRef.current) return;
       message.success(t('pages.adminSeckill.statusUpdated'));
-      await loadData();
+      if (mountedRef.current) await loadData();
     } catch (requestError) {
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(requestError, t('pages.adminSeckill.statusFailed'), language));
     } finally {
-      setStatusUpdatingId(null);
+      statusUpdatingRef.current = false;
+      if (mountedRef.current) setStatusUpdatingId(null);
     }
   };
 

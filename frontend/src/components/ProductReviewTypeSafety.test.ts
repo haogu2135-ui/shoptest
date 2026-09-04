@@ -12,4 +12,12 @@ describe('ProductReview type-safety guards', () => {
     expect(source).not.toContain(': any');
     expect(source).not.toContain('as any');
   });
+
+  it('keeps review request cancellation scoped to the component lifecycle', () => {
+    expect(source).toContain('uploadAbortRef.current?.abort();');
+    expect(source).toContain('submitAbortRef.current?.abort();');
+    expect(source).toContain('mountedRef.current = false;');
+    expect(source).toContain('uploadingRef.current = false;');
+    expect(source).toContain('submittingRef.current = false;');
+  });
 });

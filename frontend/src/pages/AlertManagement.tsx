@@ -72,6 +72,7 @@ const AlertManagement: React.FC = () => {
   const mountedRef = useRef(true);
   const dataAbortRef = useRef<AbortController | null>(null);
   const permissionsAbortRef = useRef<AbortController | null>(null);
+  const actingRef = useRef<string | null>(null);
   const formatTime = useCallback((value?: string) => value ? new Date(value).toLocaleString(dateLocale) : '-', [dateLocale]);
   const canReadAlerts = hasAdminPermission(adminPermissions, currentRole, 'alerts');
   const canPurgeResolved = hasAdminPermission(adminPermissions, currentRole, ALERTS_PURGE_PERMISSION);
@@ -122,6 +123,7 @@ const AlertManagement: React.FC = () => {
   }, []);
 
   const loadData = useCallback(async () => {
+    if (!mountedRef.current) return;
     dataAbortRef.current?.abort();
     if (!permissionsLoaded) {
       return;
@@ -179,6 +181,7 @@ const AlertManagement: React.FC = () => {
       permissionsAbortRef.current?.abort();
       dataAbortRef.current = null;
       permissionsAbortRef.current = null;
+      actingRef.current = null;
     };
   }, []);
 
@@ -217,6 +220,7 @@ const AlertManagement: React.FC = () => {
   }, []);
 
   const runSelfCheck = async () => {
+    if (!mountedRef.current || actingRef.current) return;
     if (!canRunSelfCheck) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -225,19 +229,27 @@ const AlertManagement: React.FC = () => {
       message.warning(loadError || t('pages.alertAdmin.loadFailed'));
       return;
     }
+    actingRef.current = 'self-check';
     setActing('self-check');
     try {
       await adminApi.runAlertSelfCheck();
+      if (!mountedRef.current) return;
       message.success(t('pages.alertAdmin.selfCheckDone'));
       await loadData();
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.alertAdmin.selfCheckFailed'), language));
+      if (mountedRef.current) {
+        message.error(getApiErrorMessage(error, t('pages.alertAdmin.selfCheckFailed'), language));
+      }
     } finally {
-      setActing(null);
+      if (actingRef.current === 'self-check') {
+        actingRef.current = null;
+        if (mountedRef.current) setActing(null);
+      }
     }
   };
 
   const acknowledge = useCallback(async (alert: SystemAlert) => {
+    if (!mountedRef.current || actingRef.current) return;
     if (!canAcknowledgeAlerts) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -246,20 +258,29 @@ const AlertManagement: React.FC = () => {
       message.warning(loadError || t('pages.alertAdmin.loadFailed'));
       return;
     }
-    setActing(`ack-${alert.id}`);
+    const actionKey = `ack-${alert.id}`;
+    actingRef.current = actionKey;
+    setActing(actionKey);
     try {
       const response = await adminApi.acknowledgeAlert(alert.id);
+      if (!mountedRef.current) return;
       setAlerts((items) => items.map((item) => item.id === alert.id ? response.data : item));
       message.success(t('pages.alertAdmin.acknowledged'));
-      loadData();
+      await loadData();
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.alertAdmin.ackFailed'), language));
+      if (mountedRef.current) {
+        message.error(getApiErrorMessage(error, t('pages.alertAdmin.ackFailed'), language));
+      }
     } finally {
-      setActing(null);
+      if (actingRef.current === actionKey) {
+        actingRef.current = null;
+        if (mountedRef.current) setActing(null);
+      }
     }
   }, [alertActionDisabled, canAcknowledgeAlerts, language, loadData, loadError, t]);
 
   const resolve = useCallback(async (alert: SystemAlert) => {
+    if (!mountedRef.current || actingRef.current) return;
     if (!canResolveAlerts) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -268,16 +289,24 @@ const AlertManagement: React.FC = () => {
       message.warning(loadError || t('pages.alertAdmin.loadFailed'));
       return;
     }
-    setActing(`resolve-${alert.id}`);
+    const actionKey = `resolve-${alert.id}`;
+    actingRef.current = actionKey;
+    setActing(actionKey);
     try {
       const response = await adminApi.resolveAlert(alert.id);
+      if (!mountedRef.current) return;
       setAlerts((items) => items.map((item) => item.id === alert.id ? response.data : item));
       message.success(t('pages.alertAdmin.resolved'));
-      loadData();
+      await loadData();
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.alertAdmin.resolveFailed'), language));
+      if (mountedRef.current) {
+        message.error(getApiErrorMessage(error, t('pages.alertAdmin.resolveFailed'), language));
+      }
     } finally {
-      setActing(null);
+      if (actingRef.current === actionKey) {
+        actingRef.current = null;
+        if (mountedRef.current) setActing(null);
+      }
     }
   }, [alertActionDisabled, canResolveAlerts, language, loadData, loadError, t]);
 
@@ -295,6 +324,7 @@ const AlertManagement: React.FC = () => {
   );
 
   const batchAcknowledge = async () => {
+    if (!mountedRef.current || actingRef.current) return;
     if (!canAcknowledgeAlerts) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -307,20 +337,28 @@ const AlertManagement: React.FC = () => {
       message.warning(t('pages.alertAdmin.selectOpenFirst'));
       return;
     }
+    actingRef.current = 'batch-ack';
     setActing('batch-ack');
     try {
       const response = await adminApi.acknowledgeAlerts(selectedOpenIds, t('pages.alertAdmin.batchAckReason'));
+      if (!mountedRef.current) return;
       message.success(t('pages.alertAdmin.batchAckDone', { count: response.data.updatedCount }));
       setSelectedAlertIds([]);
       await loadData();
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.alertAdmin.batchAckFailed'), language));
+      if (mountedRef.current) {
+        message.error(getApiErrorMessage(error, t('pages.alertAdmin.batchAckFailed'), language));
+      }
     } finally {
-      setActing(null);
+      if (actingRef.current === 'batch-ack') {
+        actingRef.current = null;
+        if (mountedRef.current) setActing(null);
+      }
     }
   };
 
   const batchResolve = async () => {
+    if (!mountedRef.current || actingRef.current) return;
     if (!canResolveAlerts) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -333,20 +371,28 @@ const AlertManagement: React.FC = () => {
       message.warning(t('pages.alertAdmin.selectUnresolvedFirst'));
       return;
     }
+    actingRef.current = 'batch-resolve';
     setActing('batch-resolve');
     try {
       const response = await adminApi.resolveAlerts(selectedUnresolvedIds, t('pages.alertAdmin.batchResolveReason'));
+      if (!mountedRef.current) return;
       message.success(t('pages.alertAdmin.batchResolveDone', { count: response.data.updatedCount }));
       setSelectedAlertIds([]);
       await loadData();
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.alertAdmin.batchResolveFailed'), language));
+      if (mountedRef.current) {
+        message.error(getApiErrorMessage(error, t('pages.alertAdmin.batchResolveFailed'), language));
+      }
     } finally {
-      setActing(null);
+      if (actingRef.current === 'batch-resolve') {
+        actingRef.current = null;
+        if (mountedRef.current) setActing(null);
+      }
     }
   };
 
   const purgeResolved = async () => {
+    if (!mountedRef.current || actingRef.current) return;
     if (!canPurgeResolved) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -355,15 +401,22 @@ const AlertManagement: React.FC = () => {
       message.warning(loadError || t('pages.alertAdmin.loadFailed'));
       return;
     }
+    actingRef.current = 'purge-resolved';
     setActing('purge-resolved');
     try {
       const response = await adminApi.purgeResolvedAlerts(retentionDays);
+      if (!mountedRef.current) return;
       message.success(t('pages.alertAdmin.purgeDone', { count: response.data.deletedCount }));
       await loadData();
     } catch (error: unknown) {
-      message.error(getApiErrorMessage(error, t('pages.alertAdmin.purgeFailed'), language));
+      if (mountedRef.current) {
+        message.error(getApiErrorMessage(error, t('pages.alertAdmin.purgeFailed'), language));
+      }
     } finally {
-      setActing(null);
+      if (actingRef.current === 'purge-resolved') {
+        actingRef.current = null;
+        if (mountedRef.current) setActing(null);
+      }
     }
   };
 

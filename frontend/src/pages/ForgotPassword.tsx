@@ -34,6 +34,7 @@ const ForgotPassword: React.FC = () => {
   const codeInputRef = useRef<HTMLInputElement | null>(null);
   const resetCodeSendingRef = useRef(false);
   const resetSubmittingRef = useRef(false);
+  const mountedRef = useRef(true);
   const navigate = useNavigate();
   const { t } = useLanguage();
   usePageTitle(t('pages.auth.resetPasswordTitle'));
@@ -67,6 +68,15 @@ const ForgotPassword: React.FC = () => {
   const validateStrongPassword = createForgotPasswordStrongPasswordValidator(t);
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      resetCodeSendingRef.current = false;
+      resetSubmittingRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (sendCodeCountdown <= 0) return;
     const timer = window.setInterval(() => {
       setSendCodeCountdown((value) => Math.max(value - 1, 0));
@@ -75,6 +85,7 @@ const ForgotPassword: React.FC = () => {
   }, [sendCodeCountdown]);
 
   const sendResetCode = async () => {
+    if (!mountedRef.current) return;
     if (resetCodeSendingRef.current) return;
     resetCodeSendingRef.current = true;
     try {
@@ -83,10 +94,12 @@ const ForgotPassword: React.FC = () => {
         return;
       }
       const { email } = await form.validateFields(['email']);
+      if (!mountedRef.current) return;
       const normalizedEmail = normalizeEmail(email);
       form.setFieldValue('email', normalizedEmail);
       setCodeSending(true);
       const response = await userApi.sendPasswordResetCode(normalizedEmail);
+      if (!mountedRef.current) return;
       const resendIntervalSeconds = Number(response.data?.resendIntervalSeconds);
       const ttlMinutes = Number(response.data?.codeTtlMinutes);
       setSendCodeCountdown(Number.isFinite(resendIntervalSeconds) && resendIntervalSeconds > 0 ? resendIntervalSeconds : 60);
@@ -94,9 +107,12 @@ const ForgotPassword: React.FC = () => {
       form.setFieldValue('code', '');
       form.setFields([{ name: 'code', errors: [] }]);
       setSentEmailHint(maskEmail(normalizedEmail));
-      window.setTimeout(() => codeInputRef.current?.focus?.(), 0);
+      window.setTimeout(() => {
+        if (mountedRef.current) codeInputRef.current?.focus?.();
+      }, 0);
       announceAccessibleMessage(t('pages.auth.emailCodeSentTo', { email: maskEmail(normalizedEmail) }), 'success');
     } catch (error: unknown) {
+      if (!mountedRef.current) return;
       if (!isFormValidationError(error)) {
         const errorCode = authApiErrorCode(error);
         if (errorCode === 'RATE_LIMITED') {
@@ -110,11 +126,12 @@ const ForgotPassword: React.FC = () => {
       }
     } finally {
       resetCodeSendingRef.current = false;
-      setCodeSending(false);
+      if (mountedRef.current) setCodeSending(false);
     }
   };
 
   const onFinish = async (values: ForgotPasswordForm) => {
+    if (!mountedRef.current) return;
     if (resetSubmittingRef.current) return;
     resetSubmittingRef.current = true;
     setAuthBannerError(null);
@@ -142,10 +159,12 @@ const ForgotPassword: React.FC = () => {
         code: normalizedCode,
         newPassword: values.newPassword,
       });
+      if (!mountedRef.current) return;
       setAuthBannerError(null);
       announceAccessibleMessage(t('pages.auth.resetSuccess'), 'success');
       navigate('/login');
     } catch (error: unknown) {
+      if (!mountedRef.current) return;
       const errorCode = authApiErrorCode(error);
       if (errorCode === 'INVALID_CODE' || errorCode === 'TOO_MANY_ATTEMPTS') {
         const msg = errorCode === 'TOO_MANY_ATTEMPTS'
@@ -161,7 +180,7 @@ const ForgotPassword: React.FC = () => {
       }
     } finally {
       resetSubmittingRef.current = false;
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   };
 

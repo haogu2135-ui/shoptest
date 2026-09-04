@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import ShopRate from './ShopRate';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
@@ -7,7 +7,8 @@ import ShopSelect from './ShopSelect';
 import { useNavigate } from 'react-router-dom';
 import { useLanguage } from '../i18n';
 import type { PublicReview, ReviewableOrder } from '../types';
-import { reviewApi } from '../api';
+import { createApiAbortController, reviewApi } from '../api';
+import type { ApiRequestOptions } from '../api';
 import { buildLoginUrlFromWindow, getCurrentRelativeUrl } from '../utils/authRedirect';
 import { formatSafeDate, formatSafeDateTime } from '../utils/dateFormat';
 import { getLocalStorageItem } from '../utils/safeStorage';
@@ -27,7 +28,7 @@ interface ProductReviewProps {
     productId: number;
     reviews: PublicReview[];
     reviewableOrders: ReviewableOrder[];
-    onAddReview: (orderId: number, rating: number, comment: string, imageUrls: string[]) => Promise<void>;
+    onAddReview: (orderId: number, rating: number, comment: string, imageUrls: string[], options?: ApiRequestOptions) => Promise<void>;
 }
 
 export const ProductReview: React.FC<ProductReviewProps> = ({
@@ -45,6 +46,11 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
     const [uploadingImage, setUploadingImage] = useState(false);
     const [imageUrls, setImageUrls] = useState<string[]>([]);
     const [reviewPage, setReviewPage] = useState(1);
+    const mountedRef = useRef(true);
+    const uploadingRef = useRef(false);
+    const submittingRef = useRef(false);
+    const uploadAbortRef = useRef<AbortController | null>(null);
+    const submitAbortRef = useRef<AbortController | null>(null);
     const { t, language } = useLanguage();
     const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
     const selectedReviewOrder = reviewableOrders.find((order) => Number(order.id) === Number(orderId));
@@ -56,6 +62,19 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
     const reviewImageUploadLabel = `${t('pages.review.imageUpload')}: ${selectedReviewOrderLabel}`;
 
     useEffect(() => {
+        mountedRef.current = true;
+        return () => {
+            mountedRef.current = false;
+            uploadAbortRef.current?.abort();
+            submitAbortRef.current?.abort();
+            uploadAbortRef.current = null;
+            submitAbortRef.current = null;
+            uploadingRef.current = false;
+            submittingRef.current = false;
+        };
+    }, []);
+
+    useEffect(() => {
         setOrderId((current) =>
             current && reviewableOrders.some((order) => order.id === current)
                 ? current
@@ -64,6 +83,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
     }, [reviewableOrders]);
 
     const handleImageUpload = async (file: File) => {
+        if (!mountedRef.current || uploadingRef.current || submittingRef.current) return ShopUpload.LIST_IGNORE;
         if (!file.type || !['image/jpeg', 'image/png', 'image/gif'].includes(file.type.toLowerCase())) {
             announceAccessibleMessage(t('pages.review.imageInvalidType'), 'warning');
             return ShopUpload.LIST_IGNORE;
@@ -76,9 +96,13 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
             announceAccessibleMessage(t('pages.review.imageLimit', { count: MAX_REVIEW_IMAGES }), 'warning');
             return ShopUpload.LIST_IGNORE;
         }
+        uploadingRef.current = true;
+        const abortController = createApiAbortController();
+        uploadAbortRef.current = abortController;
         setUploadingImage(true);
         try {
-            const res = await reviewApi.uploadImage(file);
+            const res = await reviewApi.uploadImage(file, { signal: abortController.signal });
+            if (!mountedRef.current || abortController.signal.aborted) return ShopUpload.LIST_IGNORE;
             const uploadedUrl = String(res.data.imageUrl || '').trim();
             if (!uploadedUrl) {
                 throw new Error('Empty review image URL');
@@ -86,9 +110,12 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
             setImageUrls((current) => [...current, uploadedUrl].slice(0, MAX_REVIEW_IMAGES));
             announceAccessibleMessage(t('pages.review.imageUploadSuccess'), 'success');
         } catch (error: unknown) {
+            if (!mountedRef.current || abortController.signal.aborted) return ShopUpload.LIST_IGNORE;
             announceAccessibleMessage(getApiErrorMessage(error, t('pages.review.imageUploadFailed'), language), 'error');
         } finally {
-            setUploadingImage(false);
+            uploadingRef.current = false;
+            if (uploadAbortRef.current === abortController) uploadAbortRef.current = null;
+            if (mountedRef.current) setUploadingImage(false);
         }
         return ShopUpload.LIST_IGNORE;
     };
@@ -98,6 +125,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
     };
 
     const handleSubmit = async () => {
+        if (!mountedRef.current || submittingRef.current || uploadingRef.current) return;
         if (!isLoggedIn) {
             announceAccessibleMessage(t('messages.loginRequired'), 'warning');
             navigate(buildLoginUrlFromWindow());
@@ -127,18 +155,25 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
             return;
         }
 
+        submittingRef.current = true;
+        const abortController = createApiAbortController();
+        submitAbortRef.current = abortController;
         setSubmitting(true);
         try {
-            await onAddReview(orderId, rating, comment.trim(), safeImageUrls);
+            await onAddReview(orderId, rating, comment.trim(), safeImageUrls, { signal: abortController.signal });
+            if (!mountedRef.current || abortController.signal.aborted) return;
             setComment('');
             setRating(5);
             setImageUrls([]);
             setOrderId(undefined);
             announceAccessibleMessage(t('pages.review.success'), 'success');
         } catch (error: unknown) {
+            if (!mountedRef.current || abortController.signal.aborted) return;
             announceAccessibleMessage(getApiErrorMessage(error, t('pages.review.failed'), language), 'error');
         } finally {
-            setSubmitting(false);
+            submittingRef.current = false;
+            if (submitAbortRef.current === abortController) submitAbortRef.current = null;
+            if (mountedRef.current) setSubmitting(false);
         }
     };
 
@@ -231,7 +266,7 @@ export const ProductReview: React.FC<ProductReviewProps> = ({
                                 className="product-review__submit"
                                 onClick={handleSubmit}
                                 loading={submitting}
-                                disabled={uploadingImage}
+                                disabled={uploadingImage || submitting}
                                 aria-label={reviewSubmitLabel}
                                 title={reviewSubmitLabel}
                             >

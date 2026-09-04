@@ -13,4 +13,17 @@ describe('SeventeenTrackWidget type-safety guards', () => {
     expect(source).not.toContain('catch (error: any)');
     expect(source).not.toContain('err?.response?.data');
   });
+
+  it('cancels stale tracking requests and ignores unmounted results', () => {
+    expect(source).toContain('const mountedRef = useRef(true);');
+    expect(source).toContain('const trackAbortRef = useRef<AbortController | null>(null);');
+    expect(source).toContain('if (!mountedRef.current) return;');
+    expect(source).toContain('trackAbortRef.current?.abort();');
+    expect(source).toContain('logisticsApi.track(num, carrierCode, orderId, guestEmail, orderNo, { signal: abortController.signal })');
+    expect(source).toContain('const isCurrentRequest = () => mountedRef.current');
+    expect(source).toContain('mountedRef.current = false;');
+    expect(source).toContain('requestSeq.current += 1;');
+    expect(source).toContain("if (!normalized) {");
+    expect(source).toContain("setLoading(false);\n      return;");
+  });
 });

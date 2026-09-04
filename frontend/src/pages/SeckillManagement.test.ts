@@ -20,6 +20,19 @@ describe('SeckillManagement', () => {
     expect(pageSource).toContain('mountedRef.current = false;');
   });
 
+  it('latches campaign writes and suppresses post-unmount feedback and loading cleanup', () => {
+    expect(pageSource).toContain('const savingRef = useRef(false);');
+    expect(pageSource).toContain('const statusUpdatingRef = useRef(false);');
+    expect(pageSource).toContain('if (!mountedRef.current || savingRef.current || statusUpdatingRef.current) return;');
+    expect(pageSource).toContain('savingRef.current = true;');
+    expect(pageSource).toContain('if (!mountedRef.current) return;');
+    expect(pageSource).toContain('savingRef.current = false;');
+    expect(pageSource).toContain('if (!mountedRef.current || !campaign.id || savingRef.current || statusUpdatingRef.current) return;');
+    expect(pageSource).toContain('statusUpdatingRef.current = true;');
+    expect(pageSource).toContain('statusUpdatingRef.current = false;');
+    expect(pageSource).toContain('if (mountedRef.current) setStatusUpdatingId(null);');
+  });
+
   it('keeps the campaign editor usable on phone widths', () => {
     expect(styleSource).toContain('@media (max-width: 720px)');
     expect(styleSource).toContain('.admin-seckill__items {\n    grid-template-columns: 1fr;');

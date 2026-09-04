@@ -106,7 +106,8 @@ describe('Register mobile validation scroll', () => {
     expect(source).toContain("rootSelector: '.register-page__card'");
     expect(source).toContain('scrollOffset: 176');
     expect(source).toContain("scrollContainerSelector: '.register-page__card'");
-    expect(source).toContain('window.requestAnimationFrame(scrollFirstRegisterErrorIntoView)');
+    expect(source).toContain('window.requestAnimationFrame(() => {');
+    expect(source).toContain('if (mountedRef.current) scrollFirstRegisterErrorIntoView();');
     expect(source).toContain('onFinishFailed={onFinishFailed}');
     expect(fixCss).toContain('@media (max-width: 640px)');
     expect(fixCss).toMatch(/\.register-page\s*\{[^}]*scroll-padding-top:\s*calc\(176px \+ env\(safe-area-inset-top,\s*0px\)\);/);
@@ -178,6 +179,19 @@ describe('Register submit guard', () => {
     expect(source).toContain('if (registerCodeSendingRef.current) return;');
     expect(source).toContain('registerCodeSendingRef.current = true;');
     expect(source).toContain('registerCodeSendingRef.current = false;');
+  });
+
+  it('suppresses registration and code-send effects after unmount', () => {
+    const source = readRegisterPage();
+
+    expect(source).toContain('const mountedRef = useRef(true);');
+    expect(source).toContain('mountedRef.current = false;');
+    expect(source).toContain('if (!mountedRef.current) return;');
+    expect(source).toContain('if (registeringRef.current) return;');
+    expect(source).toContain('if (registerCodeSendingRef.current) return;');
+    expect(source).toContain('if (mountedRef.current) setRegistering(false);');
+    expect(source).toContain('if (mountedRef.current) setCodeSending(false);');
+    expect(source).toContain('if (!mountedRef.current) return;');
   });
 
   it('does not submit the register form twice during the same pending request', async () => {

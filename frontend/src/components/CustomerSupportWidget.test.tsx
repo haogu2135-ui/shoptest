@@ -203,8 +203,24 @@ describe('CustomerSupportWidget reconnect cleanup source contracts', () => {
     expect(pollingEffect).toContain('supportApi.getGuestMessages(pollSessionId, guestContextForPoll.orderNo, guestContextForPoll.email');
     expect(pollingEffect).toContain('activeGuestContextRef.current?.orderNo !== guestContextForPoll.orderNo');
     expect(pollingEffect).toContain('activeGuestContextRef.current?.email !== guestContextForPoll.email');
-    expect(pollingEffect).toContain('supportApi.markGuestRead(pollSessionId, guestContextForPoll.orderNo, guestContextForPoll.email)');
+    expect(pollingEffect).toContain('supportApi.markGuestRead(pollSessionId, guestContextForPoll.orderNo, guestContextForPoll.email, { signal: abortController.signal })');
     expect(pollingEffect).toContain('sessionRef.current?.id !== pollSessionId');
+  });
+
+  it('guards customer support mutations and read-state requests by lifecycle', () => {
+    const source = readWidgetSource();
+
+    expect(source).toContain('const mutationRef = useRef(false);');
+    expect(source).toContain('const mutationAbortRef = useRef<AbortController | null>(null);');
+    expect(source).toContain('const mountedRef = useRef(true);');
+    expect(source).toContain('const beginMutation = useCallback((): { signal: AbortSignal } | null => {');
+    expect(source).toContain('mutationAbortRef.current?.abort();');
+    expect(source).toContain('supportApi.sendMessage(text, activeSessionId, mutationOptions)');
+    expect(source).toContain('supportApi.sendGuestMessage(text, guestContextForAction.orderNo, guestContextForAction.email, activeSessionId, mutationOptions)');
+    expect(source).toContain('supportApi.closeSession(closingSession.id, mutationOptions)');
+    expect(source).toContain('supportApi.markRead(pollSessionId, { signal: abortController.signal })');
+    expect(source).toContain('supportApi.markGuestRead(pollSessionId, guestContextForPoll.orderNo, guestContextForPoll.email, { signal: abortController.signal })');
+    expect(source).toContain('disabled={conversationUnavailable || mutationPending');
   });
 
   it('only scrolls support messages for actual conversation cursor changes', () => {

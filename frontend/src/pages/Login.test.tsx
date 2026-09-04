@@ -655,6 +655,20 @@ describe('Login accessibility labels', () => {
     expect(source).not.toContain('clearStoredAuthSession();');
   });
 
+  it('suppresses login, email-code, and cart-merge effects after unmount', () => {
+    const source = readLoginPageOnly();
+
+    expect(source).toContain('const mountedRef = useRef(true);');
+    expect(source).toContain('mountedRef.current = false;');
+    expect(source).toContain('if (!mountedRef.current) return;');
+    expect(source).toContain('if (passwordSubmittingRef.current) return;');
+    expect(source).toContain('if (emailCodeSendingRef.current) return;');
+    expect(source).toContain('if (emailSubmittingRef.current) return;');
+    expect(source).toContain('if (mountedRef.current) setLoading(false);');
+    expect(source).toContain('if (mountedRef.current) setCodeSending(false);');
+    expect(source).toContain('if (!mountedRef.current) return;');
+  });
+
   it('keeps password-login server errors localized on Spanish pages', async () => {
     mockLanguage = 'es';
     (userApi.login as jest.Mock).mockRejectedValueOnce({

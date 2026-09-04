@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react';
+import { useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import type { FormInstance } from 'antd/es/form';
 import dayjs from 'dayjs';
 import { petProfileApi } from '../api';
@@ -15,6 +15,7 @@ type UseProfilePetActionsParams = {
   editingPet: PetProfile | null;
   fetchPetProfiles: () => void | Promise<void>;
   language: Language;
+  mountedRef: MutableRefObject<boolean>;
   petForm: FormInstance;
   petSubmitting: boolean;
   setEditingPet: Dispatch<SetStateAction<PetProfile | null>>;
@@ -27,6 +28,7 @@ export const useProfilePetActions = ({
   editingPet,
   fetchPetProfiles,
   language,
+  mountedRef,
   petForm,
   petSubmitting,
   setEditingPet,
@@ -34,6 +36,9 @@ export const useProfilePetActions = ({
   setPetSubmitting,
   t,
 }: UseProfilePetActionsParams) => {
+  const savingPetRef = useRef(false);
+  const deletingPetIdsRef = useRef(new Set<number>());
+
   const openPetModal = (pet?: PetProfile) => {
     petForm.resetFields();
     setEditingPet(pet || null);
@@ -50,9 +55,11 @@ export const useProfilePetActions = ({
   };
 
   const handleSavePet = async () => {
-    if (petSubmitting) return;
+    if (!mountedRef.current || petSubmitting || savingPetRef.current) return;
+    savingPetRef.current = true;
     try {
       const values = await petForm.validateFields();
+      if (!mountedRef.current) return;
       setPetSubmitting(true);
       const payload = {
         ...values,
@@ -60,23 +67,29 @@ export const useProfilePetActions = ({
       };
       if (editingPet) {
         await petProfileApi.update(editingPet.id, payload);
-        announceAccessibleMessage(t('messages.updateSuccess'), 'success');
       } else {
         await petProfileApi.create(payload);
-        announceAccessibleMessage(t('pages.profile.petAdded'), 'success');
       }
+      if (!mountedRef.current) return;
+      announceAccessibleMessage(
+        editingPet ? t('messages.updateSuccess') : t('pages.profile.petAdded'),
+        'success',
+      );
       setPetModalVisible(false);
       setEditingPet(null);
       petForm.resetFields();
       fetchPetProfiles();
     } catch (err: unknown) {
       if (isFormValidationError(err)) {
-        focusProfileModalFormError('.profile-mobile-safe-modal');
+        if (mountedRef.current) focusProfileModalFormError('.profile-mobile-safe-modal');
         return;
       }
-      announceAccessibleMessage(getApiErrorMessage(err, t('messages.operationFailed'), language), 'error');
+      if (mountedRef.current) {
+        announceAccessibleMessage(getApiErrorMessage(err, t('messages.operationFailed'), language), 'error');
+      }
     } finally {
-      setPetSubmitting(false);
+      savingPetRef.current = false;
+      if (mountedRef.current) setPetSubmitting(false);
     }
   };
 
@@ -88,12 +101,19 @@ export const useProfilePetActions = ({
   };
 
   const handleDeletePet = async (id: number) => {
+    if (!mountedRef.current || deletingPetIdsRef.current.has(id)) return;
+    deletingPetIdsRef.current.add(id);
     try {
       await petProfileApi.delete(id);
+      if (!mountedRef.current) return;
       announceAccessibleMessage(t('messages.deleteSuccess'), 'success');
       fetchPetProfiles();
     } catch (err: unknown) {
-      announceAccessibleMessage(getApiErrorMessage(err, t('messages.deleteFailed'), language), 'error');
+      if (mountedRef.current) {
+        announceAccessibleMessage(getApiErrorMessage(err, t('messages.deleteFailed'), language), 'error');
+      }
+    } finally {
+      deletingPetIdsRef.current.delete(id);
     }
   };
 

@@ -46,4 +46,14 @@ describe('LogManagement mobile RangePicker guards', () => {
     expect(pageSource).toContain('adminApi.getMyPermissions({ signal: abortController.signal })');
     expect(pageSource).toContain('permissionsAbortRef.current?.abort();');
   });
+
+  it('latches log mutations and suppresses post-unmount feedback and download DOM work', () => {
+    expect(pageSource).toContain('const actionRef = useRef(false);');
+    expect(pageSource).toContain('const [actionPending, setActionPending] = useState(false);');
+    expect(pageSource).toContain('if (!mountedRef.current || actionRef.current) return;');
+    expect(pageSource).toContain('actionRef.current = true;');
+    expect(pageSource).toContain('if (!mountedRef.current) return;');
+    expect(pageSource).toContain('actionRef.current = false;');
+    expect(pageSource).toContain('const logActionDisabled = loading || Boolean(loadError) || !status || actionPending;');
+  });
 });

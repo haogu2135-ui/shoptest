@@ -65,6 +65,8 @@ const ConfigCenter: React.FC = () => {
   const mountedRef = useRef(true);
   const snapshotAbortRef = useRef<AbortController | null>(null);
   const permissionsAbortRef = useRef<AbortController | null>(null);
+  const publishingRef = useRef(false);
+  const applyingRef = useRef(false);
   const canApplyConfig = hasAdminPermission(adminPermissions, currentRole, CONFIG_CENTER_APPLY_PERMISSION);
   const canPublishConfig = hasAdminPermission(adminPermissions, currentRole, CONFIG_CENTER_PUBLISH_PERMISSION);
   const actionDisabled = !snapshot || loading || Boolean(loadError);
@@ -117,6 +119,8 @@ const ConfigCenter: React.FC = () => {
       permissionsAbortRef.current?.abort();
       snapshotAbortRef.current = null;
       permissionsAbortRef.current = null;
+      publishingRef.current = false;
+      applyingRef.current = false;
     };
   }, []);
 
@@ -150,12 +154,15 @@ const ConfigCenter: React.FC = () => {
   }, []);
 
   const handlePublish = async () => {
+    if (!mountedRef.current || publishingRef.current || applyingRef.current) return;
     if (!canPublishConfig) {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    publishingRef.current = true;
     try {
       const values = await form.validateFields();
+      if (!mountedRef.current) return;
       setPublishing(true);
       const response = await adminApi.publishConfigCenter({
         dataId: values.dataId,
@@ -164,6 +171,7 @@ const ConfigCenter: React.FC = () => {
         content: values.content,
         applyRuntime: canApplyConfig && values.applyRuntime,
       });
+      if (!mountedRef.current) return;
       setLoadError(null);
       setSnapshot(response.data);
       form.setFieldsValue({
@@ -179,19 +187,24 @@ const ConfigCenter: React.FC = () => {
       }
     } catch (error: unknown) {
       if (isFormValidationError(error)) return;
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(error, t('pages.configCenter.publishFailed'), language));
     } finally {
-      setPublishing(false);
+      publishingRef.current = false;
+      if (mountedRef.current) setPublishing(false);
     }
   };
 
   const handleApplyRuntime = async () => {
+    if (!mountedRef.current || applyingRef.current || publishingRef.current) return;
     if (!canApplyConfig) {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    applyingRef.current = true;
     try {
       const values = await form.validateFields();
+      if (!mountedRef.current) return;
       setApplying(true);
       const response = await adminApi.applyConfigCenter({
         dataId: values.dataId,
@@ -200,6 +213,7 @@ const ConfigCenter: React.FC = () => {
         content: values.content,
         applyRuntime: true,
       });
+      if (!mountedRef.current) return;
       setLoadError(null);
       setSnapshot(response.data);
       if (response.data.errors?.length) {
@@ -209,9 +223,11 @@ const ConfigCenter: React.FC = () => {
       }
     } catch (error: unknown) {
       if (isFormValidationError(error)) return;
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(error, t('pages.configCenter.runtimeApplyFailed'), language));
     } finally {
-      setApplying(false);
+      applyingRef.current = false;
+      if (mountedRef.current) setApplying(false);
     }
   };
 

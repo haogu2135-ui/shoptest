@@ -56,11 +56,13 @@ const ReviewManagement: React.FC = () => {
   const reviewFetchSeqRef = useRef(0);
   const reviewAbortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
+  const mutationRef = useRef(false);
+  const [mutationPending, setMutationPending] = useState(false);
   const { t, language } = useLanguage();
   const canModerateReviews = hasAdminPermission(adminPermissions, currentRole, REVIEWS_MODERATE_PERMISSION);
   const canReplyReviews = hasAdminPermission(adminPermissions, currentRole, REVIEWS_REPLY_PERMISSION);
   const canDeleteReviews = hasAdminPermission(adminPermissions, currentRole, REVIEWS_DELETE_PERMISSION);
-  const actionsDisabledByStaleData = Boolean(loadError);
+  const actionsDisabledByStaleData = Boolean(loadError) || mutationPending;
   const adminReviewProductName = (record: Review) => (
     (record.productName || record.product?.name || '').trim()
       || t('pages.profile.productFallback', { id: record.productId || record.product?.id || record.id })
@@ -181,6 +183,7 @@ const ReviewManagement: React.FC = () => {
     reviewFetchSeqRef.current += 1;
     reviewAbortRef.current?.abort();
     reviewAbortRef.current = null;
+    mutationRef.current = false;
   }, []);
 
   useEffect(() => {
@@ -188,6 +191,7 @@ const ReviewManagement: React.FC = () => {
   }, [debouncedKeyword, fetchReviews, statusFilter]);
 
   const handleDelete = async (id: number) => {
+    if (!mountedRef.current || mutationRef.current) return;
     if (actionsDisabledByStaleData) {
       message.warning(t('pages.adminReviews.staleActionBlocked'));
       return;
@@ -196,12 +200,19 @@ const ReviewManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    mutationRef.current = true;
+    setMutationPending(true);
     try {
       await adminApi.deleteReview(id);
+      if (!mountedRef.current) return;
       message.success(t('messages.deleteSuccess'));
-      fetchReviews(pageState.page, pageState.size);
+      if (mountedRef.current) await fetchReviews(pageState.page, pageState.size);
     } catch (err: unknown) {
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(err, t('messages.deleteFailed'), language));
+    } finally {
+      mutationRef.current = false;
+      if (mountedRef.current) setMutationPending(false);
     }
   };
 
@@ -219,6 +230,7 @@ const ReviewManagement: React.FC = () => {
   };
 
   const handleReply = async () => {
+    if (!mountedRef.current || mutationRef.current) return;
     if (actionsDisabledByStaleData) {
       message.warning(t('pages.adminReviews.staleActionBlocked'));
       return;
@@ -232,27 +244,36 @@ const ReviewManagement: React.FC = () => {
       message.warning(t('pages.adminReviews.replyRequired'));
       return;
     }
+    mutationRef.current = true;
+    setMutationPending(true);
     try {
       setReplying(true);
       await adminApi.replyReview(replyTarget.id, replyText.trim());
+      if (!mountedRef.current) return;
       message.success(t('messages.updateSuccess'));
       setReplyTarget(null);
       setReplyText('');
-      fetchReviews(pageState.page, pageState.size);
+      if (mountedRef.current) await fetchReviews(pageState.page, pageState.size);
     } catch (err: unknown) {
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(err, t('messages.updateFailed'), language));
     } finally {
-      setReplying(false);
+      mutationRef.current = false;
+      if (mountedRef.current) {
+        setReplying(false);
+        setMutationPending(false);
+      }
     }
   };
 
   const closeReplyModal = () => {
-    if (replying) return;
+    if (replying || mutationRef.current) return;
     setReplyTarget(null);
     setReplyText('');
   };
 
   const handleStatus = async (review: Review, status: string) => {
+    if (!mountedRef.current || mutationRef.current) return;
     if (actionsDisabledByStaleData) {
       message.warning(t('pages.adminReviews.staleActionBlocked'));
       return;
@@ -261,12 +282,19 @@ const ReviewManagement: React.FC = () => {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    mutationRef.current = true;
+    setMutationPending(true);
     try {
       await adminApi.updateReviewStatus(review.id, status);
+      if (!mountedRef.current) return;
       message.success(t('messages.updateSuccess'));
-      fetchReviews(pageState.page, pageState.size);
+      if (mountedRef.current) await fetchReviews(pageState.page, pageState.size);
     } catch (err: unknown) {
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(err, t('messages.updateFailed'), language));
+    } finally {
+      mutationRef.current = false;
+      if (mountedRef.current) setMutationPending(false);
     }
   };
 

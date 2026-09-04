@@ -28,7 +28,7 @@ describe('NotificationManagement readiness checklist guards', () => {
     expect(pageSource).toContain("type PermissionStatus = 'loading' | 'ready' | 'error';");
     expect(pageSource).toContain("const [permissionStatus, setPermissionStatus] = useState<PermissionStatus>('loading');");
     expect(pageSource).toContain("const canBroadcastNotifications = permissionStatus === 'ready'");
-    expect(pageSource).toContain('const permissionGateActive = permissionStatus !== \'ready\' || !canBroadcastNotifications;');
+    expect(pageSource).toContain('const permissionGateActive = permissionStatus !== \'ready\' || !canBroadcastNotifications || broadcastPending;');
     expect(pageSource).toContain('disabled={permissionGateActive}');
     expect(pageSource).toContain("t('pages.notificationAdmin.permissionLoadFailed')");
     expect(pageSource).toContain("t('pages.notificationAdmin.permissionRetry')");
@@ -58,5 +58,17 @@ describe('NotificationManagement readiness checklist guards', () => {
     expect(pageSource).toContain('adminApi.getMyPermissions({ signal: abortController.signal })');
     expect(pageSource).toContain('mountedRef.current = false;');
     expect(pageSource).toContain('if (!isCurrentRequest()) return;');
+  });
+
+  it('latches broadcasts and suppresses post-unmount feedback and DOM events', () => {
+    expect(pageSource).toContain('const broadcastRef = useRef(false);');
+    expect(pageSource).toContain('const [broadcastPending, setBroadcastPending] = useState(false);');
+    expect(pageSource).toContain('const permissionGateActive = permissionStatus !== \'ready\' || !canBroadcastNotifications || broadcastPending;');
+    expect(pageSource).toContain('if (!mountedRef.current || broadcastRef.current) return;');
+    expect(pageSource).toContain('broadcastRef.current = true;');
+    expect(pageSource).toContain('if (!mountedRef.current) return;');
+    expect(pageSource).toContain('broadcastRef.current = false;');
+    expect(pageSource).toContain('disabled={permissionGateActive}');
+    expect(pageSource).toContain('if (mountedRef.current) {\n        setSending(false);\n        setBroadcastPending(false);\n      }');
   });
 });

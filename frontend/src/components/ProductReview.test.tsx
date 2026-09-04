@@ -28,4 +28,21 @@ describe('ProductReview source contracts', () => {
     expect(source).toContain('/register?redirect=');
     expect(source).toContain('buildLoginUrlFromWindow');
   });
+
+  it('latches review uploads and submits while suppressing post-unmount effects', () => {
+    const source = readProductReviewSource();
+    expect(source).toContain('const mountedRef = useRef(true);');
+    expect(source).toContain('const uploadingRef = useRef(false);');
+    expect(source).toContain('const submittingRef = useRef(false);');
+    expect(source).toContain('const uploadAbortRef = useRef<AbortController | null>(null);');
+    expect(source).toContain('const submitAbortRef = useRef<AbortController | null>(null);');
+    expect(source).toContain('if (!mountedRef.current || uploadingRef.current || submittingRef.current) return ShopUpload.LIST_IGNORE;');
+    expect(source).toContain('if (!mountedRef.current || submittingRef.current || uploadingRef.current) return;');
+    expect(source).toContain('reviewApi.uploadImage(file, { signal: abortController.signal })');
+    expect(source).toContain('onAddReview(orderId, rating, comment.trim(), safeImageUrls, { signal: abortController.signal })');
+    expect(source).toContain('if (!mountedRef.current || abortController.signal.aborted) return ShopUpload.LIST_IGNORE;');
+    expect(source).toContain('if (!mountedRef.current || abortController.signal.aborted) return;');
+    expect(source).toContain('if (mountedRef.current) setUploadingImage(false);');
+    expect(source).toContain('if (mountedRef.current) setSubmitting(false);');
+  });
 });

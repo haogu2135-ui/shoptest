@@ -3,7 +3,7 @@ import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
 import ShopInput from './ShopInput';
 import { useNavigate } from 'react-router-dom';
-import { logisticsApi } from '../api';
+import { createApiAbortController, logisticsApi } from '../api';
 import { useLanguage } from '../i18n';
 import { getApiErrorDiagnosticText, getApiErrorMessage } from '../utils/apiError';
 import { dispatchDomEvent } from '../utils/domEvents';
@@ -66,28 +66,38 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
   const [result, setResult] = useState<LogisticsTrackResponse | null>(null);
   const [error, setError] = useState('');
   const requestSeq = useRef(0);
+  const mountedRef = useRef(true);
+  const trackAbortRef = useRef<AbortController | null>(null);
   const queryTrackingRef = useRef<(nextValue: string, silent?: boolean) => Promise<void>>(async () => undefined);
   const dateLocale = localeByLanguage[language] || localeByLanguage.en;
   const resultsMinHeight = Math.max(220, Math.min(height, 560));
 
   const queryTracking = useCallback(async (nextValue: string, silent = false) => {
+    if (!mountedRef.current) return;
     const num = nextValue.trim();
     if (!num) {
-      announceAccessibleMessage(t('pages.adminOrders.noTrackingNumber'), 'warning');
+      if (mountedRef.current) announceAccessibleMessage(t('pages.adminOrders.noTrackingNumber'), 'warning');
       return;
     }
 
     const requestId = requestSeq.current + 1;
     requestSeq.current = requestId;
+    trackAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    trackAbortRef.current = abortController;
     setLoading(true);
     setError('');
+    const isCurrentRequest = () => mountedRef.current
+      && requestSeq.current === requestId
+      && trackAbortRef.current === abortController
+      && !abortController.signal.aborted;
 
     try {
-      const response = await logisticsApi.track(num, carrierCode, orderId, guestEmail, orderNo);
-      if (requestSeq.current !== requestId) return;
+      const response = await logisticsApi.track(num, carrierCode, orderId, guestEmail, orderNo, { signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       setResult(response.data);
     } catch (err: unknown) {
-      if (requestSeq.current !== requestId) return;
+      if (!isCurrentRequest()) return;
       const providerError = getApiErrorDiagnosticText(err);
       if (isProviderConfigurationError(providerError)) {
         setResult({
@@ -107,7 +117,9 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
         announceAccessibleMessage(localizedError, 'error');
       }
     } finally {
-      if (requestSeq.current === requestId) {
+      const shouldUpdateLoading = isCurrentRequest();
+      if (trackAbortRef.current === abortController) trackAbortRef.current = null;
+      if (shouldUpdateLoading) {
         setLoading(false);
       }
     }
@@ -118,13 +130,31 @@ const SeventeenTrackWidget: React.FC<SeventeenTrackWidgetProps> = ({
   }, [queryTracking]);
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      requestSeq.current += 1;
+      trackAbortRef.current?.abort();
+      trackAbortRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
     const normalized = trackingNumber.trim();
+    if (!normalized) {
+      requestSeq.current += 1;
+      trackAbortRef.current?.abort();
+      trackAbortRef.current = null;
+      setValue('');
+      setResult(null);
+      setError('');
+      setLoading(false);
+      return;
+    }
     setValue(normalized);
     setResult(null);
     setError('');
-    if (normalized) {
-      void queryTrackingRef.current(normalized, true);
-    }
+    void queryTrackingRef.current(normalized, true);
   }, [carrierCode, guestEmail, orderId, orderNo, trackingNumber]);
 
   const runTrack = () => {

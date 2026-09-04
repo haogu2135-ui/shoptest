@@ -132,7 +132,10 @@ const Home: React.FC = () => {
     }
     dispatchDomEvent('shop:open-support');
   };
-  const openCartWithSnapshot = useCallback(() => openCartDrawerWithSnapshot({ authenticated: isAuthenticated }), [isAuthenticated]);
+  const openCartWithSnapshot = useCallback(
+    (signal?: AbortSignal) => openCartDrawerWithSnapshot({ authenticated: isAuthenticated, signal }),
+    [isAuthenticated],
+  );
   const guestJourneyActions = buildHomeGuestJourneyDescriptors({ t, isAuthenticated }).map((item) => {
     const action = () => {
       if (item.intent === 'register') {

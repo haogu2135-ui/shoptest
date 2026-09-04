@@ -585,9 +585,10 @@ export const orderApi = {
             if (pending) return pending;
         }
         const credentials = guestParams(guestEmail, orderNo);
+        const requestOptions = options?.signal ? options : cacheLoaderOptions(options);
         const rawRequest = credentials
-            ? api.post<OrderItemCustomer[]>(`/orders/guest/${normalizedOrderId}/items`, credentials, guestRequestConfig(guestEmail, orderNo, withRequestOptions({}, cacheLoaderOptions(options))))
-            : api.get<OrderItemCustomer[]>(`/orders/${normalizedOrderId}/items`, withRequestOptions({}, cacheLoaderOptions(options)));
+            ? api.post<OrderItemCustomer[]>(`/orders/guest/${normalizedOrderId}/items`, credentials, guestRequestConfig(guestEmail, orderNo, withRequestOptions({}, requestOptions)))
+            : api.get<OrderItemCustomer[]>(`/orders/${normalizedOrderId}/items`, withRequestOptions({}, requestOptions));
         const request = rawRequest
             .then((response) => {
                 const normalized = withArrayData(response);
@@ -715,19 +716,25 @@ export const reviewApi = {
         `/reviews/product/${toPathId(productId)}/reviewable-orders`,
         withRequestOptions({}, options),
     ).then(withArrayData),
-    uploadImage: (file: File) => {
+    uploadImage: (file: File, options?: ApiRequestOptions) => {
         const formData = new FormData();
         formData.append('file', file);
-        return api.post<{ imageUrl: string }>('/reviews/images', formData);
+        return options
+            ? api.post<{ imageUrl: string }>('/reviews/images', formData, withRequestOptions({}, options))
+            : api.post<{ imageUrl: string }>('/reviews/images', formData);
     },
-    create: (productId: number, orderId: number, rating: number, comment: string, imageUrls: string[] = []) => {
+    create: (productId: number, orderId: number, rating: number, comment: string, imageUrls: string[] = [], options?: ApiRequestOptions) => {
         const normalizedImageUrls = normalizeImageListParam(imageUrls, 4, 2048);
-        return api.post<PublicReview>(`/reviews/product/${toPathId(productId)}`, {
+        const body = {
             orderId: toPathId(orderId),
             rating: Math.max(1, Math.min(5, Math.floor(Number(rating) || 0))),
             comment: normalizeTextParam(comment, MAX_REVIEW_COMMENT_LENGTH),
             ...(normalizedImageUrls.length > 0 ? { imageUrls: normalizedImageUrls } : {}),
-        }).finally(() => clearReviewCache(toPathId(productId)));
+        };
+        return (options
+            ? api.post<PublicReview>(`/reviews/product/${toPathId(productId)}`, body, withRequestOptions({}, options))
+            : api.post<PublicReview>(`/reviews/product/${toPathId(productId)}`, body)
+        ).finally(() => clearReviewCache(toPathId(productId)));
     },
 };
 

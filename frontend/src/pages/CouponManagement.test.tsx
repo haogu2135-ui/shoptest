@@ -119,6 +119,21 @@ describe('CouponManagement loader cleanup', () => {
 });
 
 describe('CouponManagement mobile popup stacking guards', () => {
+  it('latches coupon mutations and aborts their lifecycle work', () => {
+    expect(pageSource).toContain('const mutationRef = useRef(false);');
+    expect(pageSource).toContain('const mutationAbortRef = useRef<AbortController | null>(null);');
+    expect(pageSource).toContain('const beginMutation = useCallback((): ApiRequestOptions | null =>');
+    expect(pageSource).toContain('mutationAbortRef.current?.abort();');
+    expect(pageSource).toContain('if (!mountedRef.current || requestOptions.signal?.aborted) return;');
+    expect(pageSource).toContain('adminApi.createCoupon(payload, requestOptions)');
+    expect(pageSource).toContain('adminApi.updateCoupon(editingCoupon.id, payload, requestOptions)');
+    expect(pageSource).toContain('adminApi.deleteCoupon(id, requestOptions)');
+    expect(pageSource).toContain('adminApi.grantCoupon(grantCoupon.id, grantConfirmMeta.userIds, grantMaxUsers, requestOptions)');
+    expect(pageSource).toContain('adminApi.runPetBirthdayCoupons(requestOptions)');
+    expect(pageSource).toContain('adminApi.updatePetBirthdayCouponConfig(payload, requestOptions)');
+    expect(pageSource).toContain('if (couponSubmitting || mutationRef.current) return;');
+  });
+
   it('keeps coupon admin error handling typed without broad any usage', () => {
     expect(pageSource).toContain('const isFormValidationError = (error: unknown): error is FormValidationError =>');
     expect(pageSource).toContain('if (isFormValidationError(error)) return;');

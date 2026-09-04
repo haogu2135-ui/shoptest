@@ -43,6 +43,8 @@ const Notifications: React.FC = () => {
   const mountedRef = useRef(true);
   const notificationFetchSeqRef = useRef(0);
   const notificationAbortRef = useRef<AbortController | null>(null);
+  const notificationMutationRef = useRef<Set<string>>(new Set());
+  const [mutationPending, setMutationPending] = useState(false);
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   usePageTitle(t('pages.notifications.title'));
@@ -108,6 +110,7 @@ const Notifications: React.FC = () => {
       notificationFetchSeqRef.current += 1;
       notificationAbortRef.current?.abort();
       notificationAbortRef.current = null;
+      notificationMutationRef.current.clear();
     };
   }, []);
 
@@ -125,37 +128,69 @@ const Notifications: React.FC = () => {
   }, [fetchNotifications]);
 
   const handleMarkAsRead = useCallback(async (id: number) => {
+    const actionKey = `read:${id}`;
+    if (!mountedRef.current
+      || notificationMutationRef.current.has('mark-all')
+      || notificationMutationRef.current.has(actionKey)
+      || notificationMutationRef.current.has(`delete:${id}`)) return;
+    notificationMutationRef.current.add(actionKey);
+    setMutationPending(true);
     try {
       await notificationApi.markAsRead(id);
+      if (!mountedRef.current) return;
       setNotifications((current) => current.map(n => n.id === id ? { ...n, isRead: true } : n));
       notifyNavbarChanged();
     } catch (error) {
+      if (!mountedRef.current) return;
       reportNonBlockingError('Notifications.handleMarkAsRead', error);
       announceAccessibleMessage(t('messages.operationFailed'), 'error');
+    } finally {
+      notificationMutationRef.current.delete(actionKey);
+      if (mountedRef.current) setMutationPending(notificationMutationRef.current.size > 0);
     }
   }, [t]);
 
   const handleMarkAllAsRead = async () => {
+    if (!mountedRef.current || notificationMutationRef.current.size > 0) return;
+    notificationMutationRef.current.add('mark-all');
+    setMutationPending(true);
     try {
       await notificationApi.markAllAsRead();
+      if (!mountedRef.current) return;
       setNotifications((current) => current.map(n => ({ ...n, isRead: true })));
       notifyNavbarChanged();
       announceAccessibleMessage(t('pages.notifications.allRead'), 'success');
     } catch (error) {
+      if (!mountedRef.current) return;
       reportNonBlockingError('Notifications.handleMarkAllAsRead', error);
       announceAccessibleMessage(t('messages.operationFailed'), 'error');
+    } finally {
+      notificationMutationRef.current.delete('mark-all');
+      if (mountedRef.current) setMutationPending(notificationMutationRef.current.size > 0);
     }
   };
 
   const handleDelete = async (id: number) => {
+    const actionKey = `delete:${id}`;
+    if (!mountedRef.current
+      || notificationMutationRef.current.has('mark-all')
+      || notificationMutationRef.current.has(actionKey)
+      || notificationMutationRef.current.has(`read:${id}`)) return;
+    notificationMutationRef.current.add(actionKey);
+    setMutationPending(true);
     try {
       await notificationApi.delete(id);
+      if (!mountedRef.current) return;
       setNotifications((current) => current.filter(n => n.id !== id));
       notifyNavbarChanged();
       announceAccessibleMessage(t('messages.deleteSuccess'), 'success');
     } catch (error) {
+      if (!mountedRef.current) return;
       reportNonBlockingError('Notifications.handleDelete', error);
       announceAccessibleMessage(t('messages.deleteFailed'), 'error');
+    } finally {
+      notificationMutationRef.current.delete(actionKey);
+      if (mountedRef.current) setMutationPending(notificationMutationRef.current.size > 0);
     }
   };
 
@@ -225,7 +260,7 @@ const Notifications: React.FC = () => {
     actionPlanTitle: actionPlan.title,
     loadedCount: notifications.length,
   });
-  const notificationActionsDisabled = Boolean(fetchError);
+  const notificationActionsDisabled = Boolean(fetchError) || mutationPending;
 
   if (authRequired) {
     return (

@@ -56,11 +56,16 @@ export const useProfileAddressActions = ({
   t,
 }: UseProfileAddressActionsParams) => {
   const regionRequestSeqRef = useRef(0);
+  const savingAddressRef = useRef(false);
+  const deletingAddressIdsRef = useRef(new Set<number>());
+  const settingDefaultAddressIdsRef = useRef(new Set<number>());
 
   const handleSaveAddress = async () => {
-    if (addressSubmitting) return;
+    if (!mountedRef.current || addressSubmitting || savingAddressRef.current) return;
+    savingAddressRef.current = true;
     try {
       const values = await addressForm.validateFields();
+      if (!mountedRef.current) return;
       setAddressSubmitting(true);
       const regionPath = Array.isArray(values.region)
         ? values.region.map((item: unknown) => normalizeProfileAddressText(item, 120)).filter(Boolean)
@@ -85,51 +90,75 @@ export const useProfileAddressActions = ({
       };
       if (editingAddress) {
         await addressApi.update(editingAddress.id, payload);
-        announceAccessibleMessage(t('pages.profile.addressUpdated'), 'success');
       } else {
         await addressApi.create(payload);
-        announceAccessibleMessage(t('pages.profile.addressAdded'), 'success');
       }
-      setAddressModalVisible(false);
-      setEditingAddress(null);
-      addressForm.resetFields();
-      fetchAddresses();
+      if (!mountedRef.current) return;
+      announceAccessibleMessage(
+        editingAddress ? t('pages.profile.addressUpdated') : t('pages.profile.addressAdded'),
+        'success',
+      );
+      if (mountedRef.current) {
+        setAddressModalVisible(false);
+        setEditingAddress(null);
+        addressForm.resetFields();
+        fetchAddresses();
+      }
     } catch (err: unknown) {
       if (isFormValidationError(err)) {
-        focusProfileModalFormError('.profile-address-modal');
+        if (mountedRef.current) focusProfileModalFormError('.profile-address-modal');
         return;
       }
-      announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.addressSaveFailed'), language), 'error');
+      if (mountedRef.current) {
+        announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.addressSaveFailed'), language), 'error');
+      }
     } finally {
-      setAddressSubmitting(false);
+      savingAddressRef.current = false;
+      if (mountedRef.current) setAddressSubmitting(false);
     }
   };
 
   const handleDeleteAddress = async (id: number) => {
-    if (addressesStale) {
-      announceAccessibleMessage(t('pages.profile.addressesStaleWarning'), 'warning');
+    if (!mountedRef.current || addressesStale || deletingAddressIdsRef.current.has(id)) {
+      if (mountedRef.current && addressesStale) {
+        announceAccessibleMessage(t('pages.profile.addressesStaleWarning'), 'warning');
+      }
       return;
     }
+    deletingAddressIdsRef.current.add(id);
     try {
       await addressApi.delete(id);
+      if (!mountedRef.current) return;
       announceAccessibleMessage(t('pages.profile.addressDeleted'), 'success');
       fetchAddresses();
     } catch (err: unknown) {
-      announceAccessibleMessage(getApiErrorMessage(err, t('messages.deleteFailed'), language), 'error');
+      if (mountedRef.current) {
+        announceAccessibleMessage(getApiErrorMessage(err, t('messages.deleteFailed'), language), 'error');
+      }
+    } finally {
+      deletingAddressIdsRef.current.delete(id);
     }
   };
 
   const handleSetDefault = async (id: number) => {
-    if (addressesStale) {
-      announceAccessibleMessage(t('pages.profile.addressesStaleWarning'), 'warning');
+    if (!mountedRef.current || addressesStale || settingDefaultAddressIdsRef.current.has(id)) {
+      if (mountedRef.current && addressesStale) {
+        announceAccessibleMessage(t('pages.profile.addressesStaleWarning'), 'warning');
+      }
       return;
     }
+    settingDefaultAddressIdsRef.current.add(id);
     try {
       await addressApi.setDefault(id);
+      if (!mountedRef.current) return;
       announceAccessibleMessage(t('pages.profile.defaultSet'), 'success');
       fetchAddresses();
     } catch (err: unknown) {
-      announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.setFailed'), language), 'error');
+      if (mountedRef.current) {
+        announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.setFailed'), language), 'error');
+      }
+    } finally {
+      settingDefaultAddressIdsRef.current.delete(id);
     }
   };
 

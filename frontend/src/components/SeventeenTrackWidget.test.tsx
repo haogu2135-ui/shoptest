@@ -6,6 +6,7 @@ import { logisticsApi } from '../api';
 import { dispatchDomEvent } from '../utils/domEvents';
 
 jest.mock('../api', () => ({
+  createApiAbortController: () => new AbortController(),
   logisticsApi: {
     track: jest.fn(),
   },
@@ -93,7 +94,7 @@ describe('SeventeenTrackWidget', () => {
     fireEvent.change(screen.getByPlaceholderText('Tracking number'), { target: { value: ' 1Z999 ' } });
     fireEvent.click(screen.getByRole('button', { name: /Track shipment/i }));
 
-    await waitFor(() => expect(logisticsApi.track).toHaveBeenCalledWith('1Z999', 'UPS', undefined, undefined, undefined));
+    await waitFor(() => expect(logisticsApi.track).toHaveBeenCalledWith('1Z999', 'UPS', undefined, undefined, undefined, expect.objectContaining({ signal: expect.any(AbortSignal) })));
     expect(await screen.findByText('Departed facility')).toBeInTheDocument();
     expect(screen.getByText('Shipment is moving')).toBeInTheDocument();
   });
@@ -105,7 +106,7 @@ describe('SeventeenTrackWidget', () => {
 
     renderWidget(<SeventeenTrackWidget trackingNumber="NO_PROVIDER" />);
 
-    await waitFor(() => expect(logisticsApi.track).toHaveBeenCalledWith('NO_PROVIDER', undefined, undefined, undefined, undefined));
+    await waitFor(() => expect(logisticsApi.track).toHaveBeenCalledWith('NO_PROVIDER', undefined, undefined, undefined, undefined, expect.objectContaining({ signal: expect.any(AbortSignal) })));
     expect(await screen.findByText('EXTERNAL_EMPTY')).toBeInTheDocument();
     expect(screen.getAllByText('No tracking data').length).toBeGreaterThan(0);
     expect(screen.queryByText('Production logistics tracking provider is not configured')).not.toBeInTheDocument();
@@ -126,7 +127,7 @@ describe('SeventeenTrackWidget', () => {
 
     renderWidget(<SeventeenTrackWidget trackingNumber="NO_PROVIDER" />);
 
-    await waitFor(() => expect(logisticsApi.track).toHaveBeenCalledWith('NO_PROVIDER', undefined, undefined, undefined, undefined));
+    await waitFor(() => expect(logisticsApi.track).toHaveBeenCalledWith('NO_PROVIDER', undefined, undefined, undefined, undefined, expect.objectContaining({ signal: expect.any(AbortSignal) })));
     expect(await screen.findByText('TRACKING_UNAVAILABLE')).toBeInTheDocument();
     expect(screen.getByText('Live carrier tracking is not configured yet')).toBeInTheDocument();
     expect(screen.getAllByText('Real-time logistics tracking is not configured yet.').length).toBeGreaterThan(0);
@@ -143,5 +144,23 @@ describe('SeventeenTrackWidget', () => {
     expect(dispatchDomEvent).toHaveBeenCalledWith('shop:open-support', expect.objectContaining({
       clearGuestContext: false,
     }));
+  });
+
+  it('cancels an in-flight tracking request when the widget unmounts', async () => {
+    let resolveRequest: ((value: unknown) => void) | undefined;
+    (logisticsApi.track as jest.Mock).mockImplementation((_trackingNumber, _carrier, _orderId, _guestEmail, _orderNo, options) => (
+      new Promise((resolve) => {
+        resolveRequest = resolve;
+        options.signal.addEventListener('abort', () => resolve({ data: { trackingNumber: 'STALE', events: [] } }));
+      })
+    ));
+
+    const { unmount } = renderWidget(<SeventeenTrackWidget trackingNumber="TRACK-43" />);
+    await waitFor(() => expect(logisticsApi.track).toHaveBeenCalled());
+    const signal = (logisticsApi.track as jest.Mock).mock.calls[0][5].signal as AbortSignal;
+
+    unmount();
+    expect(signal.aborted).toBe(true);
+    resolveRequest?.({ data: { trackingNumber: 'STALE', events: [] } });
   });
 });

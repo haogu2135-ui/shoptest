@@ -50,6 +50,7 @@ const PermissionManagement: React.FC = () => {
   const mountedRef = useRef(true);
   const roleFetchSeqRef = useRef(0);
   const roleAbortRef = useRef<AbortController | null>(null);
+  const savingRef = useRef(false);
 
   const loadRoles = useCallback(async () => {
     roleAbortRef.current?.abort();
@@ -90,6 +91,7 @@ const PermissionManagement: React.FC = () => {
       roleFetchSeqRef.current += 1;
       roleAbortRef.current?.abort();
       roleAbortRef.current = null;
+      savingRef.current = false;
     };
   }, []);
 
@@ -124,31 +126,37 @@ const PermissionManagement: React.FC = () => {
   };
 
   const closeRoleModal = () => {
-    if (saving) return;
+    if (saving || savingRef.current) return;
     setModalOpen(false);
     setEditingRole(null);
     form.resetFields();
   };
 
   const saveRole = async () => {
+    if (!mountedRef.current || savingRef.current) return;
     if (roleActionDisabled) {
       message.warning(roleActionUnavailableMessage);
       return;
     }
+    savingRef.current = true;
     try {
       const values = await form.validateFields();
+      if (!mountedRef.current) return;
       setSaving(true);
       await adminApi.saveRole({ ...editingRole, ...values });
+      if (!mountedRef.current) return;
       message.success(t('messages.updateSuccess'));
       setModalOpen(false);
       setEditingRole(null);
       form.resetFields();
-      loadRoles();
+      await loadRoles();
     } catch (err: unknown) {
       if (isFormValidationError(err)) return;
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(err, t('messages.saveFailed'), language));
     } finally {
-      setSaving(false);
+      savingRef.current = false;
+      if (mountedRef.current) setSaving(false);
     }
   };
 

@@ -52,9 +52,11 @@ const TrafficControl: React.FC = () => {
   const mountedRef = useRef(true);
   const statusFetchSeqRef = useRef(0);
   const statusAbortRef = useRef<AbortController | null>(null);
+  const actionRef = useRef(false);
+  const [actionPending, setActionPending] = useState(false);
   const canClearRateLimit = hasAdminPermission(adminPermissions, currentRole, TRAFFIC_CONTROL_RATE_LIMIT_CLEAR_PERMISSION);
   const canResetCircuit = hasAdminPermission(adminPermissions, currentRole, TRAFFIC_CONTROL_CIRCUIT_RESET_PERMISSION);
-  const actionDisabled = !status || loading || Boolean(loadError);
+  const actionDisabled = !status || loading || Boolean(loadError) || actionPending;
 
   const loadStatus = useCallback(async () => {
     const requestSeq = statusFetchSeqRef.current + 1;
@@ -90,6 +92,7 @@ const TrafficControl: React.FC = () => {
       statusFetchSeqRef.current += 1;
       statusAbortRef.current?.abort();
       statusAbortRef.current = null;
+      actionRef.current = false;
     };
   }, []);
 
@@ -118,38 +121,56 @@ const TrafficControl: React.FC = () => {
   }, []);
 
   const resetCircuit = useCallback(async (name?: string) => {
+    if (!mountedRef.current || actionRef.current) return;
     if (!canResetCircuit) {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    actionRef.current = true;
+    setActionPending(true);
     setActing(name || 'all');
     try {
       const response = await adminApi.resetCircuitBreaker(name);
+      if (!mountedRef.current) return;
       setLoadError(null);
       setStatus(response.data);
       message.success(name ? t('pages.trafficControl.circuitReset') : t('pages.trafficControl.allCircuitsReset'));
     } catch (error: unknown) {
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(error, t('pages.trafficControl.circuitResetFailed'), language));
     } finally {
-      setActing(null);
+      actionRef.current = false;
+      if (mountedRef.current) {
+        setActing(null);
+        setActionPending(false);
+      }
     }
   }, [canResetCircuit, language, t]);
 
   const clearRateLimit = async () => {
+    if (!mountedRef.current || actionRef.current) return;
     if (!canClearRateLimit) {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    actionRef.current = true;
+    setActionPending(true);
     setActing('rate-limit');
     try {
       const response = await adminApi.clearRateLimitCounters();
+      if (!mountedRef.current) return;
       setLoadError(null);
       setStatus(response.data);
       message.success(t('pages.trafficControl.rateLimitCleared'));
     } catch (error: unknown) {
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(error, t('pages.trafficControl.rateLimitClearFailed'), language));
     } finally {
-      setActing(null);
+      actionRef.current = false;
+      if (mountedRef.current) {
+        setActing(null);
+        setActionPending(false);
+      }
     }
   };
   const circuitStateLabels = useMemo(() => ({
@@ -212,7 +233,7 @@ const TrafficControl: React.FC = () => {
               description={t('pages.trafficControl.resetCircuitConfirmDescription')}
               okText={t('common.confirm')}
               cancelText={t('common.cancel')}
-              okButtonProps={{ 'aria-label': resetActionLabel, title: resetActionLabel }}
+              okButtonProps={{ disabled: actionDisabled, 'aria-label': resetActionLabel, title: resetActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${resetActionLabel}`, title: `${t('common.cancel')}: ${resetActionLabel}` }}
               onConfirm={() => resetCircuit(row.name)}
               disabled={actionDisabled}
@@ -251,7 +272,7 @@ const TrafficControl: React.FC = () => {
           <Text type="secondary">{t('pages.trafficControl.description')}</Text>
         </div>
         <ShopSpace className="traffic-control__actions" wrap>
-          <ShopButton icon={<ReloadOutlined />} loading={loading} aria-label={refreshTrafficActionLabel} title={refreshTrafficActionLabel} onClick={loadStatus}>
+          <ShopButton icon={<ReloadOutlined />} loading={loading} disabled={actionPending} aria-label={refreshTrafficActionLabel} title={refreshTrafficActionLabel} onClick={loadStatus}>
             {t('common.refresh')}
           </ShopButton>
           {canClearRateLimit ? (
@@ -260,7 +281,7 @@ const TrafficControl: React.FC = () => {
               description={t('pages.trafficControl.clearRateLimitConfirmDescription')}
               okText={t('common.confirm')}
               cancelText={t('common.cancel')}
-              okButtonProps={{ danger: true, 'aria-label': clearRateLimitActionLabel, title: clearRateLimitActionLabel }}
+              okButtonProps={{ danger: true, disabled: actionDisabled, 'aria-label': clearRateLimitActionLabel, title: clearRateLimitActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${clearRateLimitActionLabel}`, title: `${t('common.cancel')}: ${clearRateLimitActionLabel}` }}
               onConfirm={clearRateLimit}
               disabled={actionDisabled}
@@ -276,7 +297,7 @@ const TrafficControl: React.FC = () => {
               description={t('pages.trafficControl.resetAllCircuitsConfirmDescription')}
               okText={t('common.confirm')}
               cancelText={t('common.cancel')}
-              okButtonProps={{ 'aria-label': resetAllCircuitsActionLabel, title: resetAllCircuitsActionLabel }}
+              okButtonProps={{ disabled: actionDisabled, 'aria-label': resetAllCircuitsActionLabel, title: resetAllCircuitsActionLabel }}
               cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${resetAllCircuitsActionLabel}`, title: `${t('common.cancel')}: ${resetAllCircuitsActionLabel}` }}
               onConfirm={() => resetCircuit()}
               disabled={actionDisabled}

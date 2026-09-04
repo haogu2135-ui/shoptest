@@ -253,18 +253,28 @@ export const adminApi = {
             },
         }),
     getIpBlacklistStatus: (options?: ApiRequestOptions) => api.get<IpBlacklistStatus>('/admin/ip-blacklist/status', withRequestOptions({}, options)),
-    blockIpAddress: (payload: { ipAddress: string; reason?: string; blockMinutes?: number }) =>
-        api.post<IpBlacklistEntry>('/admin/ip-blacklist', {
+    blockIpAddress: (payload: { ipAddress: string; reason?: string; blockMinutes?: number }, options?: ApiRequestOptions) => {
+        const body = {
             ipAddress: normalizeTextParam(payload.ipAddress, 45),
             reason: normalizeTextParam(payload.reason, 500),
             blockMinutes: payload.blockMinutes,
-        }),
-    releaseIpBlacklistEntry: (id: number) => api.post<IpBlacklistEntry>(`/admin/ip-blacklist/${toPathId(id)}/release`),
-    releaseIpBlacklistEntries: (ids: number[], note?: string, maxIds = 100) =>
-        api.post<IpBlacklistBatchReleaseResponse>('/admin/ip-blacklist/batch/release', {
+        };
+        return options
+            ? api.post<IpBlacklistEntry>('/admin/ip-blacklist', body, withRequestOptions({}, options))
+            : api.post<IpBlacklistEntry>('/admin/ip-blacklist', body);
+    },
+    releaseIpBlacklistEntry: (id: number, options?: ApiRequestOptions) => options
+        ? api.post<IpBlacklistEntry>(`/admin/ip-blacklist/${toPathId(id)}/release`, null, withRequestOptions({}, options))
+        : api.post<IpBlacklistEntry>(`/admin/ip-blacklist/${toPathId(id)}/release`),
+    releaseIpBlacklistEntries: (ids: number[], note?: string, maxIds = 100, options?: ApiRequestOptions) => {
+        const body = {
             ids: normalizePositiveIntList(ids, maxIds),
             note: normalizeTextParam(note, 200),
-        }),
+        };
+        return options
+            ? api.post<IpBlacklistBatchReleaseResponse>('/admin/ip-blacklist/batch/release', body, withRequestOptions({}, options))
+            : api.post<IpBlacklistBatchReleaseResponse>('/admin/ip-blacklist/batch/release', body);
+    },
     getPetGalleryPhotos: (params?: { page?: number; size?: number; status?: string; source?: string; keyword?: string }, options?: ApiRequestOptions) => {
         const normalizedParams = {
             page: normalizeBoundedPositiveInt(params?.page, 1, 1_000_000),
@@ -411,7 +421,7 @@ export const adminApi = {
             options,
         );
     },
-    getOrder: (id: number) => api.get<Order>(`/admin/orders/${toPathId(id)}`),
+    getOrder: (id: number, options?: ApiRequestOptions) => api.get<Order>(`/admin/orders/${toPathId(id)}`, withRequestOptions({}, options)),
     exportOrders: (status?: string, search?: string, quick?: string) => api.get('/admin/orders/export', {
         params: {
             status: normalizeTextParam(status, 40) || undefined,
@@ -605,14 +615,39 @@ export const adminApi = {
         return api.get<AdminCouponPage | Coupon[]>('/admin/coupons', withRequestOptions({ params: normalizedParams }, options))
             .then(normalizeAdminCouponPageResponse);
     },
-    createCoupon: (coupon: Partial<Coupon>) => api.post<Coupon>('/admin/coupons', normalizeCouponPayload(coupon)).finally(clearCouponCache),
-    updateCoupon: (id: number, coupon: Partial<Coupon>) => api.put<Coupon>(`/admin/coupons/${toPathId(id)}`, normalizeCouponPayload(coupon)).finally(clearCouponCache),
-    deleteCoupon: (id: number) => api.delete(`/admin/coupons/${toPathId(id)}`).finally(clearCouponCache),
-    grantCoupon: (id: number, userIds: number[], maxUsers = 100) => api.post<{ granted: number }>(`/admin/coupons/${toPathId(id)}/grant`, { userIds: normalizePositiveIntList(userIds, maxUsers) }).finally(clearCouponCache),
-    runPetBirthdayCoupons: () => api.post<{ granted: number }>('/admin/pet-birthday-coupons/run').finally(clearCouponCache),
+    createCoupon: (coupon: Partial<Coupon>, options?: ApiRequestOptions) => {
+        const body = normalizeCouponPayload(coupon);
+        return (options
+            ? api.post<Coupon>('/admin/coupons', body, withRequestOptions({}, options))
+            : api.post<Coupon>('/admin/coupons', body)
+        ).finally(clearCouponCache);
+    },
+    updateCoupon: (id: number, coupon: Partial<Coupon>, options?: ApiRequestOptions) => {
+        const body = normalizeCouponPayload(coupon);
+        return (options
+            ? api.put<Coupon>(`/admin/coupons/${toPathId(id)}`, body, withRequestOptions({}, options))
+            : api.put<Coupon>(`/admin/coupons/${toPathId(id)}`, body)
+        ).finally(clearCouponCache);
+    },
+    deleteCoupon: (id: number, options?: ApiRequestOptions) => (options
+        ? api.delete(`/admin/coupons/${toPathId(id)}`, withRequestOptions({}, options))
+        : api.delete(`/admin/coupons/${toPathId(id)}`)
+    ).finally(clearCouponCache),
+    grantCoupon: (id: number, userIds: number[], maxUsers = 100, options?: ApiRequestOptions) => {
+        const body = { userIds: normalizePositiveIntList(userIds, maxUsers) };
+        return (options
+            ? api.post<{ granted: number }>(`/admin/coupons/${toPathId(id)}/grant`, body, withRequestOptions({}, options))
+            : api.post<{ granted: number }>(`/admin/coupons/${toPathId(id)}/grant`, body)
+        ).finally(clearCouponCache);
+    },
+    runPetBirthdayCoupons: (options?: ApiRequestOptions) => (options
+        ? api.post<{ granted: number }>('/admin/pet-birthday-coupons/run', null, withRequestOptions({}, options))
+        : api.post<{ granted: number }>('/admin/pet-birthday-coupons/run')
+    ).finally(clearCouponCache),
     getPetBirthdayCouponConfig: (options?: ApiRequestOptions) => api.get<PetBirthdayCouponConfig>('/admin/pet-birthday-coupons/config', withRequestOptions({}, options)),
-    updatePetBirthdayCouponConfig: (config: Partial<PetBirthdayCouponConfig>) =>
-        api.put<PetBirthdayCouponConfig>('/admin/pet-birthday-coupons/config', config),
+    updatePetBirthdayCouponConfig: (config: Partial<PetBirthdayCouponConfig>, options?: ApiRequestOptions) => options
+        ? api.put<PetBirthdayCouponConfig>('/admin/pet-birthday-coupons/config', config, withRequestOptions({}, options))
+        : api.put<PetBirthdayCouponConfig>('/admin/pet-birthday-coupons/config', config),
     broadcastNotification: (payload: { type: string; title: string; message: string; contentFormat: 'TEXT' | 'HTML' }) =>
         api.post<{ sent: number }>('/admin/notifications/broadcast', payload),
     getAnnouncementSummary: (params?: { status?: string; keyword?: string }, options?: ApiRequestOptions) => api.get<SiteAnnouncementAdminSummary>('/admin/announcements/summary', withRequestOptions({
@@ -656,15 +691,28 @@ export const adminSupportApi = {
         api.get<SupportMessage[]>(`/admin/support/sessions/${toPathId(sessionId)}/messages`, withRequestOptions({
             params: normalizeSupportMessageParams(params),
         }, options || (params?.signal ? { signal: params.signal } : undefined))),
-    sendMessage: (sessionId: number, content: string) =>
-        api.post<{ message: SupportMessage; session: SupportSession }>(`/admin/support/sessions/${toPathId(sessionId)}/messages`, {
-            content: normalizeSupportMessageContent(content),
-        }),
-    markRead: (sessionId: number) => api.put(`/admin/support/sessions/${toPathId(sessionId)}/read`),
-    closeSession: (sessionId: number) => api.put<SupportSession>(`/admin/support/sessions/${toPathId(sessionId)}/close`),
-    assignSession: (sessionId: number) => api.put<SupportSession>(`/admin/support/sessions/${toPathId(sessionId)}/assign`),
-    reopenSession: (sessionId: number) => api.put<SupportSession>(`/admin/support/sessions/${toPathId(sessionId)}/reopen`),
-    reissueBirthdayCoupons: (sessionId: number) =>
-        api.post<{ granted: number }>(`/admin/support/sessions/${toPathId(sessionId)}/birthday-coupons/reissue`),
-    getUnreadCount: () => api.get<{ count: number }>('/admin/support/unread-count'),
+    sendMessage: (sessionId: number, content: string, options?: ApiRequestOptions) => {
+        const body = { content: normalizeSupportMessageContent(content) };
+        return options
+            ? api.post<{ message: SupportMessage; session: SupportSession }>(`/admin/support/sessions/${toPathId(sessionId)}/messages`, body, withRequestOptions({}, options))
+            : api.post<{ message: SupportMessage; session: SupportSession }>(`/admin/support/sessions/${toPathId(sessionId)}/messages`, body);
+    },
+    markRead: (sessionId: number, options?: ApiRequestOptions) => options
+        ? api.put(`/admin/support/sessions/${toPathId(sessionId)}/read`, null, withRequestOptions({}, options))
+        : api.put(`/admin/support/sessions/${toPathId(sessionId)}/read`),
+    closeSession: (sessionId: number, options?: ApiRequestOptions) => options
+        ? api.put<SupportSession>(`/admin/support/sessions/${toPathId(sessionId)}/close`, null, withRequestOptions({}, options))
+        : api.put<SupportSession>(`/admin/support/sessions/${toPathId(sessionId)}/close`),
+    assignSession: (sessionId: number, options?: ApiRequestOptions) => options
+        ? api.put<SupportSession>(`/admin/support/sessions/${toPathId(sessionId)}/assign`, null, withRequestOptions({}, options))
+        : api.put<SupportSession>(`/admin/support/sessions/${toPathId(sessionId)}/assign`),
+    reopenSession: (sessionId: number, options?: ApiRequestOptions) => options
+        ? api.put<SupportSession>(`/admin/support/sessions/${toPathId(sessionId)}/reopen`, null, withRequestOptions({}, options))
+        : api.put<SupportSession>(`/admin/support/sessions/${toPathId(sessionId)}/reopen`),
+    reissueBirthdayCoupons: (sessionId: number, options?: ApiRequestOptions) => options
+        ? api.post<{ granted: number }>(`/admin/support/sessions/${toPathId(sessionId)}/birthday-coupons/reissue`, null, withRequestOptions({}, options))
+        : api.post<{ granted: number }>(`/admin/support/sessions/${toPathId(sessionId)}/birthday-coupons/reissue`),
+    getUnreadCount: (options?: ApiRequestOptions) => options
+        ? api.get<{ count: number }>('/admin/support/unread-count', withRequestOptions({}, options))
+        : api.get<{ count: number }>('/admin/support/unread-count'),
 };

@@ -1,6 +1,7 @@
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { questionApi, reviewApi } from '../api';
+import type { ApiRequestOptions } from '../api';
 import type { Language } from '../i18n';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { getApiErrorMessage } from '../utils/apiError';
@@ -46,9 +47,9 @@ export const useProductDetailCommunityActions = ({
   setQuestionText,
   t,
 }: UseProductDetailCommunityActionsParams) => {
-  const handleAddReview = async (orderId: number, rating: number, comment: string, imageUrls: string[] = []) => {
+  const handleAddReview = async (orderId: number, rating: number, comment: string, imageUrls: string[] = [], options?: ApiRequestOptions) => {
     const requestSeq = nonCriticalRequestSeqRef.current;
-    await reviewApi.create(Number(id), orderId, rating, comment, imageUrls);
+    await reviewApi.create(Number(id), orderId, rating, comment, imageUrls, options);
     if (!isCurrentNonCriticalRequest(requestSeq)) return;
     await fetchReviews(requestSeq);
     const token = hasStoredValue('token');

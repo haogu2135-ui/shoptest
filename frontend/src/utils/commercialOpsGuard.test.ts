@@ -414,7 +414,7 @@ ${orderActions}`;
     expect(engagement).toContain('const handleStockAlert = () => {');
     expect(engagement).toContain('const handleCompare = () => {');
     expect(community).toContain('export const useProductDetailCommunityActions');
-    expect(community).toContain('const handleAddReview = async (orderId: number, rating: number, comment: string, imageUrls: string[] = []) => {');
+    expect(community).toContain('const handleAddReview = async (orderId: number, rating: number, comment: string, imageUrls: string[] = [], options?: ApiRequestOptions) => {');
     expect(community).toContain('const handleAskQuestion = async () => {');
     expect(recommendation).toContain('export const useProductDetailRecommendationActions');
     expect(recommendation).toContain('const handleAddRecommendationToCart = async (');

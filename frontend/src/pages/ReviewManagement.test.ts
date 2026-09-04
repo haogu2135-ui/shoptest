@@ -8,7 +8,7 @@ describe('ReviewManagement health metric guards', () => {
   it('blocks review mutations while showing stale cached rows after a reload failure', () => {
     expect(pageSource).toContain('const [loadError, setLoadError] = useState<string | null>(null);');
     expect(pageSource).toContain('const [reviewSnapshotLoaded, setReviewSnapshotLoaded] = useState(false);');
-    expect(pageSource).toContain('const actionsDisabledByStaleData = Boolean(loadError);');
+    expect(pageSource).toContain('const actionsDisabledByStaleData = Boolean(loadError) || mutationPending;');
     expect(pageSource).toContain("message={t('pages.adminReviews.loadErrorTitle')}");
     expect(pageSource).toContain('{loadError && reviewSnapshotLoaded ? (');
     expect(pageSource).toContain("description={t('pages.adminReviews.staleDataWarning')}");
@@ -58,5 +58,17 @@ describe('ReviewManagement health metric guards', () => {
     expect(pageSource).toContain('ShopTextArea');
     expect(pageSource).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
     expect(pageSource).not.toMatch(/<Input\b|Input\.TextArea/);
+  });
+
+  it('latches review writes and suppresses post-unmount feedback and refreshes', () => {
+    expect(pageSource).toContain('const mutationRef = useRef(false);');
+    expect(pageSource).toContain('const [mutationPending, setMutationPending] = useState(false);');
+    expect(pageSource).toContain('const actionsDisabledByStaleData = Boolean(loadError) || mutationPending;');
+    expect(pageSource).toContain('if (!mountedRef.current || mutationRef.current) return;');
+    expect(pageSource).toContain('mutationRef.current = true;');
+    expect(pageSource).toContain('if (!mountedRef.current) return;');
+    expect(pageSource).toContain('mutationRef.current = false;');
+    expect(pageSource).toContain('if (mountedRef.current) await fetchReviews(pageState.page, pageState.size);');
+    expect(pageSource).toContain('if (mountedRef.current) setMutationPending(false);');
   });
 });

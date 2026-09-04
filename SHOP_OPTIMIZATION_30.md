@@ -173,6 +173,73 @@ are kept in addition to the original 130-item record:
      unmount while latching duplicate submits and completing reorder mutations.
 151. Guard checkout cart-quantity flushes and handoffs after unmount so stale
      writes, callbacks, errors, and navigation cannot continue from dead UI.
+152. Guard Profile address, pet, and account mutations after unmount while
+    latching duplicate saves, deletes, defaults, verification codes, and
+    password changes.
+153. Guard Home and ProductList product actions after unmount while latching
+    duplicate adds, wishlist toggles, and cart snapshot handoffs.
+154. Guard StockAlerts cart actions after unmount while latching duplicate item
+    adds and bulk recovery actions, including feedback and loading cleanup.
+155. Guard ProductCompare cart actions after unmount while latching duplicate
+    item and bulk adds and reserving product IDs across concurrent actions.
+156. Guard PetGallery upload, like, and delete actions after unmount while
+    latching duplicate submissions and suppressing stale feedback and refreshes.
+157. Guard AlertManagement self-check, per-alert, batch, and purge mutations
+    after unmount while sharing a synchronous active-action latch.
+158. Guard ConfigCenter publish and runtime-apply mutations after unmount while
+    latching duplicate actions before asynchronous form validation.
+159. Guard notification read, mark-all, and delete mutations after unmount while
+    sharing synchronous per-action latches and disabling stale-snapshot actions.
+160. Guard PermissionManagement role saves after unmount while latching duplicate
+    validation and write submissions and awaiting the refreshed role snapshot.
+161. Guard SeckillManagement campaign saves after unmount while blocking overlap
+    with status writes and suppressing stale feedback and loading cleanup.
+162. Guard SeckillManagement campaign status writes after unmount while latching
+    duplicate transitions and preventing overlapping campaign mutations.
+163. Guard Notifications mutation feedback and state after unmount while latching
+    overlapping read, mark-all, and delete actions.
+164. Guard Login password, email-code, and email-login flows after unmount while
+    suppressing stale form feedback, focus, announcements, and loading cleanup.
+165. Guard ForgotPassword code-send and reset flows after unmount while preserving
+    synchronous duplicate latches and suppressing stale feedback and loading cleanup.
+166. Guard Register code-send and registration flows after unmount while suppressing
+    stale focus, form feedback, navigation, announcements, and loading cleanup.
+167. Stop SeckillManagement from validating or starting data refresh work after
+    the page has already unmounted.
+168. Stop ProductQuestionManagement from starting a superseded question list read
+    after the summary request is no longer current.
+169. Guard ProductQuestionManagement answer and delete mutations after unmount
+    while latching overlapping actions and suppressing stale loading cleanup.
+170. Guard LogManagement debug toggles and log downloads after unmount while
+    latching overlapping actions and suppressing stale feedback and download DOM work.
+171. Guard AnnouncementManagement save, status, and delete mutations after
+    unmount while latching overlapping writes and suppressing stale feedback and refreshes.
+172. Guard BrandManagement save and delete mutations after unmount while
+    latching overlapping writes and suppressing stale feedback and refreshes.
+173. Guard InventoryManagement stock adjustments after unmount while latching
+    duplicate validations and writes and suppressing stale feedback and refreshes.
+174. Guard CategoryManagement save and delete mutations after unmount while
+    latching overlapping writes and suppressing stale feedback and refreshes.
+175. Guard LogisticsCarrierManagement save and delete mutations after unmount
+    while latching overlapping writes and suppressing stale feedback and refreshes.
+176. Guard NotificationManagement broadcasts after unmount while latching
+    duplicate form submissions and suppressing stale feedback and DOM events.
+177. Guard ReviewManagement delete, reply, and status mutations after unmount
+    while latching overlapping writes and suppressing stale feedback and refreshes.
+178. Guard TrafficControl circuit and rate-limit mutations after unmount while
+     latching overlapping actions and disabling stale refresh and confirmation controls.
+179. Guard IpBlacklistManagement block and release mutations after unmount while
+     sharing a synchronous latch, aborting writes, and disabling conflicting actions.
+180. Guard ProductReview image uploads and submissions after unmount while latching
+     overlapping actions, aborting requests, and suppressing stale feedback and state.
+181. Guard SeventeenTrackWidget tracking queries on supersession and unmount while
+    aborting old requests, suppressing stale results, and clearing removed tracking state.
+182. Guard SupportManagement reply, close, assign, reopen, birthday-coupon, and
+    order-detail actions after unmount while latching overlapping operations and
+    propagating request cancellation through polling and read-state updates.
+183. Guard CustomerSupportWidget message, order-share, and close-session actions
+    after unmount while latching overlapping mutations and cancelling polling and
+    read-state requests.
 
 ## Verification
 
@@ -185,7 +252,24 @@ The final verification record is maintained here after the post-change checks:
   tests passed.
 - Focused profile-order/cart quantity lifecycle regression: 4 suites and 87
   tests passed.
-- Full frontend Jest: 243 suites and 1759/1759 tests passed.
+- Focused profile address, pet, and account lifecycle regression: 3 suites and
+  7 tests passed.
+- Focused Home and ProductList action lifecycle regression: 2 suites and 5
+  tests passed.
+- Focused StockAlerts and ProductCompare action lifecycle regression: 2 suites
+  and 15 tests passed.
+- Focused PetGallery, AlertManagement, and ConfigCenter action lifecycle
+    regression: 3 suites and 20 tests passed.
+- Focused LogManagement, AnnouncementManagement, and BrandManagement lifecycle
+    regression: 3 suites and 13 tests passed.
+- Focused InventoryManagement, CategoryManagement, and LogisticsCarrierManagement
+    lifecycle regression: 3 suites and 10 tests passed.
+- Focused NotificationManagement, ReviewManagement, and TrafficControl lifecycle
+    regression: 3 suites and 16 tests passed.
+- Focused SupportManagement and CustomerSupportWidget lifecycle regression: 2
+  suites and 25 tests passed.
+- Focused support API signal regression: 1 suite and 1 test passed.
+- Full frontend Jest: 249 suites and 1806/1806 tests passed.
 - TypeScript: `NODE_OPTIONS=--max-old-space-size=768 npx tsc --noEmit --pretty false --skipLibCheck` passed.
 - Production: bounded production build passed (`npm run build`, exit code 0).
 

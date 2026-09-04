@@ -66,10 +66,22 @@ describe('Notifications mobile bottom-nav clearance contract', () => {
   it('keeps stale notification snapshots read-only after refresh failures', () => {
     const source = readNotificationsSource();
 
-    expect(source).toContain('const notificationActionsDisabled = Boolean(fetchError);');
+    expect(source).toContain('const notificationActionsDisabled = Boolean(fetchError) || mutationPending;');
     expect(source).toContain("description={t('pages.notifications.staleDataWarning')}");
     expect(source).toContain("action={<ShopButton size=\"small\" onClick={() => fetchNotifications()}>{t('common.retry')}</ShopButton>}");
     expect(source).toContain('disabled={notificationActionsDisabled}');
+  });
+
+  it('latches notification mutations and suppresses post-unmount effects', () => {
+    const source = readNotificationsPage();
+
+    expect(source).toContain('const notificationMutationRef = useRef<Set<string>>(new Set());');
+    expect(source).toContain('const [mutationPending, setMutationPending] = useState(false);');
+    expect(source).toContain("notificationMutationRef.current.has('mark-all')");
+    expect(source).toContain('if (!mountedRef.current) return;');
+    expect(source).toContain('notificationMutationRef.current.delete(actionKey);');
+    expect(source).toContain("notificationMutationRef.current.add('mark-all');");
+    expect(source).toContain('const notificationActionsDisabled = Boolean(fetchError) || mutationPending;');
   });
 
   it('reserves bottom-navigation clearance for the mobile action plan and first card', () => {

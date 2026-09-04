@@ -40,6 +40,8 @@ const NotificationManagement: React.FC = () => {
   const [permissionStatus, setPermissionStatus] = useState<PermissionStatus>('loading');
   const mountedRef = useRef(true);
   const permissionsAbortRef = useRef<AbortController | null>(null);
+  const broadcastRef = useRef(false);
+  const [broadcastPending, setBroadcastPending] = useState(false);
   const { t, language } = useLanguage();
   const notificationType = Form.useWatch('type', form) || 'PROMOTION';
   const contentFormat = Form.useWatch('contentFormat', form) || 'HTML';
@@ -82,6 +84,7 @@ const NotificationManagement: React.FC = () => {
       mountedRef.current = false;
       permissionsAbortRef.current?.abort();
       permissionsAbortRef.current = null;
+      broadcastRef.current = false;
     };
   }, [loadPermissions]);
 
@@ -99,7 +102,7 @@ const NotificationManagement: React.FC = () => {
   const notificationTitleInputLabel = `${t('pages.notificationAdmin.notificationTitle')}: ${notificationTargetLabel}`;
   const notificationContentFormatLabel = `${t('pages.notificationAdmin.contentFormat')}: ${contentFormat}`;
   const notificationContentInputLabel = `${t('pages.notificationAdmin.content')}: ${notificationTargetLabel}`;
-  const permissionGateActive = permissionStatus !== 'ready' || !canBroadcastNotifications;
+  const permissionGateActive = permissionStatus !== 'ready' || !canBroadcastNotifications || broadcastPending;
   const permissionGateReason = permissionStatus === 'loading'
     ? t('pages.notificationAdmin.permissionLoading')
     : permissionStatus === 'error'
@@ -116,27 +119,37 @@ const NotificationManagement: React.FC = () => {
   }, [messageContent, notificationTitle, plainContent]);
 
   const handleSend = async () => {
+    if (!mountedRef.current || broadcastRef.current) return;
     if (!canBroadcastNotifications) {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    broadcastRef.current = true;
+    setBroadcastPending(true);
     try {
       const values = await form.validateFields();
+      if (!mountedRef.current) return;
       setSending(true);
       const payload = {
         ...values,
         message: values.contentFormat === 'HTML' ? stripUnsafeHtml(values.message || '') : values.message,
       };
       const res = await adminApi.broadcastNotification(payload);
+      if (!mountedRef.current) return;
       message.success(t('pages.notificationAdmin.sent', { count: res.data.sent }));
       dispatchDomEvent('shop:notifications-updated');
       form.resetFields();
       form.setFieldsValue({ type: 'PROMOTION', contentFormat: 'HTML' });
     } catch (error: unknown) {
       if (isFormValidationError(error)) return;
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(error, t('pages.notificationAdmin.sendFailed'), language));
     } finally {
-      setSending(false);
+      broadcastRef.current = false;
+      if (mountedRef.current) {
+        setSending(false);
+        setBroadcastPending(false);
+      }
     }
   };
 
@@ -279,6 +292,7 @@ const NotificationManagement: React.FC = () => {
               <ShopButton aria-label={templateActionLabel} title={templateActionLabel} onClick={insertPromotionTemplate} disabled={permissionGateActive || sending}>{t('pages.notificationAdmin.useTemplate')}</ShopButton>
               {canBroadcastNotifications ? (
                 <ShopPopconfirm rootClassName="shop-mobile-popup-layer"
+                  disabled={permissionGateActive}
                   title={broadcastActionLabel}
                   description={(
                     <ShopSpace direction="vertical" size={2}>
@@ -288,11 +302,11 @@ const NotificationManagement: React.FC = () => {
                   )}
                   okText={t('common.confirm')}
                   cancelText={t('common.cancel')}
-                  okButtonProps={{ danger: true, 'aria-label': broadcastActionLabel, title: broadcastActionLabel }}
+                  okButtonProps={{ danger: true, disabled: permissionGateActive, 'aria-label': broadcastActionLabel, title: broadcastActionLabel }}
                   cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${broadcastActionLabel}`, title: `${t('common.cancel')}: ${broadcastActionLabel}` }}
                   onConfirm={handleSend}
                 >
-                  <ShopButton type="primary" icon={<SendOutlined />} aria-label={broadcastActionLabel} title={broadcastActionLabel} loading={sending}>
+                  <ShopButton type="primary" icon={<SendOutlined />} aria-label={broadcastActionLabel} title={broadcastActionLabel} loading={sending} disabled={broadcastPending}>
                     {t('pages.notificationAdmin.sendAll')}
                   </ShopButton>
                 </ShopPopconfirm>

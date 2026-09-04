@@ -97,6 +97,9 @@ const PetGallery: React.FC = () => {
   const galleryRefreshSeqRef = useRef(0);
   const galleryAbortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
+  const uploadingRef = useRef(false);
+  const likingPhotoIdsRef = useRef(new Set<number>());
+  const deletingPhotoIdsRef = useRef(new Set<number>());
 
   const isAuthenticated = hasStoredValue('token');
 
@@ -142,6 +145,9 @@ const PetGallery: React.FC = () => {
     galleryRefreshSeqRef.current += 1;
     galleryAbortRef.current?.abort();
     galleryAbortRef.current = null;
+    uploadingRef.current = false;
+    likingPhotoIdsRef.current.clear();
+    deletingPhotoIdsRef.current.clear();
   }, []);
 
   useEffect(() => {
@@ -294,6 +300,7 @@ const PetGallery: React.FC = () => {
   }, [galleryInsights.topMoment, isSampleOnlyGallery, t]);
 
   const handleSelectedPhoto: React.ChangeEventHandler<HTMLInputElement> = async (event) => {
+    if (!mountedRef.current || uploadingRef.current) return;
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
@@ -314,20 +321,26 @@ const PetGallery: React.FC = () => {
       return;
     }
 
+    uploadingRef.current = true;
     setUploading(true);
     try {
       const response = await petGalleryApi.upload(file);
+      if (!mountedRef.current) return;
       setPhotos((current) => [response.data, ...current.filter((photo) => photo.id !== response.data.id)].slice(0, 24));
       announceAccessibleMessage(t('home.petUgcUploadSuccess'), 'success');
       await refreshGallery(true);
     } catch (error) {
-      announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcUploadFailed'), language), 'error');
+      if (mountedRef.current) {
+        announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcUploadFailed'), language), 'error');
+      }
     } finally {
-      setUploading(false);
+      uploadingRef.current = false;
+      if (mountedRef.current) setUploading(false);
     }
   };
 
   const handleLike = async (item: GalleryItem) => {
+    if (!mountedRef.current) return;
     if (!canUseLiveInteractions) {
       announceAccessibleMessage(t('pages.petGallery.staleActionBlocked'), 'warning');
       return;
@@ -347,27 +360,41 @@ const PetGallery: React.FC = () => {
       announceAccessibleMessage(t('home.petUgcAlreadyLiked'), 'info');
       return;
     }
+    if (likingPhotoIdsRef.current.has(item.photo.id)) return;
+    likingPhotoIdsRef.current.add(item.photo.id);
     try {
       const response = await petGalleryApi.like(item.photo.id);
+      if (!mountedRef.current) return;
       setPhotos((current) => current.map((photo) => photo.id === response.data.id ? response.data : photo));
       announceAccessibleMessage(t('home.petUgcLiked'), 'success');
     } catch (error) {
-      announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcLikeFailed'), language), 'error');
+      if (mountedRef.current) {
+        announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcLikeFailed'), language), 'error');
+      }
+    } finally {
+      likingPhotoIdsRef.current.delete(item.photo.id);
     }
   };
 
   const handleDelete = async (photo: PetGalleryPhotoPublic) => {
+    if (!mountedRef.current || deletingPhotoIdsRef.current.has(photo.id)) return;
     if (!canUseLiveInteractions) {
       announceAccessibleMessage(t('pages.petGallery.staleActionBlocked'), 'warning');
       return;
     }
+    deletingPhotoIdsRef.current.add(photo.id);
     try {
       await petGalleryApi.delete(photo.id);
+      if (!mountedRef.current) return;
       setPhotos((current) => current.filter((item) => item.id !== photo.id));
       announceAccessibleMessage(t('home.petUgcDeleted'), 'success');
       await refreshGallery(true);
     } catch (error) {
-      announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcDeleteFailed'), language), 'error');
+      if (mountedRef.current) {
+        announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcDeleteFailed'), language), 'error');
+      }
+    } finally {
+      deletingPhotoIdsRef.current.delete(photo.id);
     }
   };
 

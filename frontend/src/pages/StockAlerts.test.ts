@@ -94,3 +94,17 @@ describe('StockAlerts modularization', () => {
     expect(panels).toContain("const restockNextActionIcon = restockNextAction.tone === 'stale' ? <ShopIcon path={SI.reload} /> : <ShopIcon path={SI.cart} />;");
   });
 });
+
+describe('StockAlerts action lifecycle guards', () => {
+  it('suppresses cart side effects and state cleanup after unmount', () => {
+    const page = readStockAlertsPage();
+
+    expect(page).toContain('if (!mountedRef.current) return false;');
+    expect(page).toMatch(/await cartApi\.addItem\(0, product\.id, 1\);\s*if \(!mountedRef\.current\) return false;\s*dispatchDomEvent\('shop:cart-updated'\);/);
+    expect(page).toMatch(/if \(!mountedRef\.current\) return false;\s*if \(!quiet\) \{/);
+    expect(page).toMatch(/catch \(error: unknown\) \{\s*if \(mountedRef\.current\) \{[\s\S]*?getApiErrorMessage\(error, t\('messages\.addFailed'\), language\)/);
+    expect(page).toMatch(/inFlightCartProductIds\.current\.delete\(product\.id\);\s*if \(mountedRef\.current\) \{\s*setAddingProductIds/);
+    expect(page).toMatch(/if \(mountedRef\.current && added > 0\) \{[\s\S]*?dispatchDomEvent\('shop:open-cart'\);/);
+    expect(page).toContain('if (mountedRef.current) setAddingReady(false);');
+  });
+});

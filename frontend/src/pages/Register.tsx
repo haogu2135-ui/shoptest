@@ -60,6 +60,7 @@ const Register: React.FC = () => {
   const codeInputRef = useRef<HTMLInputElement | null>(null);
   const registeringRef = useRef(false);
   const registerCodeSendingRef = useRef(false);
+  const mountedRef = useRef(true);
   const emailCodeEnabled = appConfig.emailCodeEnabled === true;
   const {
     registerLoginActionLabel,
@@ -82,6 +83,15 @@ const Register: React.FC = () => {
   const validateStrongPassword = createRegisterStrongPasswordValidator(t);
 
   useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      registeringRef.current = false;
+      registerCodeSendingRef.current = false;
+    };
+  }, []);
+
+  useEffect(() => {
     if (sendCodeCountdown <= 0) return;
     const timer = window.setInterval(() => {
       setSendCodeCountdown((value) => Math.max(value - 1, 0));
@@ -90,6 +100,7 @@ const Register: React.FC = () => {
   }, [sendCodeCountdown]);
 
   const sendRegisterCode = async () => {
+    if (!mountedRef.current) return;
     if (registerCodeSendingRef.current) return;
     registerCodeSendingRef.current = true;
     try {
@@ -98,10 +109,12 @@ const Register: React.FC = () => {
         return;
       }
       const { email } = await form.validateFields(['email']);
+      if (!mountedRef.current) return;
       const normalizedEmail = normalizeEmail(email);
       form.setFieldValue('email', normalizedEmail);
       setCodeSending(true);
       const response = await userApi.sendEmailLoginCode(normalizedEmail);
+      if (!mountedRef.current) return;
       const resendIntervalSeconds = Number(response.data?.resendIntervalSeconds);
       const ttlMinutes = Number(response.data?.codeTtlMinutes);
       setSendCodeCountdown(Number.isFinite(resendIntervalSeconds) && resendIntervalSeconds > 0 ? resendIntervalSeconds : 60);
@@ -110,9 +123,12 @@ const Register: React.FC = () => {
       setEmailCodeRequired(true);
       form.setFieldValue('emailCode', '');
       form.setFields([{ name: 'emailCode', errors: [] }]);
-      window.setTimeout(() => codeInputRef.current?.focus?.(), 0);
+      window.setTimeout(() => {
+        if (mountedRef.current) codeInputRef.current?.focus?.();
+      }, 0);
       announceAccessibleMessage(t('pages.auth.emailCodeSentTo', { email: maskEmail(normalizedEmail) }), 'success');
     } catch (error: unknown) {
+      if (!mountedRef.current) return;
       if (!isFormValidationError(error)) {
         const errorCode = registerApiErrorCode(error);
         if (errorCode === 'RATE_LIMITED') {
@@ -127,11 +143,12 @@ const Register: React.FC = () => {
       }
     } finally {
       registerCodeSendingRef.current = false;
-      setCodeSending(false);
+      if (mountedRef.current) setCodeSending(false);
     }
   };
 
   const onFinish = async (values: RegisterForm) => {
+    if (!mountedRef.current) return;
     if (registeringRef.current) return;
     registeringRef.current = true;
     setRegistering(true);
@@ -158,6 +175,7 @@ const Register: React.FC = () => {
         emailCode,
         role: 'USER'
       });
+      if (!mountedRef.current) return;
       const responseUsername = normalizeUsername(response.data?.username);
       const loginCandidates = uniqueLoginCandidates(responseUsername, username, email, phone);
       const registeredLogin = loginCandidates[0] || username || email || phone;
@@ -168,6 +186,7 @@ const Register: React.FC = () => {
       announceAccessibleMessage(t('pages.auth.registerSuccess'), 'success');
       navigate(postRegisterRedirect ? buildLoginUrl(postRegisterRedirect) : '/login');
     } catch (error: unknown) {
+      if (!mountedRef.current) return;
       const responseData = registerApiErrorData(error);
       const serverCode = registerApiErrorCode(error);
       const needsEmailCode = isRegisterEmailCodeRequired(responseData.emailCodeRequired);
@@ -210,13 +229,16 @@ const Register: React.FC = () => {
       announceAccessibleMessage(msg, 'error');
     } finally {
       registeringRef.current = false;
-      setRegistering(false);
+      if (mountedRef.current) setRegistering(false);
     }
   };
 
   const onFinishFailed = () => {
     window.requestAnimationFrame(() => {
-      window.requestAnimationFrame(scrollFirstRegisterErrorIntoView);
+      if (!mountedRef.current) return;
+      window.requestAnimationFrame(() => {
+        if (mountedRef.current) scrollFirstRegisterErrorIntoView();
+      });
     });
   };
 

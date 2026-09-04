@@ -42,3 +42,28 @@ describe('AlertManagement responsive table guard', () => {
     expect(pageSource).toContain('permissionsAbortRef.current?.abort();');
   });
 });
+
+describe('AlertManagement action lifecycle guards', () => {
+  it('latches all admin mutations synchronously', () => {
+    expect(pageSource).toContain('const actingRef = useRef<string | null>(null);');
+    expect(pageSource).toContain('if (!mountedRef.current || actingRef.current) return;');
+    expect(pageSource).toContain("actingRef.current = 'self-check';");
+    expect(pageSource).toContain("actingRef.current = 'batch-ack';");
+    expect(pageSource).toContain("actingRef.current = 'batch-resolve';");
+    expect(pageSource).toContain("actingRef.current = 'purge-resolved';");
+    expect(pageSource).toContain('const actionKey = `ack-${alert.id}`;');
+    expect(pageSource).toContain('const actionKey = `resolve-${alert.id}`;');
+  });
+
+  it('suppresses mutation feedback, refreshes, and cleanup after unmount', () => {
+    expect(pageSource).toContain('if (!mountedRef.current) return;');
+    expect(pageSource).toMatch(/await adminApi\.runAlertSelfCheck\(\);\s*if \(!mountedRef\.current\) return;\s*message\.success/);
+    expect(pageSource).toMatch(/const response = await adminApi\.acknowledgeAlert\(alert\.id\);\s*if \(!mountedRef\.current\) return;/);
+    expect(pageSource).toMatch(/const response = await adminApi\.resolveAlert\(alert\.id\);\s*if \(!mountedRef\.current\) return;/);
+    expect(pageSource).toMatch(/const response = await adminApi\.acknowledgeAlerts\([\s\S]*?\);\s*if \(!mountedRef\.current\) return;/);
+    expect(pageSource).toMatch(/const response = await adminApi\.resolveAlerts\([\s\S]*?\);\s*if \(!mountedRef\.current\) return;/);
+    expect(pageSource).toMatch(/const response = await adminApi\.purgeResolvedAlerts\(retentionDays\);\s*if \(!mountedRef\.current\) return;/);
+    expect(pageSource).toMatch(/catch \(error: unknown\) \{\s*if \(mountedRef\.current\) \{[\s\S]*?message\.error/);
+    expect(pageSource).toContain('if (mountedRef.current) setActing(null);');
+  });
+});

@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react';
+import { useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import type { FormInstance } from 'antd/es/form';
 import { userApi } from '../api';
 import type { Language } from '../i18n';
@@ -20,7 +20,10 @@ type UseProfileAccountActionsParams = {
   emailCodeEnabled: boolean;
   fetchUserInfo: () => void | Promise<void>;
   language: Language;
+  mountedRef: MutableRefObject<boolean>;
   passwordForm: FormInstance;
+  profileEmailCodeSending: boolean;
+  profileSubmitting: boolean;
   passwordSubmitting: boolean;
   setEditModalVisible: Dispatch<SetStateAction<boolean>>;
   setPasswordModalVisible: Dispatch<SetStateAction<boolean>>;
@@ -43,7 +46,10 @@ export const useProfileAccountActions = ({
   emailCodeEnabled,
   fetchUserInfo,
   language,
+  mountedRef,
   passwordForm,
+  profileEmailCodeSending,
+  profileSubmitting,
   passwordSubmitting,
   setEditModalVisible,
   setPasswordModalVisible,
@@ -56,9 +62,16 @@ export const useProfileAccountActions = ({
   t,
   user,
 }: UseProfileAccountActionsParams) => {
+  const updatingProfileRef = useRef(false);
+  const sendingProfileEmailCodeRef = useRef(false);
+  const changingPasswordRef = useRef(false);
+
   const handleEditProfile = async () => {
+    if (!mountedRef.current || profileSubmitting || updatingProfileRef.current) return;
+    updatingProfileRef.current = true;
     try {
       const values = await editForm.validateFields();
+      if (!mountedRef.current) return;
       const normalizedEmail = normalizeProfileEmail(values.email);
       const emailChanged = normalizedEmail !== normalizeProfileEmail(user?.email);
       if (emailChanged && !emailCodeEnabled) {
@@ -77,6 +90,7 @@ export const useProfileAccountActions = ({
         phone: normalizeProfilePhone(values.phone),
         emailCode: emailChanged ? values.emailCode : '',
       });
+      if (!mountedRef.current) return;
       announceAccessibleMessage(t('pages.profile.updated'), 'success');
       setEditModalVisible(false);
       editForm.resetFields(['emailCode']);
@@ -85,9 +99,10 @@ export const useProfileAccountActions = ({
       fetchUserInfo();
     } catch (err: unknown) {
       if (isFormValidationError(err)) {
-        focusProfileModalFormError('.profile-mobile-safe-modal');
+        if (mountedRef.current) focusProfileModalFormError('.profile-mobile-safe-modal');
         return;
       }
+      if (!mountedRef.current) return;
       const errorCode = getProfileApiErrorCode(err);
       if (errorCode === 'INVALID_CODE' || errorCode === 'TOO_MANY_ATTEMPTS') {
         const msg = errorCode === 'TOO_MANY_ATTEMPTS'
@@ -99,17 +114,21 @@ export const useProfileAccountActions = ({
         announceAccessibleMessage(getApiErrorMessage(err, t('messages.updateFailed'), language), 'error');
       }
     } finally {
-      setProfileSubmitting(false);
+      updatingProfileRef.current = false;
+      if (mountedRef.current) setProfileSubmitting(false);
     }
   };
 
   const handleSendProfileEmailCode = async () => {
+    if (!mountedRef.current || profileEmailCodeSending || sendingProfileEmailCodeRef.current) return;
     if (!emailCodeEnabled) {
       announceAccessibleMessage(t('pages.auth.emailCodeUnavailable'), 'warning');
       return;
     }
+    sendingProfileEmailCodeRef.current = true;
     try {
       const { email } = await editForm.validateFields(['email']);
+      if (!mountedRef.current) return;
       const normalizedEmail = normalizeProfileEmail(email);
       editForm.setFieldValue('email', normalizedEmail);
       if (normalizedEmail === normalizeProfileEmail(user?.email)) {
@@ -118,6 +137,7 @@ export const useProfileAccountActions = ({
       }
       setProfileEmailCodeSending(true);
       const response = await userApi.sendProfileEmailCode(normalizedEmail);
+      if (!mountedRef.current) return;
       const resendIntervalSeconds = Number(response.data?.resendIntervalSeconds);
       const ttlMinutes = Number(response.data?.codeTtlMinutes);
       setProfileEmailCodeCountdown(Number.isFinite(resendIntervalSeconds) && resendIntervalSeconds > 0 ? resendIntervalSeconds : 60);
@@ -128,36 +148,44 @@ export const useProfileAccountActions = ({
       announceAccessibleMessage(t('pages.auth.emailCodeSentTo', { email: normalizedEmail }), 'success');
     } catch (err: unknown) {
       if (isFormValidationError(err)) {
-        focusProfileModalFormError('.profile-mobile-safe-modal');
+        if (mountedRef.current) focusProfileModalFormError('.profile-mobile-safe-modal');
         return;
       }
+      if (!mountedRef.current) return;
       const retryAfterSeconds = Number(getProfileApiErrorData(err).retryAfterSeconds);
       if (Number.isFinite(retryAfterSeconds) && retryAfterSeconds > 0) {
         setProfileEmailCodeCountdown(Math.ceil(retryAfterSeconds));
       }
       announceAccessibleMessage(getApiErrorMessage(err, t('pages.auth.emailCodeSendFailed'), language), 'error');
     } finally {
-      setProfileEmailCodeSending(false);
+      sendingProfileEmailCodeRef.current = false;
+      if (mountedRef.current) setProfileEmailCodeSending(false);
     }
   };
 
   const handleChangePassword = async () => {
-    if (passwordSubmitting) return;
+    if (!mountedRef.current || passwordSubmitting || changingPasswordRef.current) return;
+    changingPasswordRef.current = true;
     try {
       const values = await passwordForm.validateFields();
+      if (!mountedRef.current) return;
       setPasswordSubmitting(true);
       await userApi.updatePassword(values.oldPassword, values.newPassword);
+      if (!mountedRef.current) return;
       announceAccessibleMessage(t('pages.profile.passwordChanged'), 'success');
       setPasswordModalVisible(false);
       passwordForm.resetFields();
     } catch (err: unknown) {
       if (isFormValidationError(err)) {
-        focusProfileModalFormError('.profile-mobile-safe-modal');
+        if (mountedRef.current) focusProfileModalFormError('.profile-mobile-safe-modal');
         return;
       }
-      announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.passwordFailed'), language), 'error');
+      if (mountedRef.current) {
+        announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.passwordFailed'), language), 'error');
+      }
     } finally {
-      setPasswordSubmitting(false);
+      changingPasswordRef.current = false;
+      if (mountedRef.current) setPasswordSubmitting(false);
     }
   };
 

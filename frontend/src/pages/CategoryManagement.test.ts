@@ -54,4 +54,17 @@ describe('CategoryManagement readiness panel guards', () => {
     expect(pageSource).not.toMatch(/<TreeSelect\b/);
     expect(pageSource).not.toMatch(/import \{[^}]*\bTreeSelect\b[^}]*\} from 'antd'/);
   });
+
+  it('latches category writes and suppresses post-unmount feedback and refreshes', () => {
+    expect(pageSource).toContain('const mutationRef = useRef(false);');
+    expect(pageSource).toContain('const [mutationPending, setMutationPending] = useState(false);');
+    expect(pageSource).toContain('if (!mountedRef.current || mutationRef.current) return;');
+    expect(pageSource).toContain('mutationRef.current = true;');
+    expect(pageSource).toContain('if (!mountedRef.current) return;');
+    expect(pageSource).toContain('mutationRef.current = false;');
+    expect(pageSource).toContain('const categoryActionDisabled = loading || Boolean(categoryLoadError) || !categorySnapshotLoaded || mutationPending;');
+    expect(pageSource).toContain('if (mountedRef.current) await fetchCategories();');
+    expect(pageSource).toContain('if (mountedRef.current) setMutationPending(false);');
+    expect(pageSource).toContain("if (!mountedRef.current) return;\n      message.success(editingCategory ? t('pages.categoryAdmin.updated') : t('pages.categoryAdmin.created'));");
+  });
 });

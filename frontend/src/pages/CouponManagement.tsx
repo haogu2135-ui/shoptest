@@ -13,6 +13,7 @@ import ShopConfirm from '../components/ShopConfirm';
 import { ClockCircleOutlined, DeleteOutlined, EditOutlined, FireOutlined, GiftOutlined, PlusOutlined, SearchOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { adminApi } from '../api/admin';
+import type { ApiRequestOptions } from '../api';
 import type { Coupon, CouponAdminSummary, PetBirthdayCouponConfig, User } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
@@ -80,6 +81,7 @@ const CouponManagement: React.FC = () => {
   const [grantVisible, setGrantVisible] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState<Coupon | null>(null);
   const [grantCoupon, setGrantCoupon] = useState<Coupon | null>(null);
+  const [mutationPending, setMutationPending] = useState(false);
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const [form] = Form.useForm();
@@ -96,6 +98,9 @@ const CouponManagement: React.FC = () => {
   const userLookupAbortRef = useRef<AbortController | null>(null);
   const birthdayConfigSeqRef = useRef(0);
   const birthdayConfigAbortRef = useRef<AbortController | null>(null);
+  const mutationRef = useRef(false);
+  const mutationAbortRef = useRef<AbortController | null>(null);
+  const grantPreparingRef = useRef(false);
   const couponType = Form.useWatch('couponType', form);
   const couponPaginationItemRender = useMemo(() => buildPaginationItemRender(
     `${t('common.previousPage')}: ${t('adminLayout.coupons')}`,
@@ -121,8 +126,8 @@ const CouponManagement: React.FC = () => {
   const canGrantCoupons = hasAdminPermission(adminPermissions, currentRole, COUPONS_GRANT_PERMISSION);
   const canRunBirthdayCoupons = hasAdminPermission(adminPermissions, currentRole, COUPONS_BIRTHDAY_RUN_PERMISSION);
   const canConfigureBirthdayCoupons = hasAdminPermission(adminPermissions, currentRole, COUPONS_BIRTHDAY_CONFIG_PERMISSION);
-  const couponMutationDisabled = loading || Boolean(couponLoadError) || !couponSnapshotLoaded;
-  const birthdayConfigActionDisabled = birthdayConfigLoading || Boolean(birthdayConfigLoadError) || !birthdayConfigLoaded;
+  const couponMutationDisabled = loading || Boolean(couponLoadError) || !couponSnapshotLoaded || mutationPending;
+  const birthdayConfigActionDisabled = birthdayConfigLoading || Boolean(birthdayConfigLoadError) || !birthdayConfigLoaded || mutationPending;
   const localCouponOpsStats = useMemo(() => {
     const now = Date.now();
     const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
@@ -236,7 +241,26 @@ const CouponManagement: React.FC = () => {
       couponSummaryAbortRef.current?.abort();
       userLookupAbortRef.current?.abort();
       birthdayConfigAbortRef.current?.abort();
+      mutationAbortRef.current?.abort();
+      mutationAbortRef.current = null;
+      mutationRef.current = false;
+      grantPreparingRef.current = false;
     };
+  }, []);
+
+  const beginMutation = useCallback((): ApiRequestOptions | null => {
+    if (!mountedRef.current || mutationRef.current) return null;
+    mutationRef.current = true;
+    const abortController = new AbortController();
+    mutationAbortRef.current = abortController;
+    setMutationPending(true);
+    return { signal: abortController.signal };
+  }, []);
+
+  const finishMutation = useCallback((options: ApiRequestOptions) => {
+    mutationRef.current = false;
+    if (mutationAbortRef.current?.signal === options.signal) mutationAbortRef.current = null;
+    if (mountedRef.current) setMutationPending(false);
   }, []);
 
   const loadCoupons = useCallback(async (page = 1, size = pageSizeRef.current, isDisposed?: () => boolean) => {
@@ -450,6 +474,7 @@ const CouponManagement: React.FC = () => {
   };
 
   const submitCoupon = async () => {
+    if (!mountedRef.current || mutationRef.current) return;
     if (!canWriteCoupons) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -458,8 +483,11 @@ const CouponManagement: React.FC = () => {
       message.warning(couponLoadError || (loading ? t('common.loading') : t('pages.adminCoupons.loadFailed')));
       return;
     }
+    const requestOptions = beginMutation();
+    if (!requestOptions) return;
     try {
       const values = await form.validateFields();
+      if (!mountedRef.current || requestOptions.signal?.aborted) return;
       setCouponSubmitting(true);
       const payload = {
         ...values,
@@ -474,10 +502,12 @@ const CouponManagement: React.FC = () => {
         payload.reductionAmount = null;
       }
       if (editingCoupon) {
-        await adminApi.updateCoupon(editingCoupon.id, payload);
+        await adminApi.updateCoupon(editingCoupon.id, payload, requestOptions);
+        if (!mountedRef.current || requestOptions.signal?.aborted) return;
         message.success(t('pages.adminCoupons.updated'));
       } else {
-        await adminApi.createCoupon(payload);
+        await adminApi.createCoupon(payload, requestOptions);
+        if (!mountedRef.current || requestOptions.signal?.aborted) return;
         message.success(t('pages.adminCoupons.created'));
       }
       setModalVisible(false);
@@ -485,14 +515,17 @@ const CouponManagement: React.FC = () => {
       form.resetFields();
       await Promise.all([loadCoupons(editingCoupon ? pageState.page : 1, pageState.size), loadCouponSummary()]);
     } catch (error: unknown) {
+      if (!mountedRef.current || requestOptions.signal?.aborted) return;
       if (isFormValidationError(error)) return;
       message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
     } finally {
-      setCouponSubmitting(false);
+      if (mountedRef.current) setCouponSubmitting(false);
+      finishMutation(requestOptions);
     }
   };
 
   const deleteCoupon = async (id: number) => {
+    if (!mountedRef.current || mutationRef.current) return;
     if (!canDeleteCoupons) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -501,12 +534,18 @@ const CouponManagement: React.FC = () => {
       message.warning(couponLoadError || (loading ? t('common.loading') : t('pages.adminCoupons.loadFailed')));
       return;
     }
+    const requestOptions = beginMutation();
+    if (!requestOptions) return;
     try {
-      await adminApi.deleteCoupon(id);
+      await adminApi.deleteCoupon(id, requestOptions);
+      if (!mountedRef.current || requestOptions.signal?.aborted) return;
       message.success(t('pages.adminCoupons.deleted'));
       await Promise.all([loadCoupons(pageState.page, pageState.size), loadCouponSummary()]);
     } catch (error: unknown) {
+      if (!mountedRef.current || requestOptions.signal?.aborted) return;
       message.error(getApiErrorMessage(error, t('pages.adminCoupons.deleteFailed'), language));
+    } finally {
+      finishMutation(requestOptions);
     }
   };
 
@@ -525,7 +564,7 @@ const CouponManagement: React.FC = () => {
   };
 
   const submitGrant = async () => {
-    if (!grantCoupon) return;
+    if (!mountedRef.current || grantPreparingRef.current || mutationRef.current || !grantCoupon) return;
     if (!canGrantCoupons) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -534,8 +573,10 @@ const CouponManagement: React.FC = () => {
       message.warning(couponLoadError || (loading ? t('common.loading') : t('pages.adminCoupons.loadFailed')));
       return;
     }
+    grantPreparingRef.current = true;
     try {
       const values = await grantForm.validateFields();
+      if (!mountedRef.current) return;
       const selectedUserIds = (values.userIds as Array<string | number>)
         .map((item) => Number(item))
         .filter((item) => Number.isFinite(item) && item > 0);
@@ -547,9 +588,12 @@ const CouponManagement: React.FC = () => {
       });
       setGrantConfirmOpen(true);
     } catch (error: unknown) {
+      if (!mountedRef.current) return;
       if (!isFormValidationError(error)) {
         message.error(getApiErrorMessage(error, t('pages.adminCoupons.grantFailed'), language));
       }
+    } finally {
+      grantPreparingRef.current = false;
     }
   };
 
@@ -560,10 +604,13 @@ const CouponManagement: React.FC = () => {
   };
 
   const confirmGrant = async () => {
-    if (!grantCoupon || !grantConfirmMeta) return;
+    if (!mountedRef.current || mutationRef.current || !grantCoupon || !grantConfirmMeta) return;
+    const requestOptions = beginMutation();
+    if (!requestOptions) return;
     setGrantSubmitting(true);
     try {
-      const res = await adminApi.grantCoupon(grantCoupon.id, grantConfirmMeta.userIds, grantMaxUsers);
+      const res = await adminApi.grantCoupon(grantCoupon.id, grantConfirmMeta.userIds, grantMaxUsers, requestOptions);
+      if (!mountedRef.current || requestOptions.signal?.aborted) return;
       message.success(t('pages.adminCoupons.granted', { count: res.data.granted }));
       setGrantConfirmOpen(false);
       setGrantConfirmMeta(null);
@@ -572,13 +619,16 @@ const CouponManagement: React.FC = () => {
       grantForm.resetFields();
       await Promise.all([loadCoupons(pageState.page, pageState.size), loadCouponSummary()]);
     } catch (error: unknown) {
+      if (!mountedRef.current || requestOptions.signal?.aborted) return;
       message.error(getApiErrorMessage(error, t('pages.adminCoupons.grantFailed'), language));
     } finally {
-      setGrantSubmitting(false);
+      if (mountedRef.current) setGrantSubmitting(false);
+      finishMutation(requestOptions);
     }
   };
 
   const runPetBirthdayCoupons = async () => {
+    if (!mountedRef.current || mutationRef.current) return;
     if (!canRunBirthdayCoupons) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -587,33 +637,39 @@ const CouponManagement: React.FC = () => {
       message.warning(birthdayConfigLoadError || (birthdayConfigLoading ? t('common.loading') : t('pages.adminCoupons.birthdayConfigLoadFailed')));
       return;
     }
+    const requestOptions = beginMutation();
+    if (!requestOptions) return;
     setBirthdayCouponLoading(true);
     try {
-      const res = await adminApi.runPetBirthdayCoupons();
+      const res = await adminApi.runPetBirthdayCoupons(requestOptions);
+      if (!mountedRef.current || requestOptions.signal?.aborted) return;
       message.success(t('pages.adminCoupons.petBirthdayGranted', { count: res.data.granted }));
       await Promise.all([loadCoupons(pageState.page, pageState.size), loadCouponSummary()]);
     } catch (error: unknown) {
+      if (!mountedRef.current || requestOptions.signal?.aborted) return;
       message.error(getApiErrorMessage(error, t('pages.adminCoupons.petBirthdayFailed'), language));
     } finally {
-      setBirthdayCouponLoading(false);
+      if (mountedRef.current) setBirthdayCouponLoading(false);
+      finishMutation(requestOptions);
     }
   };
 
   const closeCouponModal = () => {
-    if (couponSubmitting) return;
+    if (couponSubmitting || mutationRef.current) return;
     setModalVisible(false);
     setEditingCoupon(null);
     form.resetFields();
   };
 
   const closeGrantModal = () => {
-    if (grantSubmitting) return;
+    if (grantSubmitting || grantPreparingRef.current || mutationRef.current) return;
     setGrantVisible(false);
     setGrantCoupon(null);
     grantForm.resetFields();
   };
 
   const saveBirthdayConfig = async () => {
+    if (!mountedRef.current || mutationRef.current) return;
     if (!canConfigureBirthdayCoupons) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -622,8 +678,11 @@ const CouponManagement: React.FC = () => {
       message.warning(birthdayConfigLoadError || (birthdayConfigLoading ? t('common.loading') : t('pages.adminCoupons.birthdayConfigLoadFailed')));
       return;
     }
+    const requestOptions = beginMutation();
+    if (!requestOptions) return;
     try {
       const values = await birthdayConfigForm.validateFields();
+      if (!mountedRef.current || requestOptions.signal?.aborted) return;
       setBirthdayConfigSaving(true);
       const payload = {
         ...values,
@@ -637,17 +696,20 @@ const CouponManagement: React.FC = () => {
       } else {
         payload.reductionAmount = null;
       }
-      const res = await adminApi.updatePetBirthdayCouponConfig(payload);
+      const res = await adminApi.updatePetBirthdayCouponConfig(payload, requestOptions);
+      if (!mountedRef.current || requestOptions.signal?.aborted) return;
       setBirthdayConfigLoadError(null);
       setBirthdayConfig(res.data);
       birthdayConfigForm.setFieldsValue(res.data);
       setBirthdayConfigLoaded(true);
       message.success(t('pages.adminCoupons.birthdayConfigSaved'));
     } catch (error: unknown) {
+      if (!mountedRef.current || requestOptions.signal?.aborted) return;
       if (isFormValidationError(error)) return;
       message.error(getApiErrorMessage(error, t('pages.adminCoupons.birthdayConfigSaveFailed'), language));
     } finally {
-      setBirthdayConfigSaving(false);
+      if (mountedRef.current) setBirthdayConfigSaving(false);
+      finishMutation(requestOptions);
     }
   };
 

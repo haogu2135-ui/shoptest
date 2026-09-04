@@ -45,4 +45,17 @@ describe('BrandManagement health panel guards', () => {
     expect(f3525Css).not.toMatch(/overflow-x:\s*auto/);
     expect(f3525Css).not.toMatch(/scrollbar-width:\s*none/);
   });
+
+  it('latches brand writes and suppresses post-unmount feedback and refreshes', () => {
+    expect(pageSource).toContain('const mutationRef = useRef(false);');
+    expect(pageSource).toContain('const [mutationPending, setMutationPending] = useState(false);');
+    expect(pageSource).toContain('if (!mountedRef.current || mutationRef.current) return;');
+    expect(pageSource).toContain('mutationRef.current = true;');
+    expect(pageSource).toContain('if (!mountedRef.current) return;');
+    expect(pageSource).toContain('mutationRef.current = false;');
+    expect(pageSource).toContain('const brandActionDisabled = loading || Boolean(brandLoadError) || !brandSnapshotLoaded || mutationPending;');
+    expect(pageSource).toContain('if (mountedRef.current) await fetchBrands();');
+    expect(pageSource).toContain('if (mountedRef.current) setMutationPending(false);');
+    expect(pageSource).toContain("if (!mountedRef.current) return;\n      message.success(editingBrand ? t('pages.brandAdmin.updated') : t('pages.brandAdmin.created'));");
+  });
 });

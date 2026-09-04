@@ -68,4 +68,14 @@ describe('PermissionManagement async state guards', () => {
     expect(loadBody).toMatch(/const shouldUpdateLoading = isCurrentRequest\(\);[\s\S]*?if \(shouldUpdateLoading\) \{\s*setLoading\(false\);/);
     expect(loadBody).not.toMatch(/\}\s*catch \(err: unknown\) \{\s*const errorMessage/);
   });
+
+  it('latches role saves and suppresses post-unmount feedback and cleanup', () => {
+    expect(pageSource).toContain('const savingRef = useRef(false);');
+    expect(pageSource).toContain('if (!mountedRef.current || savingRef.current) return;');
+    expect(pageSource).toContain('savingRef.current = true;');
+    expect(pageSource).toContain('if (!mountedRef.current) return;');
+    expect(pageSource).toContain('await loadRoles();');
+    expect(pageSource).toContain('savingRef.current = false;');
+    expect(pageSource).toContain('if (mountedRef.current) setSaving(false);');
+  });
 });

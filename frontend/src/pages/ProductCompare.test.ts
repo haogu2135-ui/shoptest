@@ -115,3 +115,30 @@ describe('ProductCompare unmount and stale response guards', () => {
     expect(page).toMatch(/if \(!isCurrentRequest\(\)\) return;\s*reportNonBlockingError\('ProductCompare\.fetchComparedProducts', error\);/);
   });
 });
+
+describe('ProductCompare action lifecycle guards', () => {
+  it('latches duplicate product and bulk cart actions', () => {
+    const page = readProductComparePage();
+
+    expect(page).toContain('const inFlightCartProductIds = useRef(new Set<number>());');
+    expect(page).toContain('const addingDirectReadyRef = useRef(false);');
+    expect(page).toContain('if (!mountedRef.current || inFlightCartProductIds.current.has(product.id)) return;');
+    expect(page).toContain('inFlightCartProductIds.current.add(product.id);');
+    expect(page).toContain('inFlightCartProductIds.current.delete(product.id);');
+    expect(page).toContain('if (!mountedRef.current || addingDirectReadyRef.current) return;');
+    expect(page).toContain('const productsToAdd = directReadyProducts.filter((product) => !inFlightCartProductIds.current.has(product.id));');
+    expect(page).toContain('addingDirectReadyRef.current = true;');
+    expect(page).toContain('addingDirectReadyRef.current = false;');
+  });
+
+  it('suppresses cart side effects and errors after unmount', () => {
+    const page = readProductComparePage();
+
+    expect(page).toMatch(/await cartApi\.addItem\(0, product\.id, 1\);\s*if \(!mountedRef\.current\) return;\s*dispatchDomEvent\('shop:cart-updated'\);/);
+    expect(page).toMatch(/if \(!mountedRef\.current\) return;\s*announceAccessibleMessage\(t\('messages\.addCartSuccess'/);
+    expect(page).toMatch(/catch \(error\) \{\s*if \(mountedRef\.current\) \{[\s\S]*?reportNonBlockingError\('ProductCompare\.addToCart', error\)/);
+    expect(page).toMatch(/const results = await allSettledWithConcurrency\([\s\S]*?\);\s*if \(!mountedRef\.current\) return;\s*const added/);
+    expect(page).toMatch(/if \(!mountedRef\.current\) return;\s*dispatchDomEvent\('shop:open-cart'\);/);
+    expect(page).toMatch(/productsToAdd\.forEach\(\(product\) => inFlightCartProductIds\.current\.delete\(product\.id\)\);\s*addingDirectReadyRef\.current = false;/);
+  });
+});

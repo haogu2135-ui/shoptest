@@ -8,6 +8,7 @@ import ShopModal from '../components/ShopModal';
 import { ShopTextArea } from '../components/ShopInput';
 import { AlertOutlined, CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, SearchOutlined, SendOutlined, ShoppingOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import { createApiAbortController, supportApi, supportWebSocketProtocols, supportWebSocketUrl, userApi } from '../api';
+import type { ApiRequestOptions } from '../api';
 import { adminApi, adminSupportApi } from '../api/admin';
 import type { Order, OrderItem, SupportAdminSummary, SupportMessage, SupportSession } from '../types';
 import { useLanguage } from '../i18n';
@@ -140,6 +141,7 @@ const SupportManagement: React.FC = () => {
   const [reissueLoading, setReissueLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [reopening, setReopening] = useState(false);
+  const [actionPending, setActionPending] = useState(false);
   const [detailOrder, setDetailOrder] = useState<Order | null>(null);
   const [detailItems, setDetailItems] = useState<OrderItem[]>([]);
   const [detailLoading, setDetailLoading] = useState(false);
@@ -159,6 +161,12 @@ const SupportManagement: React.FC = () => {
   const messageAbortRef = useRef<AbortController | null>(null);
   const queueRequestSeqRef = useRef(0);
   const queueAbortRef = useRef<AbortController | null>(null);
+  const actionRef = useRef(false);
+  const actionAbortRef = useRef<AbortController | null>(null);
+  const detailRequestSeqRef = useRef(0);
+  const detailAbortRef = useRef<AbortController | null>(null);
+  const readStateAbortRef = useRef<AbortController | null>(null);
+  const pollAbortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
@@ -192,9 +200,49 @@ const SupportManagement: React.FC = () => {
       messageRequestSeqRef.current += 1;
       queueAbortRef.current?.abort();
       messageAbortRef.current?.abort();
+      actionAbortRef.current?.abort();
+      detailAbortRef.current?.abort();
+      readStateAbortRef.current?.abort();
+      pollAbortRef.current?.abort();
       queueAbortRef.current = null;
       messageAbortRef.current = null;
+      actionAbortRef.current = null;
+      detailAbortRef.current = null;
+      readStateAbortRef.current = null;
+      pollAbortRef.current = null;
+      actionRef.current = false;
     };
+  }, []);
+
+  const beginAction = useCallback((): ApiRequestOptions | null => {
+    if (!mountedRef.current || actionRef.current) return null;
+    actionRef.current = true;
+    const abortController = new AbortController();
+    actionAbortRef.current = abortController;
+    setActionPending(true);
+    return { signal: abortController.signal };
+  }, []);
+
+  const finishAction = useCallback((options: ApiRequestOptions) => {
+    actionRef.current = false;
+    if (actionAbortRef.current?.signal === options.signal) actionAbortRef.current = null;
+    if (mountedRef.current) setActionPending(false);
+  }, []);
+
+  const markSessionRead = useCallback((sessionId: number, signal?: AbortSignal) => {
+    if (!mountedRef.current) return;
+    if (signal) {
+      adminSupportApi.markRead(sessionId, { signal }).catch(() => undefined);
+      return;
+    }
+    readStateAbortRef.current?.abort();
+    const abortController = new AbortController();
+    readStateAbortRef.current = abortController;
+    adminSupportApi.markRead(sessionId, { signal: abortController.signal })
+      .catch(() => undefined)
+      .finally(() => {
+        if (readStateAbortRef.current === abortController) readStateAbortRef.current = null;
+      });
   }, []);
 
   useEffect(() => {
@@ -318,7 +366,7 @@ const SupportManagement: React.FC = () => {
   const replyText = content.trim();
   const replyTooLong = replyText.length > supportChatConfig.maxMessageChars;
   const conversationUnavailable = Boolean(messageLoading || messageError);
-  const replyReady = Boolean(canReplySupport && selectedSession && selectedSession.status === 'OPEN' && replyText && !replyTooLong && !conversationUnavailable);
+  const replyReady = Boolean(canReplySupport && selectedSession && selectedSession.status === 'OPEN' && replyText && !replyTooLong && !conversationUnavailable && !actionPending);
   const replyReadinessText = messageLoading
     ? t('common.loading')
     : messageError
@@ -382,6 +430,7 @@ const SupportManagement: React.FC = () => {
   }, [queueSearch]);
 
   const mergeSessionIntoCurrentQueue = useCallback((session: SupportSession, options?: { countNewMatch?: boolean }) => {
+    if (!mountedRef.current) return;
     const matchesQueue = supportSessionMatchesQueue(session, queueFilterRef.current, queueSearchRef.current);
     const currentItems = sessionsRef.current;
     const existed = currentItems.some((item) => item.id === session.id);
@@ -402,6 +451,7 @@ const SupportManagement: React.FC = () => {
   }, []);
 
   const loadSessions = useCallback(async (options?: { status?: string; page?: number; pageSize?: number; search?: string; isActive?: () => boolean }) => {
+    if (!mountedRef.current || options?.isActive?.() === false) return;
     const requestSeq = queueRequestSeqRef.current + 1;
     queueRequestSeqRef.current = requestSeq;
     queueAbortRef.current?.abort();
@@ -471,6 +521,7 @@ const SupportManagement: React.FC = () => {
   }, []);
 
   const loadMessages = async (session: SupportSession) => {
+    if (!mountedRef.current) return;
     const requestSeq = messageRequestSeqRef.current + 1;
     messageRequestSeqRef.current = requestSeq;
     messageAbortRef.current?.abort();
@@ -492,10 +543,10 @@ const SupportManagement: React.FC = () => {
       if (!isCurrentRequest()) return;
       setMessages(mergeSupportMessages([], res.data));
       if (canUpdateSupportReadState) {
-        await adminSupportApi.markRead(session.id).catch(() => undefined);
+        await adminSupportApi.markRead(session.id, { signal: abortController.signal }).catch(() => undefined);
       }
       if (!isCurrentRequest()) return;
-      await loadSessions();
+      await loadSessions({ isActive: isCurrentRequest });
     } catch (err: unknown) {
       if (!isCurrentRequest()) return;
       const errorMessage = getApiErrorMessage(err, t('pages.adminSupport.loadFailed'), language);
@@ -550,7 +601,7 @@ const SupportManagement: React.FC = () => {
             return mergeSupportMessages(items, [payload.message]);
           });
           if (canUpdateSupportReadState) {
-            adminSupportApi.markRead(payload.message.sessionId).catch(() => undefined);
+            markSessionRead(payload.message.sessionId);
           }
         } else if (payload.message.senderRole === 'USER') {
           playTone();
@@ -571,17 +622,19 @@ const SupportManagement: React.FC = () => {
 
       if (disposed || polling) return;
       polling = true;
+      const abortController = new AbortController();
+      pollAbortRef.current = abortController;
       try {
         await loadSessions({ isActive: () => !disposed });
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         const activeSession = selectedSessionRef.current;
         if (activeSession) {
           const afterId = newestSupportMessageId(messagesRef.current);
-          const res = await adminSupportApi.getMessages(activeSession.id, { afterId, limit: SUPPORT_MESSAGE_WINDOW });
-          if (disposed || selectedSessionRef.current?.id !== activeSession.id) return;
+          const res = await adminSupportApi.getMessages(activeSession.id, { afterId, limit: SUPPORT_MESSAGE_WINDOW }, { signal: abortController.signal });
+          if (disposed || abortController.signal.aborted || selectedSessionRef.current?.id !== activeSession.id) return;
           setMessages((items) => mergeSupportMessages(items, res.data));
           if (canUpdateSupportReadState) {
-            await adminSupportApi.markRead(activeSession.id).catch(() => undefined);
+            await adminSupportApi.markRead(activeSession.id, { signal: abortController.signal }).catch(() => undefined);
           }
         }
       } catch (error) {
@@ -589,6 +642,7 @@ const SupportManagement: React.FC = () => {
           reportNonBlockingError('SupportManagement.pollMessages', error);
         }
       } finally {
+        if (pollAbortRef.current === abortController) pollAbortRef.current = null;
         polling = false;
       }
     }, SUPPORT_POLL_INTERVAL_MS);
@@ -596,8 +650,10 @@ const SupportManagement: React.FC = () => {
       disposed = true;
       polling = false;
       window.clearInterval(timer);
+      pollAbortRef.current?.abort();
+      pollAbortRef.current = null;
     };
-  }, [canUpdateSupportReadState, loadSessions]);
+  }, [canUpdateSupportReadState, loadSessions, markSessionRead]);
 
   useEffect(() => {
 
@@ -605,6 +661,7 @@ const SupportManagement: React.FC = () => {
   }, [messages, selectedSession]);
 
   const send = async () => {
+    if (!mountedRef.current || actionRef.current) return;
     const text = content.trim();
     if (sending) return;
     if (!canReplySupport) {
@@ -613,104 +670,143 @@ const SupportManagement: React.FC = () => {
     }
     if (!text || !selectedSession) return;
     if (text.length > supportChatConfig.maxMessageChars) {
-
       message.warning(t('pages.support.messageTooLong', { count: supportChatConfig.maxMessageChars }));
-
       return;
-
     }
-
     if (selectedSession.status !== 'OPEN') {
-
       message.warning(t('pages.adminSupport.sessionClosed'));
-
       return;
-
     }
+    const targetSession = selectedSession;
+    const requestOptions = beginAction();
+    if (!requestOptions) return;
     setSending(true);
-    if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
-      socketRef.current.send(JSON.stringify({ type: 'SEND', sessionId: selectedSession.id, content: text }));
-      setContent('');
-      setSending(false);
-      return;
-    }
     try {
-      const res = await adminSupportApi.sendMessage(selectedSession.id, text);
+      if (!mountedRef.current || requestOptions.signal?.aborted) return;
+      if (socketRef.current && socketRef.current.readyState === WebSocket.OPEN) {
+        socketRef.current.send(JSON.stringify({ type: 'SEND', sessionId: targetSession.id, content: text }));
+        if (selectedSessionRef.current?.id === targetSession.id) setContent('');
+        return;
+      }
+      const res = await adminSupportApi.sendMessage(targetSession.id, text, requestOptions);
+      if (!mountedRef.current || requestOptions.signal?.aborted) return;
       mergeSessionIntoCurrentQueue(res.data.session);
-      setMessages((items) => mergeSupportMessages(items, [res.data.message]));
-      setContent('');
-
+      if (selectedSessionRef.current?.id === targetSession.id) {
+        setMessages((items) => mergeSupportMessages(items, [res.data.message]));
+        setContent('');
+      }
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('pages.support.connectFailed'), language));
+      if (mountedRef.current && !requestOptions.signal?.aborted) {
+        message.error(getApiErrorMessage(err, t('pages.support.connectFailed'), language));
+      }
     } finally {
-      setSending(false);
+      if (mountedRef.current) setSending(false);
+      finishAction(requestOptions);
     }
   };
 
   const closeSession = async () => {
-    if (!selectedSession || closing) return;
+    if (!mountedRef.current || actionRef.current || !selectedSession || closing) return;
     if (!canCloseSupport) {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    const targetSession = selectedSession;
+    const requestOptions = beginAction();
+    if (!requestOptions) return;
     setClosing(true);
     try {
-      const res = await adminSupportApi.closeSession(selectedSession.id);
+      const res = await adminSupportApi.closeSession(targetSession.id, requestOptions);
+      if (!mountedRef.current || requestOptions.signal?.aborted) return;
       mergeSessionIntoCurrentQueue(res.data);
       message.success(t('pages.adminSupport.sessionClosed'));
 
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
+      if (mountedRef.current && !requestOptions.signal?.aborted) {
+        message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
+      }
     } finally {
-      setClosing(false);
+      if (mountedRef.current) setClosing(false);
+      finishAction(requestOptions);
     }
   };
 
   const reissueBirthdayCoupons = async () => {
-    if (!selectedSession) return;
+    if (!mountedRef.current || actionRef.current || reissueLoading || !selectedSession) return;
     if (!canReissueBirthdayCoupons) {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    const targetSession = selectedSession;
+    const requestOptions = beginAction();
+    if (!requestOptions) return;
     setReissueLoading(true);
     try {
-      const res = await adminSupportApi.reissueBirthdayCoupons(selectedSession.id);
+      const res = await adminSupportApi.reissueBirthdayCoupons(targetSession.id, requestOptions);
+      if (!mountedRef.current || requestOptions.signal?.aborted) return;
       if (res.data.granted > 0) {
         message.success(t('pages.adminSupport.reissueBirthdayCouponSuccess', { count: res.data.granted }));
       } else {
         message.warning(t('pages.adminSupport.noBirthdayCouponReissued'));
       }
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('pages.adminSupport.reissueBirthdayCouponFailed'), language));
+      if (mountedRef.current && !requestOptions.signal?.aborted) {
+        message.error(getApiErrorMessage(err, t('pages.adminSupport.reissueBirthdayCouponFailed'), language));
+      }
     } finally {
-      setReissueLoading(false);
+      if (mountedRef.current) setReissueLoading(false);
+      finishAction(requestOptions);
     }
   };
 
   const openOrderDetail = async (orderId: number) => {
+    if (!mountedRef.current) return;
     if (!canViewOrders) {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    detailAbortRef.current?.abort();
+    const abortController = new AbortController();
+    detailAbortRef.current = abortController;
+    const requestId = detailRequestSeqRef.current + 1;
+    detailRequestSeqRef.current = requestId;
+    const isCurrentRequest = () => mountedRef.current
+      && detailRequestSeqRef.current === requestId
+      && !abortController.signal.aborted;
     setDetailLoading(true);
     try {
 
       const [orderRes, itemsRes] = await Promise.all([
-        adminApi.getOrder(orderId),
-        adminApi.getOrderItems(orderId),
+        adminApi.getOrder(orderId, { signal: abortController.signal }),
+        adminApi.getOrderItems(orderId, { signal: abortController.signal }),
       ]);
+      if (!isCurrentRequest()) return;
       setDetailOrder(orderRes.data);
 
       setDetailItems(itemsRes.data);
 
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('pages.support.orderLoadFailed'), language));
+      if (isCurrentRequest()) {
+        message.error(getApiErrorMessage(err, t('pages.support.orderLoadFailed'), language));
+      }
     } finally {
-      setDetailLoading(false);
+      if (detailAbortRef.current === abortController) detailAbortRef.current = null;
+      if (isCurrentRequest()) setDetailLoading(false);
 
     }
 
   };
+
+  const closeOrderDetail = useCallback(() => {
+    detailRequestSeqRef.current += 1;
+    detailAbortRef.current?.abort();
+    detailAbortRef.current = null;
+    if (mountedRef.current) setDetailLoading(false);
+    if (mountedRef.current) {
+      setDetailOrder(null);
+      setDetailItems([]);
+    }
+  }, []);
 
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
 
@@ -771,40 +867,54 @@ const SupportManagement: React.FC = () => {
   };
 
   const assignToMe = async () => {
-    if (!selectedSession) return;
+    if (!mountedRef.current || actionRef.current || assigning || !selectedSession) return;
     if (!canAssignSupport) {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    const targetSession = selectedSession;
+    const requestOptions = beginAction();
+    if (!requestOptions) return;
     setAssigning(true);
     try {
-      const res = await adminSupportApi.assignSession(selectedSession.id);
+      const res = await adminSupportApi.assignSession(targetSession.id, requestOptions);
+      if (!mountedRef.current || requestOptions.signal?.aborted) return;
       upsertSession(res.data);
       message.success(t('pages.adminSupport.assignedToMe'));
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
+      if (mountedRef.current && !requestOptions.signal?.aborted) {
+        message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
+      }
     } finally {
-      setAssigning(false);
+      if (mountedRef.current) setAssigning(false);
+      finishAction(requestOptions);
     }
   };
 
   const reopenSession = async () => {
-    if (!selectedSession) return;
+    if (!mountedRef.current || actionRef.current || reopening || !selectedSession) return;
     if (!canReopenSupport) {
       message.error(t('adminLayout.noPermission'));
       return;
     }
+    const targetSession = selectedSession;
+    const requestOptions = beginAction();
+    if (!requestOptions) return;
     setReopening(true);
     try {
-      const res = await adminSupportApi.reopenSession(selectedSession.id);
+      const res = await adminSupportApi.reopenSession(targetSession.id, requestOptions);
+      if (!mountedRef.current || requestOptions.signal?.aborted) return;
       upsertSession(res.data);
       setFilter('OPEN');
       setQueuePage(1);
       message.success(t('pages.adminSupport.sessionReopened'));
     } catch (err: unknown) {
-      message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
+      if (mountedRef.current && !requestOptions.signal?.aborted) {
+        message.error(getApiErrorMessage(err, t('messages.operationFailed'), language));
+      }
     } finally {
-      setReopening(false);
+      if (mountedRef.current) setReopening(false);
+      finishAction(requestOptions);
     }
   };
 
@@ -1114,7 +1224,7 @@ const SupportManagement: React.FC = () => {
 	                      cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${assignSessionLabel}`, title: `${t('common.cancel')}: ${assignSessionLabel}` }}
 	                      onConfirm={assignToMe}
 	                    >
-	                      <ShopButton loading={assigning} aria-label={assignSessionLabel} title={assignSessionLabel}>
+                      <ShopButton loading={assigning} disabled={actionPending} aria-label={assignSessionLabel} title={assignSessionLabel}>
 	                        {t('pages.adminSupport.assignToMe')}
 	                      </ShopButton>
 	                    </ShopPopconfirm>
@@ -1128,7 +1238,7 @@ const SupportManagement: React.FC = () => {
 	                      cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${reopenSessionLabel}`, title: `${t('common.cancel')}: ${reopenSessionLabel}` }}
 	                      onConfirm={reopenSession}
 	                    >
-	                      <ShopButton loading={reopening} aria-label={reopenSessionLabel} title={reopenSessionLabel}>
+                      <ShopButton loading={reopening} disabled={actionPending} aria-label={reopenSessionLabel} title={reopenSessionLabel}>
 	                        {t('pages.adminSupport.reopenSession')}
 	                      </ShopButton>
 	                    </ShopPopconfirm>
@@ -1143,7 +1253,7 @@ const SupportManagement: React.FC = () => {
 	                      cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${reissueBirthdayCouponLabel}`, title: `${t('common.cancel')}: ${reissueBirthdayCouponLabel}` }}
 	                      onConfirm={reissueBirthdayCoupons}
 	                    >
-	                      <ShopButton icon={<GiftOutlined />} loading={reissueLoading} aria-label={reissueBirthdayCouponLabel} title={reissueBirthdayCouponLabel}>
+                      <ShopButton icon={<GiftOutlined />} loading={reissueLoading} disabled={actionPending} aria-label={reissueBirthdayCouponLabel} title={reissueBirthdayCouponLabel}>
 	                        {t('pages.adminSupport.reissueBirthdayCoupon')}
 	                      </ShopButton>
 	                    </ShopPopconfirm>
@@ -1159,7 +1269,7 @@ const SupportManagement: React.FC = () => {
 	                      cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${closeSessionLabel}`, title: `${t('common.cancel')}: ${closeSessionLabel}` }}
 	                      onConfirm={closeSession}
 	                    >
-	                      <ShopButton loading={closing} disabled={selectedSession.status !== 'OPEN'} aria-label={closeSessionLabel} title={closeSessionLabel}>{t('pages.adminSupport.closeSession')}</ShopButton>
+                      <ShopButton loading={closing} disabled={selectedSession.status !== 'OPEN' || actionPending} aria-label={closeSessionLabel} title={closeSessionLabel}>{t('pages.adminSupport.closeSession')}</ShopButton>
 	                    </ShopPopconfirm>
 	                  ) : null}
                 </ShopSpace>
@@ -1294,7 +1404,7 @@ const SupportManagement: React.FC = () => {
                         key={action.key}
                         type="button"
                         className="support-management__orderWorkflowCard"
-                        disabled={!canReplySupport || selectedSession.status !== 'OPEN' || conversationUnavailable}
+                        disabled={!canReplySupport || selectedSession.status !== 'OPEN' || conversationUnavailable || actionPending}
                         aria-label={`${action.label}: ${latestOrderLabel}`}
                         title={`${action.label}: ${latestOrderLabel}`}
                         onClick={() => applyQuickReply(action.adminReply)}
@@ -1329,7 +1439,7 @@ const SupportManagement: React.FC = () => {
                 </div>
                 <ShopTextArea
                   value={content}
-                  disabled={!canReplySupport || selectedSession.status !== 'OPEN' || sending || conversationUnavailable}
+                  disabled={!canReplySupport || selectedSession.status !== 'OPEN' || sending || conversationUnavailable || actionPending}
                   maxLength={supportChatConfig.maxMessageChars}
                   showCount
                   onChange={(event) => setContent(event.target.value)}
@@ -1362,13 +1472,7 @@ const SupportManagement: React.FC = () => {
       <ShopModal
         title={detailOrder ? `${t('pages.support.order')} ${detailOrder.orderNo || `#${detailOrder.id}`}` : t('pages.support.order')}
         open={!!detailOrder || detailLoading}
-        onClose={() => {
-
-          setDetailOrder(null);
-
-          setDetailItems([]);
-
-        }}
+        onClose={closeOrderDetail}
         footer={null}
         className="profile-mobile-safe-modal support-management__orderModal"
       >

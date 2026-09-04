@@ -1,8 +1,8 @@
-import React, { useCallback } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import type { ProductPublic as Product, ProductVariant } from '../types';
-import { productApi, cartApi, wishlistApi } from '../api';
+import { createApiAbortController, productApi, cartApi, wishlistApi } from '../api';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { addGuestCartItem } from '../utils/guestCart';
 import { buildBundleSpecs, getBundleInfo } from '../utils/bundle';
@@ -56,6 +56,18 @@ export const useProductListProductActions = ({
   setQuickAddSubmitting,
   setPreviewProduct,
 }: UseProductListProductActionsArgs) => {
+  const mountedRef = useRef(true);
+  const quickAddSubmittingRef = useRef(false);
+  const quickAddReadAbortRef = useRef<AbortController | null>(null);
+  const wishlistingProductIdsRef = useRef(new Set<number>());
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+    quickAddReadAbortRef.current?.abort();
+    quickAddReadAbortRef.current = null;
+    wishlistingProductIdsRef.current.clear();
+  }, []);
+
   const buildQuickAddCartSnapshot = () => quickAddProduct ? ({
     ...quickAddProduct,
     stock: quickAddVariant?.stock ?? quickAddProduct.stock,
@@ -77,13 +89,16 @@ export const useProductListProductActions = ({
 
   const handleWishlistToggle = useCallback(async (e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
+    if (!mountedRef.current || wishlistingProductIdsRef.current.has(product.id)) return;
     if (!isAuthenticated) {
       announceAccessibleMessage(t('messages.loginRequired'), 'warning');
       navigate(buildLoginUrlFromWindow());
       return;
     }
+    wishlistingProductIdsRef.current.add(product.id);
     try {
       const res = await wishlistApi.toggle(0, product.id);
+      if (!mountedRef.current) return;
       setWishlistedProductIds((current) => {
         const next = new Set(current);
         if (res.data.wishlisted) {
@@ -96,7 +111,11 @@ export const useProductListProductActions = ({
       dispatchDomEvent('shop:wishlist-updated');
       announceAccessibleMessage(res.data.wishlisted ? t('pages.productDetail.favoritedMsg') : t('pages.productDetail.unfavoritedMsg'), 'success');
     } catch (error) {
-      announceAccessibleMessage(getApiErrorMessage(error, t('messages.operationFailed'), language), 'error');
+      if (mountedRef.current) {
+        announceAccessibleMessage(getApiErrorMessage(error, t('messages.operationFailed'), language), 'error');
+      }
+    } finally {
+      wishlistingProductIdsRef.current.delete(product.id);
     }
   }, [isAuthenticated, language, navigate, setWishlistedProductIds, t]);
 
@@ -139,8 +158,8 @@ export const useProductListProductActions = ({
   }, [prefetchProduct, setPreviewProduct]);
 
   const submitQuickAdd = useCallback(async () => {
-    if (!quickAddProduct) return;
-    if (quickAddSubmitting) return;
+    if (!mountedRef.current || !quickAddProduct) return;
+    if (quickAddSubmitting || quickAddSubmittingRef.current) return;
     const missingOption = quickAddOptionGroups.find((group) => !quickAddOptions[group.name]);
     if (missingOption) {
       announceAccessibleMessage(t('pages.productDetail.selectOption', { option: missingOption.name }), 'warning');
@@ -156,6 +175,9 @@ export const useProductListProductActions = ({
       return;
     }
     const bundleInfo = getBundleInfo(quickAddProduct);
+    quickAddSubmittingRef.current = true;
+    const abortController = createApiAbortController();
+    quickAddReadAbortRef.current = abortController;
     if (bundleInfo) {
       const token = getLocalStorageItem('token');
       const selectedSpecs = buildBundleSpecs(quickAddProduct, quickAddOptions, quickAddVariant?.sku);
@@ -164,17 +186,24 @@ export const useProductListProductActions = ({
       try {
         if (token) {
           await cartApi.addItem(0, quickAddProduct.id, 1, selectedSpecs);
+          if (!mountedRef.current) return;
           dispatchDomEvent('shop:cart-updated');
         } else if (snapshot) {
           addGuestCartItem(snapshot, 1, selectedSpecs, bundleInfo.price);
         }
+        if (!mountedRef.current) return;
+        await openCartDrawerWithSnapshot({ authenticated: Boolean(token), signal: abortController.signal });
+        if (!mountedRef.current || abortController.signal.aborted) return;
         announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
         setQuickAddProduct(null);
-        await openCartDrawerWithSnapshot({ authenticated: Boolean(token) });
       } catch (error) {
-        announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error');
+        if (mountedRef.current && !abortController.signal.aborted) {
+          announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error');
+        }
       } finally {
-        setQuickAddSubmitting(false);
+        quickAddSubmittingRef.current = false;
+        if (quickAddReadAbortRef.current === abortController) quickAddReadAbortRef.current = null;
+        if (mountedRef.current) setQuickAddSubmitting(false);
       }
       return;
     }
@@ -191,17 +220,24 @@ export const useProductListProductActions = ({
     try {
       if (token) {
         await cartApi.addItem(0, quickAddProduct.id, 1, selectedSpecs);
+        if (!mountedRef.current) return;
         dispatchDomEvent('shop:cart-updated');
       } else if (snapshot) {
         addGuestCartItem(snapshot, 1, selectedSpecs, selectedPrice);
       }
+      if (!mountedRef.current) return;
+      await openCartDrawerWithSnapshot({ authenticated: Boolean(token), signal: abortController.signal });
+      if (!mountedRef.current || abortController.signal.aborted) return;
       announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
       setQuickAddProduct(null);
-      await openCartDrawerWithSnapshot({ authenticated: Boolean(token) });
     } catch (error) {
-      announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error');
+      if (mountedRef.current && !abortController.signal.aborted) {
+        announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error');
+      }
     } finally {
-      setQuickAddSubmitting(false);
+      quickAddSubmittingRef.current = false;
+      if (quickAddReadAbortRef.current === abortController) quickAddReadAbortRef.current = null;
+      if (mountedRef.current) setQuickAddSubmitting(false);
     }
   }, [
     language,

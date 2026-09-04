@@ -172,6 +172,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   const [detailLoading, setDetailLoading] = useState(false);
   const [sendingOrderId, setSendingOrderId] = useState<number | null>(null);
   const [sending, setSending] = useState(false);
+  const [mutationPending, setMutationPending] = useState(false);
   const [content, setContent] = useState('');
   const [unread, setUnread] = useState(0);
   const [guestContext, setGuestContext] = useState<GuestSupportContext | null>(null);
@@ -201,13 +202,57 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   const ordersAbortRef = useRef<AbortController | null>(null);
   const detailAbortRef = useRef<AbortController | null>(null);
   const sessionSwitchAbortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
+  const mutationRef = useRef(false);
+  const mutationAbortRef = useRef<AbortController | null>(null);
+  const readStateAbortRef = useRef<AbortController | null>(null);
+  const pollAbortRef = useRef<AbortController | null>(null);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
-  useEffect(() => () => {
-    unreadAbortRef.current?.abort();
-    ordersAbortRef.current?.abort();
-    detailAbortRef.current?.abort();
-    sessionSwitchAbortRef.current?.abort();
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      mutationRef.current = false;
+      unreadAbortRef.current?.abort();
+      ordersAbortRef.current?.abort();
+      detailAbortRef.current?.abort();
+      sessionSwitchAbortRef.current?.abort();
+      mutationAbortRef.current?.abort();
+      readStateAbortRef.current?.abort();
+      pollAbortRef.current?.abort();
+    };
+  }, []);
+
+  const beginMutation = useCallback((): { signal: AbortSignal } | null => {
+    if (!mountedRef.current || mutationRef.current) return null;
+    mutationRef.current = true;
+    const abortController = new AbortController();
+    mutationAbortRef.current = abortController;
+    setMutationPending(true);
+    return { signal: abortController.signal };
+  }, []);
+
+  const finishMutation = useCallback((options: { signal: AbortSignal }) => {
+    mutationRef.current = false;
+    if (mutationAbortRef.current?.signal === options.signal) mutationAbortRef.current = null;
+    if (mountedRef.current) setMutationPending(false);
+  }, []);
+
+  const markSessionRead = useCallback((sessionId: number) => {
+    if (!mountedRef.current) return;
+    readStateAbortRef.current?.abort();
+    const abortController = new AbortController();
+    readStateAbortRef.current = abortController;
+    supportApi.markRead(sessionId, { signal: abortController.signal })
+      .catch((error) => {
+        if (!abortController.signal.aborted) {
+          reportNonBlockingError('CustomerSupportWidget.markReadAfterIncomingMessage', error);
+        }
+      })
+      .finally(() => {
+        if (readStateAbortRef.current === abortController) readStateAbortRef.current = null;
+      });
   }, []);
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const supportOrderItemName = (item: Pick<OrderItemCustomer, 'productId' | 'productName'>) => (
@@ -417,7 +462,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   }, [guestContext, token]);
 
   const fetchSupportOrders = useCallback(async () => {
-    if (!getLocalStorageItem('token')) return;
+    if (!mountedRef.current || !getLocalStorageItem('token')) return;
     ordersAbortRef.current?.abort();
     const abortController = createApiAbortController();
     ordersAbortRef.current = abortController;
@@ -432,17 +477,17 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         const rightTime = getSafeTime(right.createdAt);
         return rightTime - leftTime || right.id - left.id;
       });
-      if (abortController.signal.aborted) return;
+      if (!mountedRef.current || abortController.signal.aborted) return;
       setOrders(sortedOrders.slice(0, 30));
     } catch (error) {
-      if (abortController.signal.aborted) return;
+      if (!mountedRef.current || abortController.signal.aborted) return;
       reportNonBlockingError('CustomerSupportWidget.fetchSupportOrders', error);
       setOrders([]);
       setOrdersLoadFailed(true);
     } finally {
       if (ordersAbortRef.current === abortController) {
         ordersAbortRef.current = null;
-        if (!abortController.signal.aborted) setOrdersLoading(false);
+        if (mountedRef.current && !abortController.signal.aborted) setOrdersLoading(false);
       }
     }
   }, []);
@@ -586,8 +631,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
           return mergeSupportMessages(items, [payload.message]);
         });
         if (incomingFromAgent) {
-          supportApi.markRead(payload.message.sessionId)
-            .catch((error) => reportNonBlockingError('CustomerSupportWidget.markReadAfterIncomingMessage', error));
+          markSessionRead(payload.message.sessionId);
         }
       }
       if (payload.type === 'SESSION_CLOSED' || payload.type === 'SESSION_UPDATED') {
@@ -661,6 +705,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
       polling = true;
       const abortController = createApiAbortController();
       pollAbortController = abortController;
+      pollAbortRef.current = abortController;
       try {
         const pollSessionId = sessionRef.current?.id;
         if (!pollSessionId) return;
@@ -693,11 +738,15 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         setMessages((items) => mergeSupportMessages(items, messagesRes.data));
         setUnread(0);
         if (guestContextForPoll) {
-          supportApi.markGuestRead(pollSessionId, guestContextForPoll.orderNo, guestContextForPoll.email)
-            .catch((error) => reportNonBlockingError('CustomerSupportWidget.markGuestReadAfterPoll', error));
+          supportApi.markGuestRead(pollSessionId, guestContextForPoll.orderNo, guestContextForPoll.email, { signal: abortController.signal })
+            .catch((error) => {
+              if (!abortController.signal.aborted) reportNonBlockingError('CustomerSupportWidget.markGuestReadAfterPoll', error);
+            });
         } else {
-          supportApi.markRead(pollSessionId)
-            .catch((error) => reportNonBlockingError('CustomerSupportWidget.markReadAfterPoll', error));
+          supportApi.markRead(pollSessionId, { signal: abortController.signal })
+            .catch((error) => {
+              if (!abortController.signal.aborted) reportNonBlockingError('CustomerSupportWidget.markReadAfterPoll', error);
+            });
         }
       } catch (error) {
         if (!disposed && !abortController.signal.aborted) {
@@ -705,6 +754,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         }
       } finally {
         if (pollAbortController === abortController) pollAbortController = null;
+        if (pollAbortRef.current === abortController) pollAbortRef.current = null;
         polling = false;
       }
     }, 10000);
@@ -712,6 +762,8 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
       disposed = true;
       window.clearInterval(timer);
       pollAbortController?.abort();
+      pollAbortRef.current?.abort();
+      pollAbortRef.current = null;
     };
   }, [activeGuestContext, connected, open, activeSessionId, sortSupportSessions]);
 
@@ -916,7 +968,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   }, [initialOpenRequest, openPanel]);
 
   const send = async () => {
-    if (sending) return;
+    if (!mountedRef.current || mutationRef.current || sending) return;
     if (conversationUnavailable) return;
     const text = content.trim();
     if (!text) return;
@@ -928,6 +980,9 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
       announceAccessibleMessage(t('pages.support.messageTooLong', { count: supportChatConfig.maxMessageChars }), 'warning');
       return;
     }
+    const mutationOptions = beginMutation();
+    if (!mutationOptions) return;
+    const guestContextForAction = activeGuestContext;
     setSending(true);
     try {
       const activeSession = sessionRef.current;
@@ -937,8 +992,10 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         setMessages([]);
       }
       const activeSessionId = sessionRef.current?.status === 'OPEN' ? sessionRef.current.id : undefined;
-      if (activeGuestContext) {
-        const res = await supportApi.sendGuestMessage(text, activeGuestContext.orderNo, activeGuestContext.email, activeSessionId);
+      if (!mountedRef.current || mutationOptions.signal.aborted) return;
+      if (guestContextForAction) {
+        const res = await supportApi.sendGuestMessage(text, guestContextForAction.orderNo, guestContextForAction.email, activeSessionId, mutationOptions);
+        if (!mountedRef.current || mutationOptions.signal.aborted) return;
         setSession(res.data.session);
         sessionRef.current = res.data.session;
         setSessionHistory([res.data.session]);
@@ -952,26 +1009,33 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
           sessionId: activeSessionId,
           content: text,
         }));
-        setContent('');
+        if (mountedRef.current) setContent('');
         return;
       }
-      const res = await supportApi.sendMessage(text, activeSessionId);
+      const res = await supportApi.sendMessage(text, activeSessionId, mutationOptions);
+      if (!mountedRef.current || mutationOptions.signal.aborted) return;
       setSession(res.data.session);
       upsertSessionHistory(res.data.session);
       setMessages((items) => mergeSupportMessages(items, [res.data.message]));
       setContent('');
     } catch (err: unknown) {
-      announceAccessibleMessage(getApiErrorMessage(err, t('pages.support.connectFailed'), language), 'error');
+      if (mountedRef.current && !mutationOptions.signal.aborted) {
+        announceAccessibleMessage(getApiErrorMessage(err, t('pages.support.connectFailed'), language), 'error');
+      }
     } finally {
-      setSending(false);
+      if (mountedRef.current) setSending(false);
+      finishMutation(mutationOptions);
     }
   };
 
   const sendOrder = async (orderId: number) => {
-    if (!Number.isSafeInteger(orderId) || orderId <= 0) return;
+    if (!mountedRef.current || mutationRef.current || !Number.isSafeInteger(orderId) || orderId <= 0) return;
     if (conversationUnavailable) return;
     const order = orders.find((item) => item.id === orderId);
     if (!order) return;
+    const mutationOptions = beginMutation();
+    if (!mutationOptions) return;
+    const guestContextForAction = activeGuestContext;
     setSendingOrderId(orderId);
     try {
       const text = encodeOrderMessage(order);
@@ -982,8 +1046,10 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         setMessages([]);
       }
       const activeSessionId = sessionRef.current?.status === 'OPEN' ? sessionRef.current.id : undefined;
-      if (activeGuestContext) {
-        const res = await supportApi.sendGuestMessage(text, activeGuestContext.orderNo, activeGuestContext.email, activeSessionId);
+      if (!mountedRef.current || mutationOptions.signal.aborted) return;
+      if (guestContextForAction) {
+        const res = await supportApi.sendGuestMessage(text, guestContextForAction.orderNo, guestContextForAction.email, activeSessionId, mutationOptions);
+        if (!mountedRef.current || mutationOptions.signal.aborted) return;
         setSession(res.data.session);
         sessionRef.current = res.data.session;
         setSessionHistory([res.data.session]);
@@ -995,16 +1061,22 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
           content: text,
         }));
       } else {
-        const res = await supportApi.sendMessage(text, activeSessionId);
+        const res = await supportApi.sendMessage(text, activeSessionId, mutationOptions);
+        if (!mountedRef.current || mutationOptions.signal.aborted) return;
         setSession(res.data.session);
         upsertSessionHistory(res.data.session);
         setMessages((items) => mergeSupportMessages(items, [res.data.message]));
       }
-      announceAccessibleMessage(t('pages.support.orderSent'), 'success');
+      if (mountedRef.current && !mutationOptions.signal.aborted) {
+        announceAccessibleMessage(t('pages.support.orderSent'), 'success');
+      }
     } catch (err: unknown) {
-      announceAccessibleMessage(getApiErrorMessage(err, t('pages.support.connectFailed'), language), 'error');
+      if (mountedRef.current && !mutationOptions.signal.aborted) {
+        announceAccessibleMessage(getApiErrorMessage(err, t('pages.support.connectFailed'), language), 'error');
+      }
     } finally {
-      setSendingOrderId(null);
+      if (mountedRef.current) setSendingOrderId(null);
+      finishMutation(mutationOptions);
     }
   };
 
@@ -1053,20 +1125,27 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   };
 
   const closeSession = async () => {
-    if (!session || activeGuestContext) return;
+    if (!mountedRef.current || mutationRef.current || !session || activeGuestContext) return;
     const closingSession = session;
     const closedSession = { ...closingSession, status: 'CLOSED' };
+    const mutationOptions = beginMutation();
+    if (!mutationOptions) return;
     setSession(closedSession);
     sessionRef.current = closedSession;
     try {
-      const res = await supportApi.closeSession(closingSession.id);
+      const res = await supportApi.closeSession(closingSession.id, mutationOptions);
+      if (!mountedRef.current || mutationOptions.signal.aborted) return;
       setSession(res.data);
       upsertSessionHistory(res.data);
     } catch (error) {
-      reportNonBlockingError('CustomerSupportWidget.closeSession', error);
-      setSession(closingSession);
-      sessionRef.current = closingSession;
-      announceAccessibleMessage(t('messages.operationFailed'), 'error');
+      if (mountedRef.current && !mutationOptions.signal.aborted) {
+        reportNonBlockingError('CustomerSupportWidget.closeSession', error);
+        setSession(closingSession);
+        sessionRef.current = closingSession;
+        announceAccessibleMessage(t('messages.operationFailed'), 'error');
+      }
+    } finally {
+      finishMutation(mutationOptions);
     }
   };
 
@@ -1309,7 +1388,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                         aria-label={supportQuickReplyLabel(reply)}
                         title={supportQuickReplyLabel(reply)}
                         onClick={() => setContent(reply)}
-                        disabled={conversationUnavailable}
+                        disabled={conversationUnavailable || mutationPending}
                       >
                         {reply}
                       </button>
@@ -1409,7 +1488,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                   ghost
                   icon={<ShopIcon path={SI.shopping} />}
                   loading={sendingOrderId === latestOrder.id}
-                  disabled={conversationUnavailable || sendingOrderId !== null}
+                  disabled={conversationUnavailable || mutationPending || sendingOrderId !== null}
                   aria-label={supportShareOrderLabel(latestOrder)}
                   title={supportShareOrderLabel(latestOrder)}
                   onClick={() => sendOrder(latestOrder.id)}
@@ -1429,7 +1508,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                       key={action.key}
                       type="button"
                       className="customer-support-widget__workflowChip"
-                      disabled={conversationUnavailable || sendingOrderId !== null}
+                      disabled={conversationUnavailable || mutationPending || sendingOrderId !== null}
                       aria-label={supportWorkflowActionLabel(action, workflowOrder)}
                       title={supportWorkflowActionLabel(action, workflowOrder)}
                       onClick={() => applyWorkflowAction(action, workflowOrder)}
@@ -1449,7 +1528,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                   aria-label={supportQuickReplyLabel(reply)}
                   title={supportQuickReplyLabel(reply)}
                   onClick={() => setContent((current) => current.trim() ? `${current.trim()}\n${reply}` : reply)}
-                  disabled={conversationUnavailable}
+                  disabled={conversationUnavailable || mutationPending}
                 >
                   {reply}
                 </ShopButton>
@@ -1504,7 +1583,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
                 popupZIndex={SUPPORT_ORDER_OVERLAY_Z_INDEX + 1}
                 popupMaxHeight={isMobileViewport ? 220 : 280}
                 loading={ordersLoading || sendingOrderId !== null}
-                disabled={conversationUnavailable || sendingOrderId !== null}
+                disabled={conversationUnavailable || mutationPending || sendingOrderId !== null}
                 emptyContent={
                   ordersLoading ? (
                     <span
@@ -1543,7 +1622,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
             </div>
             <ShopTextArea
               value={content}
-              disabled={conversationUnavailable}
+              disabled={conversationUnavailable || mutationPending}
               maxLength={supportChatConfig.maxMessageChars}
               showCount
               onChange={(event) => setContent(event.target.value)}
@@ -1560,8 +1639,8 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
               autoSize={{ minRows: 2, maxRows: 4 }}
             />
             <div className="customer-support-widget__actions">
-              <ShopButton className="customer-support-widget__secondaryAction" aria-label={supportCloseSessionLabel} title={supportCloseSessionLabel} disabled={conversationUnavailable || Boolean(activeGuestContext) || !session || session.status !== 'OPEN'} onClick={closeSession}>{t('pages.support.closeSession')}</ShopButton>
-              <ShopButton className="customer-support-widget__primaryAction" type="primary" icon={<ShopIcon path={SI.send} />} aria-label={supportSendLabel} title={supportSendLabel} loading={sending} disabled={conversationUnavailable || messageTooLong || messageLength === 0 || sending} onClick={send}>{canSendSupportMessage ? t('common.send') : t('pages.auth.login')}</ShopButton>
+              <ShopButton className="customer-support-widget__secondaryAction" aria-label={supportCloseSessionLabel} title={supportCloseSessionLabel} disabled={conversationUnavailable || mutationPending || Boolean(activeGuestContext) || !session || session.status !== 'OPEN'} onClick={closeSession}>{t('pages.support.closeSession')}</ShopButton>
+              <ShopButton className="customer-support-widget__primaryAction" type="primary" icon={<ShopIcon path={SI.send} />} aria-label={supportSendLabel} title={supportSendLabel} loading={sending} disabled={conversationUnavailable || mutationPending || messageTooLong || messageLength === 0 || sending} onClick={send}>{canSendSupportMessage ? t('common.send') : t('pages.auth.login')}</ShopButton>
             </div>
           </div>
         </div>

@@ -33,4 +33,21 @@ describe('IpBlacklistManagement type-safety contracts', () => {
     expect(pageSource).toContain('adminApi.getIpBlacklistStatus({ signal: abortController.signal })');
     expect(pageSource).toContain('adminApi.getMyPermissions({ signal: abortController.signal })');
   });
+
+  it('latches blacklist mutations and suppresses post-unmount feedback and refreshes', () => {
+    expect(pageSource).toContain('const mutationRef = useRef(false);');
+    expect(pageSource).toContain('const mutationAbortRef = useRef<AbortController | null>(null);');
+    expect(pageSource).toContain('const [mutationPending, setMutationPending] = useState(false);');
+    expect(pageSource).toContain('const blacklistActionDisabled = loading || Boolean(listLoadError) || !listSnapshotLoaded || mutationPending;');
+    expect(pageSource).toContain('if (!mountedRef.current || mutationRef.current) return;');
+    expect(pageSource).toContain('mutationAbortRef.current?.abort();');
+    expect(pageSource).toContain('if (!mountedRef.current || abortController.signal.aborted) return;');
+    expect(pageSource).toContain('mutationRef.current = false;');
+    expect(pageSource).toContain('if (mountedRef.current) {\n        setBlocking(false);\n        setMutationPending(false);\n      }');
+    expect(pageSource).toContain('if (mountedRef.current) {\n        setActing(null);\n        setMutationPending(false);\n      }');
+    expect(pageSource).toContain('if (mountedRef.current) {\n        setBatchActing(false);\n        setMutationPending(false);\n      }');
+    expect(pageSource).toContain('adminApi.blockIpAddress(values, { signal: abortController.signal })');
+    expect(pageSource).toContain('adminApi.releaseIpBlacklistEntry(entry.id, { signal: abortController.signal })');
+    expect(pageSource).toContain('{ signal: abortController.signal },\n      );');
+  });
 });

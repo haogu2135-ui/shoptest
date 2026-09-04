@@ -61,11 +61,13 @@ const BrandManagement: React.FC = () => {
   const brandsRequestSeqRef = useRef(0);
   const brandsAbortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
+  const mutationRef = useRef(false);
+  const [mutationPending, setMutationPending] = useState(false);
   const [form] = Form.useForm();
   const { t, language } = useLanguage();
   const canWriteBrands = hasAdminPermission(adminPermissions, currentRole, BRANDS_WRITE_PERMISSION);
   const canDeleteBrands = hasAdminPermission(adminPermissions, currentRole, BRANDS_DELETE_PERMISSION);
-  const brandActionDisabled = loading || Boolean(brandLoadError) || !brandSnapshotLoaded;
+  const brandActionDisabled = loading || Boolean(brandLoadError) || !brandSnapshotLoaded || mutationPending;
   const brandActionUnavailableMessage = brandLoadError || (loading ? t('common.loading') : t('pages.brandAdmin.fetchFailed'));
   const formatBrandStatus = useCallback((status?: string) => {
     const rawStatus = String(status || '').trim();
@@ -178,6 +180,7 @@ const BrandManagement: React.FC = () => {
     brandsRequestSeqRef.current += 1;
     brandsAbortRef.current?.abort();
     brandsAbortRef.current = null;
+    mutationRef.current = false;
     };
   }, []);
 
@@ -229,6 +232,7 @@ const BrandManagement: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    if (!mountedRef.current || mutationRef.current) return;
     if (!canWriteBrands) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -237,8 +241,11 @@ const BrandManagement: React.FC = () => {
       message.warning(brandActionUnavailableMessage);
       return;
     }
+    mutationRef.current = true;
+    setMutationPending(true);
     try {
       const values = await form.validateFields();
+      if (!mountedRef.current) return;
       setSaving(true);
       const payload = {
         name: values.name.trim(),
@@ -250,26 +257,31 @@ const BrandManagement: React.FC = () => {
       };
       if (editingBrand) {
         await adminApi.updateBrand(editingBrand.id, payload);
-        message.success(t('pages.brandAdmin.updated'));
       } else {
         await adminApi.createBrand(payload);
-        message.success(t('pages.brandAdmin.created'));
       }
+      if (!mountedRef.current) return;
+      message.success(editingBrand ? t('pages.brandAdmin.updated') : t('pages.brandAdmin.created'));
       setModalVisible(false);
       setEditingBrand(null);
       setLogoPreviewUrl('');
       form.resetFields();
-      fetchBrands();
+      if (mountedRef.current) await fetchBrands();
     } catch (error: unknown) {
       if (isFormValidationError(error)) return;
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(error, t('pages.brandAdmin.saveFailed'), language));
     } finally {
-      setSaving(false);
+      mutationRef.current = false;
+      if (mountedRef.current) {
+        setSaving(false);
+        setMutationPending(false);
+      }
     }
   };
 
   const closeModal = () => {
-    if (saving) return;
+    if (saving || mutationRef.current) return;
     setModalVisible(false);
     setEditingBrand(null);
     setLogoPreviewUrl('');
@@ -277,6 +289,7 @@ const BrandManagement: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
+    if (!mountedRef.current || mutationRef.current) return;
     if (!canDeleteBrands) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -285,12 +298,19 @@ const BrandManagement: React.FC = () => {
       message.warning(brandActionUnavailableMessage);
       return;
     }
+    mutationRef.current = true;
+    setMutationPending(true);
     try {
       await adminApi.deleteBrand(id);
+      if (!mountedRef.current) return;
       message.success(t('pages.brandAdmin.deleted'));
-      fetchBrands();
+      if (mountedRef.current) await fetchBrands();
     } catch (error: unknown) {
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(error, t('pages.brandAdmin.deleteFailed'), language));
+    } finally {
+      mutationRef.current = false;
+      if (mountedRef.current) setMutationPending(false);
     }
   };
 

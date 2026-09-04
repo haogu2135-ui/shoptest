@@ -104,6 +104,8 @@ const AnnouncementManagement: React.FC = () => {
   const summaryRequestSeqRef = useRef(0);
   const summaryAbortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
+  const mutationRef = useRef(false);
+  const [mutationPending, setMutationPending] = useState(false);
   const [form] = Form.useForm<AnnouncementFormValues>();
   const { t, language } = useLanguage();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
@@ -113,7 +115,8 @@ const AnnouncementManagement: React.FC = () => {
     || Boolean(announcementLoadError)
     || Boolean(summaryLoadError)
     || !announcementSnapshotLoaded
-    || !summarySnapshotLoaded;
+    || !summarySnapshotLoaded
+    || mutationPending;
   const announcementActionUnavailableMessage = announcementLoadError
     || summaryLoadError
     || (loading ? t('common.loading') : t('pages.announcementAdmin.fetchFailed'));
@@ -199,6 +202,7 @@ const AnnouncementManagement: React.FC = () => {
     summaryAbortRef.current?.abort();
     announcementsAbortRef.current = null;
     summaryAbortRef.current = null;
+    mutationRef.current = false;
     };
   }, []);
 
@@ -296,6 +300,7 @@ const AnnouncementManagement: React.FC = () => {
   };
 
   const handleSave = async () => {
+    if (!mountedRef.current || mutationRef.current) return;
     if (!canWriteAnnouncements) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -304,8 +309,11 @@ const AnnouncementManagement: React.FC = () => {
       message.warning(announcementActionUnavailableMessage);
       return;
     }
+    mutationRef.current = true;
+    setMutationPending(true);
     try {
       const values = await form.validateFields();
+      if (!mountedRef.current) return;
       setSaving(true);
       const payload: Partial<SiteAnnouncement> = {
         ...values,
@@ -317,19 +325,25 @@ const AnnouncementManagement: React.FC = () => {
       } else {
         await adminApi.createAnnouncement(payload);
       }
+      if (!mountedRef.current) return;
       message.success(t('pages.announcementAdmin.saved'));
       setModalOpen(false);
-      await Promise.all([loadAnnouncements(pageState.page, pageState.size), loadSummary()]);
+      if (mountedRef.current) await Promise.all([loadAnnouncements(pageState.page, pageState.size), loadSummary()]);
     } catch (error: unknown) {
       if (isFormValidationError(error)) return;
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(error, t('pages.announcementAdmin.saveFailed'), language));
     } finally {
-      setSaving(false);
+      mutationRef.current = false;
+      if (mountedRef.current) {
+        setSaving(false);
+        setMutationPending(false);
+      }
     }
   };
 
   const toggleStatus = async (announcement: SiteAnnouncement, active: boolean) => {
-    if (!announcement.id) return;
+    if (!mountedRef.current || mutationRef.current || !announcement.id) return;
     if (!canWriteAnnouncements) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -338,30 +352,38 @@ const AnnouncementManagement: React.FC = () => {
       message.warning(announcementActionUnavailableMessage);
       return;
     }
+    mutationRef.current = true;
+    setMutationPending(true);
     setStatusUpdatingId(announcement.id);
     try {
       await adminApi.updateAnnouncement(announcement.id, {
         ...announcement,
         status: active ? 'ACTIVE' : 'INACTIVE',
       });
+      if (!mountedRef.current) return;
       message.success(active ? t('pages.announcementAdmin.enabled') : t('pages.announcementAdmin.disabled'));
-      await Promise.all([loadAnnouncements(pageState.page, pageState.size), loadSummary()]);
+      if (mountedRef.current) await Promise.all([loadAnnouncements(pageState.page, pageState.size), loadSummary()]);
     } catch (error: unknown) {
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(error, t('pages.announcementAdmin.statusUpdateFailed'), language));
     } finally {
-      setStatusUpdatingId(null);
+      mutationRef.current = false;
+      if (mountedRef.current) {
+        setStatusUpdatingId(null);
+        setMutationPending(false);
+      }
     }
   };
 
   const closeEditor = () => {
-    if (saving) return;
+    if (saving || mutationRef.current) return;
     setModalOpen(false);
     setEditing(null);
     form.resetFields();
   };
 
   const deleteAnnouncement = async (id?: number) => {
-    if (!id) return;
+    if (!mountedRef.current || mutationRef.current || !id) return;
     if (!canDeleteAnnouncements) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -370,12 +392,19 @@ const AnnouncementManagement: React.FC = () => {
       message.warning(announcementActionUnavailableMessage);
       return;
     }
+    mutationRef.current = true;
+    setMutationPending(true);
     try {
       await adminApi.deleteAnnouncement(id);
+      if (!mountedRef.current) return;
       message.success(t('pages.announcementAdmin.deleted'));
-      await Promise.all([loadAnnouncements(pageState.page, pageState.size), loadSummary()]);
+      if (mountedRef.current) await Promise.all([loadAnnouncements(pageState.page, pageState.size), loadSummary()]);
     } catch (error: unknown) {
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(error, t('pages.announcementAdmin.deleteFailed'), language));
+    } finally {
+      mutationRef.current = false;
+      if (mountedRef.current) setMutationPending(false);
     }
   };
 

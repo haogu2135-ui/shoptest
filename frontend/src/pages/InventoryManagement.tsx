@@ -85,12 +85,14 @@ const InventoryManagement: React.FC = () => {
   const inventoryRequestSeqRef = useRef(0);
   const inventoryAbortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
+  const adjustRef = useRef(false);
+  const [adjustPending, setAdjustPending] = useState(false);
   const adjustMode = Form.useWatch('mode', form);
   const adjustAmount = Form.useWatch('amount', form);
   const debouncedKeyword = useDebounce(keyword);
 
   const canAdjustStock = hasAdminPermission(adminPermissions, currentRole, PRODUCTS_WRITE_PERMISSION);
-  const actionsDisabled = loading || Boolean(loadError) || !snapshotLoaded;
+  const actionsDisabled = loading || Boolean(loadError) || !snapshotLoaded || adjustPending;
   const actionUnavailableMessage = loadError || (loading ? t('common.loading') : t('pages.inventoryAdmin.fetchFailed'));
 
   const pageLabel = t('pages.inventoryAdmin.title');
@@ -139,6 +141,7 @@ const InventoryManagement: React.FC = () => {
     inventoryRequestSeqRef.current += 1;
     inventoryAbortRef.current?.abort();
     inventoryAbortRef.current = null;
+    adjustRef.current = false;
     };
   }, []);
 
@@ -227,13 +230,13 @@ const InventoryManagement: React.FC = () => {
   };
 
   const closeAdjustModal = () => {
-    if (saving) return;
+    if (saving || adjustRef.current) return;
     setAdjustTarget(null);
     form.resetFields();
   };
 
   const handleAdjust = async () => {
-    if (!adjustTarget) return;
+    if (!mountedRef.current || adjustRef.current || !adjustTarget) return;
     if (!canAdjustStock) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -242,26 +245,35 @@ const InventoryManagement: React.FC = () => {
       message.warning(actionUnavailableMessage);
       return;
     }
+    adjustRef.current = true;
+    setAdjustPending(true);
     try {
       const values = await form.validateFields();
+      if (!mountedRef.current) return;
       const nextStock = resolveAdjustedStock(adjustTarget.stock, values.mode, values.amount);
       setSaving(true);
       await adminApi.updateProduct(adjustTarget.id, {
         stock: nextStock,
         updatedAt: adjustTarget.updatedAt,
       });
+      if (!mountedRef.current) return;
       message.success(t('pages.inventoryAdmin.adjusted', {
         name: productLabel(adjustTarget),
         stock: nextStock,
       }));
       setAdjustTarget(null);
       form.resetFields();
-      await fetchInventory();
+      if (mountedRef.current) await fetchInventory();
     } catch (error: unknown) {
       if (isFormValidationError(error)) return;
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(error, t('pages.inventoryAdmin.adjustFailed'), language));
     } finally {
-      setSaving(false);
+      adjustRef.current = false;
+      if (mountedRef.current) {
+        setSaving(false);
+        setAdjustPending(false);
+      }
     }
   };
 

@@ -174,7 +174,7 @@ describe('SupportManagement', () => {
     expect(source).toContain('const SUPPORT_POLL_INTERVAL_MS = 10 * 1000;');
     expect(source).toContain('if (disposed || polling) return;');
     expect(source).toContain('await loadSessions({ isActive: () => !disposed });');
-    expect(source).toContain('if (disposed || selectedSessionRef.current?.id !== activeSession.id) return;');
+    expect(source).toContain('if (disposed || abortController.signal.aborted || selectedSessionRef.current?.id !== activeSession.id) return;');
     expect(source).toContain('}, SUPPORT_POLL_INTERVAL_MS);');
     expect(source).toContain('disposed = true;');
     expect(source).toContain('window.clearInterval(timer);');
@@ -193,7 +193,7 @@ describe('SupportManagement', () => {
     expect(source).toContain("reportNonBlockingError('SupportManagement.websocketReconnectExhausted', { attempts });");
     expect(pollingEffectStart).toBeGreaterThan(socketStart);
     expect(pollingEffect).toContain('await loadSessions({ isActive: () => !disposed });');
-    expect(pollingEffect).toContain('adminSupportApi.getMessages(activeSession.id, { afterId, limit: SUPPORT_MESSAGE_WINDOW })');
+    expect(pollingEffect).toContain('adminSupportApi.getMessages(activeSession.id, { afterId, limit: SUPPORT_MESSAGE_WINDOW }, { signal: abortController.signal })');
     expect(pollingEffect).toContain("reportNonBlockingError('SupportManagement.pollMessages', error);");
   });
 
@@ -230,9 +230,9 @@ describe('SupportManagement', () => {
 
     expect(source).toContain('const conversationUnavailable = Boolean(messageLoading || messageError);');
     expect(source).toContain("messageLoading\n    ? t('common.loading')");
-    expect(source).toContain('const replyReady = Boolean(canReplySupport && selectedSession && selectedSession.status === \'OPEN\' && replyText && !replyTooLong && !conversationUnavailable);');
-    expect(source).toContain('disabled={!canReplySupport || selectedSession.status !== \'OPEN\' || conversationUnavailable}');
-    expect(source).toContain('disabled={!canReplySupport || selectedSession.status !== \'OPEN\' || sending || conversationUnavailable}');
+    expect(source).toContain('const replyReady = Boolean(canReplySupport && selectedSession && selectedSession.status === \'OPEN\' && replyText && !replyTooLong && !conversationUnavailable && !actionPending);');
+    expect(source).toContain('disabled={!canReplySupport || selectedSession.status !== \'OPEN\' || conversationUnavailable || actionPending}');
+    expect(source).toContain('disabled={!canReplySupport || selectedSession.status !== \'OPEN\' || sending || conversationUnavailable || actionPending}');
     expect(source).toContain('disabled={!replyReady}');
     expect(source).toContain('replyText && !replyTooLong && !conversationUnavailable');
   });
@@ -250,6 +250,24 @@ describe('SupportManagement', () => {
     expect(cleanupSource).toContain('void context.close()');
     expect(cleanupSource).toContain("reportNonBlockingError('SupportManagement.closeAudioContext', error)");
     expect(cleanupSource).toContain('  }, []);');
+  });
+
+  it('guards support mutations and order detail requests by lifecycle and operation state', () => {
+    const source = fs.readFileSync(path.resolve(__dirname, 'SupportManagement.tsx'), 'utf8');
+
+    expect(source).toContain('const actionRef = useRef(false);');
+    expect(source).toContain('const actionAbortRef = useRef<AbortController | null>(null);');
+    expect(source).toContain('const detailAbortRef = useRef<AbortController | null>(null);');
+    expect(source).toContain('const beginAction = useCallback((): ApiRequestOptions | null => {');
+    expect(source).toContain('actionAbortRef.current?.abort();');
+    expect(source).toContain('adminSupportApi.sendMessage(targetSession.id, text, requestOptions)');
+    expect(source).toContain('adminSupportApi.closeSession(targetSession.id, requestOptions)');
+    expect(source).toContain('adminSupportApi.assignSession(targetSession.id, requestOptions)');
+    expect(source).toContain('adminSupportApi.reopenSession(targetSession.id, requestOptions)');
+    expect(source).toContain('adminSupportApi.reissueBirthdayCoupons(targetSession.id, requestOptions)');
+    expect(source).toContain('adminApi.getOrder(orderId, { signal: abortController.signal })');
+    expect(source).toContain('adminApi.getOrderItems(orderId, { signal: abortController.signal })');
+    expect(source).toContain('const closeOrderDetail = useCallback(() => {');
   });
 
   it('keeps queue merge callbacks on current refs without stale memoizedRef dependencies', () => {

@@ -34,4 +34,15 @@ describe('AnnouncementManagement scheduling popup guards', () => {
     expect(f3521Css).toMatch(/body\s+\.announcement-management-page__datePopup\.shop-mobile-popup-layer\.ant-picker-dropdown\s*\{[\s\S]*?z-index:\s*2200\s*!important;/);
     expect(f3521Css).toMatch(/body\s+\.announcement-management-page__datePopup\.shop-mobile-popup-layer\s+\.ant-picker-panel-container\s*\{[\s\S]*?overflow:\s*auto\s*!important;/);
   });
+
+  it('latches announcement writes and suppresses post-unmount feedback and refreshes', () => {
+    expect(pageSource).toContain('const mutationRef = useRef(false);');
+    expect(pageSource).toContain('const [mutationPending, setMutationPending] = useState(false);');
+    expect(pageSource).toContain('if (!mountedRef.current || mutationRef.current) return;');
+    expect(pageSource).toContain('mutationRef.current = true;');
+    expect(pageSource).toContain('if (!mountedRef.current) return;');
+    expect(pageSource).toContain('mutationRef.current = false;');
+    expect(pageSource).toContain('if (mountedRef.current) await Promise.all([loadAnnouncements(pageState.page, pageState.size), loadSummary()]);');
+    expect(pageSource).toContain('if (mountedRef.current) setMutationPending(false);');
+  });
 });

@@ -6,7 +6,7 @@ const pageSource = fs.readFileSync(path.join(__dirname, 'ProductQuestionManageme
 describe('ProductQuestionManagement source guards', () => {
   it('blocks answer/delete mutations while showing stale cached rows after a reload failure', () => {
     expect(pageSource).toContain('const hasQuestionSnapshot = questions.length > 0 || summary !== null;');
-    expect(pageSource).toContain('const actionsDisabledByStaleData = Boolean(loadError);');
+    expect(pageSource).toContain('const actionsDisabledByStaleData = Boolean(loadError) || mutationPending;');
     expect(pageSource).toContain("message={t('pages.adminQuestions.loadErrorTitle')}");
     expect(pageSource).toContain('{loadError && visibleQuestions.length > 0 ? (');
     expect(pageSource).toContain("description={t('pages.adminQuestions.staleDataWarning')}");
@@ -39,5 +39,16 @@ describe('ProductQuestionManagement source guards', () => {
     expect(pageSource).toContain('adminApi.getQuestionSummary({ status: normalizedStatus, search: normalizedSearch }, { signal: abortController.signal })');
     expect(pageSource).toContain('adminApi.getQuestions({ status: normalizedStatus, search: normalizedSearch, limit }, { signal: abortController.signal })');
     expect(pageSource).toContain('adminApi.getMyPermissions({ signal: abortController.signal })');
+  });
+
+  it('latches answer/delete mutations and suppresses post-unmount effects', () => {
+    expect(pageSource).toContain('const mutationRef = useRef(false);');
+    expect(pageSource).toContain('const [mutationPending, setMutationPending] = useState(false);');
+    expect(pageSource).toContain('if (!mountedRef.current || mutationRef.current) return;');
+    expect(pageSource).toContain('mutationRef.current = true;');
+    expect(pageSource).toContain('mutationRef.current = false;');
+    expect(pageSource).toContain('if (!mountedRef.current) return;');
+    expect(pageSource).toContain('if (mountedRef.current) await loadQuestions();');
+    expect(pageSource).toContain('setMutationPending(false);');
   });
 });

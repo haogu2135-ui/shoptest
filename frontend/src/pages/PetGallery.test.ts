@@ -102,3 +102,26 @@ describe('PetGallery mobile layout source contracts', () => {
     expect(source).toContain("navigate('/products?keyword=pet')");
   });
 });
+
+describe('PetGallery action lifecycle guards', () => {
+  it('latches upload, like, and delete actions and suppresses stale continuations', () => {
+    const page = readPetGallerySource();
+
+    expect(page).toContain('const uploadingRef = useRef(false);');
+    expect(page).toContain('const likingPhotoIdsRef = useRef(new Set<number>());');
+    expect(page).toContain('const deletingPhotoIdsRef = useRef(new Set<number>());');
+    expect(page).toContain('if (!mountedRef.current || uploadingRef.current) return;');
+    expect(page).toContain('uploadingRef.current = true;');
+    expect(page).toContain('if (!mountedRef.current) return;');
+    expect(page).toContain('if (likingPhotoIdsRef.current.has(item.photo.id)) return;');
+    expect(page).toContain('likingPhotoIdsRef.current.add(item.photo.id);');
+    expect(page).toContain('likingPhotoIdsRef.current.delete(item.photo.id);');
+    expect(page).toContain('if (!mountedRef.current || deletingPhotoIdsRef.current.has(photo.id)) return;');
+    expect(page).toContain('deletingPhotoIdsRef.current.add(photo.id);');
+    expect(page).toContain('deletingPhotoIdsRef.current.delete(photo.id);');
+    expect(page).toMatch(/catch \(error\) \{\s*if \(mountedRef\.current\) \{[\s\S]*?getApiErrorMessage\(error, t\('home\.petUgcUploadFailed'\), language\)/);
+    expect(page).toMatch(/finally \{\s*uploadingRef\.current = false;\s*if \(mountedRef\.current\) setUploading\(false\);/);
+    expect(page).toMatch(/await petGalleryApi\.like\(item\.photo\.id\);\s*if \(!mountedRef\.current\) return;/);
+    expect(page).toMatch(/await petGalleryApi\.delete\(photo\.id\);\s*if \(!mountedRef\.current\) return;/);
+  });
+});

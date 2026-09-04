@@ -79,6 +79,7 @@ const Login: React.FC = () => {
   const passwordSubmittingRef = useRef(false);
   const emailSubmittingRef = useRef(false);
   const emailCodeSendingRef = useRef(false);
+  const mountedRef = useRef(true);
   const navigate = useNavigate();
   const location = useLocation();
   const { t, language } = useLanguage();
@@ -115,6 +116,16 @@ const Login: React.FC = () => {
     codeSending,
     sendCodeCountdown,
   });
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      passwordSubmittingRef.current = false;
+      emailSubmittingRef.current = false;
+      emailCodeSendingRef.current = false;
+    };
+  }, []);
 
   useEffect(() => {
     clearStoredAuthCredentials();
@@ -158,7 +169,7 @@ const Login: React.FC = () => {
   };
 
   const mergeGuestCart = async (userId: number, guestItems: CartItem[]) => {
-    if (guestItems.length === 0) return;
+    if (!mountedRef.current || guestItems.length === 0) return;
 
     const mergeResults = await Promise.all(guestItems.map(async (item) => {
       try {
@@ -172,6 +183,7 @@ const Login: React.FC = () => {
     const failedItems = mergeResults.filter(({ failed }) => failed).map(({ item }) => item);
     const mergedCount = mergeResults.reduce((sum, result) => sum + result.mergedQuantity, 0);
     replaceGuestCartItems(failedItems);
+    if (!mountedRef.current) return;
     if (mergedCount > 0 && failedItems.length === 0) {
       announceAccessibleMessage(t('pages.auth.cartMerged', { count: mergedCount }), 'success');
     } else if (mergedCount > 0) {
@@ -180,6 +192,7 @@ const Login: React.FC = () => {
   };
 
   const completeLogin = async (responseData: LoginSessionResponse) => {
+    if (!mountedRef.current) return;
     setAuthBannerError(null);
     setAuthRecoveryKind(null);
     const { id } = responseData || {};
@@ -191,11 +204,13 @@ const Login: React.FC = () => {
       throw new Error(t('pages.auth.loginFailed'));
     }
     await mergeGuestCart(Number(id), guestCartItemsSnapshot);
+    if (!mountedRef.current) return;
     announceAccessibleMessage(t('pages.auth.loginSuccess'), 'success');
     navigate(postLoginRedirectTarget, { replace: true });
   };
 
   const onFinish = async (values: PasswordLoginValues) => {
+    if (!mountedRef.current) return;
     if (passwordSubmittingRef.current) return;
     passwordSubmittingRef.current = true;
     clearStoredAuthCredentials();
@@ -215,6 +230,7 @@ const Login: React.FC = () => {
       for (const candidate of loginCandidates) {
         try {
           response = await userApi.login(candidate, String(values.password || '')) as LoginApiResponse;
+          if (!mountedRef.current) return;
           if (candidate !== normalizedLogin) {
             passwordForm.setFieldValue('username', candidate);
           }
@@ -232,6 +248,7 @@ const Login: React.FC = () => {
       }
       await completeLogin(response.data);
     } catch (error: unknown) {
+      if (!mountedRef.current) return;
       const loginError = resolvePasswordLoginError(error, t('pages.auth.loginFailed'), t, language);
       passwordForm.setFields([
         { name: 'username', errors: [loginError.message] },
@@ -242,11 +259,12 @@ const Login: React.FC = () => {
       announceAccessibleMessage(loginError.message, 'error');
     } finally {
       passwordSubmittingRef.current = false;
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   };
 
   const sendEmailCode = async () => {
+    if (!mountedRef.current) return;
     if (emailCodeSendingRef.current) return;
     emailCodeSendingRef.current = true;
     clearStoredAuthCredentials();
@@ -256,10 +274,12 @@ const Login: React.FC = () => {
         return;
       }
       const { email } = await emailForm.validateFields(['email']);
+      if (!mountedRef.current) return;
       const normalizedEmail = normalizeEmail(email);
       emailForm.setFieldValue('email', normalizedEmail);
       setCodeSending(true);
       const response = await userApi.sendEmailLoginCode(normalizedEmail);
+      if (!mountedRef.current) return;
       const resendIntervalSeconds = Number(response.data?.resendIntervalSeconds);
       const ttlMinutes = Number(response.data?.codeTtlMinutes);
       setSendCodeCountdown(Number.isFinite(resendIntervalSeconds) && resendIntervalSeconds > 0 ? resendIntervalSeconds : 60);
@@ -268,9 +288,12 @@ const Login: React.FC = () => {
       emailForm.setFields([{ name: 'code', errors: [] }]);
       setVerifyRetryCountdown(0);
       setSentEmailHint(maskEmail(normalizedEmail));
-      window.setTimeout(() => codeInputRef.current?.focus?.(), 0);
+      window.setTimeout(() => {
+        if (mountedRef.current) codeInputRef.current?.focus?.();
+      }, 0);
       announceAccessibleMessage(t('pages.auth.emailCodeSentTo', { email: maskEmail(normalizedEmail) }), 'success');
     } catch (error: unknown) {
+      if (!mountedRef.current) return;
       if (!asApiError(error).errorFields) {
         const errorCode = apiErrorCode(error);
         if (errorCode === 'RATE_LIMITED') {
@@ -285,11 +308,12 @@ const Login: React.FC = () => {
       }
     } finally {
       emailCodeSendingRef.current = false;
-      setCodeSending(false);
+      if (mountedRef.current) setCodeSending(false);
     }
   };
 
   const onEmailLogin = async (values: EmailLoginValues) => {
+    if (!mountedRef.current) return;
     if (emailSubmittingRef.current) return;
     clearStoredAuthCredentials();
     const normalizedCode = normalizeEmailCode(values.code);
@@ -307,6 +331,7 @@ const Login: React.FC = () => {
       const response = await userApi.emailLogin(normalizedEmail, normalizedCode) as LoginApiResponse;
       await completeLogin(response.data);
     } catch (error: unknown) {
+      if (!mountedRef.current) return;
       const errorCode = apiErrorCode(error);
       const recoveryKind = resolveEmailLoginRecoveryKind(error);
       if (errorCode === 'TOO_MANY_ATTEMPTS') {
@@ -332,7 +357,7 @@ const Login: React.FC = () => {
       }
     } finally {
       emailSubmittingRef.current = false;
-      setLoading(false);
+      if (mountedRef.current) setLoading(false);
     }
   };
 

@@ -438,7 +438,7 @@ it('keeps main product fetch cleanup-bound', () => {
     expect(engagement).toContain('const handleFavorite = async () => {');
     expect(engagement).toContain('const handleCompare = () => {');
     expect(community).toContain('export const useProductDetailCommunityActions');
-    expect(community).toContain('const handleAddReview = async (orderId: number, rating: number, comment: string, imageUrls: string[] = []) => {');
+    expect(community).toContain('const handleAddReview = async (orderId: number, rating: number, comment: string, imageUrls: string[] = [], options?: ApiRequestOptions) => {');
     expect(community).toContain('const handleAskQuestion = async () => {');
   });
 

@@ -58,11 +58,13 @@ const CategoryManagement: React.FC = () => {
   const categoriesRequestSeqRef = useRef(0);
   const categoriesAbortRef = useRef<AbortController | null>(null);
   const mountedRef = useRef(true);
+  const mutationRef = useRef(false);
+  const [mutationPending, setMutationPending] = useState(false);
   const [form] = Form.useForm();
   const { t, language } = useLanguage();
   const canWriteCategories = hasAdminPermission(adminPermissions, currentRole, CATEGORIES_WRITE_PERMISSION);
   const canDeleteCategories = hasAdminPermission(adminPermissions, currentRole, CATEGORIES_DELETE_PERMISSION);
-  const categoryActionDisabled = loading || Boolean(categoryLoadError) || !categorySnapshotLoaded;
+  const categoryActionDisabled = loading || Boolean(categoryLoadError) || !categorySnapshotLoaded || mutationPending;
   const categoryActionUnavailableMessage = categoryLoadError || (loading ? t('common.loading') : t('pages.categoryAdmin.fetchFailed'));
 
   const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
@@ -183,6 +185,7 @@ const CategoryManagement: React.FC = () => {
     categoriesRequestSeqRef.current += 1;
     categoriesAbortRef.current?.abort();
     categoriesAbortRef.current = null;
+    mutationRef.current = false;
     };
   }, []);
 
@@ -246,6 +249,7 @@ const CategoryManagement: React.FC = () => {
   };
 
   const handleDelete = async (id: number) => {
+    if (!mountedRef.current || mutationRef.current) return;
     if (!canDeleteCategories) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -254,16 +258,24 @@ const CategoryManagement: React.FC = () => {
       message.warning(categoryActionUnavailableMessage);
       return;
     }
+    mutationRef.current = true;
+    setMutationPending(true);
     try {
       await adminApi.deleteCategory(id);
+      if (!mountedRef.current) return;
       message.success(t('messages.deleteSuccess'));
-      fetchCategories();
+      if (mountedRef.current) await fetchCategories();
     } catch (error: unknown) {
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(error, t('pages.categoryAdmin.deleteChildFirst'), language));
+    } finally {
+      mutationRef.current = false;
+      if (mountedRef.current) setMutationPending(false);
     }
   };
 
   const handleSubmit = async () => {
+    if (!mountedRef.current || mutationRef.current) return;
     if (!canWriteCategories) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -272,8 +284,11 @@ const CategoryManagement: React.FC = () => {
       message.warning(categoryActionUnavailableMessage);
       return;
     }
+    mutationRef.current = true;
+    setMutationPending(true);
     try {
       const values = await form.validateFields();
+      if (!mountedRef.current) return;
       setSaving(true);
       const localizedContent = ['en', 'es', 'zh'].reduce<Record<string, { name?: string; description?: string }>>((result, locale) => {
         const localized = values.localizedContent?.[locale] || {};
@@ -297,26 +312,31 @@ const CategoryManagement: React.FC = () => {
 
       if (editingCategory) {
         await adminApi.updateCategory(editingCategory.id, payload);
-        message.success(t('pages.categoryAdmin.updated'));
       } else {
         await adminApi.createCategory(payload);
-        message.success(t('pages.categoryAdmin.created'));
       }
+      if (!mountedRef.current) return;
+      message.success(editingCategory ? t('pages.categoryAdmin.updated') : t('pages.categoryAdmin.created'));
       setModalVisible(false);
       setEditingCategory(null);
       setImagePreviewUrl('');
       form.resetFields();
-      fetchCategories();
+      if (mountedRef.current) await fetchCategories();
     } catch (error: unknown) {
       if (isFormValidationError(error)) return;
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(error, t('pages.categoryAdmin.saveFailed'), language));
     } finally {
-      setSaving(false);
+      mutationRef.current = false;
+      if (mountedRef.current) {
+        setSaving(false);
+        setMutationPending(false);
+      }
     }
   };
 
   const closeModal = () => {
-    if (saving) return;
+    if (saving || mutationRef.current) return;
     setModalVisible(false);
     setEditingCategory(null);
     setImagePreviewUrl('');

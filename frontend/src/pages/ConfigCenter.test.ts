@@ -43,3 +43,22 @@ describe('ConfigCenter mobile editor containment guards', () => {
     expect(pageSource).toContain('permissionsAbortRef.current?.abort();');
   });
 });
+
+describe('ConfigCenter action lifecycle guards', () => {
+  it('latches publish and runtime-apply actions before async validation', () => {
+    expect(pageSource).toContain('const publishingRef = useRef(false);');
+    expect(pageSource).toContain('const applyingRef = useRef(false);');
+    expect(pageSource).toContain('if (!mountedRef.current || publishingRef.current || applyingRef.current) return;');
+    expect(pageSource).toContain('if (!mountedRef.current || applyingRef.current || publishingRef.current) return;');
+    expect(pageSource).toContain('publishingRef.current = true;');
+    expect(pageSource).toContain('applyingRef.current = true;');
+  });
+
+  it('suppresses config state, feedback, and loading cleanup after unmount', () => {
+    expect(pageSource).toMatch(/const response = await adminApi\.publishConfigCenter\([\s\S]*?\);\s*if \(!mountedRef\.current\) return;\s*setLoadError\(null\);/);
+    expect(pageSource).toMatch(/const response = await adminApi\.applyConfigCenter\([\s\S]*?\);\s*if \(!mountedRef\.current\) return;\s*setLoadError\(null\);/);
+    expect(pageSource).toMatch(/catch \(error: unknown\) \{\s*if \(isFormValidationError\(error\)\) return;\s*if \(!mountedRef\.current\) return;/);
+    expect(pageSource).toMatch(/publishingRef\.current = false;\s*if \(mountedRef\.current\) setPublishing\(false\);/);
+    expect(pageSource).toMatch(/applyingRef\.current = false;\s*if \(mountedRef\.current\) setApplying\(false\);/);
+  });
+});

@@ -31,7 +31,7 @@ type UseHomeProductActionsArgs = {
   localPetGalleryLikes: string[];
   petUploadInputRef: MutableRefObject<HTMLInputElement | null>;
   personalizedReadyProducts: Product[];
-  openCartWithSnapshot: () => unknown;
+  openCartWithSnapshot: (signal?: AbortSignal) => unknown;
   setPetGalleryPhotos: Dispatch<SetStateAction<PetGalleryPhotoPublic[]>>;
   setPetGalleryQuota: Dispatch<SetStateAction<PetGalleryQuota | null>>;
   setUploadingPetPhoto: Dispatch<SetStateAction<boolean>>;
@@ -58,6 +58,23 @@ export const useHomeProductActions = ({
   const mountedRef = useRef(true);
   const petGalleryRefreshSeqRef = useRef(0);
   const petGalleryAbortRef = useRef<AbortController | null>(null);
+  const uploadingPetPhotoRef = useRef(false);
+  const likingPetPhotoIdsRef = useRef(new Set<number>());
+  const deletingPetPhotoIdsRef = useRef(new Set<number>());
+  const quickAddingProductIdsRef = useRef(new Set<number>());
+  const quickWishlistingProductIdsRef = useRef(new Set<number>());
+  const addingPersonalizedProductsRef = useRef(false);
+  const cartSnapshotAbortControllersRef = useRef(new Set<AbortController>());
+
+  const createCartSnapshotAbortController = useCallback(() => {
+    const abortController = createApiAbortController();
+    cartSnapshotAbortControllersRef.current.add(abortController);
+    return abortController;
+  }, []);
+
+  const releaseCartSnapshotAbortController = useCallback((abortController: AbortController) => {
+    cartSnapshotAbortControllersRef.current.delete(abortController);
+  }, []);
 
   const prefetchProduct = useCallback((productId: number) => {
     void productApi.prefetchById(productId);
@@ -119,6 +136,13 @@ export const useHomeProductActions = ({
       petGalleryRefreshSeqRef.current += 1;
       petGalleryAbortRef.current?.abort();
       petGalleryAbortRef.current = null;
+      cartSnapshotAbortControllersRef.current.forEach((abortController) => abortController.abort());
+      cartSnapshotAbortControllersRef.current.clear();
+      likingPetPhotoIdsRef.current.clear();
+      deletingPetPhotoIdsRef.current.clear();
+      quickAddingProductIdsRef.current.clear();
+      quickWishlistingProductIdsRef.current.clear();
+      addingPersonalizedProductsRef.current = false;
     };
   }, []);
 
@@ -136,6 +160,7 @@ export const useHomeProductActions = ({
   }, [isAuthenticated, navigate, petGalleryQuota, petUploadInputRef, t]);
 
   const handlePetPhotoSelected: ChangeEventHandler<HTMLInputElement> = useCallback(async (event) => {
+    if (!mountedRef.current || uploadingPetPhotoRef.current) return;
     const file = event.target.files?.[0];
     event.target.value = '';
     if (!file) return;
@@ -150,20 +175,26 @@ export const useHomeProductActions = ({
       return;
     }
 
+    uploadingPetPhotoRef.current = true;
     setUploadingPetPhoto(true);
     try {
       const response = await petGalleryApi.upload(file);
+      if (!mountedRef.current) return;
       setPetGalleryPhotos((current) => [response.data, ...current.filter((photo) => photo.id !== response.data.id)].slice(0, 24));
       announceAccessibleMessage(t('home.petUgcUploadSuccess'), 'success');
       await refreshPetGallery();
     } catch (error) {
-      announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcUploadFailed'), language), 'error');
+      if (mountedRef.current) {
+        announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcUploadFailed'), language), 'error');
+      }
     } finally {
-      setUploadingPetPhoto(false);
+      uploadingPetPhotoRef.current = false;
+      if (mountedRef.current) setUploadingPetPhoto(false);
     }
   }, [language, refreshPetGallery, setPetGalleryPhotos, setUploadingPetPhoto, t]);
 
   const handlePetGalleryLike = useCallback(async (item: HomePetGalleryItem) => {
+    if (!mountedRef.current) return;
     if (item.isSample) {
       announceAccessibleMessage(t('pages.petGallery.sampleSource'), 'info');
       return;
@@ -183,28 +214,43 @@ export const useHomeProductActions = ({
       announceAccessibleMessage(t('home.petUgcAlreadyLiked'), 'info');
       return;
     }
+    if (likingPetPhotoIdsRef.current.has(item.photo.id)) return;
+    likingPetPhotoIdsRef.current.add(item.photo.id);
     try {
       const response = await petGalleryApi.like(item.photo.id);
+      if (!mountedRef.current) return;
       setPetGalleryPhotos((current) => current.map((photo) => photo.id === response.data.id ? response.data : photo));
       announceAccessibleMessage(t('home.petUgcLiked'), 'success');
     } catch (error) {
-      announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcLikeFailed'), language), 'error');
+      if (mountedRef.current) {
+        announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcLikeFailed'), language), 'error');
+      }
+    } finally {
+      likingPetPhotoIdsRef.current.delete(item.photo.id);
     }
   }, [language, localPetGalleryLikes, setLocalPetGalleryLikes, setPetGalleryPhotos, t]);
 
   const handleDeletePetPhoto = useCallback(async (photo: PetGalleryPhotoPublic) => {
+    if (!mountedRef.current || deletingPetPhotoIdsRef.current.has(photo.id)) return;
+    deletingPetPhotoIdsRef.current.add(photo.id);
     try {
       await petGalleryApi.delete(photo.id);
+      if (!mountedRef.current) return;
       setPetGalleryPhotos((current) => current.filter((item) => item.id !== photo.id));
       announceAccessibleMessage(t('home.petUgcDeleted'), 'success');
       await refreshPetGallery();
     } catch (error) {
-      announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcDeleteFailed'), language), 'error');
+      if (mountedRef.current) {
+        announceAccessibleMessage(getApiErrorMessage(error, t('home.petUgcDeleteFailed'), language), 'error');
+      }
+    } finally {
+      deletingPetPhotoIdsRef.current.delete(photo.id);
     }
   }, [language, refreshPetGallery, setPetGalleryPhotos, t]);
 
   const handleQuickAddToCart = useCallback(async (event: React.MouseEvent | undefined, product: Product) => {
     event?.stopPropagation();
+    if (!mountedRef.current || quickAddingProductIdsRef.current.has(product.id)) return;
     if (product.stock !== undefined && product.stock <= 0) {
       announceAccessibleMessage(t('pages.productList.soldOut'), 'warning');
       return;
@@ -215,30 +261,43 @@ export const useHomeProductActions = ({
       return;
     }
 
+    quickAddingProductIdsRef.current.add(product.id);
+    const abortController = createCartSnapshotAbortController();
     try {
       if (isAuthenticated) {
         await cartApi.addItem(0, product.id, 1);
+        if (!mountedRef.current) return;
         dispatchDomEvent('shop:cart-updated');
       } else {
         addGuestCartItem(product, 1);
       }
-      await openCartWithSnapshot();
+      if (!mountedRef.current) return;
+      await openCartWithSnapshot(abortController.signal);
+      if (!mountedRef.current || abortController.signal.aborted) return;
       announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
     } catch (error) {
-      announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error');
+      if (mountedRef.current && !abortController.signal.aborted) {
+        announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error');
+      }
+    } finally {
+      quickAddingProductIdsRef.current.delete(product.id);
+      releaseCartSnapshotAbortController(abortController);
     }
-  }, [isAuthenticated, language, openCartWithSnapshot, openProduct, t]);
+  }, [createCartSnapshotAbortController, isAuthenticated, language, openCartWithSnapshot, openProduct, releaseCartSnapshotAbortController, t]);
 
   const handleQuickWishlist = useCallback(async (event: React.MouseEvent, product: Product) => {
     event.stopPropagation();
+    if (!mountedRef.current || quickWishlistingProductIdsRef.current.has(product.id)) return;
     if (!isAuthenticated) {
       announceAccessibleMessage(t('messages.loginRequired'), 'warning');
       navigate(buildLoginUrlFromWindow());
       return;
     }
 
+    quickWishlistingProductIdsRef.current.add(product.id);
     try {
       const response = await wishlistApi.toggle(0, product.id);
+      if (!mountedRef.current) return;
       setWishlistedProductIds((current) => {
         const next = new Set(current);
         if (response.data.wishlisted) {
@@ -251,38 +310,54 @@ export const useHomeProductActions = ({
       dispatchDomEvent('shop:wishlist-updated');
       announceAccessibleMessage(response.data.wishlisted ? t('pages.productDetail.favoritedMsg') : t('pages.productDetail.unfavoritedMsg'), 'success');
     } catch (error) {
-      announceAccessibleMessage(getApiErrorMessage(error, t('messages.operationFailed'), language), 'error');
+      if (mountedRef.current) {
+        announceAccessibleMessage(getApiErrorMessage(error, t('messages.operationFailed'), language), 'error');
+      }
+    } finally {
+      quickWishlistingProductIdsRef.current.delete(product.id);
     }
   }, [isAuthenticated, language, navigate, setWishlistedProductIds, t]);
 
   const addPersonalizedReadyProducts = useCallback(async () => {
+    if (!mountedRef.current || addingPersonalizedProductsRef.current) return;
     if (personalizedReadyProducts.length === 0) {
       announceAccessibleMessage(t('pages.compare.recommendationEmpty'), 'info');
       return;
     }
+    addingPersonalizedProductsRef.current = true;
+    const abortController = createCartSnapshotAbortController();
     try {
       if (isAuthenticated) {
         const results = await allSettledWithConcurrency(
           personalizedReadyProducts,
           (product) => cartApi.addItem(0, product.id, 1),
         );
+        if (!mountedRef.current) return;
         const added = results.filter((result) => result.status === 'fulfilled').length;
         if (added === 0) {
           announceAccessibleMessage(t('messages.addFailed'), 'error');
           return;
         }
         dispatchDomEvent('shop:cart-updated');
-        await openCartWithSnapshot();
+        await openCartWithSnapshot(abortController.signal);
+        if (!mountedRef.current || abortController.signal.aborted) return;
         announceAccessibleMessage(t('pages.wishlist.addedAllToCart', { count: added }), 'success');
       } else {
         personalizedReadyProducts.forEach((product) => addGuestCartItem(product, 1));
-        await openCartWithSnapshot();
+        if (!mountedRef.current) return;
+        await openCartWithSnapshot(abortController.signal);
+        if (!mountedRef.current || abortController.signal.aborted) return;
         announceAccessibleMessage(t('pages.wishlist.addedAllToCart', { count: personalizedReadyProducts.length }), 'success');
       }
     } catch (error) {
-      announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error');
+      if (mountedRef.current && !abortController.signal.aborted) {
+        announceAccessibleMessage(getApiErrorMessage(error, t('messages.addFailed'), language), 'error');
+      }
+    } finally {
+      addingPersonalizedProductsRef.current = false;
+      releaseCartSnapshotAbortController(abortController);
     }
-  }, [isAuthenticated, language, openCartWithSnapshot, personalizedReadyProducts, t]);
+  }, [createCartSnapshotAbortController, isAuthenticated, language, openCartWithSnapshot, personalizedReadyProducts, releaseCartSnapshotAbortController, t]);
 
   return {
     prefetchProduct,

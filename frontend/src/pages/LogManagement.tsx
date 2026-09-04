@@ -49,6 +49,8 @@ const LogManagement: React.FC = () => {
   const mountedRef = useRef(true);
   const statusAbortRef = useRef<AbortController | null>(null);
   const permissionsAbortRef = useRef<AbortController | null>(null);
+  const actionRef = useRef(false);
+  const [actionPending, setActionPending] = useState(false);
   const canToggleDebug = hasAdminPermission(adminPermissions, currentRole, LOGS_DEBUG_PERMISSION);
   const canDownloadLogs = hasAdminPermission(adminPermissions, currentRole, LOGS_DOWNLOAD_PERMISSION);
 
@@ -91,6 +93,7 @@ const LogManagement: React.FC = () => {
       permissionsAbortRef.current?.abort();
       statusAbortRef.current = null;
       permissionsAbortRef.current = null;
+      actionRef.current = false;
     };
   }, []);
 
@@ -124,6 +127,7 @@ const LogManagement: React.FC = () => {
   }, []);
 
   const toggleDebug = async (enabled: boolean) => {
+    if (!mountedRef.current || actionRef.current) return;
     if (!canToggleDebug) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -132,20 +136,29 @@ const LogManagement: React.FC = () => {
       message.warning(loadError || t('pages.logAdmin.loadFailed'));
       return;
     }
+    actionRef.current = true;
+    setActionPending(true);
     setSwitching(true);
     try {
       const response = await adminApi.setDebugLogging({ loggerName, enabled });
+      if (!mountedRef.current) return;
       setLoadError(null);
       setStatus(response.data);
       message.success(enabled ? t('pages.logAdmin.debugEnabled') : t('pages.logAdmin.debugDisabled'));
     } catch (error: unknown) {
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(error, t('pages.logAdmin.levelToggleFailed'), language));
     } finally {
-      setSwitching(false);
+      actionRef.current = false;
+      if (mountedRef.current) {
+        setSwitching(false);
+        setActionPending(false);
+      }
     }
   };
 
   const downloadLogs = async () => {
+    if (!mountedRef.current || actionRef.current) return;
     if (!canDownloadLogs) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -158,6 +171,8 @@ const LogManagement: React.FC = () => {
       message.warning(t('pages.logAdmin.rangeRequired'));
       return;
     }
+    actionRef.current = true;
+    setActionPending(true);
     setDownloading(true);
     try {
       const response = await adminApi.downloadLogs({
@@ -166,6 +181,7 @@ const LogManagement: React.FC = () => {
         keyword: keyword.trim() || undefined,
         level: level === 'ALL' ? undefined : level,
       });
+      if (!mountedRef.current) return;
       const blob = new Blob([response.data], { type: 'text/plain;charset=utf-8' });
       const url = window.URL.createObjectURL(blob);
       const link = document.createElement('a');
@@ -177,9 +193,14 @@ const LogManagement: React.FC = () => {
       window.URL.revokeObjectURL(url);
       message.success(t('pages.logAdmin.downloadStarted'));
     } catch (error: unknown) {
+      if (!mountedRef.current) return;
       message.error(getApiErrorMessage(error, t('pages.logAdmin.downloadFailed'), language));
     } finally {
-      setDownloading(false);
+      actionRef.current = false;
+      if (mountedRef.current) {
+        setDownloading(false);
+        setActionPending(false);
+      }
     }
   };
   const activeLoggerName = loggerName.trim() || DEFAULT_LOGGER;
@@ -193,7 +214,7 @@ const LogManagement: React.FC = () => {
   const logLevelSelectLabel = `${t('pages.logAdmin.currentLevel')}: ${t('pages.logAdmin.rangeDownload')}`;
   const logKeywordInputLabel = `${t('pages.logAdmin.keywordPlaceholder')}: ${t('pages.logAdmin.rangeDownload')}`;
   const downloadSelectedRangeActionLabel = `${t('pages.logAdmin.downloadSelectedRange')}: ${logDownloadContext}`;
-  const logActionDisabled = loading || Boolean(loadError) || !status;
+  const logActionDisabled = loading || Boolean(loadError) || !status || actionPending;
   const nextDebugEnabled = !Boolean(status?.debugEnabled);
   const debugTargetStatusLabel = nextDebugEnabled ? t('pages.logAdmin.debugEnabled') : t('pages.logAdmin.debugDisabled');
   const debugConfirmActionLabel = `${debugTargetStatusLabel}: ${activeLoggerName}`;

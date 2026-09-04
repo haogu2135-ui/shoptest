@@ -102,6 +102,7 @@ const IpBlacklistManagement: React.FC = () => {
   const [acting, setActing] = useState<number | null>(null);
   const [batchActing, setBatchActing] = useState(false);
   const [blocking, setBlocking] = useState(false);
+  const [mutationPending, setMutationPending] = useState(false);
   const [modalOpen, setModalOpen] = useState(false);
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
@@ -109,9 +110,11 @@ const IpBlacklistManagement: React.FC = () => {
   const mountedRef = useRef(true);
   const dataAbortRef = useRef<AbortController | null>(null);
   const permissionsAbortRef = useRef<AbortController | null>(null);
+  const mutationRef = useRef(false);
+  const mutationAbortRef = useRef<AbortController | null>(null);
   const canBlockIp = hasAdminPermission(adminPermissions, currentRole, IP_BLACKLIST_BLOCK_PERMISSION);
   const canReleaseIp = hasAdminPermission(adminPermissions, currentRole, IP_BLACKLIST_RELEASE_PERMISSION);
-  const blacklistActionDisabled = loading || Boolean(listLoadError) || !listSnapshotLoaded;
+  const blacklistActionDisabled = loading || Boolean(listLoadError) || !listSnapshotLoaded || mutationPending;
   const blacklistActionUnavailableMessage = listLoadError || (loading ? t('common.loading') : t('pages.ipBlacklistAdmin.loadFailed'));
   const formatTime = useCallback((value?: string) => {
     if (!value) return '-';
@@ -238,8 +241,11 @@ const IpBlacklistManagement: React.FC = () => {
       mountedRef.current = false;
       dataAbortRef.current?.abort();
       permissionsAbortRef.current?.abort();
+      mutationAbortRef.current?.abort();
       dataAbortRef.current = null;
       permissionsAbortRef.current = null;
+      mutationAbortRef.current = null;
+      mutationRef.current = false;
     };
   }, []);
 
@@ -269,6 +275,7 @@ const IpBlacklistManagement: React.FC = () => {
   }, []);
 
   const blockIp = async () => {
+    if (!mountedRef.current || mutationRef.current) return;
     if (!canBlockIp) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -277,10 +284,16 @@ const IpBlacklistManagement: React.FC = () => {
       message.warning(blacklistActionUnavailableMessage);
       return;
     }
+    mutationRef.current = true;
+    setMutationPending(true);
+    const abortController = createApiAbortController();
+    mutationAbortRef.current = abortController;
     try {
       const values = await form.validateFields();
+      if (!mountedRef.current || abortController.signal.aborted) return;
       setBlocking(true);
-      await adminApi.blockIpAddress(values);
+      await adminApi.blockIpAddress(values, { signal: abortController.signal });
+      if (!mountedRef.current || abortController.signal.aborted) return;
       message.success(t('pages.ipBlacklistAdmin.blocked'));
       setModalOpen(false);
       form.resetFields();
@@ -289,14 +302,21 @@ const IpBlacklistManagement: React.FC = () => {
       setIpAddress('');
       await loadData({ status: 'ALL', source: 'ALL', ipAddress: '' });
     } catch (error: unknown) {
+      if (!mountedRef.current || abortController.signal.aborted) return;
       if (isFormValidationError(error)) return;
       message.error(getApiErrorMessage(error, t('pages.ipBlacklistAdmin.blockFailed'), language));
     } finally {
-      setBlocking(false);
+      mutationRef.current = false;
+      if (mutationAbortRef.current === abortController) mutationAbortRef.current = null;
+      if (mountedRef.current) {
+        setBlocking(false);
+        setMutationPending(false);
+      }
     }
   };
 
   const openBlockModal = () => {
+    if (!mountedRef.current || mutationRef.current) return;
     if (!canBlockIp) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -321,6 +341,7 @@ const IpBlacklistManagement: React.FC = () => {
   };
 
   const refreshData = () => {
+    if (!mountedRef.current || mutationRef.current) return;
     loadData();
   };
 
@@ -332,12 +353,13 @@ const IpBlacklistManagement: React.FC = () => {
   };
 
   const closeBlockModal = () => {
-    if (blocking) return;
+    if (blocking || mutationRef.current) return;
     setModalOpen(false);
     form.resetFields();
   };
 
   const releaseEntry = useCallback(async (entry: IpBlacklistEntry) => {
+    if (!mountedRef.current || mutationRef.current) return;
     if (!canReleaseIp) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -346,15 +368,26 @@ const IpBlacklistManagement: React.FC = () => {
       message.warning(blacklistActionUnavailableMessage);
       return;
     }
+    mutationRef.current = true;
+    setMutationPending(true);
+    const abortController = createApiAbortController();
+    mutationAbortRef.current = abortController;
     setActing(entry.id);
     try {
-      await adminApi.releaseIpBlacklistEntry(entry.id);
+      await adminApi.releaseIpBlacklistEntry(entry.id, { signal: abortController.signal });
+      if (!mountedRef.current || abortController.signal.aborted) return;
       message.success(t('pages.ipBlacklistAdmin.released'));
       await loadData();
     } catch (error: unknown) {
+      if (!mountedRef.current || abortController.signal.aborted) return;
       message.error(getApiErrorMessage(error, t('pages.ipBlacklistAdmin.releaseFailed'), language));
     } finally {
-      setActing(null);
+      mutationRef.current = false;
+      if (mutationAbortRef.current === abortController) mutationAbortRef.current = null;
+      if (mountedRef.current) {
+        setActing(null);
+        setMutationPending(false);
+      }
     }
   }, [blacklistActionDisabled, blacklistActionUnavailableMessage, canReleaseIp, language, loadData, t]);
 
@@ -379,6 +412,7 @@ const IpBlacklistManagement: React.FC = () => {
   );
 
   const releaseSelectedEntries = async () => {
+    if (!mountedRef.current || mutationRef.current) return;
     if (!canReleaseIp) {
       message.error(t('adminLayout.noPermission'));
       return;
@@ -391,16 +425,32 @@ const IpBlacklistManagement: React.FC = () => {
       message.warning(t('pages.ipBlacklistAdmin.selectReleasableFirst'));
       return;
     }
+    mutationRef.current = true;
+    setMutationPending(true);
+    const abortController = createApiAbortController();
+    mutationAbortRef.current = abortController;
     setBatchActing(true);
     try {
-      const response = await adminApi.releaseIpBlacklistEntries(selectedReleasableIds, t('pages.ipBlacklistAdmin.batchReleaseReason'));
+      const response = await adminApi.releaseIpBlacklistEntries(
+        selectedReleasableIds,
+        t('pages.ipBlacklistAdmin.batchReleaseReason'),
+        100,
+        { signal: abortController.signal },
+      );
+      if (!mountedRef.current || abortController.signal.aborted) return;
       message.success(t('pages.ipBlacklistAdmin.batchReleaseDone', { count: response.data.releasedCount }));
       setSelectedEntryIds([]);
       await loadData();
     } catch (error: unknown) {
+      if (!mountedRef.current || abortController.signal.aborted) return;
       message.error(getApiErrorMessage(error, t('pages.ipBlacklistAdmin.batchReleaseFailed'), language));
     } finally {
-      setBatchActing(false);
+      mutationRef.current = false;
+      if (mutationAbortRef.current === abortController) mutationAbortRef.current = null;
+      if (mountedRef.current) {
+        setBatchActing(false);
+        setMutationPending(false);
+      }
     }
   };
 
