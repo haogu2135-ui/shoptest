@@ -14,6 +14,7 @@ import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -237,17 +238,7 @@ public class AdminRoleService {
         jdbcTemplate.update("UPDATE users SET role = ? WHERE role_code = ?",
                 SUPER_ADMIN,
                 SUPER_ADMIN);
-        jdbcTemplate.queryForList("SELECT code FROM admin_roles WHERE status = 'ACTIVE'", String.class)
-                .stream()
-                .map(this::normalize)
-                .filter(code -> !code.isEmpty() && !SUPER_ADMIN.equals(code))
-                .forEach(code -> jdbcTemplate.update("UPDATE users SET role = ? "
-                                + "WHERE role_code IS NOT NULL AND role_code <> '' "
-                                + "AND UPPER(role_code) = ? "
-                                + "AND (role IS NULL OR role <> ?)",
-                        ADMIN,
-                        code,
-                        SUPER_ADMIN));
+        normalizeActiveUserRoles();
     }
 
     public List<AdminRole> findAll(int maxRows) {
@@ -507,30 +498,98 @@ public class AdminRoleService {
 
     private void replacePermissions(String code, List<String> permissions) {
         jdbcTemplate.update("DELETE FROM admin_role_permissions WHERE role_code = ?", code);
-        for (String permission : permissions) {
-            jdbcTemplate.update("INSERT INTO admin_role_permissions (role_code, permission_key) VALUES (?, ?)", code, permission);
+        if (permissions == null || permissions.isEmpty()) {
+            return;
         }
+        jdbcTemplate.batchUpdate(
+                "INSERT INTO admin_role_permissions (role_code, permission_key) VALUES (?, ?)",
+                permissions.stream()
+                        .map(permission -> new Object[]{code, permission})
+                        .collect(Collectors.toList()));
     }
 
     private void addMissingPermissions(String code, List<String> permissions) {
-        for (String permission : sanitizePermissions(permissions)) {
-            Integer count = jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM admin_role_permissions WHERE role_code = ? AND permission_key = ?",
-                    Integer.class,
-                    code,
-                    permission);
-            if (count == null || count == 0) {
-                jdbcTemplate.update("INSERT INTO admin_role_permissions (role_code, permission_key) VALUES (?, ?)", code, permission);
-            }
+        List<String> sanitizedPermissions = sanitizePermissions(permissions);
+        if (sanitizedPermissions.isEmpty()) {
+            return;
         }
+        Set<String> existingPermissions = new LinkedHashSet<>(jdbcTemplate.queryForList(
+                "SELECT permission_key FROM admin_role_permissions WHERE role_code = ?",
+                String.class,
+                code));
+        List<String> missingPermissions = sanitizedPermissions.stream()
+                .filter(permission -> !existingPermissions.contains(permission))
+                .collect(Collectors.toList());
+        if (missingPermissions.isEmpty()) {
+            return;
+        }
+        jdbcTemplate.batchUpdate(
+                "INSERT INTO admin_role_permissions (role_code, permission_key) VALUES (?, ?)",
+                missingPermissions.stream()
+                        .map(permission -> new Object[]{code, permission})
+                        .collect(Collectors.toList()));
     }
 
     private void grantAllPermissionsToActiveAdminRoles() {
-        jdbcTemplate.queryForList("SELECT code FROM admin_roles WHERE status = 'ACTIVE'", String.class)
+        List<String> roleCodes = jdbcTemplate.queryForList("SELECT code FROM admin_roles WHERE status = 'ACTIVE'", String.class)
                 .stream()
                 .map(this::normalize)
                 .filter(code -> !code.isEmpty() && !"USER".equals(code))
-                .forEach(code -> addMissingPermissions(code, ALL_ADMIN_PERMISSIONS));
+                .distinct()
+                .collect(Collectors.toList());
+        if (roleCodes.isEmpty()) {
+            return;
+        }
+
+        Map<String, Set<String>> existingByRole = new LinkedHashMap<>();
+        for (Map<String, Object> row : jdbcTemplate.queryForList(
+                "SELECT role_code, permission_key FROM admin_role_permissions")) {
+            String roleCode = mapString(row, "role_code");
+            String permission = mapString(row, "permission_key");
+            if (!roleCode.isEmpty() && !permission.isEmpty()) {
+                existingByRole.computeIfAbsent(normalize(roleCode), ignored -> new LinkedHashSet<>()).add(permission);
+            }
+        }
+
+        List<Object[]> missingPermissions = new ArrayList<>();
+        for (String code : roleCodes) {
+            Set<String> existingPermissions = existingByRole.computeIfAbsent(code, ignored -> new LinkedHashSet<>());
+            for (String permission : ALL_ADMIN_PERMISSIONS) {
+                if (existingPermissions.add(permission)) {
+                    missingPermissions.add(new Object[]{code, permission});
+                }
+            }
+        }
+        if (!missingPermissions.isEmpty()) {
+            jdbcTemplate.batchUpdate(
+                    "INSERT INTO admin_role_permissions (role_code, permission_key) VALUES (?, ?)",
+                    missingPermissions);
+        }
+    }
+
+    private String mapString(Map<String, Object> row, String key) {
+        if (row == null || row.isEmpty()) {
+            return "";
+        }
+        Object value = row.get(key);
+        if (value == null) {
+            value = row.get(key.toUpperCase(Locale.ROOT));
+        }
+        return value == null ? "" : value.toString().trim();
+    }
+
+    private void normalizeActiveUserRoles() {
+        jdbcTemplate.update("UPDATE users u "
+                        + "JOIN admin_roles r ON UPPER(u.role_code) = UPPER(r.code) "
+                        + "SET u.role = ? "
+                        + "WHERE r.status = 'ACTIVE' "
+                        + "AND r.code IS NOT NULL AND TRIM(r.code) <> '' "
+                        + "AND UPPER(r.code) <> ? "
+                        + "AND u.role_code IS NOT NULL AND TRIM(u.role_code) <> '' "
+                        + "AND (u.role IS NULL OR u.role <> ?)",
+                ADMIN,
+                SUPER_ADMIN,
+                SUPER_ADMIN);
     }
 
     private List<String> sanitizePermissions(List<String> permissions) {

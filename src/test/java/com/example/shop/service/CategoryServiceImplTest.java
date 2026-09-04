@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -223,6 +224,30 @@ class CategoryServiceImplTest {
         verify(categoryRepository).findByParentIdIn(List.of(7L));
         verify(categoryRepository).findByParentIdIn(List.of(8L));
         verify(categoryRepository).findByParentIdIn(List.of(9L));
+    }
+
+    @Test
+    void saveReusesCategoryHierarchyTraversalForMoveValidationAndDepth() {
+        Category targetParent = validRootCategory();
+        targetParent.setId(9L);
+        targetParent.setPath("/9/");
+        Category moving = validRootCategory();
+        moving.setId(7L);
+        moving.setParentId(9L);
+        Category child = validRootCategory();
+        child.setId(8L);
+        child.setParentId(7L);
+        when(categoryRepository.findById(9L)).thenReturn(Optional.of(targetParent));
+        when(categoryRepository.findByParentIdIn(List.of(7L))).thenReturn(List.of(child));
+        when(categoryRepository.findByParentIdIn(List.of(8L))).thenReturn(List.of());
+
+        Category saved = categoryService.save(moving);
+
+        assertEquals(2, saved.getLevel());
+        assertEquals("/9/7/", saved.getPath());
+        verify(categoryRepository, times(1)).findById(9L);
+        verify(categoryRepository, times(2)).findByParentIdIn(List.of(7L));
+        verify(categoryRepository, times(2)).findByParentIdIn(List.of(8L));
     }
 
     private Category validRootCategory() {

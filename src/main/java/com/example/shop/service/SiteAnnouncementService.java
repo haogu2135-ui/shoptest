@@ -122,18 +122,27 @@ public class SiteAnnouncementService {
         String safeStatus = normalizeStatusFilter(status);
         String keywordPattern = searchKeywordPattern(keyword);
         SiteAnnouncementAdminSummaryResponse response = new SiteAnnouncementAdminSummaryResponse();
-        response.setTotalAnnouncements(repository.countAdmin(safeStatus, keywordPattern));
-        response.setActiveAnnouncements(repository.countAdminCurrentlyActive(safeStatus, keywordPattern, now));
-        response.setScheduledAnnouncements(repository.countAdminScheduled(safeStatus, keywordPattern, now));
-        response.setExpiredAnnouncements(repository.countAdminExpired(safeStatus, keywordPattern, now));
-        response.setInactiveAnnouncements(repository.countAdmin(scopedStatus(safeStatus, "INACTIVE"), keywordPattern));
-        response.setLinkedAnnouncements(repository.countAdminLinked(safeStatus, keywordPattern));
+        List<Object[]> metricRows = repository.summarizeAdminMetrics(safeStatus, keywordPattern, now);
+        Object[] metrics = metricRows == null || metricRows.isEmpty() ? null : metricRows.get(0);
+        response.setTotalAnnouncements(metricValue(metrics, 0));
+        response.setActiveAnnouncements(metricValue(metrics, 1));
+        response.setScheduledAnnouncements(metricValue(metrics, 2));
+        response.setExpiredAnnouncements(metricValue(metrics, 3));
+        response.setInactiveAnnouncements(metricValue(metrics, 4));
+        response.setLinkedAnnouncements(metricValue(metrics, 5));
         response.setMaxActiveRows(activeLimit());
         response.setTitleMaxChars(titleMaxChars());
         response.setContentMaxChars(contentMaxChars());
         response.setLinkUrlMaxChars(linkUrlMaxChars());
         response.setCheckedAt(now);
         return response;
+    }
+
+    private long metricValue(Object[] metrics, int index) {
+        if (metrics == null || index < 0 || index >= metrics.length || !(metrics[index] instanceof Number)) {
+            return 0L;
+        }
+        return ((Number) metrics[index]).longValue();
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -232,13 +241,6 @@ public class SiteAnnouncementService {
         }
         String normalized = status.trim().toUpperCase(Locale.ROOT);
         return "ACTIVE".equals(normalized) || "INACTIVE".equals(normalized) ? normalized : null;
-    }
-
-    private String scopedStatus(String requestedStatus, String targetStatus) {
-        if (requestedStatus == null) {
-            return targetStatus;
-        }
-        return targetStatus.equals(requestedStatus) ? targetStatus : "__NO_MATCH__";
     }
 
     private String searchKeywordPattern(String keyword) {

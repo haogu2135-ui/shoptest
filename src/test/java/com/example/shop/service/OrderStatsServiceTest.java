@@ -130,6 +130,7 @@ class OrderStatsServiceTest {
                 Map.entry("pendingPaymentOrders", 3L),
                 Map.entry("pendingShipmentOrders", 4L),
                 Map.entry("shippedOrders", 5L),
+                Map.entry("refundingPayments", 2L),
                 Map.entry("ordersWithTracking", 3L),
                 Map.entry("ordersWithoutTracking", 2L),
                 Map.entry("completedOrders", 6L),
@@ -162,6 +163,7 @@ class OrderStatsServiceTest {
         assertEquals(new BigDecimal("75.00"), stats.get("averageOrderValue"));
         assertEquals(new BigDecimal("40.00"), stats.get("conversionRate"));
         assertEquals(new BigDecimal("25.00"), stats.get("refundRate"));
+        assertEquals(2L, stats.get("refundingPayments"));
         assertEquals(10L, stats.get("operationsSlaRiskTotal"));
         assertEquals(Map.of(
                 "stalePendingPayment", 1L,

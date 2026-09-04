@@ -57,15 +57,13 @@ public class WishlistController {
     @PostMapping("/toggle")
     public Map<String, Object> toggle(@RequestParam(required = false) Long userId, @RequestParam Long productId, Authentication authentication) {
         Long effectiveUserId = resolveWishlistUserId(userId, authentication);
-        wishlistService.toggleWishlist(effectiveUserId, productId);
-        return Map.of("wishlisted", wishlistService.isWishlisted(effectiveUserId, productId));
+        return Map.of("wishlisted", wishlistService.toggleWishlist(effectiveUserId, productId));
     }
 
     @PostMapping("/me/toggle")
     public Map<String, Object> toggleMine(@RequestParam Long productId, Authentication authentication) {
         Long userId = SecurityUtils.requireUser(authentication).getId();
-        wishlistService.toggleWishlist(userId, productId);
-        return Map.of("wishlisted", wishlistService.isWishlisted(userId, productId));
+        return Map.of("wishlisted", wishlistService.toggleWishlist(userId, productId));
     }
 
     @DeleteMapping

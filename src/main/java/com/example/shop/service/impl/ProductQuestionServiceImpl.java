@@ -86,23 +86,25 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
         Boolean answeredFilter = normalizedAnsweredFilter(status);
         String normalizedSearch = normalizeSearch(search);
         ProductQuestionAdminSummaryResponse response = new ProductQuestionAdminSummaryResponse();
-        if (answeredFilter == null && normalizedSearch == null) {
-            response.setTotalQuestions(questionRepository.countAllQuestions());
-            response.setUnansweredQuestions(questionRepository.countUnansweredQuestions());
-            response.setAnsweredQuestions(questionRepository.countAnsweredQuestions());
-            response.setStaleUnansweredQuestions(questionRepository.countStaleUnansweredQuestions(LocalDateTime.now().minusHours(staleHours)));
-        } else {
-            response.setTotalQuestions(questionRepository.countAdminQuestions(answeredFilter, normalizedSearch));
-            response.setUnansweredQuestions(questionRepository.countAdminUnansweredQuestions(answeredFilter, normalizedSearch));
-            response.setAnsweredQuestions(questionRepository.countAdminAnsweredQuestions(answeredFilter, normalizedSearch));
-            response.setStaleUnansweredQuestions(questionRepository.countAdminStaleUnansweredQuestions(
-                    answeredFilter, normalizedSearch, LocalDateTime.now().minusHours(staleHours)));
-        }
+        List<Object[]> metricRows = questionRepository.summarizeAdminQuestionMetrics(
+                answeredFilter, normalizedSearch, LocalDateTime.now().minusHours(staleHours));
+        Object[] metrics = metricRows == null || metricRows.isEmpty() ? null : metricRows.get(0);
+        response.setTotalQuestions(metricValue(metrics, 0));
+        response.setUnansweredQuestions(metricValue(metrics, 1));
+        response.setAnsweredQuestions(metricValue(metrics, 2));
+        response.setStaleUnansweredQuestions(metricValue(metrics, 3));
         response.setStaleHours(staleHours);
         response.setMaxAdminRows(maxAdminRows);
         response.setResponseScore(calculateResponseScore(response));
         response.setCheckedAt(Instant.now().toString());
         return response;
+    }
+
+    private long metricValue(Object[] metrics, int index) {
+        if (metrics == null || index < 0 || index >= metrics.length || !(metrics[index] instanceof Number)) {
+            return 0L;
+        }
+        return ((Number) metrics[index]).longValue();
     }
 
     @Override

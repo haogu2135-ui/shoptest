@@ -25,6 +25,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -113,7 +114,7 @@ class WishlistServiceTest {
 
         assertDoesNotThrow(() -> service.addToWishlist(7L, 10L));
 
-        verify(wishlistMapper).findByUserAndProduct(7L, 10L);
+        verify(wishlistMapper, times(1)).findByUserAndProduct(7L, 10L);
         verify(productRepository).findById(10L);
         verify(wishlistMapper).insert(any(Wishlist.class));
     }
@@ -137,9 +138,34 @@ class WishlistServiceTest {
     void addSkipsProductLookupWhenAlreadyWishlisted() {
         when(wishlistMapper.findByUserAndProduct(7L, 10L)).thenReturn(wishlist(10L));
 
-        service.addToWishlist(7L, 10L);
+        assertTrue(service.addToWishlist(7L, 10L));
 
         verify(productRepository, never()).findById(eq(10L));
+        verify(wishlistMapper, never()).insert(any(Wishlist.class));
+    }
+
+    @Test
+    void toggleAddsWithoutRepeatingTheAlreadyWishlistedCheck() {
+        when(productRepository.findById(10L)).thenReturn(Optional.of(product(10L)));
+
+        assertTrue(service.toggleWishlist(7L, 10L));
+
+        verify(wishlistMapper, times(1)).findByUserAndProduct(7L, 10L);
+        verify(productRepository).findById(10L);
+        verify(wishlistMapper).countByUserId(7L);
+        verify(wishlistMapper).insert(any(Wishlist.class));
+    }
+
+    @Test
+    void toggleRemovesAndReturnsFalseWithoutLoadingProductOrCount() {
+        when(wishlistMapper.findByUserAndProduct(7L, 10L)).thenReturn(wishlist(10L));
+
+        assertFalse(service.toggleWishlist(7L, 10L));
+
+        verify(wishlistMapper).findByUserAndProduct(7L, 10L);
+        verify(wishlistMapper).deleteByUserAndProduct(7L, 10L);
+        verify(productRepository, never()).findById(any());
+        verify(wishlistMapper, never()).countByUserId(any());
         verify(wishlistMapper, never()).insert(any(Wishlist.class));
     }
 

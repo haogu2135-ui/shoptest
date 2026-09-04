@@ -29,6 +29,37 @@ class SupportSessionMapperContractTest {
                 "admin support session page should keep unread sessions prioritized");
     }
 
+    @Test
+    void regularSessionQueriesUseSessionScopedUnreadCounts() throws Exception {
+        String mapper = Files.readString(
+                Path.of("src/main/resources/mapper/SupportSessionMapper.xml"),
+                StandardCharsets.UTF_8);
+        String sessionColumns = sqlFragment(mapper, "supportSessionColumns");
+
+        assertTrue(sessionColumns.contains("FROM support_messages unread_user"));
+        assertTrue(sessionColumns.contains("unread_user.session_id = ss.id"));
+        assertTrue(sessionColumns.contains("FROM support_messages unread_admin"));
+        assertTrue(sessionColumns.contains("unread_admin.session_id = ss.id"));
+        assertFalse(sessionColumns.contains("unread.unread_by_user"));
+        assertFalse(selectStatement(mapper, "findById").contains("supportUnreadJoin"));
+        assertFalse(selectStatement(mapper, "findByUserId").contains("supportUnreadJoin"));
+    }
+
+    @Test
+    void supportMessageSchemaIncludesSessionScopedUnreadIndex() throws Exception {
+        String schema = Files.readString(Path.of("src/main/resources/schema.sql"), StandardCharsets.UTF_8);
+        String migration = Files.readString(
+                Path.of("src/main/resources/db/migration/V1__init.sql"),
+                StandardCharsets.UTF_8);
+        String config = Files.readString(
+                Path.of("src/main/java/com/example/shop/config/CommerceSchemaConfig.java"),
+                StandardCharsets.UTF_8);
+
+        assertTrue(schema.contains("idx_support_messages_session_read (session_id, is_read_by_user, is_read_by_admin)"));
+        assertTrue(migration.contains("idx_support_messages_session_read (session_id, is_read_by_user, is_read_by_admin)"));
+        assertTrue(config.contains("idx_support_messages_session_read"));
+    }
+
     private String sqlFragment(String mapper, String id) {
         return block(mapper, "<sql id=\"" + id + "\">", "</sql>");
     }

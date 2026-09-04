@@ -44,35 +44,22 @@ public interface PetGalleryPhotoRepository extends JpaRepository<PetGalleryPhoto
                                             @Param("keyword") String keyword,
                                             Pageable pageable);
 
-    @Query("select count(p) from PetGalleryPhoto p" + ADMIN_FILTER_CLAUSE)
-    long countAdminPhotos(@Param("status") String status,
-                          @Param("source") String source,
-                          @Param("keyword") String keyword);
+    @Query("select p.imageUrl from PetGalleryPhoto p where p.imageUrl in :imageUrls")
+    List<String> findImageUrlsByImageUrlIn(@Param("imageUrls") List<String> imageUrls);
 
-    @Query("select count(p) from PetGalleryPhoto p" + ADMIN_FILTER_CLAUSE
-            + " and (p.source is null or p.source = '' or p.source = :userUploadSource)")
-    long countAdminPhotosByUserUploadSource(@Param("status") String status,
-                                            @Param("source") String source,
-                                            @Param("keyword") String keyword,
-                                            @Param("userUploadSource") String userUploadSource);
-
-    @Query("select count(p) from PetGalleryPhoto p" + ADMIN_FILTER_CLAUSE + " and p.source = :countedSource")
-    long countAdminPhotosBySource(@Param("status") String status,
-                                  @Param("source") String source,
-                                  @Param("keyword") String keyword,
-                                  @Param("countedSource") String countedSource);
-
-    @Query("select count(p) from PetGalleryPhoto p" + ADMIN_FILTER_CLAUSE + " and p.createdAt >= :since")
-    long countAdminRecentPhotos(@Param("status") String status,
-                                @Param("source") String source,
-                                @Param("keyword") String keyword,
-                                @Param("since") LocalDateTime since);
-
-    @Query("select count(p) from PetGalleryPhoto p" + ADMIN_FILTER_CLAUSE + " and p.fileSize > :minFileSize")
-    long countAdminLargePhotos(@Param("status") String status,
-                               @Param("source") String source,
-                               @Param("keyword") String keyword,
-                               @Param("minFileSize") long minFileSize);
+    @Query("select count(p),"
+            + " coalesce(sum(case when p.source is null or p.source = '' or p.source = :userUploadSource then 1 else 0 end), 0),"
+            + " coalesce(sum(case when p.source = :seedSource then 1 else 0 end), 0),"
+            + " coalesce(sum(case when p.createdAt >= :since then 1 else 0 end), 0),"
+            + " coalesce(sum(case when p.fileSize > :minFileSize then 1 else 0 end), 0)"
+            + " from PetGalleryPhoto p" + ADMIN_FILTER_CLAUSE)
+    List<Object[]> summarizeAdminMetrics(@Param("status") String status,
+                                         @Param("source") String source,
+                                         @Param("keyword") String keyword,
+                                         @Param("userUploadSource") String userUploadSource,
+                                         @Param("seedSource") String seedSource,
+                                         @Param("since") LocalDateTime since,
+                                         @Param("minFileSize") long minFileSize);
 
     boolean existsByImageUrl(String imageUrl);
 

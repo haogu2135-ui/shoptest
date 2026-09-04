@@ -129,21 +129,25 @@ public class SystemAlertService {
 
     public SystemAlertSummaryResponse summary() {
         SystemAlertSummaryResponse response = new SystemAlertSummaryResponse();
-        response.setOpenCount(countByStatus(STATUS_OPEN));
-        response.setAcknowledgedCount(countByStatus(STATUS_ACKNOWLEDGED));
-        response.setResolvedCount(countByStatus(STATUS_RESOLVED));
         response.setMaxSearchRows(searchMaxRows());
         response.setMaxBatchActionSize(batchActionMaxSize());
         response.setMaxRetentionDays(retentionMaxDays());
-        Map<String, Long> bySeverity = jdbcTemplate.queryForList(
-                        "SELECT severity, COUNT(*) AS total FROM system_alerts WHERE status = ? GROUP BY severity",
-                        STATUS_OPEN)
-                .stream()
-                .collect(Collectors.toMap(
-                        row -> String.valueOf(row.get("severity")),
-                        row -> ((Number) row.get("total")).longValue(),
-                        (left, right) -> left,
-                        LinkedHashMap::new));
+        Map<String, Long> bySeverity = new LinkedHashMap<>();
+        jdbcTemplate.queryForList(
+                        "SELECT status, severity, COUNT(*) AS total FROM system_alerts "
+                                + "GROUP BY status, severity ORDER BY status, severity")
+                .forEach(row -> {
+                    String status = String.valueOf(row.get("status"));
+                    long total = numberValue(row.get("total"));
+                    if (STATUS_OPEN.equals(status)) {
+                        response.setOpenCount(response.getOpenCount() + total);
+                        bySeverity.merge(String.valueOf(row.get("severity")), total, Long::sum);
+                    } else if (STATUS_ACKNOWLEDGED.equals(status)) {
+                        response.setAcknowledgedCount(response.getAcknowledgedCount() + total);
+                    } else if (STATUS_RESOLVED.equals(status)) {
+                        response.setResolvedCount(response.getResolvedCount() + total);
+                    }
+                });
         response.setOpenBySeverity(bySeverity);
         response.setCheckedAt(Instant.now().toString());
         return response;
@@ -475,9 +479,8 @@ public class SystemAlertService {
         return rows.stream().findFirst();
     }
 
-    private long countByStatus(String status) {
-        Long count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM system_alerts WHERE status = ?", Long.class, status);
-        return count == null ? 0 : count;
+    private long numberValue(Object value) {
+        return value instanceof Number ? ((Number) value).longValue() : 0L;
     }
 
     private SystemAlert mapAlert(ResultSet rs) throws SQLException {

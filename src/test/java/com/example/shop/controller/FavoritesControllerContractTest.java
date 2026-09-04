@@ -23,8 +23,8 @@ class FavoritesControllerContractTest {
                 "favorites should keep the legacy route at the controller boundary");
         assertTrue(source.contains("public Map<String, Object> addFavorite("),
                 "favorite add should return the current object payload contract");
-        assertTrue(source.contains("return Map.of(\"wishlisted\", wishlistService.isWishlisted(userId, effectiveProductId));"),
-                "favorite add should return the current wishlisted boolean payload");
+        assertTrue(source.contains("return Map.of(\"wishlisted\", wishlistService.addToWishlist(userId, effectiveProductId));"),
+                "favorite add should return the add operation's wishlisted boolean payload");
         assertTrue(source.contains("public Map<String, String> removeFavorite("),
                 "favorite removal should return the current message payload contract");
         assertFalse(source.contains("Result<Boolean>"),

@@ -87,15 +87,9 @@ class CouponServiceTest {
         when(runtimeConfig.getInt("admin.coupons.total-quantity-max", 100_000)).thenReturn(200_000);
         when(runtimeConfig.getInt("admin.coupons.expiring-soon-days", 7)).thenReturn(14);
         when(runtimeConfig.getInt("admin.coupons.low-remaining-threshold", 10)).thenReturn(25);
-        when(couponRepository.countAdminCoupons(isNull(), isNull(), isNull(), isNull())).thenReturn(11L);
-        when(couponRepository.countAdminCoupons(isNull(), isNull(), eq("ACTIVE"), isNull())).thenReturn(7L);
-        when(couponRepository.countAdminCoupons(isNull(), isNull(), eq("INACTIVE"), isNull())).thenReturn(4L);
-        when(couponRepository.countAdminCoupons(isNull(), isNull(), eq("ACTIVE"), eq("PUBLIC"))).thenReturn(5L);
-        when(couponRepository.countAdminActiveExpiringBetween(
-                isNull(), isNull(), isNull(), isNull(), any(LocalDateTime.class), any(LocalDateTime.class)))
-                .thenReturn(2L);
-        when(couponRepository.countAdminActiveLowRemaining(isNull(), isNull(), isNull(), isNull(), eq(25)))
-                .thenReturn(3L);
+        when(couponRepository.summarizeAdminMetrics(
+                isNull(), isNull(), isNull(), isNull(), any(LocalDateTime.class), any(LocalDateTime.class), eq(25)))
+                .thenReturn(Collections.singletonList(new Object[]{11L, 7L, 4L, 5L, 2L, 3L}));
 
         CouponAdminSummaryResponse summary = service.adminSummary();
 
@@ -119,8 +113,8 @@ class CouponServiceTest {
 
         ArgumentCaptor<LocalDateTime> startCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
         ArgumentCaptor<LocalDateTime> endCaptor = ArgumentCaptor.forClass(LocalDateTime.class);
-        verify(couponRepository).countAdminActiveExpiringBetween(
-                isNull(), isNull(), isNull(), isNull(), startCaptor.capture(), endCaptor.capture());
+        verify(couponRepository).summarizeAdminMetrics(
+                isNull(), isNull(), isNull(), isNull(), startCaptor.capture(), endCaptor.capture(), eq(25));
         assertEquals(14, java.time.Duration.between(startCaptor.getValue(), endCaptor.getValue()).toDays());
     }
 
@@ -335,6 +329,7 @@ class CouponServiceTest {
         int granted = service.grant(5L, Arrays.asList(2L, 2L, null, -1L, 3L));
 
         assertEquals(2, granted);
+        verify(userCouponMapper).findUserIdsByCouponIdAndUserIdIn(5L, List.of(2L, 3L));
         ArgumentCaptor<UserCoupon> userCouponCaptor = ArgumentCaptor.forClass(UserCoupon.class);
         verify(userCouponMapper, org.mockito.Mockito.times(2)).insert(userCouponCaptor.capture());
         assertEquals(List.of(2L, 3L), userCouponCaptor.getAllValues().stream()

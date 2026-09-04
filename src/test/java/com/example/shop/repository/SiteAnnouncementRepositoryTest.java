@@ -64,6 +64,30 @@ class SiteAnnouncementRepositoryTest {
                 rows.stream().map(SiteAnnouncement::getId).collect(java.util.stream.Collectors.toList()));
     }
 
+    @Test
+    void summarizeAdminMetricsCombinesStatusAndTimeSignals() {
+        LocalDateTime now = LocalDateTime.of(2026, 5, 24, 12, 0);
+        repository.save(announcement("Current linked", "ACTIVE", now.minusHours(2), now.plusHours(2), "/coupons", 1));
+        repository.save(announcement("Current", "ACTIVE", null, null, null, 2));
+        repository.save(announcement("Scheduled", "ACTIVE", now.plusHours(1), now.plusDays(2), "/products", 3));
+        repository.save(announcement("Expired", "ACTIVE", now.minusDays(3), now.minusHours(1), null, 4));
+        repository.save(announcement("Inactive linked", "INACTIVE", null, null, "/help", 5));
+        repository.flush();
+
+        Object[] metrics = repository.summarizeAdminMetrics(null, null, now).get(0);
+
+        assertEquals(5L, ((Number) metrics[0]).longValue());
+        assertEquals(2L, ((Number) metrics[1]).longValue());
+        assertEquals(1L, ((Number) metrics[2]).longValue());
+        assertEquals(1L, ((Number) metrics[3]).longValue());
+        assertEquals(1L, ((Number) metrics[4]).longValue());
+        assertEquals(3L, ((Number) metrics[5]).longValue());
+
+        Object[] activeMetrics = repository.summarizeAdminMetrics("ACTIVE", null, now).get(0);
+        assertEquals(4L, ((Number) activeMetrics[0]).longValue());
+        assertEquals(0L, ((Number) activeMetrics[4]).longValue());
+    }
+
     private SiteAnnouncement announcement(String title,
                                           String status,
                                           LocalDateTime startsAt,

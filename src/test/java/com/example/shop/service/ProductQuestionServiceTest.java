@@ -14,6 +14,7 @@ import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Pageable;
 
 import java.time.LocalDateTime;
+import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
 
@@ -129,10 +130,9 @@ class ProductQuestionServiceTest {
     void adminSummaryCalculatesResponseScoreAndRuntimeLimits() {
         when(runtimeConfig.getInt("product-question.admin.stale-hours", 24)).thenReturn(0);
         when(runtimeConfig.getInt("product-question.admin.max-rows", 200)).thenReturn(5000);
-        when(questionRepository.countAllQuestions()).thenReturn(12L);
-        when(questionRepository.countUnansweredQuestions()).thenReturn(3L);
-        when(questionRepository.countAnsweredQuestions()).thenReturn(9L);
-        when(questionRepository.countStaleUnansweredQuestions(any(LocalDateTime.class))).thenReturn(2L);
+        when(questionRepository.summarizeAdminQuestionMetrics(
+                isNull(), isNull(), any(LocalDateTime.class)))
+                .thenReturn(Collections.singletonList(new Object[]{12L, 3L, 9L, 2L}));
 
         ProductQuestionAdminSummaryResponse summary = service.adminSummary();
 
@@ -147,10 +147,9 @@ class ProductQuestionServiceTest {
 
     @Test
     void adminSummaryUsesActiveStatusAndSearchFilters() {
-        when(questionRepository.countAdminQuestions(false, "puppy harness")).thenReturn(4L);
-        when(questionRepository.countAdminUnansweredQuestions(false, "puppy harness")).thenReturn(4L);
-        when(questionRepository.countAdminAnsweredQuestions(false, "puppy harness")).thenReturn(0L);
-        when(questionRepository.countAdminStaleUnansweredQuestions(eq(false), eq("puppy harness"), any(LocalDateTime.class))).thenReturn(1L);
+        when(questionRepository.summarizeAdminQuestionMetrics(
+                eq(false), eq("puppy harness"), any(LocalDateTime.class)))
+                .thenReturn(Collections.singletonList(new Object[]{4L, 4L, 0L, 1L}));
 
         ProductQuestionAdminSummaryResponse summary = service.adminSummary(" unanswered ", "  Puppy\tHarness  ");
 
@@ -158,10 +157,7 @@ class ProductQuestionServiceTest {
         assertEquals(4L, summary.getUnansweredQuestions());
         assertEquals(0L, summary.getAnsweredQuestions());
         assertEquals(1L, summary.getStaleUnansweredQuestions());
-        verify(questionRepository).countAdminQuestions(false, "puppy harness");
-        verify(questionRepository).countAdminUnansweredQuestions(false, "puppy harness");
-        verify(questionRepository).countAdminAnsweredQuestions(false, "puppy harness");
-        verify(questionRepository).countAdminStaleUnansweredQuestions(eq(false), eq("puppy harness"), any(LocalDateTime.class));
-        verify(questionRepository, never()).countAllQuestions();
+        verify(questionRepository).summarizeAdminQuestionMetrics(
+                eq(false), eq("puppy harness"), any(LocalDateTime.class));
     }
 }

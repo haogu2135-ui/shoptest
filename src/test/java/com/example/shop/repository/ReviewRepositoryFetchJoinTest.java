@@ -11,6 +11,7 @@ import org.springframework.boot.test.autoconfigure.orm.jpa.DataJpaTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.test.context.TestPropertySource;
+import org.springframework.data.domain.PageRequest;
 
 import javax.persistence.EntityManager;
 import java.math.BigDecimal;
@@ -67,6 +68,35 @@ class ReviewRepositoryFetchJoinTest {
         assertEquals(5D, ((Number) approvedMetrics[5]).doubleValue(), 0.0001D);
     }
 
+    @Test
+    void publicReviewQueriesExcludeInactiveProductsAtDatabaseLevel() {
+        Product activeProduct = persistProduct("ACTIVE", "Active Trail Carrier");
+        Product inactiveProduct = persistProduct("INACTIVE", "Inactive Trail Carrier");
+        User user = persistUser();
+        persistReview(activeProduct, user, "APPROVED", 5, null);
+        persistReview(activeProduct, user, "PENDING", 4, null);
+        persistReview(inactiveProduct, user, "APPROVED", 1, null);
+        persistReview(inactiveProduct, user, "PENDING", 2, null);
+        entityManager.flush();
+
+        assertEquals(1, reviewRepository.findApprovedPublicByProductId(
+                activeProduct.getId(), PageRequest.of(0, 10)).size());
+        assertEquals(0, reviewRepository.findApprovedPublicByProductId(
+                inactiveProduct.getId(), PageRequest.of(0, 10)).size());
+        assertEquals(2, reviewRepository.findPublicByProductIdIncludingUserPending(
+                activeProduct.getId(), user.getId(), PageRequest.of(0, 10)).size());
+        assertEquals(0, reviewRepository.findPublicByProductIdIncludingUserPending(
+                inactiveProduct.getId(), user.getId(), PageRequest.of(0, 10)).size());
+        assertEquals(1, reviewRepository.countApprovedPublicByProductId(activeProduct.getId()));
+        assertEquals(0, reviewRepository.countApprovedPublicByProductId(inactiveProduct.getId()));
+        assertEquals(2, reviewRepository.countPublicByProductIdIncludingUserPending(
+                activeProduct.getId(), user.getId()));
+        assertEquals(0, reviewRepository.countPublicByProductIdIncludingUserPending(
+                inactiveProduct.getId(), user.getId()));
+        assertEquals(5D, reviewRepository.findAverageRatingByProductId(activeProduct.getId()), 0.0001D);
+        assertEquals(0D, reviewRepository.findAverageRatingByProductId(inactiveProduct.getId()), 0.0001D);
+    }
+
     private void persistReview(Product product, User user, String status, int rating, String adminReply) {
         Review review = new Review();
         review.setProduct(product);
@@ -79,12 +109,20 @@ class ReviewRepositoryFetchJoinTest {
     }
 
     private Product persistProduct() {
+        return persistProduct("ACTIVE", "Trail Carrier");
+    }
+
+    private Product persistProduct(String status) {
+        return persistProduct(status, "Trail Carrier");
+    }
+
+    private Product persistProduct(String status, String name) {
         Product product = new Product();
-        product.setName("Trail Carrier");
+        product.setName(name);
         product.setPrice(new BigDecimal("39.99"));
         product.setStock(20);
         product.setCategoryId(1L);
-        product.setStatus("ACTIVE");
+        product.setStatus(status);
         entityManager.persist(product);
         return product;
     }

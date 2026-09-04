@@ -57,10 +57,15 @@ public class WishlistService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void addToWishlist(Long userId, Long productId) {
+    public boolean addToWishlist(Long userId, Long productId) {
         requirePositiveId(userId, "User");
         requirePositiveId(productId, "Product");
-        if (isWishlisted(userId, productId)) return;
+        if (wishlistMapper.findByUserAndProduct(userId, productId) != null) return true;
+        insertWishlist(userId, productId);
+        return true;
+    }
+
+    private void insertWishlist(Long userId, Long productId) {
         requireWishlistEligibleProduct(productId);
         enforceWishlistItemLimit(userId);
         Wishlist w = new Wishlist();
@@ -87,11 +92,15 @@ public class WishlistService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void toggleWishlist(Long userId, Long productId) {
-        if (isWishlisted(userId, productId)) {
-            removeFromWishlist(userId, productId);
+    public boolean toggleWishlist(Long userId, Long productId) {
+        requirePositiveId(userId, "User");
+        requirePositiveId(productId, "Product");
+        if (wishlistMapper.findByUserAndProduct(userId, productId) != null) {
+            wishlistMapper.deleteByUserAndProduct(userId, productId);
+            return false;
         } else {
-            addToWishlist(userId, productId);
+            insertWishlist(userId, productId);
+            return true;
         }
     }
 

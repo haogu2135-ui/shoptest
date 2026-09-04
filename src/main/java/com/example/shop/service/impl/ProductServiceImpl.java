@@ -1590,6 +1590,17 @@ public class ProductServiceImpl implements ProductService {
             List<CsvUtils.Record> records = CsvUtils.parseRecords(reader);
             Map<String, Integer> headerIndex = null;
             int headerColumnCount = 0;
+            if (!records.isEmpty()) {
+                List<String> firstValues = new ArrayList<>(records.get(0).getValues());
+                if (!firstValues.isEmpty()) {
+                    firstValues.set(0, firstValues.get(0).replace("\uFEFF", ""));
+                }
+                if (isProductImportHeader(firstValues)) {
+                    headerIndex = productImportHeaderIndex(firstValues);
+                    headerColumnCount = firstValues.size();
+                }
+            }
+            Map<Long, Product> existingProducts = loadExistingImportProducts(records, headerIndex);
             for (int i = 0; i < records.size(); i++) {
                 CsvUtils.Record record = records.get(i);
                 List<String> values = new ArrayList<>(record.getValues());
@@ -1644,10 +1655,8 @@ public class ProductServiceImpl implements ProductService {
                     Product existingProduct = null;
                     if (product.getId() != null) {
                         requirePositive(product.getId(), "id");
-                        Optional<Product> existing = productRepository.findById(product.getId());
-                        if (existing.isPresent()) {
-                            existingProduct = existing.get();
-                        } else {
+                        existingProduct = existingProducts.get(product.getId());
+                        if (existingProduct == null) {
                             throw new IllegalArgumentException("id does not exist: " + product.getId() + ". Leave id blank to create a new product.");
                         }
                     }
@@ -1693,6 +1702,56 @@ public class ProductServiceImpl implements ProductService {
         }
         result.setStatus(importStatus(preview, result));
         return result;
+    }
+
+    private Map<Long, Product> loadExistingImportProducts(List<CsvUtils.Record> records, Map<String, Integer> headerIndex) {
+        if (productRepository == null || records == null || records.isEmpty()) {
+            return Map.of();
+        }
+        if (headerIndex != null && (!duplicateImportHeaders(records.get(0).getValues()).isEmpty()
+                || !unsupportedImportHeaders(records.get(0).getValues()).isEmpty()
+                || !missingRequiredImportHeaders(headerIndex).isEmpty())) {
+            return Map.of();
+        }
+
+        int maxRows = normalizedImportMaxRows();
+        int totalRows = 0;
+        Set<Long> ids = new LinkedHashSet<>();
+        for (int i = 0; i < records.size() && totalRows < maxRows; i++) {
+            List<String> values = new ArrayList<>(records.get(i).getValues());
+            if (i == 0 && !values.isEmpty()) {
+                values.set(0, values.get(0).replace("\uFEFF", ""));
+            }
+            if (i == 0 && headerIndex != null) {
+                continue;
+            }
+            if (values.stream().allMatch(value -> value == null || value.trim().isEmpty())) {
+                continue;
+            }
+            totalRows++;
+            String rawId = importValue(values, headerIndex, "id", 0);
+            if (rawId == null || rawId.isBlank()) {
+                continue;
+            }
+            try {
+                long id = Long.parseLong(rawId);
+                if (id > 0) {
+                    ids.add(id);
+                }
+            } catch (NumberFormatException ignored) {
+                // The main row parser reports the field-specific invalid-id error.
+            }
+        }
+        if (ids.isEmpty()) {
+            return Map.of();
+        }
+        List<Product> products = productRepository.findAllById(new ArrayList<>(ids));
+        if (products == null || products.isEmpty()) {
+            return Map.of();
+        }
+        return products.stream()
+                .filter(product -> product != null && product.getId() != null)
+                .collect(Collectors.toMap(Product::getId, product -> product, (left, right) -> left, LinkedHashMap::new));
     }
 
     private BufferedReader importCsvReader(MultipartFile file) throws IOException {

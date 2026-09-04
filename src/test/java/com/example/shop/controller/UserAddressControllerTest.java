@@ -21,6 +21,8 @@ class UserAddressControllerTest {
         assertTrue(source.contains("@Valid @RequestBody(required = false) UserAddressRequest request"));
         assertTrue(source.contains("throw new ResponseStatusException(HttpStatus.BAD_REQUEST, \"Address is required\")"));
         assertTrue(source.contains("request.toEntity(user.getId())"));
+        assertTrue(source.contains("UserAddress saved = userAddressService.addAddress(address);"));
+        assertTrue(!source.contains("userAddressService.getAddress(address.getId())"));
         assertTrue(source.contains("address.setIsDefault(existing.getIsDefault());"));
         assertTrue(source.contains("userAddressService.setDefault(id);"));
         assertTrue(source.contains("UserAddressResponse::from"));

@@ -107,13 +107,17 @@ public class ProductDataQualityConfig {
                         rs.getString("image_url"),
                         rs.getString("images"),
                         rs.getString("variants")));
+        List<Object[]> updates = new ArrayList<>();
         for (ProductVariantRow row : rows) {
             String updatedVariants = variantsWithImages(row);
             if (updatedVariants != null && !updatedVariants.equals(row.variants)) {
-                jdbcTemplate.update("UPDATE products SET variants = ?, updated_at = COALESCE(updated_at, NOW()) WHERE id = ?",
-                        updatedVariants,
-                        row.id);
+                updates.add(new Object[]{updatedVariants, row.id});
             }
+        }
+        if (!updates.isEmpty()) {
+            jdbcTemplate.batchUpdate(
+                    "UPDATE products SET variants = ?, updated_at = COALESCE(updated_at, NOW()) WHERE id = ?",
+                    updates);
         }
     }
 

@@ -11,6 +11,9 @@ import org.springframework.context.annotation.Import;
 import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.test.context.TestPropertySource;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 @DataJpaTest(showSql = false)
@@ -38,6 +41,18 @@ class PetGalleryPhotoLikeRepositoryTest {
         assertEquals(0, repository.insertIfAbsentByPhotoIdAndViewerKey(
                 21L, 7L, "203.0.113.10", "user:7"));
         assertEquals(1L, repository.count());
+    }
+
+    @Test
+    void findPhotoIdsByViewerKeyAndPhotoIdInReturnsOnlyMatchingViewerLikes() {
+        repository.insertIfAbsentByPhotoIdAndViewerKey(21L, 7L, "203.0.113.10", "user:7");
+        repository.insertIfAbsentByPhotoIdAndViewerKey(22L, 7L, "203.0.113.10", "user:7");
+        repository.insertIfAbsentByPhotoIdAndViewerKey(23L, 8L, "203.0.113.11", "user:8");
+
+        Set<Long> likedPhotoIds = new HashSet<>(repository.findPhotoIdsByViewerKeyAndPhotoIdIn(
+                "user:7", java.util.List.of(21L, 22L, 23L)));
+
+        assertEquals(Set.of(21L, 22L), likedPhotoIds);
     }
 
     @SpringBootApplication

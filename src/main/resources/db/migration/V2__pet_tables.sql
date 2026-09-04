@@ -87,6 +87,7 @@ CREATE TABLE IF NOT EXISTS pet_birthday_coupon_grants (
     birthday_year INT NOT NULL,
     granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_pet_birthday_year (pet_id, birthday_year),
+    INDEX idx_pet_birthday_grants_user_year (user_id, birthday_year),
     CONSTRAINT fk_pet_birthday_coupon_grants_pet FOREIGN KEY (pet_id) REFERENCES pet_profiles(id) ON DELETE CASCADE,
     CONSTRAINT fk_pet_birthday_coupon_grants_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE CASCADE

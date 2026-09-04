@@ -489,8 +489,6 @@ public class AdminController {
         stats.put("totalProducts", productSummary.getOrDefault("totalProducts", 0L));
         stats.putAll(orderService.getDashboardOrderStats(null, 7, 5));
         stats.put("totalUsers", userService.count());
-        Map<String, Long> orderSummary = orderService.countAdminOrderSummary(null);
-        stats.put("refundingPayments", orderSummary.getOrDefault("REFUNDING", 0L));
         stats.put("activeProducts", productSummary.getOrDefault("activeProducts", 0L));
         stats.put("inactiveProducts", productSummary.getOrDefault("inactiveProducts", 0L));
         stats.put("pendingProducts", productSummary.getOrDefault("pendingProducts", 0L));
@@ -1044,7 +1042,7 @@ public class AdminController {
         if (baseSummary != null) {
             summary.putAll(baseSummary);
         }
-        summary.put("MISSING_TRACKING", (long) orderService.countAdminOrders(null, safeSearch, "MISSING_TRACKING"));
+        summary.putIfAbsent("MISSING_TRACKING", 0L);
         return summary;
     }
 

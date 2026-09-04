@@ -3,10 +3,13 @@ package com.example.shop.repository;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 
+import java.util.List;
+import java.util.Map;
+
 @Mapper
 public interface PetBirthdayCouponGrantMapper {
-    int countByUserIdAndBirthdayYear(@Param("userId") Long userId,
-                                      @Param("birthdayYear") Integer birthdayYear);
+    List<Map<String, Object>> countByUserIdsAndBirthdayYear(@Param("userIds") List<Long> userIds,
+                                                            @Param("birthdayYear") Integer birthdayYear);
 
     int insertIgnore(@Param("petId") Long petId,
                      @Param("userId") Long userId,

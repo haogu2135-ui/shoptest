@@ -223,6 +223,31 @@ class OrderStockReservationServiceTest {
     }
 
     @Test
+    void restoresVariantStockAcrossProductsWithOneBulkLockQuery() {
+        ProductRepository productRepository = mock(ProductRepository.class);
+        OrderService service = serviceWith(productRepository);
+        Product firstProduct = variantOnlyProduct(3);
+        firstProduct.setId(7L);
+        Product secondProduct = variantOnlyProduct(4);
+        secondProduct.setId(8L);
+        when(productRepository.findAllByIdForUpdate(List.of(7L, 8L)))
+                .thenReturn(List.of(firstProduct, secondProduct));
+
+        OrderItem first = item(1L, 7L, 2, "{\"Size\":\"S\",\"Color\":\"Red\",\"_variantSku\":\"SKU-S-RED\"}");
+        OrderItem second = item(2L, 8L, 1, "{\"Size\":\"S\",\"Color\":\"Red\",\"_variantSku\":\"SKU-S-RED\"}");
+
+        ReflectionTestUtils.invokeMethod(service, "restoreStock", List.of(first, second));
+
+        verify(productRepository).findAllByIdForUpdate(List.of(7L, 8L));
+        verify(productRepository, never()).findByIdForUpdate(any());
+        verify(productRepository, never()).findAllById(any());
+        verify(productRepository).save(firstProduct);
+        verify(productRepository).save(secondProduct);
+        assertEquals(5, firstProduct.getVariantsList().get(0).get("stock"));
+        assertEquals(5, secondProduct.getVariantsList().get(0).get("stock"));
+    }
+
+    @Test
     void stockRestorationCallSitesUseGroupedRestoreInsteadOfPerItemLoop() throws Exception {
         String orderService = Files.readString(Path.of("src/main/java/com/example/shop/service/OrderService.java"));
 

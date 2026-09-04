@@ -107,16 +107,16 @@ public class CouponService {
         String safeScope = normalizeAdminScopeFilter(scope);
 
         CouponAdminSummaryResponse response = new CouponAdminSummaryResponse();
-        response.setTotalCoupons(couponRepository.countAdminCoupons(safeKeyword, keywordId, safeStatus, safeScope));
-        response.setActiveCoupons(couponRepository.countAdminCoupons(safeKeyword, keywordId, scopedStatus(safeStatus, "ACTIVE"), safeScope));
-        response.setInactiveCoupons(couponRepository.countAdminCoupons(safeKeyword, keywordId, scopedStatus(safeStatus, "INACTIVE"), safeScope));
-        response.setPublicActiveCoupons(ASSIGNED.equals(safeScope)
-                ? 0
-                : couponRepository.countAdminCoupons(safeKeyword, keywordId, scopedStatus(safeStatus, "ACTIVE"), PUBLIC));
-        response.setExpiringSoonCoupons(couponRepository.countAdminActiveExpiringBetween(
-                safeKeyword, keywordId, safeStatus, safeScope, now, now.plusDays(expiringSoonDays)));
-        response.setLowRemainingCoupons(couponRepository.countAdminActiveLowRemaining(
-                safeKeyword, keywordId, safeStatus, safeScope, lowRemainingThreshold));
+        List<Object[]> metricRows = couponRepository.summarizeAdminMetrics(
+                safeKeyword, keywordId, safeStatus, safeScope,
+                now, now.plusDays(expiringSoonDays), lowRemainingThreshold);
+        Object[] metrics = metricRows == null || metricRows.isEmpty() ? null : metricRows.get(0);
+        response.setTotalCoupons(metricValue(metrics, 0));
+        response.setActiveCoupons(metricValue(metrics, 1));
+        response.setInactiveCoupons(metricValue(metrics, 2));
+        response.setPublicActiveCoupons(metricValue(metrics, 3));
+        response.setExpiringSoonCoupons(metricValue(metrics, 4));
+        response.setLowRemainingCoupons(metricValue(metrics, 5));
         response.setMaxSearchRows(resolveLimit("admin.coupons.search-max-rows", 500, HARD_MAX_COUPON_ROWS));
         response.setMaxGrantUsers(resolveLimit("admin.coupons.grant-max-users", 200, HARD_MAX_GRANT_USERS));
         response.setMaxPublicRows(resolveLimit("coupon.public-list-max-rows", 100, HARD_MAX_PUBLIC_COUPON_ROWS));
@@ -129,6 +129,13 @@ public class CouponService {
         response.setLowRemainingThreshold(lowRemainingThreshold);
         response.setCheckedAt(now.toString());
         return response;
+    }
+
+    private long metricValue(Object[] metrics, int index) {
+        if (metrics == null || index < 0 || index >= metrics.length || !(metrics[index] instanceof Number)) {
+            return 0L;
+        }
+        return ((Number) metrics[index]).longValue();
     }
 
     public List<UserCoupon> findUserCoupons(Long userId) {
@@ -270,8 +277,12 @@ public class CouponService {
 
     private GrantBatchResult grantBatch(Long couponId, List<Long> userIds) {
         int granted = 0;
+        List<Long> existingUserIds = userCouponMapper.findUserIdsByCouponIdAndUserIdIn(couponId, userIds);
+        Set<Long> existingUserIdSet = existingUserIds == null
+                ? Set.of()
+                : new LinkedHashSet<>(existingUserIds);
         for (Long userId : userIds) {
-            if (userCouponMapper.findByCouponIdAndUserId(couponId, userId) != null) {
+            if (existingUserIdSet.contains(userId)) {
                 continue;
             }
             if (couponRepository.incrementClaimedQuantity(couponId) == 0) {
@@ -475,13 +486,6 @@ public class CouponService {
             return normalized;
         }
         return null;
-    }
-
-    private String scopedStatus(String requestedStatus, String targetStatus) {
-        if (requestedStatus == null) {
-            return targetStatus;
-        }
-        return targetStatus.equals(requestedStatus) ? targetStatus : "__NO_MATCH__";
     }
 
     private String normalizeText(String value, String fieldName, int maxLength) {

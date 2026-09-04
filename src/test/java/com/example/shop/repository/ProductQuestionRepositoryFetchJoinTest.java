@@ -66,6 +66,29 @@ class ProductQuestionRepositoryFetchJoinTest {
         assertTrue(persistenceUnitUtil.isLoaded(questions.get(0).getUser()));
     }
 
+    @Test
+    void summarizeAdminQuestionMetricsUsesOneFilteredAggregate() {
+        Product product = persistProduct();
+        User user = persistUser();
+        ProductQuestion staleUnanswered = persistQuestion(product, user, null);
+        persistQuestion(product, user, "Yes, use cold water.");
+        persistQuestion(product, user, " ");
+        entityManager.flush();
+        entityManager.createQuery("update ProductQuestion q set q.createdAt = :createdAt where q.id = :id")
+                .setParameter("createdAt", LocalDateTime.now().minusDays(2))
+                .setParameter("id", staleUnanswered.getId())
+                .executeUpdate();
+        entityManager.clear();
+
+        Object[] metrics = productQuestionRepository.summarizeAdminQuestionMetrics(
+                null, null, LocalDateTime.now().minusHours(1)).get(0);
+
+        assertEquals(3L, ((Number) metrics[0]).longValue());
+        assertEquals(2L, ((Number) metrics[1]).longValue());
+        assertEquals(1L, ((Number) metrics[2]).longValue());
+        assertEquals(1L, ((Number) metrics[3]).longValue());
+    }
+
     private Product persistProduct() {
         Product product = new Product();
         product.setName("Training Harness");
@@ -86,6 +109,16 @@ class ProductQuestionRepositoryFetchJoinTest {
         user.setStatus("ACTIVE");
         entityManager.persist(user);
         return user;
+    }
+
+    private ProductQuestion persistQuestion(Product product, User user, String answer) {
+        ProductQuestion question = new ProductQuestion();
+        question.setProduct(product);
+        question.setUser(user);
+        question.setQuestion("Is this washable?");
+        question.setAnswer(answer);
+        entityManager.persist(question);
+        return question;
     }
 
     @SpringBootApplication

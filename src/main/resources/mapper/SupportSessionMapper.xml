@@ -21,8 +21,14 @@
         ss.id, ss.user_id, ss.assigned_admin_id, ss.context_key, ss.status, ss.last_message, ss.last_message_at, ss.created_at, ss.updated_at,
         u.username,
         admin.username AS assigned_admin_name,
-        COALESCE(unread.unread_by_user, 0) AS unread_by_user,
-        COALESCE(unread.unread_by_admin, 0) AS unread_by_admin
+        (SELECT COUNT(*)
+         FROM support_messages unread_user
+         WHERE unread_user.session_id = ss.id
+           AND unread_user.is_read_by_user = FALSE) AS unread_by_user,
+        (SELECT COUNT(*)
+         FROM support_messages unread_admin
+         WHERE unread_admin.session_id = ss.id
+           AND unread_admin.is_read_by_admin = FALSE) AS unread_by_admin
     </sql>
 
     <sql id="supportUnreadJoin">
@@ -75,7 +81,6 @@
         FROM support_sessions ss
         JOIN users u ON ss.user_id = u.id
         LEFT JOIN users admin ON ss.assigned_admin_id = admin.id
-        <include refid="supportUnreadJoin"/>
         WHERE ss.id = #{id}
     </select>
 
@@ -84,7 +89,6 @@
         FROM support_sessions ss
         JOIN users u ON ss.user_id = u.id
         LEFT JOIN users admin ON ss.assigned_admin_id = admin.id
-        <include refid="supportUnreadJoin"/>
         WHERE ss.user_id = #{userId}
           AND ss.status = 'OPEN'
           AND (ss.context_key IS NULL OR TRIM(ss.context_key) = '')
@@ -97,7 +101,6 @@
         FROM support_sessions ss
         JOIN users u ON ss.user_id = u.id
         LEFT JOIN users admin ON ss.assigned_admin_id = admin.id
-        <include refid="supportUnreadJoin"/>
         WHERE ss.user_id = #{userId}
           AND ss.status = 'OPEN'
           AND ss.context_key = #{contextKey}
@@ -110,7 +113,6 @@
         FROM support_sessions ss
         JOIN users u ON ss.user_id = u.id
         LEFT JOIN users admin ON ss.assigned_admin_id = admin.id
-        <include refid="supportUnreadJoin"/>
         WHERE ss.user_id = #{userId}
           AND (ss.context_key IS NULL OR TRIM(ss.context_key) = '')
         ORDER BY ss.updated_at DESC
@@ -122,7 +124,6 @@
         FROM support_sessions ss
         JOIN users u ON ss.user_id = u.id
         LEFT JOIN users admin ON ss.assigned_admin_id = admin.id
-        <include refid="supportUnreadJoin"/>
         WHERE ss.user_id = #{userId}
           AND (ss.context_key IS NULL OR TRIM(ss.context_key) = '')
         ORDER BY ss.updated_at DESC

@@ -104,13 +104,16 @@
             COUNT(CASE WHEN status = 'PENDING_PAYMENT' THEN 1 END) AS pendingPaymentOrders,
             COUNT(CASE WHEN status = 'PENDING_SHIPMENT' THEN 1 END) AS pendingShipmentOrders,
             COUNT(CASE WHEN status = 'SHIPPED' THEN 1 END) AS shippedOrders,
+            COUNT(CASE WHEN status = 'RETURN_REFUNDING'
+                OR EXISTS (SELECT 1 FROM payments p WHERE p.order_id = orders.id AND p.status = 'REFUNDING')
+                THEN 1 END) AS refundingPayments,
             COUNT(CASE WHEN status = 'SHIPPED' AND tracking_number IS NOT NULL AND TRIM(tracking_number) != '' THEN 1 END) AS ordersWithTracking,
             COUNT(CASE WHEN status = 'SHIPPED' AND (tracking_number IS NULL OR TRIM(tracking_number) = '') THEN 1 END) AS ordersWithoutTracking,
             COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END) AS completedOrders,
-            COUNT(CASE WHEN status = 'PENDING_PAYMENT' AND created_at &lt; DATE_SUB(#{now}, INTERVAL 30 MINUTE) THEN 1 END) AS stalePendingPayment,
-            COUNT(CASE WHEN status = 'PENDING_SHIPMENT' AND COALESCE(updated_at, created_at) &lt; DATE_SUB(#{now}, INTERVAL 24 HOUR) THEN 1 END) AS delayedShipment,
-            COUNT(CASE WHEN status = 'RETURN_APPROVED' AND COALESCE(return_approved_at, updated_at) &lt; DATE_SUB(#{now}, INTERVAL 3 DAY) THEN 1 END) AS returnAwaitingShipment,
-            COUNT(CASE WHEN status = 'RETURN_SHIPPED' AND COALESCE(return_shipped_at, updated_at) &lt; DATE_SUB(#{now}, INTERVAL 24 HOUR) THEN 1 END) AS refundDue
+            COUNT(CASE WHEN status = 'PENDING_PAYMENT' AND created_at &lt; TIMESTAMPADD(MINUTE, -30, CAST(#{now} AS DATETIME)) THEN 1 END) AS stalePendingPayment,
+            COUNT(CASE WHEN status = 'PENDING_SHIPMENT' AND COALESCE(updated_at, created_at) &lt; TIMESTAMPADD(HOUR, -24, CAST(#{now} AS DATETIME)) THEN 1 END) AS delayedShipment,
+            COUNT(CASE WHEN status = 'RETURN_APPROVED' AND COALESCE(return_approved_at, updated_at) &lt; TIMESTAMPADD(DAY, -3, CAST(#{now} AS DATETIME)) THEN 1 END) AS returnAwaitingShipment,
+            COUNT(CASE WHEN status = 'RETURN_SHIPPED' AND COALESCE(return_shipped_at, updated_at) &lt; TIMESTAMPADD(HOUR, -24, CAST(#{now} AS DATETIME)) THEN 1 END) AS refundDue
         FROM orders
     </select>
 

@@ -20,6 +20,7 @@ import java.util.Collections;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -180,10 +181,11 @@ public class IpBlacklistService {
         response.setPaymentFailureThreshold(paymentFailureThreshold());
         response.setWindowMinutes(windowMinutes());
         response.setBlockMinutes(blockMinutes());
-        response.setBlockedCount(countByStatus(STATUS_BLOCKED) + countStatus(missingLegacyRows, STATUS_BLOCKED));
-        response.setMonitoringCount(countByStatus(STATUS_MONITORING) + countStatus(missingLegacyRows, STATUS_MONITORING));
-        response.setReleasedCount(countByStatus(STATUS_RELEASED));
-        response.setTotalCount(countAll() + missingLegacyRows.size());
+        Map<String, Object> counts = countStatusSummary();
+        response.setBlockedCount(numberValue(counts, "blocked_count") + countStatus(missingLegacyRows, STATUS_BLOCKED));
+        response.setMonitoringCount(numberValue(counts, "monitoring_count") + countStatus(missingLegacyRows, STATUS_MONITORING));
+        response.setReleasedCount(numberValue(counts, "released_count"));
+        response.setTotalCount(numberValue(counts, "total_count") + missingLegacyRows.size());
         response.setLegacyLoginFailureCount(legacySnapshots.size());
         return response;
     }
@@ -597,14 +599,27 @@ public class IpBlacklistService {
         return false;
     }
 
-    private long countByStatus(String status) {
-        Long count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM ip_blacklist_entries WHERE status = ?", Long.class, status);
-        return count == null ? 0 : count;
+    private Map<String, Object> countStatusSummary() {
+        return jdbcTemplate.queryForMap(
+                "SELECT COUNT(*) AS total_count, "
+                        + "SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS blocked_count, "
+                        + "SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS monitoring_count, "
+                        + "SUM(CASE WHEN status = ? THEN 1 ELSE 0 END) AS released_count "
+                        + "FROM ip_blacklist_entries",
+                STATUS_BLOCKED,
+                STATUS_MONITORING,
+                STATUS_RELEASED);
     }
 
-    private long countAll() {
-        Long count = jdbcTemplate.queryForObject("SELECT COUNT(*) FROM ip_blacklist_entries", Long.class);
-        return count == null ? 0 : count;
+    private long numberValue(Map<String, Object> row, String key) {
+        if (row == null || row.isEmpty()) {
+            return 0L;
+        }
+        Object value = row.get(key);
+        if (value == null) {
+            value = row.get(key.toUpperCase(Locale.ROOT));
+        }
+        return value instanceof Number ? ((Number) value).longValue() : 0L;
     }
 
     private boolean enabled() {

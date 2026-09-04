@@ -32,7 +32,7 @@ public class UserAddressService {
     }
 
     @Transactional(rollbackFor = Exception.class)
-    public void addAddress(UserAddress address) {
+    public UserAddress addAddress(UserAddress address) {
         normalizeAddress(address);
         lockAddressOwner(address.getUserId());
         int existingCount = Math.max(0, userAddressMapper.countByUserId(address.getUserId()));
@@ -48,6 +48,7 @@ public class UserAddressService {
         address.setCreatedAt(LocalDateTime.now());
         address.setUpdatedAt(LocalDateTime.now());
         userAddressMapper.insert(address);
+        return address;
     }
 
     @Transactional(rollbackFor = Exception.class)

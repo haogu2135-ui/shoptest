@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.never;
 
 import com.example.shop.entity.Coupon;
 import com.example.shop.entity.PetBirthdayCouponConfig;
@@ -78,7 +79,7 @@ class PetBirthdayCouponBatchingTest {
                 .thenReturn(List.of(pet(23L, 22L)));
         when(petProfileMapper.findBirthdayPetsAfterId(9, 4, 23L, 1))
                 .thenReturn(List.of());
-        when(grantMapper.countByUserIdAndBirthdayYear(anyLong(), eq(2026))).thenReturn(0);
+        when(grantMapper.countByUserIdsAndBirthdayYear(any(), eq(2026))).thenReturn(List.of());
 
         assertEquals(2, service.grantBirthdayCoupons(date));
 
@@ -87,6 +88,22 @@ class PetBirthdayCouponBatchingTest {
         assertEquals(List.of(0L, 11L, 23L), afterId.getAllValues());
         verify(grantMapper).insertIgnore(11L, 21L, 100L, 2026);
         verify(grantMapper).insertIgnore(23L, 22L, 100L, 2026);
+    }
+
+    @Test
+    void enforcesPerUserLimitFromOneBatchCountAndInMemoryReservations() {
+        config.setMaxBenefitsPerUser(1);
+        when(runtimeConfig.getInt("pet.birthday-coupon-scan-batch-size", 500)).thenReturn(10);
+        when(petProfileMapper.findBirthdayPetsAfterId(9, 4, 0L, 10))
+                .thenReturn(List.of(pet(11L, 21L), pet(12L, 21L)));
+        when(grantMapper.countByUserIdsAndBirthdayYear(List.of(21L), 2026))
+                .thenReturn(List.of(java.util.Map.of("userId", 21L, "grantCount", 0L)));
+
+        assertEquals(1, service.grantBirthdayCoupons(date));
+
+        verify(grantMapper).countByUserIdsAndBirthdayYear(List.of(21L), 2026);
+        verify(grantMapper).insertIgnore(11L, 21L, 100L, 2026);
+        verify(grantMapper, never()).insertIgnore(12L, 21L, 100L, 2026);
     }
 
     @Test

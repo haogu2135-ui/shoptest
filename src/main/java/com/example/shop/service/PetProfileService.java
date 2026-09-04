@@ -57,7 +57,7 @@ public class PetProfileService {
             throw new IllegalArgumentException("Pet profile not found");
         }
         productService.clearPersonalizedRecommendationCache(userId);
-        return petProfileMapper.findById(pet.getId());
+        return pet;
     }
 
     @Transactional(rollbackFor = Exception.class)

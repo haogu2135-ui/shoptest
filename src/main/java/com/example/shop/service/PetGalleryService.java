@@ -21,6 +21,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -69,10 +70,12 @@ public class PetGalleryService {
     private final ImageStorageService imageStorageService;
 
     public List<PetGalleryPhoto> findPublicPhotos(Long viewerId, String ipAddress) {
-        return photoRepository.findTopPublicPhotos(ACTIVE_STATUS, PageRequest.of(0, 24)).stream()
-            .filter(this::isRenderablePublicPhoto)
-            .peek((photo) -> decorateViewerState(photo, viewerId, ipAddress))
-            .collect(Collectors.toList());
+        List<PetGalleryPhoto> visiblePhotos = photoRepository.findTopPublicPhotos(
+                    ACTIVE_STATUS, PageRequest.of(0, 24)).stream()
+                .filter(this::isRenderablePublicPhoto)
+                .collect(Collectors.toList());
+        decorateViewerStates(visiblePhotos, viewerId, ipAddress);
+        return visiblePhotos;
     }
 
     public Page<PetGalleryPhoto> findPublicPhotos(Long viewerId, String ipAddress, int page, int size) {
@@ -82,8 +85,8 @@ public class PetGalleryService {
                 ACTIVE_STATUS, PageRequest.of(safePage, maxSize));
         List<PetGalleryPhoto> visiblePhotos = result.getContent().stream()
                 .filter(this::isRenderablePublicPhoto)
-                .peek(photo -> decorateViewerState(photo, viewerId, ipAddress))
                 .collect(Collectors.toList());
+        decorateViewerStates(visiblePhotos, viewerId, ipAddress);
         int hiddenCount = result.getContent().size() - visiblePhotos.size();
         long adjustedTotal = Math.max(0L, result.getTotalElements() - hiddenCount);
         return new PageImpl<>(visiblePhotos, result.getPageable(), adjustedTotal);
@@ -193,21 +196,39 @@ public class PetGalleryService {
         String safeStatus = normalizeAdminStatus(status);
         String safeSource = normalizeAdminSource(source);
         String safeKeyword = normalizeAdminKeyword(keyword);
+        List<Object[]> metricRows = photoRepository.summarizeAdminMetrics(
+                safeStatus,
+                safeSource,
+                safeKeyword,
+                USER_UPLOAD_SOURCE,
+                SEED_SOURCE,
+                LocalDateTime.now().minusDays(7),
+                5L * 1024 * 1024);
+        Object[] metrics = metricRows == null || metricRows.isEmpty() ? null : metricRows.get(0);
         return Map.of(
-                "visiblePhotos", photoRepository.countAdminPhotos(safeStatus, safeSource, safeKeyword),
-                "userUploads", photoRepository.countAdminPhotosByUserUploadSource(safeStatus, safeSource, safeKeyword, USER_UPLOAD_SOURCE),
-                "seedPhotos", photoRepository.countAdminPhotosBySource(safeStatus, safeSource, safeKeyword, SEED_SOURCE),
-                "recentUploads", photoRepository.countAdminRecentPhotos(safeStatus, safeSource, safeKeyword, LocalDateTime.now().minusDays(7)),
-                "largeFiles", photoRepository.countAdminLargePhotos(safeStatus, safeSource, safeKeyword, 5L * 1024 * 1024)
+                "visiblePhotos", metricValue(metrics, 0),
+                "userUploads", metricValue(metrics, 1),
+                "seedPhotos", metricValue(metrics, 2),
+                "recentUploads", metricValue(metrics, 3),
+                "largeFiles", metricValue(metrics, 4)
         );
+    }
+
+    private long metricValue(Object[] metrics, int index) {
+        if (metrics == null || index < 0 || index >= metrics.length || !(metrics[index] instanceof Number)) {
+            return 0L;
+        }
+        return ((Number) metrics[index]).longValue();
     }
 
     @Transactional(rollbackFor = Exception.class)
     public void ensureSeedPhotos(Long seedOwnerId) {
         LocalDateTime baseTime = LocalDateTime.now().minusDays(2);
+        Set<String> existingImageUrls = new HashSet<>(photoRepository.findImageUrlsByImageUrlIn(
+                SEED_PHOTOS.stream().map(seed -> seed.imageUrl).collect(Collectors.toList())));
         for (int i = 0; i < SEED_PHOTOS.size(); i++) {
             SeedPhoto seed = SEED_PHOTOS.get(i);
-            if (photoRepository.existsByImageUrl(seed.imageUrl)) {
+            if (existingImageUrls.contains(seed.imageUrl)) {
                 continue;
             }
             PetGalleryPhoto photo = new PetGalleryPhoto();
@@ -223,6 +244,7 @@ public class PetGalleryService {
             photo.setLikeCount(seed.likeCount);
             photo.setCreatedAt(baseTime.plusMinutes(i));
             photoRepository.save(photo);
+            existingImageUrls.add(seed.imageUrl);
         }
     }
 
@@ -237,6 +259,33 @@ public class PetGalleryService {
 
     private PetGalleryPhoto decorateViewerState(PetGalleryPhoto photo, Long viewerId, String ipAddress) {
         boolean liked = likeRepository.existsByPhotoIdAndViewerKey(photo.getId(), viewerKey(viewerId, ipAddress));
+        return applyViewerState(photo, liked, viewerId);
+    }
+
+    private void decorateViewerStates(List<PetGalleryPhoto> photos, Long viewerId, String ipAddress) {
+        if (photos.isEmpty()) {
+            return;
+        }
+        String currentViewerKey = viewerKey(viewerId, ipAddress);
+        List<Long> photoIds = photos.stream()
+                .map(PetGalleryPhoto::getId)
+                .filter(Objects::nonNull)
+                .distinct()
+                .collect(Collectors.toList());
+        Set<Long> likedPhotoIds = Set.of();
+        if (!photoIds.isEmpty()) {
+            List<Long> matchedPhotoIds = likeRepository.findPhotoIdsByViewerKeyAndPhotoIdIn(
+                    currentViewerKey, photoIds);
+            if (matchedPhotoIds != null) {
+                likedPhotoIds = matchedPhotoIds.stream().collect(Collectors.toSet());
+            }
+        }
+        for (PetGalleryPhoto photo : photos) {
+            applyViewerState(photo, likedPhotoIds.contains(photo.getId()), viewerId);
+        }
+    }
+
+    private PetGalleryPhoto applyViewerState(PetGalleryPhoto photo, boolean liked, Long viewerId) {
         photo.setLikedByMe(liked);
         photo.setCanDelete(viewerId != null && isUserUpload(photo) && Objects.equals(photo.getUserId(), viewerId));
         return photo;

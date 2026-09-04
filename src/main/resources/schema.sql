@@ -401,7 +401,8 @@ CREATE TABLE IF NOT EXISTS user_coupons (
     FOREIGN KEY (order_id) REFERENCES orders(id),
     CONSTRAINT ck_user_coupons_status CHECK (status IN ('UNUSED', 'USED')),
     UNIQUE KEY uk_user_coupon (user_id, coupon_id),
-    INDEX idx_user_coupons_user_status (user_id, status)
+    INDEX idx_user_coupons_user_status (user_id, status),
+    INDEX idx_user_coupons_coupon_user (coupon_id, user_id)
 );
 
 ALTER TABLE orders ADD CONSTRAINT fk_orders_coupon_id FOREIGN KEY (coupon_id) REFERENCES coupons(id);
@@ -415,6 +416,7 @@ CREATE TABLE IF NOT EXISTS pet_birthday_coupon_grants (
     birthday_year INT NOT NULL,
     granted_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     UNIQUE KEY uk_pet_birthday_year (pet_id, birthday_year),
+    INDEX idx_pet_birthday_grants_user_year (user_id, birthday_year),
     CONSTRAINT fk_pet_birthday_coupon_grants_pet FOREIGN KEY (pet_id) REFERENCES pet_profiles(id) ON DELETE CASCADE,
     CONSTRAINT fk_pet_birthday_coupon_grants_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
     FOREIGN KEY (coupon_id) REFERENCES coupons(id) ON DELETE CASCADE
@@ -489,6 +491,7 @@ CREATE TABLE IF NOT EXISTS support_messages (
     FOREIGN KEY (session_id) REFERENCES support_sessions(id),
     FOREIGN KEY (sender_id) REFERENCES users(id),
     INDEX idx_support_messages_session_created (session_id, created_at),
+    INDEX idx_support_messages_session_read (session_id, is_read_by_user, is_read_by_admin),
     INDEX idx_support_messages_unread_admin (is_read_by_admin, sender_role),
     INDEX idx_support_messages_unread_user (is_read_by_user, sender_role)
 );

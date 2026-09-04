@@ -351,6 +351,82 @@ are kept in addition to the original 130-item record:
      concurrent status and cleanup readers.
 239. Schedule expiration cleanup for local access-token and refresh-token
      revocation fallbacks so low-write instances do not retain stale entries.
+240. Publish local guest-access rate-limit bucket counts with volatile
+     visibility so concurrent status and cleanup readers observe increments.
+241. Escape `%`, `_`, and `!` in product-question keyword searches and declare
+     the JPQL escape character so wildcard input is matched literally.
+242. Escape `%`, `_`, and `!` in review keyword searches and declare the JPQL
+     escape character so wildcard input is matched literally.
+243. Escape `%`, `_`, and `!` in coupon keyword searches and declare the JPQL
+     escape character so wildcard input is matched literally.
+244. Escape `%`, `_`, and `!` in site-announcement keyword searches and declare
+     the JPQL escape character so wildcard input is matched literally.
+245. Escape `%`, `_`, and `!` in pet-gallery keyword searches and declare the
+     JPQL escape character, preserving wildcard characters as literal input.
+246. Use session-scoped unread count subqueries for regular support-session
+     lookups, retaining the shared aggregate only for admin sorting and summary
+     paths; add a covering session/read-state index for the scoped counts.
+247. Combine product-question admin total, answered, unanswered, and stale
+     counts into one filtered aggregate query.
+248. Combine site-announcement admin status, schedule, inactive, and linked
+     counts into one filtered aggregate query.
+249. Combine coupon admin status, visibility, expiry, and inventory counts into
+     one filtered aggregate query.
+250. Combine security-audit total, success, and failure counts into one
+     filtered aggregate query while preserving result-filter semantics.
+251. Combine system-alert status totals and open severity totals into one
+     status/severity aggregate query.
+252. Combine pet-gallery admin visibility, source, recency, and file-size
+     counts into one filtered aggregate query.
+253. Batch-load current viewer pet-gallery likes for public photo lists with
+     one photo-id query instead of one existence query per photo.
+254. Reuse one category descendant traversal for move cycle validation and
+     maximum-depth validation during category saves.
+255. Batch birthday-grant counts by user and year per scan page, keeping the
+     user/year index and in-memory reservations aligned with the per-user cap.
+256. Batch coupon-grant ownership checks by coupon and user IDs, retaining
+     duplicate-race compensation and adding the coupon/user lookup index.
+257. Batch admin-role permission replacement and missing-permission seeding,
+     using one existing-permission lookup per role while preserving unique-key
+     conflict propagation and transaction rollback semantics.
+258. Batch startup product variant-image repairs after JSON normalization so
+     large repair runs do not issue one product update per row.
+259. Normalize users mapped to active admin roles with one joined update after
+     preserving the dedicated `SUPER_ADMIN` synchronization path.
+260. Batch-load existing pet-gallery seed image URLs during startup so fixed
+     seed reconciliation does not issue one existence query per seed.
+261. Combine IP-blacklist status totals into one conditional aggregate query,
+     while retaining local legacy-login snapshot additions.
+262. Reconcile all active admin-role permissions with one permission-table read
+     and one batch insert instead of one existing-permission read per role.
+263. Reconcile fixed public coupon seed rows with one JDBC batch while keeping
+     each row's `NOT EXISTS` idempotency guard.
+264. Load coupon schema columns once and combine legacy coupon default backfills
+     into one conditional update during startup.
+265. Reuse the existing admin-order summary's `MISSING_TRACKING` aggregate in
+     order pages instead of issuing a second filtered count query.
+266. Batch-lock variant products during multi-product order stock restoration
+     in stable ID order, retaining the single-product fallback and missing-row
+     diagnostics.
+267. Reuse the dashboard order aggregate's refunding-payment count in the admin
+     dashboard instead of issuing a second unfiltered order-summary query, with
+     typed `TIMESTAMPADD` thresholds for H2/MySQL-compatible SLA execution.
+268. Push public-product status filtering into the joined Review list, count,
+     and average-rating queries so public review reads avoid a separate product
+     existence query while preserving inactive-product invisibility.
+269. Batch-preload existing product IDs for CSV imports with one repository
+     lookup, while retaining per-row validation, duplicate checks, and import
+     rollback behavior.
+270. Reuse the already-loaded parent category while building category paths,
+     avoiding repeated parent lookups during category saves and moves while
+     retaining ancestor-path fallback behavior.
+271. Return the wishlist add/toggle operation's final state directly, avoiding
+     repeated existence reads in nested service calls and Controller responses
+     while retaining unique-key idempotency.
+272. Return the normalized, generated-key address entity from address creation,
+     avoiding a redundant post-insert lookup in the Controller.
+273. Return the normalized pet profile entity after insert/update, relying on
+     generated-key backfill and avoiding a redundant post-write lookup.
 
 ## Verification
 
@@ -412,6 +488,61 @@ The final verification record is maintained here after the post-change checks:
   passed.
 - Focused rate-limit path normalization and local token revocation cleanup
   regression: 2 suites and 36 tests passed.
+- Focused service-layer regression: 6 suites and 70 tests passed across guest
+  access rate limiting, product questions, reviews, coupons, site announcements,
+  and pet gallery search.
+- Focused H2 repository integration regression: 4 suites and 5 tests passed,
+  covering the escaped JPQL search queries.
+- Focused support-session mapper and service regression: 9 suites and 49 tests
+  passed, including H2/MyBatis execution of session-scoped unread counts.
+- Focused admin-summary aggregate regression: 15 suites and 92 tests passed,
+  covering product questions, site announcements, coupons, security audit logs,
+  system alerts, and pet-gallery summaries, including H2 execution of the new
+  pet-gallery aggregate query.
+- Focused pet-gallery viewer-like batching regression: 2 suites and 17 tests
+  passed, covering both public list overloads and H2 execution of the batch
+  photo-id query.
+- Focused category hierarchy validation regression: 1 suite and 15 tests
+  passed, including the single-traversal save path.
+- Focused birthday-grant batching regression: 4 suites and 11 tests passed,
+  covering per-user cap accounting, mapper execution, and schema/index
+  contracts.
+- Focused coupon-grant ownership batching regression: 5 suites and 33 tests
+  passed, covering grant race behavior, mapper execution, and schema/index
+  contracts.
+- Focused admin-role regression: 1 suite and 4 tests passed, covering bounded
+  role lookup, permission seeding, joined role normalization, and user demotion.
+- Focused product data-quality batching regression: 1 suite and 1 test passed,
+  covering the startup variant-image repair write path.
+- Focused pet-gallery seed batching regression: 2 suites and 2 tests passed,
+  covering service reconciliation and H2 image-URL lookup execution.
+- Focused IP-blacklist status regression: 1 suite and 1 test passed, covering
+  one aggregate count query and case-insensitive result aliases.
+- Focused admin-role permission reconciliation regression: the AdminRole suite
+  passed with 4 tests, covering bounded lookup, per-role and all-role batch
+  seeding, joined role normalization, and user demotion.
+- Focused order-summary and stock-restoration regression: 4 suites and 18 tests
+  passed, covering reuse of the existing missing-tracking aggregate and
+  multi-product variant stock restoration with one lock query.
+- Focused coupon-seed startup contract regression: 1 suite and 1 test passed,
+  covering batch seed insertion and one schema-column metadata read.
+- Focused dashboard aggregate/controller regression: 4 suites and 25 tests
+  passed, covering the refunding-payment aggregate field, dashboard response,
+  redundant-summary-query removal, H2 execution, and mapper SLA contracts.
+- Focused public-review visibility regression: 2 suites and 17 tests passed,
+  covering service query delegation and H2 execution for active/inactive
+  products.
+- Focused product-import batching regression: 1 suite and 64 tests passed,
+  covering batched existing-product lookup alongside the complete row-level
+  validation and save workflow.
+- Focused category-path lookup regression: 1 suite and 15 tests passed,
+  covering parent reuse during save and existing hierarchy validation.
+- Focused wishlist/address write regression: 5 suites and 25 tests passed,
+  covering direct mutation-state responses, duplicate wishlist protection, and
+  generated-key address responses without post-insert reads.
+- Additional full backend check: 1,230 tests ran with 25 existing failures and
+  no errors in unrelated dirty-worktree frontend, contract, and coverage
+  expectations; the five suites above remained green.
 - Full frontend Jest: 249 suites and 1811/1811 tests passed.
 - TypeScript: `NODE_OPTIONS=--max-old-space-size=768 npx tsc --noEmit --pretty false --skipLibCheck` passed.
 - Production: bounded production build passed (`npm run build`, exit code 0).

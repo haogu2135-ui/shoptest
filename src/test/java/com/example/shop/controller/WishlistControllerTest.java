@@ -23,7 +23,7 @@ class WishlistControllerTest {
         assertTrue(source.contains("@PostMapping(\"/me/toggle\")"));
         assertTrue(source.contains("@DeleteMapping(\"/me\")"));
         assertTrue(source.contains("SecurityUtils.assertSelf(authentication, requestedUserId);"));
-        assertTrue(source.contains("wishlistService.toggleWishlist(userId, productId);"));
+        assertTrue(source.contains("wishlistService.toggleWishlist(userId, productId)"));
         assertTrue(source.contains("WishlistItemResponse::from"));
     }
 }

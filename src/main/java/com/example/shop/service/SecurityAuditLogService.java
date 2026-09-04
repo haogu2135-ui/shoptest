@@ -162,15 +162,33 @@ public class SecurityAuditLogService {
         response.setMaxRangeHours(maxRangeHours());
         response.setMaxSearchRows(maxSearchRows());
         response.setMaxExportRows(maxExportRows());
-        response.setTotalCount(count(null, actionFilter, resultFilter, actorFilter, resourceTypeFilter, safeStart, safeEnd));
-        response.setSuccessCount(count(resultFilter == null ? "SUCCESS" : null, actionFilter, resultFilter, actorFilter, resourceTypeFilter, safeStart, safeEnd));
-        response.setFailureCount(count(resultFilter == null ? "FAILURE" : null, actionFilter, resultFilter, actorFilter, resourceTypeFilter, safeStart, safeEnd));
+        Map<String, Object> counts = summaryCounts(
+                actionFilter, resultFilter, actorFilter, resourceTypeFilter, safeStart, safeEnd);
+        long totalCount = metricValue(counts, "total_count");
+        response.setTotalCount(totalCount);
+        response.setSuccessCount(resultFilter == null ? metricValue(counts, "success_count") : totalCount);
+        response.setFailureCount(resultFilter == null ? metricValue(counts, "failure_count") : totalCount);
         response.setByResult(groupCount("result", actionFilter, resultFilter, actorFilter, resourceTypeFilter, safeStart, safeEnd, safeLimit));
         response.setTopActions(groupCount("action", actionFilter, resultFilter, actorFilter, resourceTypeFilter, safeStart, safeEnd, safeLimit));
         response.setTopActors(groupCount("actor_username", actionFilter, resultFilter, actorFilter, resourceTypeFilter, safeStart, safeEnd, safeLimit));
         response.setTopIpAddresses(groupCount("ip_address", actionFilter, resultFilter, actorFilter, resourceTypeFilter, safeStart, safeEnd, safeLimit));
         response.setCheckedAt(Instant.now().toString());
         return response;
+    }
+
+    private Map<String, Object> summaryCounts(String action,
+                                              String result,
+                                              String actorUsername,
+                                              String resourceType,
+                                              LocalDateTime startAt,
+                                              LocalDateTime endAt) {
+        StringBuilder sql = new StringBuilder("SELECT COUNT(*) AS total_count, "
+                + "SUM(CASE WHEN result = 'SUCCESS' THEN 1 ELSE 0 END) AS success_count, "
+                + "SUM(CASE WHEN result = 'FAILURE' THEN 1 ELSE 0 END) AS failure_count "
+                + "FROM security_audit_logs");
+        List<Object> params = new ArrayList<>();
+        appendAuditLogFilters(sql, params, action, result, actorUsername, resourceType, startAt, endAt);
+        return jdbcTemplate.queryForMap(sql.toString(), params.toArray());
     }
 
     public SecurityAuditPurgeResponse purge(int retentionDays) {
@@ -199,6 +217,11 @@ public class SecurityAuditLogService {
         appendAuditLogFilters(sql, params, action, effectiveResult, actorUsername, resourceType, startAt, endAt);
         Long count = jdbcTemplate.queryForObject(sql.toString(), Long.class, params.toArray());
         return count == null ? 0 : count;
+    }
+
+    private long metricValue(Map<String, Object> row, String key) {
+        Object value = row == null ? null : row.get(key);
+        return value instanceof Number ? ((Number) value).longValue() : 0L;
     }
 
     private List<SecurityAuditSummaryResponse.GroupCount> groupCount(String column,

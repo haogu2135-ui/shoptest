@@ -83,8 +83,8 @@ class CouponRepositoryBoundedQueryContractTest {
         assertFalse(repository.contains("findExpiring("));
         assertTrue(service.contains("searchAdminCoupons("));
         assertTrue(service.contains("PageRequest.of(safePage, safeSize, Sort.by(Sort.Direction.DESC, \"id\"))"));
-        assertTrue(service.contains("countAdminActiveExpiringBetween("));
-        assertTrue(repository.contains("long countAdminActiveExpiringBetween("));
+        assertTrue(service.contains("summarizeAdminMetrics("));
+        assertTrue(repository.contains("List<Object[]> summarizeAdminMetrics("));
     }
 
     private static void collectNoArgCouponFindAll(Path path, List<String> offenders) {

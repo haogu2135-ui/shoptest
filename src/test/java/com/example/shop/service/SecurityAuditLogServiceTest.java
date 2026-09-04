@@ -12,11 +12,9 @@ import org.springframework.mock.web.MockHttpServletRequest;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.time.LocalDateTime;
-import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Queue;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -173,6 +171,12 @@ class SecurityAuditLogServiceTest {
         assertEquals(4, response.getMaxExportRows());
         assertEquals("ORDER_EXPORT", response.getTopActions().get(0).getName());
         assertEquals(7L, response.getTopActions().get(0).getCount());
+        assertTrue(jdbcTemplate.summarySql.contains("SUM(CASE WHEN result = 'SUCCESS'"));
+        assertTrue(jdbcTemplate.summarySql.contains("SUM(CASE WHEN result = 'FAILURE'"));
+        assertEquals(1, jdbcTemplate.summaryParams.size());
+        assertEquals(2, jdbcTemplate.summaryParams.get(0).length);
+        assertEquals(clampedStart, jdbcTemplate.summaryParams.get(0)[0]);
+        assertEquals(end, jdbcTemplate.summaryParams.get(0)[1]);
         assertEquals(4, jdbcTemplate.groupParams.size());
         jdbcTemplate.groupParams.forEach(params -> {
             assertEquals(3, params.length);
@@ -193,10 +197,14 @@ class SecurityAuditLogServiceTest {
         LocalDateTime end = LocalDateTime.of(2026, 5, 24, 15, 0);
         LocalDateTime start = end.minusMinutes(30);
 
-        service.summary(" refund_complete ", " failure ", " admin ", " payment ", start, end, 6);
+        SecurityAuditSummaryResponse response = service.summary(
+                " refund_complete ", " failure ", " admin ", " payment ", start, end, 6);
 
-        assertEquals(3, jdbcTemplate.countParams.size());
-        jdbcTemplate.countParams.forEach(params -> {
+        assertEquals(12L, response.getTotalCount());
+        assertEquals(12L, response.getSuccessCount());
+        assertEquals(12L, response.getFailureCount());
+        assertEquals(1, jdbcTemplate.summaryParams.size());
+        jdbcTemplate.summaryParams.forEach(params -> {
             assertEquals(6, params.length);
             assertEquals("REFUND_COMPLETE", params[0]);
             assertEquals("FAILURE", params[1]);
@@ -248,14 +256,18 @@ class SecurityAuditLogServiceTest {
     }
 
     private static class CapturingSummaryJdbcTemplate extends JdbcTemplate {
-        private final Queue<Long> counts = new ArrayDeque<>(List.of(12L, 9L, 3L));
-        private final List<Object[]> countParams = new ArrayList<>();
+        private final List<Object[]> summaryParams = new ArrayList<>();
         private final List<Object[]> groupParams = new ArrayList<>();
+        private String summarySql;
 
         @Override
-        public <T> T queryForObject(String sql, Class<T> requiredType, Object... args) {
-            countParams.add(args);
-            return requiredType.cast(counts.remove());
+        public Map<String, Object> queryForMap(String sql, Object... args) {
+            summarySql = sql;
+            summaryParams.add(args);
+            return Map.of(
+                    "total_count", 12L,
+                    "success_count", 9L,
+                    "failure_count", 3L);
         }
 
         @Override

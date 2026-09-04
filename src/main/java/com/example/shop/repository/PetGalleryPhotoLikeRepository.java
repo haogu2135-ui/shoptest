@@ -7,9 +7,16 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
+
 @Repository
 public interface PetGalleryPhotoLikeRepository extends JpaRepository<PetGalleryPhotoLike, Long> {
     boolean existsByPhotoIdAndViewerKey(Long photoId, String viewerKey);
+
+    @Query("select l.photoId from PetGalleryPhotoLike l"
+            + " where l.viewerKey = :viewerKey and l.photoId in :photoIds")
+    List<Long> findPhotoIdsByViewerKeyAndPhotoIdIn(@Param("viewerKey") String viewerKey,
+                                                   @Param("photoIds") List<Long> photoIds);
 
     /**
      * The outer photo lock serializes likes for the same photo; this conditional insert

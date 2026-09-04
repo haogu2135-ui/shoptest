@@ -11,6 +11,8 @@ public interface UserCouponMapper {
     UserCoupon findById(Long id);
     UserCoupon findByIdAndUserId(@Param("id") Long id, @Param("userId") Long userId);
     UserCoupon findByCouponIdAndUserId(@Param("couponId") Long couponId, @Param("userId") Long userId);
+    List<Long> findUserIdsByCouponIdAndUserIdIn(@Param("couponId") Long couponId,
+                                               @Param("userIds") List<Long> userIds);
     List<UserCoupon> findByUserIdLimited(@Param("userId") Long userId, @Param("limit") int limit);
     List<UserCoupon> findUnusedByUserIdLimited(@Param("userId") Long userId, @Param("limit") int limit);
     int insert(UserCoupon userCoupon);

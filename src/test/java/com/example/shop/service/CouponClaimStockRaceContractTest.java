@@ -107,8 +107,7 @@ class CouponClaimStockRaceContractTest {
     void grantStopsIssuingWhenAtomicStockIncrementReportsSoldOut() {
         when(couponRepository.findById(5L)).thenReturn(Optional.of(activePublicCoupon(5L)));
         when(userMapper.findExistingIds(List.of(2L, 3L))).thenReturn(List.of(2L, 3L));
-        when(userCouponMapper.findByCouponIdAndUserId(5L, 2L)).thenReturn(null);
-        when(userCouponMapper.findByCouponIdAndUserId(5L, 3L)).thenReturn(null);
+        when(userCouponMapper.findUserIdsByCouponIdAndUserIdIn(5L, List.of(2L, 3L))).thenReturn(List.of());
         when(couponRepository.incrementClaimedQuantity(5L)).thenReturn(1, 0);
         when(userCouponMapper.insert(any(UserCoupon.class))).thenReturn(1);
 
@@ -135,6 +134,8 @@ class CouponClaimStockRaceContractTest {
         assertTrue(claim.contains("couponRepository.incrementClaimedQuantity(couponId) == 0"));
         assertTrue(grant.contains("executeGrantBatchInTransaction(couponId, batch)"));
         assertTrue(grantBatch.contains("couponRepository.incrementClaimedQuantity(couponId) == 0"));
+        assertTrue(grantBatch.contains("findUserIdsByCouponIdAndUserIdIn(couponId, userIds)"));
+        assertFalse(grantBatch.contains("findByCouponIdAndUserId(couponId, userId)"));
         assertTrue(serviceSource.contains("transactionTemplate.execute(status -> grantBatch(couponId, userIds))"));
         assertTrue(repositorySource.contains("update Coupon c set c.claimedQuantity = coalesce(c.claimedQuantity, 0) + 1"));
         assertTrue(repositorySource.contains("and (c.totalQuantity is null or coalesce(c.claimedQuantity, 0) < c.totalQuantity)"));

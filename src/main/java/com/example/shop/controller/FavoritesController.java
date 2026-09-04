@@ -41,8 +41,7 @@ public class FavoritesController {
             throw new IllegalArgumentException("productId is required");
         }
         Long userId = currentUserId(authentication);
-        wishlistService.addToWishlist(userId, effectiveProductId);
-        return Map.of("wishlisted", wishlistService.isWishlisted(userId, effectiveProductId));
+        return Map.of("wishlisted", wishlistService.addToWishlist(userId, effectiveProductId));
     }
 
     @DeleteMapping

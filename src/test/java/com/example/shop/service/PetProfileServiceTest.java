@@ -51,9 +51,8 @@ class PetProfileServiceTest {
         request.setSize(" small ");
         when(userMapper.findByIdForUpdate(7L)).thenReturn(new User());
         when(petProfileMapper.countByUserId(7L)).thenReturn(0);
-        when(petProfileMapper.findById(null)).thenReturn(request);
 
-        service.save(7L, request, null);
+        PetProfile saved = service.save(7L, request, null);
 
         verify(petProfileMapper).insert(org.mockito.ArgumentMatchers.argThat(pet ->
                 "Luna Bell".equals(pet.getName())
@@ -61,6 +60,10 @@ class PetProfileServiceTest {
                         && "British Short hair".equals(pet.getBreed())
                         && new BigDecimal("4.24").equals(pet.getWeight())
                         && "SMALL".equals(pet.getSize())));
+        assertEquals("Luna Bell", saved.getName());
+        assertEquals("CAT", saved.getPetType());
+        assertEquals(new BigDecimal("4.24"), saved.getWeight());
+        verify(petProfileMapper, never()).findById(any());
         verify(productService).clearPersonalizedRecommendationCache(7L);
     }
 
@@ -95,13 +98,15 @@ class PetProfileServiceTest {
     void updateDoesNotCheckCreateLimit() {
         PetProfile request = validRequest();
         when(petProfileMapper.update(any(PetProfile.class))).thenReturn(1);
-        when(petProfileMapper.findById(12L)).thenReturn(request);
 
-        service.save(7L, request, 12L);
+        PetProfile saved = service.save(7L, request, 12L);
 
         verify(userMapper, never()).findByIdForUpdate(7L);
         verify(petProfileMapper, never()).countByUserId(7L);
         verify(petProfileMapper).update(any(PetProfile.class));
+        assertEquals(12L, saved.getId());
+        assertEquals("Luna", saved.getName());
+        verify(petProfileMapper, never()).findById(any());
     }
 
     @Test

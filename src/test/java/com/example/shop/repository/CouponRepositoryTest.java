@@ -55,6 +55,33 @@ class CouponRepositoryTest {
                 claimable.stream().map(Coupon::getName).collect(java.util.stream.Collectors.toList()));
     }
 
+    @Test
+    void summarizeAdminMetricsCombinesCouponSignalsAndFilters() {
+        LocalDateTime now = LocalDateTime.of(2026, 5, 24, 12, 0);
+        couponRepository.save(coupon("Current public", "PUBLIC", "ACTIVE", now.minusDays(1), now.plusDays(3), 10, 8));
+        couponRepository.save(coupon("Scheduled public", "PUBLIC", "ACTIVE", now.plusHours(1), now.plusDays(2), 100, 1));
+        couponRepository.save(coupon("Expired public", "PUBLIC", "ACTIVE", now.minusDays(3), now.minusHours(1), 50, 1));
+        couponRepository.save(coupon("Current assigned", "ASSIGNED", "ACTIVE", now.minusDays(1), now.plusDays(4), 20, 18));
+        couponRepository.save(coupon("Inactive public", "PUBLIC", "INACTIVE", null, null, 10, 1));
+        couponRepository.flush();
+
+        Object[] metrics = couponRepository.summarizeAdminMetrics(
+                null, null, null, null, now, now.plusDays(7), 5).get(0);
+
+        assertEquals(5L, ((Number) metrics[0]).longValue());
+        assertEquals(4L, ((Number) metrics[1]).longValue());
+        assertEquals(1L, ((Number) metrics[2]).longValue());
+        assertEquals(3L, ((Number) metrics[3]).longValue());
+        assertEquals(3L, ((Number) metrics[4]).longValue());
+        assertEquals(2L, ((Number) metrics[5]).longValue());
+
+        Object[] publicMetrics = couponRepository.summarizeAdminMetrics(
+                null, null, null, "PUBLIC", now, now.plusDays(7), 5).get(0);
+        assertEquals(4L, ((Number) publicMetrics[0]).longValue());
+        assertEquals(1L, ((Number) publicMetrics[2]).longValue());
+        assertEquals(2L, ((Number) publicMetrics[4]).longValue());
+    }
+
     private Coupon coupon(String name,
                           String scope,
                           String status,

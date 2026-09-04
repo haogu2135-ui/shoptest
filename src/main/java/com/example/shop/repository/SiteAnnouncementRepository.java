@@ -22,69 +22,29 @@ public interface SiteAnnouncementRepository extends JpaRepository<SiteAnnounceme
                                        @Param("keyword") String keyword,
                                        Pageable pageable);
 
-    @Query("select count(a) from SiteAnnouncement a " +
-            "where (:status is null or upper(a.status) = :status) " +
-            "and (:keyword is null " +
-            "or lower(a.title) like :keyword escape '!' " +
-            "or lower(a.content) like :keyword escape '!' " +
-            "or lower(a.linkUrl) like :keyword escape '!' " +
-            "or lower(a.status) like :keyword escape '!')")
-    long countAdmin(@Param("status") String status,
-                    @Param("keyword") String keyword);
-
     List<SiteAnnouncement> findByStatusIgnoreCaseAndIdGreaterThanOrderByIdAsc(
             String status, Long id, Pageable pageable);
 
-    @Query("select count(a) from SiteAnnouncement a " +
-            "where upper(a.status) = 'ACTIVE' " +
-            "and (:status is null or upper(a.status) = :status) " +
-            "and (:keyword is null " +
-            "or lower(a.title) like :keyword escape '!' " +
-            "or lower(a.content) like :keyword escape '!' " +
-            "or lower(a.linkUrl) like :keyword escape '!' " +
-            "or lower(a.status) like :keyword escape '!') " +
-            "and (a.startsAt is null or a.startsAt <= :now) " +
-            "and (a.endsAt is null or a.endsAt >= :now)")
-    long countAdminCurrentlyActive(@Param("status") String status,
-                                   @Param("keyword") String keyword,
-                                   @Param("now") LocalDateTime now);
-
-    @Query("select count(a) from SiteAnnouncement a " +
-            "where upper(a.status) = 'ACTIVE' " +
-            "and (:status is null or upper(a.status) = :status) " +
-            "and (:keyword is null " +
-            "or lower(a.title) like :keyword escape '!' " +
-            "or lower(a.content) like :keyword escape '!' " +
-            "or lower(a.linkUrl) like :keyword escape '!' " +
-            "or lower(a.status) like :keyword escape '!') " +
-            "and a.startsAt is not null and a.startsAt > :now")
-    long countAdminScheduled(@Param("status") String status,
-                             @Param("keyword") String keyword,
-                             @Param("now") LocalDateTime now);
-
-    @Query("select count(a) from SiteAnnouncement a " +
-            "where upper(a.status) = 'ACTIVE' " +
-            "and (:status is null or upper(a.status) = :status) " +
-            "and (:keyword is null " +
-            "or lower(a.title) like :keyword escape '!' " +
-            "or lower(a.content) like :keyword escape '!' " +
-            "or lower(a.linkUrl) like :keyword escape '!' " +
-            "or lower(a.status) like :keyword escape '!') " +
-            "and a.endsAt is not null and a.endsAt < :now")
-    long countAdminExpired(@Param("status") String status,
-                           @Param("keyword") String keyword,
-                           @Param("now") LocalDateTime now);
-
-    @Query("select count(a) from SiteAnnouncement a " +
-            "where (:status is null or upper(a.status) = :status) " +
-            "and (:keyword is null " +
-            "or lower(a.title) like :keyword escape '!' " +
-            "or lower(a.content) like :keyword escape '!' " +
-            "or lower(a.linkUrl) like :keyword escape '!' " +
-            "or lower(a.status) like :keyword escape '!') " +
-            "and a.linkUrl is not null and length(trim(a.linkUrl)) > 0")
-    long countAdminLinked(@Param("status") String status,
-                          @Param("keyword") String keyword);
+    @Query("select count(a),"
+            + " coalesce(sum(case when upper(a.status) = 'ACTIVE'"
+            + " and (a.startsAt is null or a.startsAt <= :now)"
+            + " and (a.endsAt is null or a.endsAt >= :now) then 1 else 0 end), 0),"
+            + " coalesce(sum(case when upper(a.status) = 'ACTIVE'"
+            + " and a.startsAt is not null and a.startsAt > :now then 1 else 0 end), 0),"
+            + " coalesce(sum(case when upper(a.status) = 'ACTIVE'"
+            + " and a.endsAt is not null and a.endsAt < :now then 1 else 0 end), 0),"
+            + " coalesce(sum(case when upper(a.status) = 'INACTIVE' then 1 else 0 end), 0),"
+            + " coalesce(sum(case when a.linkUrl is not null and length(trim(a.linkUrl)) > 0 then 1 else 0 end), 0)"
+            + " from SiteAnnouncement a"
+            + " where (:status is null or upper(a.status) = :status)"
+            + " and (:keyword is null"
+            + " or lower(a.title) like :keyword escape '!'"
+            + " or lower(a.content) like :keyword escape '!'"
+            + " or lower(a.linkUrl) like :keyword escape '!'"
+            + " or lower(a.status) like :keyword escape '!')")
+    List<Object[]> summarizeAdminMetrics(@Param("status") String status,
+                                         @Param("keyword") String keyword,
+                                         @Param("now") LocalDateTime now);
 
     @Query("select a from SiteAnnouncement a " +
             "where upper(a.status) = 'ACTIVE' " +

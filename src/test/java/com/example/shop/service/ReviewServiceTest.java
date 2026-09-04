@@ -144,6 +144,27 @@ class ReviewServiceTest {
     }
 
     @Test
+    void publicReviewReadsDelegateProductVisibilityToReviewQueries() {
+        when(reviewRepository.findApprovedPublicByProductId(eq(7L), any()))
+                .thenReturn(List.of());
+        when(reviewRepository.findPublicByProductIdIncludingUserPending(eq(7L), eq(3L), any()))
+                .thenReturn(List.of());
+        when(reviewRepository.countApprovedPublicByProductId(7L)).thenReturn(2L);
+        when(reviewRepository.countPublicByProductIdIncludingUserPending(7L, 3L)).thenReturn(3L);
+        when(reviewRepository.findAverageRatingByProductId(7L)).thenReturn(4.26D);
+
+        assertTrue(service.getPublicReviewsByProductId(7L, null, 0, 10).isEmpty());
+        assertTrue(service.getPublicReviewsByProductId(7L, 3L, 0, 10).isEmpty());
+        assertEquals(2L, service.countPublicReviewsByProductId(7L, null));
+        assertEquals(3L, service.countPublicReviewsByProductId(7L, 3L));
+        assertEquals(new BigDecimal("4.3"), service.getAverageRating(7L));
+
+        verify(productRepository, never()).findById(7L);
+        verify(reviewRepository).countApprovedPublicByProductId(7L);
+        verify(reviewRepository).findAverageRatingByProductId(7L);
+    }
+
+    @Test
     void reviewAggregateStatsRemainReadTimeTransientProductFields() throws Exception {
         String reviewServiceSource = Files.readString(
                 Path.of("src/main/java/com/example/shop/service/impl/ReviewServiceImpl.java"));

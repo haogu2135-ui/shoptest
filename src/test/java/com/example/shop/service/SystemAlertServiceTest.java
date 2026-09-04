@@ -12,6 +12,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -22,6 +23,7 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.startsWith;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -200,6 +202,28 @@ class SystemAlertServiceTest {
                 eq(null),
                 eq(null),
                 eq(5));
+    }
+
+    @Test
+    void summaryUsesOneStatusAndSeverityAggregateQuery() {
+        JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
+        RuntimeConfigService runtimeConfig = runtimeConfig();
+        when(jdbcTemplate.queryForList(startsWith("SELECT status, severity, COUNT(*)")))
+                .thenReturn(List.of(
+                        Map.of("status", SystemAlertService.STATUS_OPEN, "severity", "HIGH", "total", 2L),
+                        Map.of("status", SystemAlertService.STATUS_OPEN, "severity", "WARNING", "total", 1L),
+                        Map.of("status", SystemAlertService.STATUS_ACKNOWLEDGED, "severity", "HIGH", "total", 3L),
+                        Map.of("status", SystemAlertService.STATUS_RESOLVED, "severity", "ERROR", "total", 4L)));
+        SystemAlertService service = service(jdbcTemplate, runtimeConfig);
+
+        var response = service.summary();
+
+        assertEquals(3L, response.getOpenCount());
+        assertEquals(3L, response.getAcknowledgedCount());
+        assertEquals(4L, response.getResolvedCount());
+        assertEquals(Map.of("HIGH", 2L, "WARNING", 1L), response.getOpenBySeverity());
+        verify(jdbcTemplate).queryForList(startsWith("SELECT status, severity, COUNT(*)"));
+        verify(jdbcTemplate, never()).queryForObject(startsWith("SELECT COUNT(*)"), eq(Long.class), org.mockito.ArgumentMatchers.any());
     }
 
     private RuntimeConfigService runtimeConfig() {

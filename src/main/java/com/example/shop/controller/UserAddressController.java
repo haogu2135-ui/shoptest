@@ -71,8 +71,7 @@ public class UserAddressController {
         UserDetailsImpl user = SecurityUtils.requireUser(authentication);
         UserAddress address = request.toEntity(user.getId());
         try {
-            userAddressService.addAddress(address);
-            UserAddress saved = address.getId() == null ? address : userAddressService.getAddress(address.getId());
+            UserAddress saved = userAddressService.addAddress(address);
             return ResponseEntity.ok(UserAddressResponse.from(saved));
         } catch (IllegalArgumentException | IllegalStateException e) {
             return ResponseEntity.badRequest().body(Map.of("error", e.getMessage()));

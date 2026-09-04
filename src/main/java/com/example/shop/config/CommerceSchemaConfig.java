@@ -310,12 +310,14 @@ public class CommerceSchemaConfig {
         addIndexIfMissing("reviews", "idx_reviews_status_created", "ALTER TABLE reviews ADD INDEX idx_reviews_status_created (status, created_at)");
         addIndexIfMissing("reviews", "idx_reviews_reported_status", "ALTER TABLE reviews ADD INDEX idx_reviews_reported_status (reported_count, status, created_at)");
         addIndexIfMissing("product_questions", "idx_product_questions_product_answered_created", "ALTER TABLE product_questions ADD INDEX idx_product_questions_product_answered_created (product_id, answered_at, created_at, id)");
+        addIndexIfMissing("pet_birthday_coupon_grants", "idx_pet_birthday_grants_user_year", "ALTER TABLE pet_birthday_coupon_grants ADD INDEX idx_pet_birthday_grants_user_year (user_id, birthday_year)");
         addIndexIfMissing("cart_items", "uk_cart_user_product_specs", "ALTER TABLE cart_items ADD UNIQUE KEY uk_cart_user_product_specs (user_id, product_id, selected_specs_key)");
         addIndexIfMissing("site_announcements", "idx_site_announcements_status_window", "ALTER TABLE site_announcements ADD INDEX idx_site_announcements_status_window (status, starts_at, ends_at, sort_order)");
         addIndexIfMissing("site_announcements", "idx_site_announcements_updated", "ALTER TABLE site_announcements ADD INDEX idx_site_announcements_updated (updated_at)");
         addIndexIfMissing("payments", "idx_payments_order_no_channel", "ALTER TABLE payments ADD INDEX idx_payments_order_no_channel (order_no, channel)");
         addIndexIfMissing("payments", "idx_payments_transaction_id", "ALTER TABLE payments ADD INDEX idx_payments_transaction_id (transaction_id)");
         addIndexIfMissing("payments", "idx_payments_status_expires", "ALTER TABLE payments ADD INDEX idx_payments_status_expires (status, expires_at)");
+        addIndexIfMissing("user_coupons", "idx_user_coupons_coupon_user", "ALTER TABLE user_coupons ADD INDEX idx_user_coupons_coupon_user (coupon_id, user_id)");
         addIndexIfMissing("checkout_idempotency_keys", "uk_checkout_idempotency_key", "ALTER TABLE checkout_idempotency_keys ADD UNIQUE KEY uk_checkout_idempotency_key (checkout_scope, principal, idempotency_key)");
         addIndexIfMissing("checkout_idempotency_keys", "idx_checkout_idempotency_order", "ALTER TABLE checkout_idempotency_keys ADD INDEX idx_checkout_idempotency_order (order_id)");
         addIndexIfMissing("checkout_idempotency_keys", "idx_checkout_idempotency_updated", "ALTER TABLE checkout_idempotency_keys ADD INDEX idx_checkout_idempotency_updated (updated_at)");
@@ -327,6 +329,7 @@ public class CommerceSchemaConfig {
         addIndexIfMissing("support_sessions", "idx_support_sessions_user_status", "ALTER TABLE support_sessions ADD INDEX idx_support_sessions_user_status (user_id, status, updated_at)");
         addIndexIfMissing("support_sessions", "idx_support_sessions_status_updated", "ALTER TABLE support_sessions ADD INDEX idx_support_sessions_status_updated (status, updated_at)");
         addIndexIfMissing("support_messages", "idx_support_messages_session_created", "ALTER TABLE support_messages ADD INDEX idx_support_messages_session_created (session_id, created_at, id)");
+        addIndexIfMissing("support_messages", "idx_support_messages_session_read", "ALTER TABLE support_messages ADD INDEX idx_support_messages_session_read (session_id, is_read_by_user, is_read_by_admin)");
         addIndexIfMissing("support_messages", "idx_support_messages_unread_admin", "ALTER TABLE support_messages ADD INDEX idx_support_messages_unread_admin (sender_role, is_read_by_admin)");
     }
 

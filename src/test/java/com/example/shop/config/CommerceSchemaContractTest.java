@@ -102,6 +102,8 @@ class CommerceSchemaContractTest {
                 "wishlist/favorites rows should carry an updated_at marker for sync and audit use");
         assertTrue(schema.contains("UNIQUE KEY uk_user_coupon (user_id, coupon_id)"), "user coupon ownership lookups should be covered by the left prefix of the unique key");
         assertTrue(schema.contains("idx_user_coupons_user_status"), "user coupon status lookups should have a user/status index");
+        assertTrue(schema.contains("INDEX idx_user_coupons_coupon_user (coupon_id, user_id)"),
+                "coupon grant duplicate checks should have a coupon/user index");
         assertTrue(schema.contains("INDEX idx_order_items_product_order (product_id, order_id)"),
                 "top-product aggregation should have product/order index");
         assertTrue(schema.contains("INDEX idx_order_items_order_product (order_id, product_id)"),
@@ -152,6 +154,8 @@ class CommerceSchemaContractTest {
                 "pet birthday grants should not block deleting a pet profile");
         assertTrue(schema.contains("CONSTRAINT fk_pet_birthday_coupon_grants_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"),
                 "pet birthday grants should not block deleting the owning user");
+        assertTrue(schema.contains("INDEX idx_pet_birthday_grants_user_year (user_id, birthday_year)"),
+                "birthday grant per-user yearly counts should have a covering index");
         assertTrue(countOccurrences(schema, "CREATE TABLE IF NOT EXISTS security_audit_logs") == 1,
                 "security_audit_logs should be defined exactly once");
         String upperSchema = schema.toUpperCase(Locale.ROOT);
@@ -241,6 +245,8 @@ class CommerceSchemaContractTest {
         assertTrue(source.contains("idx_orders_recent_created_status"), "startup hardening should cover recent order index");
         assertTrue(source.contains("idx_notifications_created_at"), "startup hardening should cover notification created_at index");
         assertTrue(source.contains("idx_notifications_user_created"), "startup hardening should cover notification user listing index");
+        assertTrue(source.contains("idx_user_coupons_coupon_user"),
+                "startup hardening should cover coupon grant duplicate checks");
         assertTrue(source.contains("addLeadingColumnIndexIfMissing(\"users\", \"status\", \"idx_users_status\""),
                 "startup hardening should cover user status filters");
         assertTrue(source.contains("addLeadingColumnIndexIfMissing(\"users\", \"role_code\", \"idx_users_role_code\""),
@@ -387,6 +393,8 @@ class CommerceSchemaContractTest {
                 "Flyway baseline should include wishlist updated_at");
         assertTrue(migration.contains("UNIQUE KEY uk_user_coupon (user_id, coupon_id)"), "Flyway baseline should cover user coupon ownership lookups through left-prefix uniqueness");
         assertTrue(migration.contains("idx_user_coupons_user_status"), "Flyway baseline should include user coupon status index");
+        assertTrue(migration.contains("INDEX idx_user_coupons_coupon_user (coupon_id, user_id)"),
+                "Flyway baseline should include coupon/user duplicate-check index");
         assertTrue(migration.contains("INDEX idx_order_items_product_order (product_id, order_id)"),
                 "Flyway baseline should include top-product order item index");
         assertTrue(migration.contains("INDEX idx_order_items_order_product (order_id, product_id)"),
@@ -419,6 +427,7 @@ class CommerceSchemaContractTest {
 
         String schemaContractMigration = readResource("db/migration/V7__commercial_schema_contract.sql");
         String petMigration = readResource("db/migration/V2__pet_tables.sql");
+        String commerceSchemaConfig = readSource("src/main/java/com/example/shop/config/CommerceSchemaConfig.java");
         assertTrue(schemaContractMigration.contains("DROP INDEX uk_cart_user_product"), "V7 should remove stale cart user/product-only uniqueness");
         assertTrue(schemaContractMigration.contains("idx_site_announcements_status_window"), "V7 should add announcement table/index coverage");
         assertTrue(schemaContractMigration.contains("MODIFY COLUMN brand VARCHAR(120)"), "V7 should widen product brand for existing databases");
@@ -462,6 +471,8 @@ class CommerceSchemaContractTest {
         assertTrue(schemaContractMigration.contains("idx_payments_status_expires"), "V7 should add expired pending payment index coverage for existing databases");
         assertTrue(schemaContractMigration.contains("idx_product_questions_product_answered_created"),
                 "V7 should add product question product/answered/created index coverage for existing databases");
+        assertTrue(commerceSchemaConfig.contains("idx_pet_birthday_grants_user_year"),
+                "startup schema hardening should add the birthday grant user/year index for existing databases");
         assertTrue(schemaContractMigration.contains("idx_user_addresses_user"), "V7 should add user address lookup index coverage for existing databases");
         assertTrue(schemaContractMigration.contains("ALTER TABLE wishlist ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP"),
                 "V7 should backfill wishlist updated_at for existing databases");
@@ -490,6 +501,8 @@ class CommerceSchemaContractTest {
                 "V2 should create birthday grant pet FK with cascade for fresh pet-table installs");
         assertTrue(petMigration.contains("fk_pet_birthday_coupon_grants_user FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE"),
                 "V2 should create birthday grant user FK with cascade for fresh pet-table installs");
+        assertTrue(petMigration.contains("INDEX idx_pet_birthday_grants_user_year (user_id, birthday_year)"),
+                "V2 should create the birthday grant user/year index for fresh pet-table installs");
     }
 
     @Test

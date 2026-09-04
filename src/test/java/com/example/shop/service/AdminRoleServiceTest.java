@@ -31,6 +31,31 @@ class AdminRoleServiceTest {
     }
 
     @Test
+    void permissionSeedingUsesSetBasedReadsAndBatchWrites() throws Exception {
+        String source = Files.readString(
+                Path.of("src/main/java/com/example/shop/service/AdminRoleService.java"),
+                StandardCharsets.UTF_8);
+
+        org.junit.jupiter.api.Assertions.assertTrue(source.contains("jdbcTemplate.batchUpdate"));
+        org.junit.jupiter.api.Assertions.assertTrue(source.contains("SELECT permission_key FROM admin_role_permissions WHERE role_code = ?"));
+        org.junit.jupiter.api.Assertions.assertTrue(source.contains("SELECT role_code, permission_key FROM admin_role_permissions"));
+        org.junit.jupiter.api.Assertions.assertFalse(source.contains("SELECT COUNT(*) FROM admin_role_permissions WHERE role_code = ? AND permission_key = ?"));
+        org.junit.jupiter.api.Assertions.assertFalse(source.contains("jdbcTemplate.update(\"INSERT INTO admin_role_permissions"));
+        org.junit.jupiter.api.Assertions.assertFalse(source.contains(".forEach(code -> addMissingPermissions(code, ALL_ADMIN_PERMISSIONS)"));
+    }
+
+    @Test
+    void activeRoleNormalizationUsesOneJoinedUpdate() throws Exception {
+        String source = Files.readString(
+                Path.of("src/main/java/com/example/shop/service/AdminRoleService.java"),
+                StandardCharsets.UTF_8);
+
+        org.junit.jupiter.api.Assertions.assertTrue(source.contains("UPDATE users u "));
+        org.junit.jupiter.api.Assertions.assertTrue(source.contains("JOIN admin_roles r ON UPPER(u.role_code) = UPPER(r.code)"));
+        org.junit.jupiter.api.Assertions.assertFalse(source.contains(".forEach(code -> jdbcTemplate.update"));
+    }
+
+    @Test
     void assignRoleAcceptsUserDemotionWithoutAdminRoleRow() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);
         UserMapper userMapper = mock(UserMapper.class);

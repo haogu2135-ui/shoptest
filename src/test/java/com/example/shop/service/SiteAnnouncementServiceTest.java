@@ -48,12 +48,8 @@ class SiteAnnouncementServiceTest {
         when(runtimeConfig.getInt("admin.announcements.title-max-chars", 120)).thenReturn(80);
         when(runtimeConfig.getInt("admin.announcements.content-max-chars", 500)).thenReturn(420);
         when(runtimeConfig.getInt("admin.announcements.link-url-max-chars", 500)).thenReturn(260);
-        when(repository.countAdmin(isNull(), isNull())).thenReturn(9L);
-        when(repository.countAdminCurrentlyActive(isNull(), isNull(), any(LocalDateTime.class))).thenReturn(3L);
-        when(repository.countAdminScheduled(isNull(), isNull(), any(LocalDateTime.class))).thenReturn(2L);
-        when(repository.countAdminExpired(isNull(), isNull(), any(LocalDateTime.class))).thenReturn(1L);
-        when(repository.countAdmin(eq("INACTIVE"), isNull())).thenReturn(4L);
-        when(repository.countAdminLinked(isNull(), isNull())).thenReturn(5L);
+        when(repository.summarizeAdminMetrics(isNull(), isNull(), any(LocalDateTime.class)))
+                .thenReturn(Collections.singletonList(new Object[]{9L, 3L, 2L, 1L, 4L, 5L}));
 
         SiteAnnouncementAdminSummaryResponse summary = service.adminSummary();
 

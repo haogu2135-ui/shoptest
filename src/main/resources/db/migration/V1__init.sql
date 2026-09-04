@@ -346,7 +346,8 @@ CREATE TABLE IF NOT EXISTS user_coupons (
     FOREIGN KEY (order_id) REFERENCES orders(id),
     CONSTRAINT ck_user_coupons_status CHECK (status IN ('UNUSED', 'USED')),
     UNIQUE KEY uk_user_coupon (user_id, coupon_id),
-    INDEX idx_user_coupons_user_status (user_id, status)
+    INDEX idx_user_coupons_user_status (user_id, status),
+    INDEX idx_user_coupons_coupon_user (coupon_id, user_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 ALTER TABLE orders ADD CONSTRAINT fk_orders_user_coupon_id FOREIGN KEY (user_coupon_id) REFERENCES user_coupons(id);
@@ -395,6 +396,7 @@ CREATE TABLE IF NOT EXISTS support_messages (
     FOREIGN KEY (session_id) REFERENCES support_sessions(id),
     FOREIGN KEY (sender_id) REFERENCES users(id),
     INDEX idx_support_messages_session_created (session_id, created_at),
+    INDEX idx_support_messages_session_read (session_id, is_read_by_user, is_read_by_admin),
     INDEX idx_support_messages_unread_admin (is_read_by_admin, sender_role),
     INDEX idx_support_messages_unread_user (is_read_by_user, sender_role)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

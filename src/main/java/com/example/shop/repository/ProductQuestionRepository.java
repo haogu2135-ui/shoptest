@@ -48,19 +48,11 @@ public interface ProductQuestionRepository extends JpaRepository<ProductQuestion
                                          @Param("search") String search,
                                          Pageable pageable);
 
-    @Query("select count(q) from ProductQuestion q")
-    long countAllQuestions();
-
-    @Query("select count(q) from ProductQuestion q where q.answer is null or trim(q.answer) = ''")
-    long countUnansweredQuestions();
-
-    @Query("select count(q) from ProductQuestion q where q.answer is not null and trim(q.answer) <> ''")
-    long countAnsweredQuestions();
-
-    @Query("select count(q) from ProductQuestion q where (q.answer is null or trim(q.answer) = '') and q.createdAt < :staleBefore")
-    long countStaleUnansweredQuestions(@Param("staleBefore") LocalDateTime staleBefore);
-
-    @Query("select count(q) from ProductQuestion q "
+    @Query("select count(q),"
+            + " coalesce(sum(case when q.answer is null or trim(q.answer) = '' then 1 else 0 end), 0),"
+            + " coalesce(sum(case when q.answer is not null and trim(q.answer) <> '' then 1 else 0 end), 0),"
+            + " coalesce(sum(case when (q.answer is null or trim(q.answer) = '') and q.createdAt < :staleBefore then 1 else 0 end), 0)"
+            + " from ProductQuestion q "
             + "left join q.product p "
             + "left join q.user u "
             + "where (:answered is null "
@@ -74,59 +66,7 @@ public interface ProductQuestionRepository extends JpaRepository<ProductQuestion
             + "or str(q.id) like concat('%', :search, '%') escape '!' "
             + "or str(p.id) like concat('%', :search, '%') escape '!' "
             + "or str(u.id) like concat('%', :search, '%') escape '!')")
-    long countAdminQuestions(@Param("answered") Boolean answered, @Param("search") String search);
-
-    @Query("select count(q) from ProductQuestion q "
-            + "left join q.product p "
-            + "left join q.user u "
-            + "where (:answered is null "
-            + "or (:answered = true and q.answer is not null and trim(q.answer) <> '') "
-            + "or (:answered = false and (q.answer is null or trim(q.answer) = ''))) "
-            + "and (q.answer is null or trim(q.answer) = '') "
-            + "and (:search is null or :search = '' "
-            + "or lower(coalesce(q.question, '')) like concat('%', :search, '%') escape '!' "
-            + "or lower(coalesce(q.answer, '')) like concat('%', :search, '%') escape '!' "
-            + "or lower(coalesce(p.name, '')) like concat('%', :search, '%') escape '!' "
-            + "or lower(coalesce(u.username, '')) like concat('%', :search, '%') escape '!' "
-            + "or str(q.id) like concat('%', :search, '%') escape '!' "
-            + "or str(p.id) like concat('%', :search, '%') escape '!' "
-            + "or str(u.id) like concat('%', :search, '%') escape '!')")
-    long countAdminUnansweredQuestions(@Param("answered") Boolean answered, @Param("search") String search);
-
-    @Query("select count(q) from ProductQuestion q "
-            + "left join q.product p "
-            + "left join q.user u "
-            + "where (:answered is null "
-            + "or (:answered = true and q.answer is not null and trim(q.answer) <> '') "
-            + "or (:answered = false and (q.answer is null or trim(q.answer) = ''))) "
-            + "and q.answer is not null and trim(q.answer) <> '' "
-            + "and (:search is null or :search = '' "
-            + "or lower(coalesce(q.question, '')) like concat('%', :search, '%') escape '!' "
-            + "or lower(coalesce(q.answer, '')) like concat('%', :search, '%') escape '!' "
-            + "or lower(coalesce(p.name, '')) like concat('%', :search, '%') escape '!' "
-            + "or lower(coalesce(u.username, '')) like concat('%', :search, '%') escape '!' "
-            + "or str(q.id) like concat('%', :search, '%') escape '!' "
-            + "or str(p.id) like concat('%', :search, '%') escape '!' "
-            + "or str(u.id) like concat('%', :search, '%') escape '!')")
-    long countAdminAnsweredQuestions(@Param("answered") Boolean answered, @Param("search") String search);
-
-    @Query("select count(q) from ProductQuestion q "
-            + "left join q.product p "
-            + "left join q.user u "
-            + "where (:answered is null "
-            + "or (:answered = true and q.answer is not null and trim(q.answer) <> '') "
-            + "or (:answered = false and (q.answer is null or trim(q.answer) = ''))) "
-            + "and (q.answer is null or trim(q.answer) = '') "
-            + "and q.createdAt < :staleBefore "
-            + "and (:search is null or :search = '' "
-            + "or lower(coalesce(q.question, '')) like concat('%', :search, '%') escape '!' "
-            + "or lower(coalesce(q.answer, '')) like concat('%', :search, '%') escape '!' "
-            + "or lower(coalesce(p.name, '')) like concat('%', :search, '%') escape '!' "
-            + "or lower(coalesce(u.username, '')) like concat('%', :search, '%') escape '!' "
-            + "or str(q.id) like concat('%', :search, '%') escape '!' "
-            + "or str(p.id) like concat('%', :search, '%') escape '!' "
-            + "or str(u.id) like concat('%', :search, '%') escape '!')")
-    long countAdminStaleUnansweredQuestions(@Param("answered") Boolean answered,
-                                            @Param("search") String search,
-                                            @Param("staleBefore") LocalDateTime staleBefore);
+    List<Object[]> summarizeAdminQuestionMetrics(@Param("answered") Boolean answered,
+                                                 @Param("search") String search,
+                                                 @Param("staleBefore") LocalDateTime staleBefore);
 }

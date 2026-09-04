@@ -21,8 +21,11 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -100,8 +103,12 @@ public class PetBirthdayCouponService {
             if (pets == null || pets.isEmpty()) {
                 break;
             }
+            Map<Long, Integer> grantCounts = config.getMaxBenefitsPerUser() != null
+                    && config.getMaxBenefitsPerUser() > 0
+                    ? loadBirthdayGrantCounts(pets, date.getYear())
+                    : new HashMap<>();
             for (PetProfile pet : pets) {
-                granted += grantBirthdayCouponForPet(date, pet, config);
+                granted += grantBirthdayCouponForPet(date, pet, config, grantCounts);
             }
             long currentAfterId = afterId;
             long nextAfterId = pets.stream()
@@ -118,13 +125,16 @@ public class PetBirthdayCouponService {
         return granted;
     }
 
-    private int grantBirthdayCouponForPet(LocalDate date, PetProfile pet, PetBirthdayCouponConfig config) {
+    private int grantBirthdayCouponForPet(LocalDate date,
+                                          PetProfile pet,
+                                          PetBirthdayCouponConfig config,
+                                          Map<Long, Integer> grantCounts) {
         if (pet.getId() == null || pet.getUserId() == null) {
             return 0;
         }
         if (config.getMaxBenefitsPerUser() != null
                 && config.getMaxBenefitsPerUser() > 0
-                && grantMapper.countByUserIdAndBirthdayYear(pet.getUserId(), date.getYear()) >= config.getMaxBenefitsPerUser()) {
+                && grantCounts.getOrDefault(pet.getUserId(), 0) >= config.getMaxBenefitsPerUser()) {
             return 0;
         }
         Coupon coupon = getOrCreateBirthdayCoupon(date, pet, config);
@@ -139,7 +149,52 @@ public class PetBirthdayCouponService {
         userCoupon.setClaimedAt(LocalDateTime.now());
         userCouponMapper.insert(userCoupon);
         couponRepository.incrementClaimedQuantity(coupon.getId());
+        grantCounts.merge(pet.getUserId(), 1, Integer::sum);
         return 1;
+    }
+
+    private Map<Long, Integer> loadBirthdayGrantCounts(List<PetProfile> pets, int birthdayYear) {
+        List<Long> userIds = pets.stream()
+                .map(PetProfile::getUserId)
+                .filter(userId -> userId != null && userId > 0)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<Long, Integer> counts = new HashMap<>();
+        if (userIds.isEmpty()) {
+            return counts;
+        }
+        List<Map<String, Object>> rows = grantMapper.countByUserIdsAndBirthdayYear(userIds, birthdayYear);
+        if (rows == null) {
+            return counts;
+        }
+        for (Map<String, Object> row : rows) {
+            if (row == null) {
+                continue;
+            }
+            Object userIdValue = mapValue(row, "userId", "user_id");
+            Object countValue = mapValue(row, "grantCount", "grant_count");
+            if (userIdValue instanceof Number && countValue instanceof Number) {
+                counts.put(((Number) userIdValue).longValue(), ((Number) countValue).intValue());
+            }
+        }
+        return counts;
+    }
+
+    private Object mapValue(Map<String, Object> row, String... keys) {
+        for (String key : keys) {
+            Object value = row.get(key);
+            if (value != null) {
+                return value;
+            }
+        }
+        for (Map.Entry<String, Object> entry : row.entrySet()) {
+            for (String key : keys) {
+                if (entry.getKey() != null && entry.getKey().equalsIgnoreCase(key)) {
+                    return entry.getValue();
+                }
+            }
+        }
+        return null;
     }
 
     @Transactional(rollbackFor = Exception.class)

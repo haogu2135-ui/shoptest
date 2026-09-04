@@ -47,11 +47,12 @@ class UserAddressServiceTest {
         UserAddress address = address(7L, "  Mia\tChen  ", "  555\n0101  ", "  1 Main\u0000 Street\tApt 2  ");
         when(userAddressMapper.countByUserId(7L)).thenReturn(0);
 
-        service.addAddress(address);
+        assertEquals(address, service.addAddress(address));
 
         InOrder inOrder = inOrder(userMapper, userAddressMapper);
         inOrder.verify(userMapper).findByIdForUpdate(7L);
         inOrder.verify(userAddressMapper).countByUserId(7L);
+        verify(userAddressMapper, never()).findById(any());
         ArgumentCaptor<UserAddress> captor = ArgumentCaptor.forClass(UserAddress.class);
         verify(userAddressMapper).insert(captor.capture());
         assertEquals("Mia Chen", captor.getValue().getRecipientName());

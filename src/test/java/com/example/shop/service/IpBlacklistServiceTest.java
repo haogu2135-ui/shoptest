@@ -1,6 +1,7 @@
 package com.example.shop.service;
 
 import com.example.shop.dto.IpBlacklistBatchReleaseResponse;
+import com.example.shop.dto.IpBlacklistStatusResponse;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -9,6 +10,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -147,6 +149,36 @@ class IpBlacklistServiceTest {
                 startsWith("UPDATE ip_blacklist_entries SET status = ?, released_at"),
                 any(),
                 any());
+    }
+
+    @Test
+    void statusUsesOneConditionalAggregateForDatabaseCounts() {
+        when(jdbcTemplate.queryForMap(
+                startsWith("SELECT COUNT(*) AS total_count"),
+                eq(IpBlacklistService.STATUS_BLOCKED),
+                eq(IpBlacklistService.STATUS_MONITORING),
+                eq(IpBlacklistService.STATUS_RELEASED)))
+                .thenReturn(Map.of(
+                        "TOTAL_COUNT", 9L,
+                        "BLOCKED_COUNT", 2L,
+                        "MONITORING_COUNT", 3L,
+                        "RELEASED_COUNT", 4L));
+
+        IpBlacklistStatusResponse response = service.status();
+
+        assertEquals(2L, response.getBlockedCount());
+        assertEquals(3L, response.getMonitoringCount());
+        assertEquals(4L, response.getReleasedCount());
+        assertEquals(9L, response.getTotalCount());
+        verify(jdbcTemplate).queryForMap(
+                startsWith("SELECT COUNT(*) AS total_count"),
+                eq(IpBlacklistService.STATUS_BLOCKED),
+                eq(IpBlacklistService.STATUS_MONITORING),
+                eq(IpBlacklistService.STATUS_RELEASED));
+        verify(jdbcTemplate, never()).queryForObject(
+                startsWith("SELECT COUNT(*) FROM ip_blacklist_entries"),
+                any(Object[].class),
+                eq(Long.class));
     }
 
     @Test

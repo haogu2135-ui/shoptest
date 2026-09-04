@@ -643,8 +643,7 @@ class ProductImportServiceTest {
         collar.setPrice(new BigDecimal("14.00"));
         collar.setStock(6);
         collar.setCategoryId(1L);
-        when(productRepository.findById(3L)).thenReturn(java.util.Optional.of(leash));
-        when(productRepository.findById(4L)).thenReturn(java.util.Optional.of(collar));
+        when(productRepository.findAllById(any())).thenReturn(List.of(leash, collar));
         when(productRepository.existsByCategoryIdAndNameIgnoreCaseAndIdNot(1L, "travel harness", 4L)).thenReturn(true);
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -665,6 +664,7 @@ class ProductImportServiceTest {
         assertEquals(ProductImportResult.STATUS_PREVIEW_BLOCKED, result.getStatus());
         assertFalse(result.isReadyToImport());
         verify(productRepository, never()).save(any());
+        verify(productRepository, times(1)).findAllById(List.of(3L, 4L));
     }
 
     @Test
@@ -788,7 +788,7 @@ class ProductImportServiceTest {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         Product existing = new Product();
         existing.setId(3L);
-        when(productRepository.findById(3L)).thenReturn(java.util.Optional.of(existing));
+        when(productRepository.findAllById(any())).thenReturn(List.of(existing));
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",
@@ -805,7 +805,7 @@ class ProductImportServiceTest {
         assertFalse(result.isApplied());
         assertEquals(1, result.getUpdated());
         assertEquals(0, result.getCreated());
-        verify(productRepository, times(1)).findById(3L);
+        verify(productRepository, times(1)).findAllById(List.of(3L));
         verify(productRepository, never()).save(any());
     }
 
@@ -830,7 +830,7 @@ class ProductImportServiceTest {
         existing.setShipping("Existing shipping");
         existing.setFreeShipping(true);
         existing.setFreeShippingThreshold(new BigDecimal("49.00"));
-        when(productRepository.findById(3L)).thenReturn(java.util.Optional.of(existing));
+        when(productRepository.findAllById(any())).thenReturn(List.of(existing));
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",
@@ -875,7 +875,7 @@ class ProductImportServiceTest {
         existing.setStock(4);
         existing.setCategoryId(1L);
         existing.setBrand("Existing Brand");
-        when(productRepository.findById(3L)).thenReturn(java.util.Optional.of(existing));
+        when(productRepository.findAllById(any())).thenReturn(List.of(existing));
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",
@@ -912,7 +912,7 @@ class ProductImportServiceTest {
         existing.setStock(4);
         existing.setCategoryId(1L);
         existing.setDescription("Keep this copy");
-        when(productRepository.findById(3L)).thenReturn(java.util.Optional.of(existing));
+        when(productRepository.findAllById(any())).thenReturn(List.of(existing));
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",
@@ -948,7 +948,7 @@ class ProductImportServiceTest {
         existing.setOriginalPrice(new BigDecimal("20.00"));
         existing.setStock(4);
         existing.setCategoryId(1L);
-        when(productRepository.findById(3L)).thenReturn(java.util.Optional.of(existing));
+        when(productRepository.findAllById(any())).thenReturn(List.of(existing));
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",
@@ -1003,7 +1003,7 @@ class ProductImportServiceTest {
         existing.setPrice(new BigDecimal("20.00"));
         existing.setStock(4);
         existing.setCategoryId(1L);
-        when(productRepository.findById(3L)).thenReturn(java.util.Optional.of(existing));
+        when(productRepository.findAllById(any())).thenReturn(List.of(existing));
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",
@@ -1027,7 +1027,7 @@ class ProductImportServiceTest {
     @Test
     void rejectsLightweightUpdateRowsWithUnknownProductIds() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
-        when(productRepository.findById(404L)).thenReturn(java.util.Optional.empty());
+        when(productRepository.findAllById(any())).thenReturn(List.of());
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",
@@ -1053,7 +1053,7 @@ class ProductImportServiceTest {
     @Test
     void rejectsFullCreateRowsWithUnknownProductIds() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
-        when(productRepository.findById(404L)).thenReturn(java.util.Optional.empty());
+        when(productRepository.findAllById(any())).thenReturn(List.of());
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",
@@ -1497,7 +1497,7 @@ class ProductImportServiceTest {
         existing.setVariants("[{\"sku\":\"SKU-100\",\"options\":{\"Size\":\"S\"},\"price\":19.99,\"stock\":2}]");
         when(productRepository.findVariantSkuOwnerRows(any(Pageable.class)))
                 .thenReturn(List.<Object[]>of(new Object[]{existing.getId(), existing.getVariants()}));
-        when(productRepository.findById(10L)).thenReturn(java.util.Optional.of(existing));
+        when(productRepository.findAllById(any())).thenReturn(List.of(existing));
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",

@@ -1,11 +1,15 @@
 <?xml version="1.0" encoding="UTF-8" ?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="com.example.shop.repository.PetBirthdayCouponGrantMapper">
-    <select id="countByUserIdAndBirthdayYear" resultType="int">
-        SELECT COUNT(*)
+    <select id="countByUserIdsAndBirthdayYear" resultType="map">
+        SELECT user_id AS userId, COUNT(*) AS grantCount
         FROM pet_birthday_coupon_grants
-        WHERE user_id = #{userId}
-          AND birthday_year = #{birthdayYear}
+        WHERE birthday_year = #{birthdayYear}
+          AND user_id IN
+          <foreach item="userId" collection="userIds" open="(" separator="," close=")">
+              #{userId}
+          </foreach>
+        GROUP BY user_id
     </select>
 
     <insert id="insertIgnore">

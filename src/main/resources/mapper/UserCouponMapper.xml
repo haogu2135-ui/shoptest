@@ -51,6 +51,16 @@
         LIMIT 1
     </select>
 
+    <select id="findUserIdsByCouponIdAndUserIdIn" resultType="long">
+        SELECT user_id
+        FROM user_coupons
+        WHERE coupon_id = #{couponId}
+          AND user_id IN
+          <foreach item="userId" collection="userIds" open="(" separator="," close=")">
+              #{userId}
+          </foreach>
+    </select>
+
     <select id="findByUserIdLimited" resultMap="userCouponMap">
         SELECT <include refid="userCouponColumns"/>
         FROM user_coupons uc

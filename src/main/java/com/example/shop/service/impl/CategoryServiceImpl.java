@@ -113,14 +113,19 @@ public class CategoryServiceImpl implements CategoryService {
         if (category.getId() != null && category.getParentId() != null && category.getId().equals(category.getParentId())) {
             throw new IllegalArgumentException("Category cannot be its own parent");
         }
+        CategoryHierarchy hierarchy = null;
+        Category parent = null;
         int newLevel;
         if (category.getParentId() == null) {
             newLevel = 1;
         } else {
-            Category parent = categoryRepository.findById(category.getParentId())
+            parent = categoryRepository.findById(category.getParentId())
                     .orElseThrow(() -> new IllegalArgumentException("Parent category not found"));
-            if (category.getId() != null && findSelfAndDescendantIds(category.getId()).contains(parent.getId())) {
-                throw new IllegalArgumentException("Category cannot move under itself or its descendants");
+            if (category.getId() != null) {
+                hierarchy = loadCategoryHierarchy(category.getId());
+                if (hierarchy.ids.contains(parent.getId())) {
+                    throw new IllegalArgumentException("Category cannot move under itself or its descendants");
+                }
             }
             if (parent.getLevel() == null) {
                 parent.setLevel(1);
@@ -130,14 +135,19 @@ public class CategoryServiceImpl implements CategoryService {
             }
             newLevel = parent.getLevel() + 1;
         }
-        if (category.getId() != null && newLevel + maxChildDepth(category.getId()) > 3) {
-            throw new IllegalArgumentException("Moving this category would exceed 3 levels");
+        if (category.getId() != null) {
+            if (hierarchy == null) {
+                hierarchy = loadCategoryHierarchy(category.getId());
+            }
+            if (newLevel + hierarchy.maxDepth > 3) {
+                throw new IllegalArgumentException("Moving this category would exceed 3 levels");
+            }
         }
         category.setLevel(newLevel);
-        category.setPath(buildCategoryPath(category.getParentId(), category.getId()));
+        category.setPath(buildCategoryPath(parent, category.getParentId(), category.getId()));
         Category saved = categoryRepository.save(category);
         if (saved.getId() != null) {
-            String savedPath = buildCategoryPath(saved.getParentId(), saved.getId());
+            String savedPath = buildCategoryPath(parent, saved.getParentId(), saved.getId());
             if (!savedPath.equals(saved.getPath())) {
                 saved.setPath(savedPath);
                 saved = categoryRepository.save(saved);
@@ -167,28 +177,17 @@ public class CategoryServiceImpl implements CategoryService {
         if (id == null) {
             return;
         }
-        Set<Long> visited = new LinkedHashSet<>();
-        visited.add(id);
-        ids.add(id);
-        Set<Long> frontier = new LinkedHashSet<>(List.of(id));
-        while (!frontier.isEmpty()) {
-            List<Category> children = categoryRepository.findByParentIdIn(new ArrayList<>(frontier));
-            Set<Long> nextFrontier = new LinkedHashSet<>();
-            for (Category child : children) {
-                if (child == null || child.getId() == null || !visited.add(child.getId())) {
-                    continue;
-                }
-                ids.add(child.getId());
-                nextFrontier.add(child.getId());
-            }
-            frontier = nextFrontier;
-        }
+        ids.addAll(loadCategoryHierarchy(id).ids);
     }
 
     private int maxChildDepth(Long id) {
         if (id == null) {
             return 0;
         }
+        return loadCategoryHierarchy(id).maxDepth;
+    }
+
+    private CategoryHierarchy loadCategoryHierarchy(Long id) {
         Set<Long> visited = new LinkedHashSet<>(List.of(id));
         Set<Long> frontier = new LinkedHashSet<>(List.of(id));
         int depth = 0;
@@ -207,7 +206,7 @@ public class CategoryServiceImpl implements CategoryService {
             depth++;
             frontier = nextFrontier;
         }
-        return depth;
+        return new CategoryHierarchy(visited, depth);
     }
 
     private void refreshChildHierarchy(Long parentId, Integer parentLevel, String parentPath) {
@@ -247,11 +246,20 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     private String buildCategoryPath(Long parentId, Long categoryId) {
+        return buildCategoryPath(null, parentId, categoryId);
+    }
+
+    private String buildCategoryPath(Category loadedParent, Long parentId, Long categoryId) {
         if (categoryId == null) {
             return null;
         }
         if (parentId == null) {
             return appendPath(null, categoryId);
+        }
+        if (loadedParent != null && parentId.equals(loadedParent.getId())) {
+            return appendPath(loadedParent.getPath() != null && !loadedParent.getPath().isBlank()
+                    ? loadedParent.getPath()
+                    : buildCategoryPath(loadedParent.getParentId(), loadedParent.getId()), categoryId);
         }
         return categoryRepository.findById(parentId)
                 .map(parent -> appendPath(parent.getPath() != null && !parent.getPath().isBlank()
@@ -352,5 +360,15 @@ public class CategoryServiceImpl implements CategoryService {
         Category category = new Category();
         category.setId(categoryId);
         return countPublicProductsForRoots(List.of(category)).getOrDefault(categoryId, 0L);
+    }
+
+    private static class CategoryHierarchy {
+        private final Set<Long> ids;
+        private final int maxDepth;
+
+        private CategoryHierarchy(Set<Long> ids, int maxDepth) {
+            this.ids = ids;
+            this.maxDepth = maxDepth;
+        }
     }
 }

@@ -70,9 +70,6 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     @Transactional(rollbackFor = Exception.class, readOnly = true)
     public List<PublicReviewResponse> getPublicReviewsByProductId(Long productId, Long currentUserId, int page, int size) {
-        if (!isPublicProduct(productId)) {
-            return List.of();
-        }
         int safePage = Math.max(0, page);
         int limit = normalizedPublicPageSize(size);
         List<Review> reviews;
@@ -89,21 +86,15 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     @Transactional(rollbackFor = Exception.class, readOnly = true)
     public long countPublicReviewsByProductId(Long productId, Long currentUserId) {
-        if (!isPublicProduct(productId)) {
-            return 0;
-        }
         if (currentUserId != null) {
             return reviewRepository.countPublicByProductIdIncludingUserPending(productId, currentUserId);
         }
-        return reviewRepository.countByProduct_IdAndStatus(productId, "APPROVED");
+        return reviewRepository.countApprovedPublicByProductId(productId);
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class, readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public BigDecimal getAverageRating(Long productId) {
-        if (!isPublicProduct(productId)) {
-            return ZERO_REVIEW_STAT;
-        }
         return reviewStatDecimal(reviewRepository.findAverageRatingByProductId(productId));
     }
 

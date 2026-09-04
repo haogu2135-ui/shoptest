@@ -14,6 +14,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -22,9 +23,12 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -84,6 +88,41 @@ class PetGalleryServiceTest {
     }
 
     @Test
+    void findPublicPhotosBatchLoadsViewerLikesForList() {
+        PetGalleryPhoto first = publicSeedPhoto(31L);
+        PetGalleryPhoto second = publicSeedPhoto(32L);
+        when(photoRepository.findTopPublicPhotos(eq("ACTIVE"), org.mockito.ArgumentMatchers.any(Pageable.class)))
+                .thenReturn(List.of(first, second));
+        when(likeRepository.findPhotoIdsByViewerKeyAndPhotoIdIn(eq("user:7"), eq(List.of(31L, 32L))))
+                .thenReturn(List.of(32L));
+
+        List<PetGalleryPhoto> photos = service.findPublicPhotos(7L, "203.0.113.10");
+
+        assertFalse(photos.get(0).getLikedByMe());
+        assertTrue(photos.get(1).getLikedByMe());
+        verify(likeRepository).findPhotoIdsByViewerKeyAndPhotoIdIn("user:7", List.of(31L, 32L));
+        verify(likeRepository, never()).existsByPhotoIdAndViewerKey(anyLong(), anyString());
+    }
+
+    @Test
+    void findPublicPhotosBatchLoadsViewerLikesForPage() {
+        PetGalleryPhoto first = publicSeedPhoto(41L);
+        PetGalleryPhoto second = publicSeedPhoto(42L);
+        when(photoRepository.findByStatusOrderByLikeCountDescCreatedAtDescIdDesc(eq("ACTIVE"), org.mockito.ArgumentMatchers.any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of(first, second)));
+        when(likeRepository.findPhotoIdsByViewerKeyAndPhotoIdIn(eq("ip:203.0.113.10"), eq(List.of(41L, 42L))))
+                .thenReturn(List.of(41L));
+
+        org.springframework.data.domain.Page<PetGalleryPhoto> result =
+                service.findPublicPhotos(null, "203.0.113.10", 0, 24);
+
+        assertTrue(result.getContent().get(0).getLikedByMe());
+        assertFalse(result.getContent().get(1).getLikedByMe());
+        verify(likeRepository).findPhotoIdsByViewerKeyAndPhotoIdIn("ip:203.0.113.10", List.of(41L, 42L));
+        verify(likeRepository, never()).existsByPhotoIdAndViewerKey(anyLong(), anyString());
+    }
+
+    @Test
     void findPublicPhotosHidesMissingLocalUploadsAndMarksDeleted() {
         when(runtimeConfig.getString(eq("pet-gallery.upload-dir"), anyString())).thenReturn(tempDir.toString());
         PetGalleryPhoto missingUpload = new PetGalleryPhoto();
@@ -130,6 +169,18 @@ class PetGalleryServiceTest {
     }
 
     @Test
+    void ensureSeedPhotosBatchLoadsExistingImageUrls() {
+        when(photoRepository.findImageUrlsByImageUrlIn(anyList()))
+                .thenReturn(List.of("https://images.unsplash.com/photo-1537151672256-6caf2e9f8c95?auto=format&fit=crop&w=700&q=80"));
+
+        service.ensureSeedPhotos(99L);
+
+        verify(photoRepository).findImageUrlsByImageUrlIn(anyList());
+        verify(photoRepository, times(5)).save(org.mockito.ArgumentMatchers.any(PetGalleryPhoto.class));
+        verify(photoRepository, never()).existsByImageUrl(anyString());
+    }
+
+    @Test
     void findForAdminBoundsPageSizeAndAppliesFilters() {
         when(photoRepository.searchAdminPhotos(eq("DELETED"), eq("SEED"), eq("%mittens%"), org.mockito.ArgumentMatchers.any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of()));
@@ -156,15 +207,32 @@ class PetGalleryServiceTest {
     }
 
     @Test
-    void summarizeForAdminUsesBoundedFilteredCountQueries() {
-        when(photoRepository.countAdminPhotos(eq("ACTIVE"), eq("USER_UPLOAD"), eq("%203.0.113.10%"))).thenReturn(9L);
-        when(photoRepository.countAdminPhotosByUserUploadSource(eq("ACTIVE"), eq("USER_UPLOAD"), eq("%203.0.113.10%"), eq("USER_UPLOAD"))).thenReturn(8L);
-        when(photoRepository.countAdminPhotosBySource(eq("ACTIVE"), eq("USER_UPLOAD"), eq("%203.0.113.10%"), eq("SEED"))).thenReturn(0L);
-        when(photoRepository.countAdminRecentPhotos(eq("ACTIVE"), eq("USER_UPLOAD"), eq("%203.0.113.10%"), org.mockito.ArgumentMatchers.any())).thenReturn(3L);
-        when(photoRepository.countAdminLargePhotos(eq("ACTIVE"), eq("USER_UPLOAD"), eq("%203.0.113.10%"), eq(5L * 1024 * 1024))).thenReturn(1L);
+    void summarizeForAdminUsesOneBoundedFilteredAggregateQuery() {
+        when(photoRepository.summarizeAdminMetrics(
+                eq("ACTIVE"),
+                eq("USER_UPLOAD"),
+                eq("%203.0.113.10%"),
+                eq("USER_UPLOAD"),
+                eq("SEED"),
+                org.mockito.ArgumentMatchers.any(LocalDateTime.class),
+                eq(5L * 1024 * 1024)))
+                .thenReturn(List.<Object[]>of(new Object[] {9L, 8L, 0L, 3L, 1L}));
 
-        assertEquals(9L, service.summarizeForAdmin("ACTIVE", "USER_UPLOAD", "203.0.113.10").get("visiblePhotos"));
-        assertEquals(8L, service.summarizeForAdmin("ACTIVE", "USER_UPLOAD", "203.0.113.10").get("userUploads"));
+        java.util.Map<String, Long> summary = service.summarizeForAdmin("ACTIVE", "USER_UPLOAD", "203.0.113.10");
+
+        assertEquals(9L, summary.get("visiblePhotos"));
+        assertEquals(8L, summary.get("userUploads"));
+        assertEquals(0L, summary.get("seedPhotos"));
+        assertEquals(3L, summary.get("recentUploads"));
+        assertEquals(1L, summary.get("largeFiles"));
+        verify(photoRepository).summarizeAdminMetrics(
+                eq("ACTIVE"),
+                eq("USER_UPLOAD"),
+                eq("%203.0.113.10%"),
+                eq("USER_UPLOAD"),
+                eq("SEED"),
+                org.mockito.ArgumentMatchers.any(LocalDateTime.class),
+                eq(5L * 1024 * 1024));
     }
 
     @Test
@@ -292,6 +360,15 @@ class PetGalleryServiceTest {
         writeIntBigEndian(bytes, 16, width);
         writeIntBigEndian(bytes, 20, height);
         return bytes;
+    }
+
+    private PetGalleryPhoto publicSeedPhoto(Long id) {
+        PetGalleryPhoto photo = new PetGalleryPhoto();
+        photo.setId(id);
+        photo.setStatus("ACTIVE");
+        photo.setSource("SEED");
+        photo.setImageUrl("https://images.example.com/seed-" + id + ".jpg");
+        return photo;
     }
 
     private void writeIntBigEndian(byte[] bytes, int offset, int value) {

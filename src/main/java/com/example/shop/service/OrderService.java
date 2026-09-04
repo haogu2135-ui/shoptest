@@ -1007,6 +1007,7 @@ public class OrderService {
         stats.put("pendingPaymentOrders", mapLong(row, "pendingPaymentOrders"));
         stats.put("pendingShipmentOrders", mapLong(row, "pendingShipmentOrders"));
         stats.put("shippedOrders", mapLong(row, "shippedOrders"));
+        stats.put("refundingPayments", mapLong(row, "refundingPayments"));
         stats.put("ordersWithTracking", mapLong(row, "ordersWithTracking"));
         stats.put("ordersWithoutTracking", mapLong(row, "ordersWithoutTracking"));
         stats.put("completedOrders", mapLong(row, "completedOrders"));
@@ -2079,8 +2080,9 @@ public class OrderService {
     }
 
     private void restoreVariantProductStock(Map<Long, List<OrderItem>> itemsByProductId) {
+        Map<Long, Product> productsById = loadProductsForStockRestoration(itemsByProductId.keySet());
         for (Map.Entry<Long, List<OrderItem>> entry : itemsByProductId.entrySet()) {
-            Product product = findProductForStockRestoration(entry.getKey());
+            Product product = productsById.get(entry.getKey());
             if (product == null) {
                 logMissingStockRestorationItems(entry.getValue());
                 continue;
@@ -2099,6 +2101,43 @@ public class OrderService {
             }
             productRepository.save(product);
         }
+    }
+
+    private Map<Long, Product> loadProductsForStockRestoration(Set<Long> productIds) {
+        List<Long> normalizedIds = productIds == null
+                ? List.of()
+                : productIds.stream()
+                        .filter(id -> id != null && id > 0)
+                        .distinct()
+                        .sorted()
+                        .collect(Collectors.toList());
+        if (normalizedIds.isEmpty()) {
+            return Map.of();
+        }
+        if (normalizedIds.size() == 1) {
+            Product product = findProductForStockRestoration(normalizedIds.get(0));
+            return product == null ? Map.of() : Map.of(product.getId(), product);
+        }
+
+        Map<Long, Product> productsById = new LinkedHashMap<>();
+        List<Product> lockedProducts = productRepository.findAllByIdForUpdate(normalizedIds);
+        if (lockedProducts != null) {
+            lockedProducts.stream()
+                    .filter(product -> product != null && product.getId() != null)
+                    .forEach(product -> productsById.put(product.getId(), product));
+        }
+        List<Long> missingIds = normalizedIds.stream()
+                .filter(id -> !productsById.containsKey(id))
+                .collect(Collectors.toList());
+        if (!missingIds.isEmpty()) {
+            List<Product> fallbackProducts = productRepository.findAllById(missingIds);
+            if (fallbackProducts != null) {
+                fallbackProducts.stream()
+                        .filter(product -> product != null && product.getId() != null)
+                        .forEach(product -> productsById.putIfAbsent(product.getId(), product));
+            }
+        }
+        return productsById;
     }
 
     private Product findProductForStockRestoration(Long productId) {

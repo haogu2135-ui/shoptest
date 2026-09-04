@@ -33,61 +33,32 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
                                     @Param("scope") String scope,
                                     Pageable pageable);
 
-    @Query("select count(c) from Coupon c " +
-            "where (:keyword is null " +
-            "or lower(c.name) like lower(concat('%', :keyword, '%')) escape '!' " +
-            "or lower(coalesce(c.description, '')) like lower(concat('%', :keyword, '%')) escape '!' " +
-            "or lower(c.couponType) like lower(concat('%', :keyword, '%')) escape '!' " +
-            "or lower(c.scope) like lower(concat('%', :keyword, '%')) escape '!' " +
-            "or lower(c.status) like lower(concat('%', :keyword, '%')) escape '!' " +
-            "or (:keywordId is not null and c.id = :keywordId)) " +
-            "and (:status is null or c.status = :status) " +
-            "and (:scope is null or c.scope = :scope)")
-    long countAdminCoupons(@Param("keyword") String keyword,
-                           @Param("keywordId") Long keywordId,
-                           @Param("status") String status,
-                           @Param("scope") String scope);
-
-    @Query("select count(c) from Coupon c " +
-            "where c.status = 'ACTIVE' " +
-            "and (:keyword is null " +
-            "or lower(c.name) like lower(concat('%', :keyword, '%')) escape '!' " +
-            "or lower(coalesce(c.description, '')) like lower(concat('%', :keyword, '%')) escape '!' " +
-            "or lower(c.couponType) like lower(concat('%', :keyword, '%')) escape '!' " +
-            "or lower(c.scope) like lower(concat('%', :keyword, '%')) escape '!' " +
-            "or lower(c.status) like lower(concat('%', :keyword, '%')) escape '!' " +
-            "or (:keywordId is not null and c.id = :keywordId)) " +
-            "and (:status is null or c.status = :status) " +
-            "and (:scope is null or c.scope = :scope) " +
-            "and c.endAt is not null " +
-            "and c.endAt >= :startAt " +
-            "and c.endAt <= :endAt")
-    long countAdminActiveExpiringBetween(@Param("keyword") String keyword,
+    @Query("select count(c),"
+            + " coalesce(sum(case when c.status = 'ACTIVE' then 1 else 0 end), 0),"
+            + " coalesce(sum(case when c.status = 'INACTIVE' then 1 else 0 end), 0),"
+            + " coalesce(sum(case when c.status = 'ACTIVE' and c.scope = 'PUBLIC' then 1 else 0 end), 0),"
+            + " coalesce(sum(case when c.status = 'ACTIVE' and c.endAt is not null"
+            + " and c.endAt >= :startAt and c.endAt <= :endAt then 1 else 0 end), 0),"
+            + " coalesce(sum(case when c.status = 'ACTIVE' and c.totalQuantity is not null"
+            + " and c.totalQuantity > coalesce(c.claimedQuantity, 0)"
+            + " and c.totalQuantity <= coalesce(c.claimedQuantity, 0) + :threshold then 1 else 0 end), 0)"
+            + " from Coupon c"
+            + " where (:keyword is null"
+            + " or lower(c.name) like lower(concat('%', :keyword, '%')) escape '!'"
+            + " or lower(coalesce(c.description, '')) like lower(concat('%', :keyword, '%')) escape '!'"
+            + " or lower(c.couponType) like lower(concat('%', :keyword, '%')) escape '!'"
+            + " or lower(c.scope) like lower(concat('%', :keyword, '%')) escape '!'"
+            + " or lower(c.status) like lower(concat('%', :keyword, '%')) escape '!'"
+            + " or (:keywordId is not null and c.id = :keywordId))"
+            + " and (:status is null or c.status = :status)"
+            + " and (:scope is null or c.scope = :scope)")
+    List<Object[]> summarizeAdminMetrics(@Param("keyword") String keyword,
                                          @Param("keywordId") Long keywordId,
                                          @Param("status") String status,
                                          @Param("scope") String scope,
                                          @Param("startAt") LocalDateTime startAt,
-                                         @Param("endAt") LocalDateTime endAt);
-
-    @Query("select count(c) from Coupon c " +
-            "where c.status = 'ACTIVE' " +
-            "and (:keyword is null " +
-            "or lower(c.name) like lower(concat('%', :keyword, '%')) escape '!' " +
-            "or lower(coalesce(c.description, '')) like lower(concat('%', :keyword, '%')) escape '!' " +
-            "or lower(c.couponType) like lower(concat('%', :keyword, '%')) escape '!' " +
-            "or lower(c.scope) like lower(concat('%', :keyword, '%')) escape '!' " +
-            "or lower(c.status) like lower(concat('%', :keyword, '%')) escape '!' " +
-            "or (:keywordId is not null and c.id = :keywordId)) " +
-            "and (:status is null or c.status = :status) " +
-            "and (:scope is null or c.scope = :scope) " +
-            "and c.totalQuantity is not null " +
-            "and c.totalQuantity > coalesce(c.claimedQuantity, 0) " +
-            "and c.totalQuantity <= coalesce(c.claimedQuantity, 0) + :threshold")
-    long countAdminActiveLowRemaining(@Param("keyword") String keyword,
-                                      @Param("keywordId") Long keywordId,
-                                      @Param("status") String status,
-                                      @Param("scope") String scope,
-                                      @Param("threshold") int threshold);
+                                         @Param("endAt") LocalDateTime endAt,
+                                         @Param("threshold") int threshold);
 
     @Query("select c from Coupon c " +
             "where c.scope = :scope and c.status = :status " +

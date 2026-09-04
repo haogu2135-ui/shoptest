@@ -10,7 +10,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
+import java.util.Set;
 
 @Configuration
 @RequiredArgsConstructor
@@ -64,9 +68,7 @@ public class CouponSeedConfig {
                     )
                 );
 
-                for (SeedCoupon coupon : coupons) {
-                    insertIfMissing(coupon);
-                }
+                seedCoupons(coupons);
             } catch (Exception e) {
                 log.warn("Public coupon seed data could not be inserted. Coupon APIs will continue with existing data.", e);
             }
@@ -77,48 +79,69 @@ public class CouponSeedConfig {
         if (!tableExists("coupons")) {
             return;
         }
-        addColumnIfMissing("coupons", "scope", "VARCHAR(20) NOT NULL DEFAULT 'PUBLIC'");
-        addColumnIfMissing("coupons", "status", "VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'");
-        addColumnIfMissing("coupons", "threshold_amount", "DECIMAL(10,2) DEFAULT 0.00");
-        addColumnIfMissing("coupons", "reduction_amount", "DECIMAL(10,2) DEFAULT 0.00");
-        addColumnIfMissing("coupons", "discount_percent", "INT NULL");
-        addColumnIfMissing("coupons", "max_discount_amount", "DECIMAL(10,2) NULL");
-        addColumnIfMissing("coupons", "total_quantity", "INT NULL");
-        addColumnIfMissing("coupons", "claimed_quantity", "INT NOT NULL DEFAULT 0");
-        addColumnIfMissing("coupons", "start_at", "DATETIME NULL");
-        addColumnIfMissing("coupons", "end_at", "DATETIME NULL");
-        addColumnIfMissing("coupons", "description", "TEXT NULL");
-        addColumnIfMissing("coupons", "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
-        addColumnIfMissing("coupons", "updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
-        jdbcTemplate.update("UPDATE coupons SET scope = 'PUBLIC' WHERE scope IS NULL OR TRIM(scope) = ''");
-        jdbcTemplate.update("UPDATE coupons SET status = 'ACTIVE' WHERE status IS NULL OR TRIM(status) = ''");
-        jdbcTemplate.update("UPDATE coupons SET claimed_quantity = 0 WHERE claimed_quantity IS NULL");
-    }
-
-    private void insertIfMissing(SeedCoupon coupon) {
+        Set<String> existingColumns = new HashSet<>();
+        jdbcTemplate.queryForList(
+                "SELECT COLUMN_NAME FROM INFORMATION_SCHEMA.COLUMNS "
+                        + "WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?",
+                String.class,
+                "coupons")
+                .forEach(column -> existingColumns.add(column.toLowerCase(Locale.ROOT)));
+        addColumnIfMissing(existingColumns, "scope", "VARCHAR(20) NOT NULL DEFAULT 'PUBLIC'");
+        addColumnIfMissing(existingColumns, "status", "VARCHAR(20) NOT NULL DEFAULT 'ACTIVE'");
+        addColumnIfMissing(existingColumns, "threshold_amount", "DECIMAL(10,2) DEFAULT 0.00");
+        addColumnIfMissing(existingColumns, "reduction_amount", "DECIMAL(10,2) DEFAULT 0.00");
+        addColumnIfMissing(existingColumns, "discount_percent", "INT NULL");
+        addColumnIfMissing(existingColumns, "max_discount_amount", "DECIMAL(10,2) NULL");
+        addColumnIfMissing(existingColumns, "total_quantity", "INT NULL");
+        addColumnIfMissing(existingColumns, "claimed_quantity", "INT NOT NULL DEFAULT 0");
+        addColumnIfMissing(existingColumns, "start_at", "DATETIME NULL");
+        addColumnIfMissing(existingColumns, "end_at", "DATETIME NULL");
+        addColumnIfMissing(existingColumns, "description", "TEXT NULL");
+        addColumnIfMissing(existingColumns, "created_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP");
+        addColumnIfMissing(existingColumns, "updated_at", "TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP");
         jdbcTemplate.update(
-            "INSERT INTO coupons (" +
-                "name, coupon_type, scope, status, threshold_amount, reduction_amount, discount_percent, " +
-                "max_discount_amount, total_quantity, claimed_quantity, start_at, end_at, description, created_at, updated_at" +
-            ") SELECT ?, ?, 'PUBLIC', 'ACTIVE', ?, ?, ?, ?, ?, 0, ?, ?, ?, NOW(), NOW() " +
-            "WHERE NOT EXISTS (SELECT 1 FROM coupons WHERE name = ?)",
-            coupon.name,
-            coupon.couponType,
-            coupon.thresholdAmount,
-            coupon.reductionAmount,
-            coupon.discountPercent,
-            coupon.maxDiscountAmount,
-            coupon.totalQuantity,
-            coupon.startAt,
-            coupon.endAt,
-            coupon.description,
-            coupon.name
-        );
+                "UPDATE coupons SET "
+                        + "scope = CASE WHEN scope IS NULL OR TRIM(scope) = '' THEN 'PUBLIC' ELSE scope END, "
+                        + "status = CASE WHEN status IS NULL OR TRIM(status) = '' THEN 'ACTIVE' ELSE status END, "
+                        + "claimed_quantity = CASE WHEN claimed_quantity IS NULL THEN 0 ELSE claimed_quantity END "
+                        + "WHERE scope IS NULL OR TRIM(scope) = '' "
+                        + "OR status IS NULL OR TRIM(status) = '' "
+                        + "OR claimed_quantity IS NULL");
     }
 
-    private void addColumnIfMissing(String tableName, String columnName, String definition) {
-        if (!columnExists(tableName, columnName)) {
-            jdbcTemplate.execute("ALTER TABLE " + tableName + " ADD COLUMN " + columnName + " " + definition);
+    private void seedCoupons(List<SeedCoupon> coupons) {
+        if (coupons == null || coupons.isEmpty()) {
+            return;
+        }
+        List<Object[]> batchArgs = new ArrayList<>(coupons.size());
+        for (SeedCoupon coupon : coupons) {
+            batchArgs.add(new Object[]{
+                    coupon.name,
+                    coupon.couponType,
+                    coupon.thresholdAmount,
+                    coupon.reductionAmount,
+                    coupon.discountPercent,
+                    coupon.maxDiscountAmount,
+                    coupon.totalQuantity,
+                    coupon.startAt,
+                    coupon.endAt,
+                    coupon.description,
+                    coupon.name
+            });
+        }
+        jdbcTemplate.batchUpdate(
+                "INSERT INTO coupons (" +
+                        "name, coupon_type, scope, status, threshold_amount, reduction_amount, discount_percent, " +
+                        "max_discount_amount, total_quantity, claimed_quantity, start_at, end_at, description, created_at, updated_at" +
+                        ") SELECT ?, ?, 'PUBLIC', 'ACTIVE', ?, ?, ?, ?, ?, 0, ?, ?, ?, NOW(), NOW() " +
+                        "WHERE NOT EXISTS (SELECT 1 FROM coupons WHERE name = ?)",
+                batchArgs);
+    }
+
+    private void addColumnIfMissing(Set<String> existingColumns, String columnName, String definition) {
+        if (!existingColumns.contains(columnName)) {
+            jdbcTemplate.execute("ALTER TABLE coupons ADD COLUMN " + columnName + " " + definition);
+            existingColumns.add(columnName);
         }
     }
 
@@ -127,16 +150,6 @@ public class CouponSeedConfig {
             "SELECT COUNT(*) FROM INFORMATION_SCHEMA.TABLES WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ?",
             Integer.class,
             tableName
-        );
-        return count != null && count > 0;
-    }
-
-    private boolean columnExists(String tableName, String columnName) {
-        Integer count = jdbcTemplate.queryForObject(
-            "SELECT COUNT(*) FROM INFORMATION_SCHEMA.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?",
-            Integer.class,
-            tableName,
-            columnName
         );
         return count != null && count > 0;
     }

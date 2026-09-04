@@ -55,17 +55,24 @@ class InventoryReplenishmentContractTest {
         String orderService = read("src/main/java/com/example/shop/service/OrderService.java");
         String variantRestore = methodBlock(orderService,
                 "private void restoreVariantProductStock(Map<Long, List<OrderItem>> itemsByProductId)");
+        String productLoader = methodBlock(orderService,
+                "private Map<Long, Product> loadProductsForStockRestoration(Set<Long> productIds)");
 
         assertTrue(variantRestore.contains("for (Map.Entry<Long, List<OrderItem>> entry : itemsByProductId.entrySet())"));
-        assertTrue(variantRestore.contains("Product product = findProductForStockRestoration(entry.getKey())"));
+        assertTrue(variantRestore.contains("Map<Long, Product> productsById = loadProductsForStockRestoration(itemsByProductId.keySet())"));
+        assertTrue(variantRestore.contains("Product product = productsById.get(entry.getKey())"));
         assertTrue(variantRestore.contains("for (OrderItem item : entry.getValue())"));
         assertTrue(variantRestore.contains("productRepository.save(product);"));
-        assertTrue(variantRestore.indexOf("Product product = findProductForStockRestoration(entry.getKey())")
+        assertTrue(variantRestore.indexOf("Product product = productsById.get(entry.getKey())")
                         < variantRestore.indexOf("for (OrderItem item : entry.getValue())"),
-                "Variant stock restoration should lock the product once before applying grouped item quantities");
+                "Variant stock restoration should load products before applying grouped item quantities");
         assertTrue(variantRestore.lastIndexOf("productRepository.save(product)")
                         > variantRestore.indexOf("for (OrderItem item : entry.getValue())"),
                 "Variant stock restoration should save once after applying grouped item quantities");
+        assertTrue(productLoader.contains("productRepository.findAllByIdForUpdate(normalizedIds)"),
+                "Multi-product variant restoration should use one pessimistic-lock query");
+        assertTrue(productLoader.contains(".sorted()"),
+                "Variant restoration should lock multiple products in stable ID order");
     }
 
     private static void collectStaleInventoryMarkers(Path path, List<String> offenders) {

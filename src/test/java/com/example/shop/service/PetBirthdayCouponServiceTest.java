@@ -23,7 +23,8 @@ class PetBirthdayCouponServiceTest {
         assertTrue(source.contains("HARD_BIRTHDAY_SCAN_BATCH_SIZE = 1_000"));
         assertTrue(source.contains("HARD_BIRTHDAY_REISSUE_PET_LIMIT = 50"));
         assertTrue(source.contains("if (nextAfterId == currentAfterId || pets.size() < batchSize)"));
-        assertTrue(source.contains("grantMapper.countByUserIdAndBirthdayYear(pet.getUserId(), date.getYear())"));
+        assertTrue(source.contains("grantMapper.countByUserIdsAndBirthdayYear(userIds, birthdayYear)"));
+        assertTrue(source.contains("grantCounts.merge(pet.getUserId(), 1, Integer::sum)"));
         assertTrue(source.contains("int reserved = grantMapper.insertIgnore(pet.getId(), pet.getUserId(), coupon.getId(), date.getYear());"));
         assertTrue(source.contains("if (reserved == 0)"));
         assertTrue(source.contains("userCouponMapper.insert(userCoupon);"));
@@ -36,6 +37,10 @@ class PetBirthdayCouponServiceTest {
         assertTrue(mapper.contains("ORDER BY id ASC"));
         assertTrue(mapper.contains("LIMIT #{limit}"));
         assertTrue(mapper.contains("id=\"findBirthdayPetsByUserId\""));
+        String grantMapper = Files.readString(
+                Path.of("src/main/resources/mapper/PetBirthdayCouponGrantMapper.xml"), StandardCharsets.UTF_8);
+        assertTrue(grantMapper.contains("id=\"countByUserIdsAndBirthdayYear\""));
+        assertTrue(grantMapper.contains("GROUP BY user_id"));
     }
 
     @Test
