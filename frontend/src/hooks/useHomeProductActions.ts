@@ -1,8 +1,8 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import type { ChangeEventHandler, Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import type { PetGalleryPhotoPublic, PetGalleryQuota, ProductPublic as Product } from '../types';
-import { cartApi, petGalleryApi, productApi, wishlistApi } from '../api';
+import { cartApi, createApiAbortController, petGalleryApi, productApi, wishlistApi } from '../api';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { addGuestCartItem } from '../utils/guestCart';
 import { needsOptionSelection } from '../utils/productOptions';
@@ -55,6 +55,10 @@ export const useHomeProductActions = ({
   setLocalPetGalleryLikes,
   setWishlistedProductIds,
 }: UseHomeProductActionsArgs) => {
+  const mountedRef = useRef(true);
+  const petGalleryRefreshSeqRef = useRef(0);
+  const petGalleryAbortRef = useRef<AbortController | null>(null);
+
   const prefetchProduct = useCallback((productId: number) => {
     void productApi.prefetchById(productId);
   }, []);
@@ -64,22 +68,35 @@ export const useHomeProductActions = ({
   }, [navigate]);
 
   const refreshPetGallery = useCallback(async () => {
+    const requestSeq = petGalleryRefreshSeqRef.current + 1;
+    petGalleryRefreshSeqRef.current = requestSeq;
+    petGalleryAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    petGalleryAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && petGalleryRefreshSeqRef.current === requestSeq
+      && !abortController.signal.aborted;
     try {
       const [photosRes, quotaRes] = await Promise.all([
-        petGalleryApi.getAll(),
+        petGalleryApi.getAll(false, { signal: abortController.signal }),
         isAuthenticated
-          ? petGalleryApi.getQuota().catch((error) => {
+          ? petGalleryApi.getQuota(false, { signal: abortController.signal }).catch((error) => {
+            if (abortController.signal.aborted) throw error;
             reportNonBlockingError('Home.refreshPetGalleryQuota', error);
             return null;
           })
           : Promise.resolve(null),
       ]);
+      if (!isCurrentRequest()) return;
       setPetGalleryPhotos(photosRes.data);
       setPetGalleryQuota(quotaRes?.data || null);
     } catch (error) {
+      if (!isCurrentRequest()) return;
       reportNonBlockingError('Home.refreshPetGallery', error);
       setPetGalleryPhotos([]);
       setPetGalleryQuota(null);
+    } finally {
+      if (petGalleryAbortRef.current === abortController) petGalleryAbortRef.current = null;
     }
   }, [isAuthenticated, setPetGalleryPhotos, setPetGalleryQuota]);
 
@@ -87,8 +104,23 @@ export const useHomeProductActions = ({
     const task = scheduleIdleTask(() => {
       void refreshPetGallery();
     }, 1600);
-    return () => cancelIdleTask(task);
+    return () => {
+      cancelIdleTask(task);
+      petGalleryRefreshSeqRef.current += 1;
+      petGalleryAbortRef.current?.abort();
+      petGalleryAbortRef.current = null;
+    };
   }, [refreshPetGallery]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      petGalleryRefreshSeqRef.current += 1;
+      petGalleryAbortRef.current?.abort();
+      petGalleryAbortRef.current = null;
+    };
+  }, []);
 
   const handlePetUploadClick = useCallback(() => {
     if (!isAuthenticated) {

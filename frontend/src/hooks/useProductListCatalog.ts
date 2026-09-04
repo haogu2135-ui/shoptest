@@ -258,10 +258,11 @@ export const useProductListCatalog = ({
         announceAccessibleMessage(errorMessage, 'error');
       }
     } finally {
+      const shouldUpdateLoading = isCurrentRequest();
       if (productFetchAbortRef.current === abortController) {
         productFetchAbortRef.current = null;
       }
-      if (isCurrentRequest()) {
+      if (shouldUpdateLoading) {
         setLoading(false);
       }
     }

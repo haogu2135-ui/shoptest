@@ -138,6 +138,7 @@ const ProductDetail: React.FC = () => {
   const productDetailLocalizationRef = useRef({ t, language });
   productDetailLocalizationRef.current = { t, language };
   const {
+    cancelNonCriticalContent,
     fetchQuestions,
     fetchReviewableOrders,
     fetchReviews,
@@ -395,6 +396,7 @@ const ProductDetail: React.FC = () => {
   } = useProductDetailRecommendationActions({
     language,
     navigate,
+    scopeKey: id,
     t,
   });
 
@@ -408,7 +410,7 @@ const ProductDetail: React.FC = () => {
 
   useEffect(() => {
     const handleAuthSessionChanged = () => {
-      nonCriticalRequestSeqRef.current += 1;
+      cancelNonCriticalContent();
       clearProductDetailSessionCaches();
       nonCriticalLoadedRef.current = false;
       setIsWishlisted(false);
@@ -423,10 +425,11 @@ const ProductDetail: React.FC = () => {
     return () => {
       window.removeEventListener(AUTH_SESSION_CHANGED_EVENT, handleAuthSessionChanged);
     };
-  }, [resetRecommendationCartState]);
+  }, [cancelNonCriticalContent, resetRecommendationCartState]);
 
   useEffect(() => {
     let disposed = false;
+    const abortController = new AbortController();
     const nonCriticalRequestSeq = nonCriticalRequestSeqRef.current + 1;
     nonCriticalRequestSeqRef.current = nonCriticalRequestSeq;
     nonCriticalLoadedRef.current = false;
@@ -445,15 +448,15 @@ const ProductDetail: React.FC = () => {
       setLoading(true);
       setLoadError(null);
       try {
-        const res = await productApi.getById(Number(id));
-        if (disposed) return;
+        const res = await productApi.getById(Number(id), { signal: abortController.signal });
+        if (disposed || abortController.signal.aborted) return;
         setProduct(localizeProduct(res.data as Product, language));
         setSelectedImage(normalizeProductImages(res.data)[0]);
         setActiveMobileImageIndex(0);
         recordProductView(res.data);
         setLoadError(null);
       } catch (error) {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         reportNonBlockingError('ProductDetail.fetchProduct', error);
         const fallbackProduct = findFallbackProductById(Number(id));
         if (fallbackProduct) {
@@ -472,18 +475,18 @@ const ProductDetail: React.FC = () => {
         }
         setProduct(null);
       } finally {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         setLoading(false);
       }
     };
     fetchProduct();
     if (token) {
-      wishlistApi.check(0, Number(id))
+      wishlistApi.check(0, Number(id), { signal: abortController.signal })
         .then(res => {
-          if (!disposed) setIsWishlisted(res.data.wishlisted);
+          if (!disposed && !abortController.signal.aborted) setIsWishlisted(res.data.wishlisted);
         })
         .catch((error) => {
-          if (!disposed) reportNonBlockingError('ProductDetail.checkWishlist', error);
+          if (!disposed && !abortController.signal.aborted) reportNonBlockingError('ProductDetail.checkWishlist', error);
         });
     }
     setIsAlerted(hasStockAlert(Number(id)));
@@ -523,7 +526,8 @@ const ProductDetail: React.FC = () => {
       scrollWarmup();
       return () => {
         disposed = true;
-        nonCriticalRequestSeqRef.current += 1;
+        abortController.abort();
+        cancelNonCriticalContent();
         if (fallbackTimer !== null) {
           window.clearTimeout(fallbackTimer);
         }
@@ -534,13 +538,14 @@ const ProductDetail: React.FC = () => {
 
     return () => {
       disposed = true;
-      nonCriticalRequestSeqRef.current += 1;
+      abortController.abort();
+      cancelNonCriticalContent();
       if (fallbackTimer !== null) {
         window.clearTimeout(fallbackTimer);
       }
       observer?.disconnect();
     };
-  }, [authSessionVersion, id, language, reloadToken, warmNonCriticalContent]);
+  }, [authSessionVersion, cancelNonCriticalContent, id, language, reloadToken, warmNonCriticalContent]);
 
   useEffect(() => {
     const syncStockAlert = () => setIsAlerted(hasStockAlert(Number(id)));

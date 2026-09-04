@@ -7,6 +7,7 @@ import ShopRangePicker, { type ShopRangeValue } from '../components/ShopRangePic
 import ShopInputNumber from '../components/ShopInputNumber';
 import { AlertOutlined, DeleteOutlined, DownloadOutlined, KeyOutlined, MailOutlined, SafetyCertificateOutlined, SearchOutlined, UserOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { createApiAbortController } from '../api';
 import { adminApi } from '../api/admin';
 import type { SecurityAuditLog, SecurityAuditSummary } from '../types';
 import { useLanguage } from '../i18n';
@@ -323,7 +324,10 @@ const SecurityAuditLogManagement: React.FC = () => {
   const [actorUsername, setActorUsername] = useState('');
   const [range, setRange] = useState<ShopRangeValue>(null);
   const [retentionDays, setRetentionDays] = useState(180);
+  const mountedRef = useRef(true);
   const fetchLogsRequestSeqRef = useRef(0);
+  const fetchLogsAbortRef = useRef<AbortController | null>(null);
+  const permissionsAbortRef = useRef<AbortController | null>(null);
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const canExportAuditLogs = hasAdminPermission(adminPermissions, currentRole, AUDIT_LOGS_EXPORT_PERMISSION);
   const canPurgeAuditLogs = hasAdminPermission(adminPermissions, currentRole, AUDIT_LOGS_PURGE_PERMISSION);
@@ -553,24 +557,35 @@ const SecurityAuditLogManagement: React.FC = () => {
     // Each run claims a sequence number so only the latest one applies.
     const requestSeq = fetchLogsRequestSeqRef.current + 1;
     fetchLogsRequestSeqRef.current = requestSeq;
+    fetchLogsAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    fetchLogsAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && fetchLogsRequestSeqRef.current === requestSeq
+      && fetchLogsAbortRef.current === abortController
+      && !abortController.signal.aborted;
     setLoading(true);
     try {
       const [logResponse, summaryResponse] = await Promise.all([
-        adminApi.getAuditLogs(queryParams),
-        adminApi.getAuditLogSummary({ ...queryParams, topLimit: 6 }),
+        adminApi.getAuditLogs(queryParams, { signal: abortController.signal }),
+        adminApi.getAuditLogSummary({ ...queryParams, topLimit: 6 }, { signal: abortController.signal }),
       ]);
-      if (fetchLogsRequestSeqRef.current !== requestSeq) return;
+      if (!isCurrentRequest()) return;
       setLoadError(null);
       setLogs(logResponse.data || []);
       setSummary(summaryResponse.data || null);
       setAuditSnapshotLoaded(true);
     } catch (error: unknown) {
-      if (fetchLogsRequestSeqRef.current !== requestSeq) return;
+      if (!isCurrentRequest()) return;
       const errorMessage = getApiErrorMessage(error, t('pages.auditLogs.loadFailed'), language);
       setLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      if (fetchLogsRequestSeqRef.current === requestSeq) {
+      const shouldUpdateLoading = isCurrentRequest();
+      if (fetchLogsAbortRef.current === abortController) {
+        fetchLogsAbortRef.current = null;
+      }
+      if (shouldUpdateLoading) {
         setLoading(false);
       }
     }
@@ -578,27 +593,46 @@ const SecurityAuditLogManagement: React.FC = () => {
 
   useEffect(() => {
     const handle = window.setTimeout(() => {
-      fetchLogs();
+      void fetchLogs();
     }, 180);
     return () => window.clearTimeout(handle);
   }, [fetchLogs]);
 
   useEffect(() => {
-    let disposed = false;
-    adminApi.getMyPermissions()
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      fetchLogsRequestSeqRef.current += 1;
+      fetchLogsAbortRef.current?.abort();
+      permissionsAbortRef.current?.abort();
+      fetchLogsAbortRef.current = null;
+      permissionsAbortRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    permissionsAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    permissionsAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && permissionsAbortRef.current === abortController
+      && !abortController.signal.aborted;
+    adminApi.getMyPermissions({ signal: abortController.signal })
       .then((res) => {
-        if (disposed) return;
+        if (!isCurrentRequest()) return;
         setCurrentRole(getEffectiveRole(res.data.role, res.data.roleCode));
         setAdminPermissions(res.data.permissions || []);
       })
       .catch(() => {
-        if (disposed) return;
+        if (!isCurrentRequest()) return;
         setCurrentRole('');
         setAdminPermissions([]);
+      })
+      .finally(() => {
+        if (permissionsAbortRef.current === abortController) {
+          permissionsAbortRef.current = null;
+        }
       });
-    return () => {
-      disposed = true;
-    };
   }, []);
 
   const exportLogs = async () => {

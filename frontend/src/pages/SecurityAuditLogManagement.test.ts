@@ -6,6 +6,10 @@ jest.mock('../api/admin', () => ({
   adminApi: {},
 }));
 
+jest.mock('../api', () => ({
+  createApiAbortController: () => new AbortController(),
+}));
+
 const pageSource = fs.readFileSync(path.join(__dirname, 'SecurityAuditLogManagement.tsx'), 'utf8');
 const cssSource = fs.readFileSync(path.join(__dirname, 'SecurityAuditLogManagement.css'), 'utf8');
 type LocaleNode = string | number | boolean | null | LocaleNode[] | { [key: string]: LocaleNode };

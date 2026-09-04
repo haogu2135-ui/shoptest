@@ -41,15 +41,23 @@ describe('AdminDashboard type-safety guards', () => {
 
   it('keeps a page-level admin guard before dashboard API reads', () => {
     const effectStart = source.indexOf('const fetchStats = async () => {');
-    const apiCall = source.indexOf('const res = await adminApi.getDashboard();', effectStart);
+    const apiCall = source.indexOf('const res = await adminApi.getDashboard({ signal: abortController.signal });', effectStart);
     const guard = source.indexOf('if (!token || !isAdminRole(user?.role)) {', effectStart);
 
     expect(source).toContain("import { useAuth } from '../hooks/useAuth';");
     expect(source).toContain("import { isAdminRole } from '../utils/roles';");
+    expect(source).toContain("import { createApiAbortController } from '../api';");
     expect(effectStart).toBeGreaterThan(-1);
     expect(guard).toBeGreaterThan(effectStart);
     expect(apiCall).toBeGreaterThan(guard);
     expect(source).toContain("setLoadError(t('adminLayout.noPermission'));");
     expect(source).toContain("navigate('/', { replace: true });");
+  });
+
+  it('cancels dashboard reads when auth state changes or the page unmounts', () => {
+    expect(source).toContain('const dashboardAbortRef = useRef<AbortController | null>(null);');
+    expect(source).toContain('dashboardAbortRef.current?.abort();');
+    expect(source).toContain('abortController.abort();');
+    expect(source).toContain('dashboardAbortRef.current !== abortController');
   });
 });

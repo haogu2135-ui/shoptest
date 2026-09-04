@@ -1,4 +1,4 @@
-import type { Dispatch, SetStateAction } from 'react';
+import { useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { wishlistApi } from '../api';
 import type { Language } from '../i18n';
@@ -38,6 +38,21 @@ export const useProductDetailEngagementActions = ({
   setIsWishlisted,
   t,
 }: UseProductDetailEngagementActionsParams) => {
+  const mountedRef = useRef(true);
+  const scopeSeqRef = useRef(0);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      scopeSeqRef.current += 1;
+    };
+  }, []);
+
+  useEffect(() => () => {
+    scopeSeqRef.current += 1;
+  }, [id]);
+
   const handleFavorite = async () => {
     const token = getLocalStorageItem('token');
     if (!token) {
@@ -45,12 +60,15 @@ export const useProductDetailEngagementActions = ({
       navigate(buildLoginUrlFromWindow());
       return;
     }
+    const scopeSeq = scopeSeqRef.current;
     try {
       const res = await wishlistApi.toggle(0, Number(id));
+      if (!mountedRef.current || scopeSeqRef.current !== scopeSeq) return;
       setIsWishlisted(res.data.wishlisted);
       dispatchDomEvent('shop:wishlist-updated');
       announceAccessibleMessage(res.data.wishlisted ? t('pages.productDetail.favoritedMsg') : t('pages.productDetail.unfavoritedMsg'), 'success');
     } catch (err: unknown) {
+      if (!mountedRef.current || scopeSeqRef.current !== scopeSeq) return;
       announceAccessibleMessage(getApiErrorMessage(err, t('messages.operationFailed'), language), 'error');
     }
   };

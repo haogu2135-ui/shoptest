@@ -13,4 +13,12 @@ describe('SecurityAuditLogManagement type-safety guards', () => {
     expect(source).not.toContain('catch (err: any)');
     expect(source).not.toContain('as any');
   });
+
+  it('cancels stale audit reads and permission refreshes', () => {
+    expect(source).toContain('const fetchLogsAbortRef = useRef<AbortController | null>(null);');
+    expect(source).toContain('fetchLogsAbortRef.current?.abort();');
+    expect(source).toContain('adminApi.getAuditLogs(queryParams, { signal: abortController.signal })');
+    expect(source).toContain('adminApi.getAuditLogSummary({ ...queryParams, topLimit: 6 }, { signal: abortController.signal })');
+    expect(source).toContain('adminApi.getMyPermissions({ signal: abortController.signal })');
+  });
 });

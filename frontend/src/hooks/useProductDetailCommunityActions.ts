@@ -12,9 +12,9 @@ import {
 } from '../pages/productDetailHelpers';
 
 type UseProductDetailCommunityActionsParams = {
-  fetchQuestions: (requestSeq: number) => void | Promise<void>;
-  fetchReviewableOrders: (requestSeq: number) => void | Promise<void>;
-  fetchReviews: (requestSeq: number) => void | Promise<void>;
+  fetchQuestions: (requestSeq: number, signal?: AbortSignal) => void | Promise<void>;
+  fetchReviewableOrders: (requestSeq: number, signal?: AbortSignal) => void | Promise<void>;
+  fetchReviews: (requestSeq: number, signal?: AbortSignal) => void | Promise<void>;
   id: string | undefined;
   isCurrentNonCriticalRequest: (requestSeq: number) => boolean;
   language: Language;

@@ -49,10 +49,12 @@ export const useCartCheckoutSubmit = ({
     setCheckoutSubmitting(true);
     try {
       await flushPendingQuantityUpdates(checkoutItems);
+      if (!mountedRef.current) return;
       syncCheckoutCartItemIds(checkoutItems);
       removeSessionStorageItem('checkoutPaymentMethod');
       navigate('/checkout');
     } catch (error) {
+      if (!mountedRef.current) return;
       reportNonBlockingError('Cart.goCheckout', error);
       announceAccessibleMessage(t('pages.cart.checkoutSyncFailed'), 'warning');
       return;

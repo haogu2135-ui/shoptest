@@ -222,19 +222,19 @@ const PaymentInstructions: React.FC = () => {
           const response = await orderApi.track(normalizedOrderNo, guestEmail, { signal: abortController.signal });
           nextOrder = response.data.order;
         } else {
-          const response = await orderApi.getMine();
+          const response = await orderApi.getMine({ signal: abortController.signal });
           nextOrder = (response.data || []).find((item) => String(item.orderNo || '').toUpperCase() === normalizedOrderNo.toUpperCase()) || null;
           if (!nextOrder) {
             throw new Error('Order not found');
           }
         }
-        if (disposed || verifyRequestSeqRef.current !== requestSeq) return;
+        if (disposed || abortController.signal.aborted || verifyRequestSeqRef.current !== requestSeq) return;
         setOrder(nextOrder);
         if (!nextOrder?.id) {
           setPayment(null);
           return;
         }
-        if (disposed || verifyRequestSeqRef.current !== requestSeq) return;
+        if (disposed || abortController.signal.aborted || verifyRequestSeqRef.current !== requestSeq) return;
         let nextPayment: PaymentCustomer | null = null;
         try {
           const paymentResponse = await paymentApi.getLatestByOrder(nextOrder.id, guestEmail || undefined, nextOrder.orderNo || normalizedOrderNo, { signal: abortController.signal });

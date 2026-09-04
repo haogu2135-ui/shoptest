@@ -73,10 +73,11 @@ const PermissionManagement: React.FC = () => {
       setRoleLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
+      const shouldUpdateLoading = isCurrentRequest();
       if (roleAbortRef.current === abortController) {
         roleAbortRef.current = null;
       }
-      if (isCurrentRequest()) {
+      if (shouldUpdateLoading) {
         setLoading(false);
       }
     }

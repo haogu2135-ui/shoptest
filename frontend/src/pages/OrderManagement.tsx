@@ -336,19 +336,21 @@ const OrderManagement: React.FC = () => {
 
   useEffect(() => {
     let disposed = false;
-    adminApi.getMyPermissions()
+    const abortController = createApiAbortController();
+    adminApi.getMyPermissions({ signal: abortController.signal })
       .then((res) => {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         setCurrentRole(getEffectiveRole(res.data.role, res.data.roleCode));
         setAdminPermissions(res.data.permissions || []);
       })
       .catch(() => {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         setCurrentRole('');
         setAdminPermissions([]);
       });
     return () => {
       disposed = true;
+      abortController.abort();
     };
   }, []);
 

@@ -144,13 +144,48 @@ the behavior is testable.
 129. Guard order, tracking, payment-instructions, gallery, product, seckill, stock-alert, support, and traffic-control workflows.
 130. Add regression coverage for cancellation, stale responses, malformed pagination, and signal propagation.
 
+## Post-Round Lifecycle Follow-Ups
+
+The following follow-ups were identified during the final lifecycle audit and
+are kept in addition to the original 130-item record:
+
+131. Cancel Home wishlist, catalog, personalized, and recently-viewed loaders.
+132. Cancel ProductList category, wishlist, and personalized session reads.
+133. Cancel Navbar announcement, admin-access, and account-badge refreshes.
+134. Cancel CouponCenter data loads when filters or auth state supersede them.
+135. Cancel Payment channel and payment-creation requests on retry or unmount.
+136. Cancel CustomerSupportWidget session, guest, polling, detail, and switch reads.
+137. Propagate lifecycle cancellation through the member order refresh in PaymentInstructions.
+138. Cancel admin permission refreshes and related profile/category reads on unmount.
+139. Cancel ProductDetail primary and deferred content reads across route and auth changes.
+140. Add abort-aware options to storefront review, question, and reviewable-order reads.
+141. Sequence BugManagement permission refreshes so superseded events cannot update state.
+142. Cancel BrowsingHistory product loads when history, locale, or route state changes.
+143. Cancel PetFinder candidate and fallback catalog loads when filters or reloads supersede them.
+144. Cancel authenticated cart snapshot loads when refreshes, mutations, or unmount supersede them.
+145. Cancel recently-viewed cart product loads on preference changes and unmount.
+146. Cancel Home pet-gallery refresh requests when idle work is superseded or the page unmounts.
+147. Allow authenticated cart-drawer snapshots to receive lifecycle signals and suppress stale fallback opens.
+148. Cancel checkout action-scoped cart, payment-reconcile, and guest-restore product reads on unmount or supersession.
+149. Scope product-detail purchase, recommendation, favorite, and cart-recovery
+    action feedback to the active route and component lifecycle.
+150. Guard Profile order mutation feedback, refreshes, and loading cleanup after
+     unmount while latching duplicate submits and completing reorder mutations.
+151. Guard checkout cart-quantity flushes and handoffs after unmount so stale
+     writes, callbacks, errors, and navigation cannot continue from dead UI.
+
 ## Verification
 
 The final verification record is maintained here after the post-change checks:
 
-- Focused regression: 4 affected suites and 205 tests passed after the final
-  request-option assertion updates.
-- Full frontend Jest: 242 suites and 1739/1739 tests passed.
+- Focused regression: 3 affected suites and 17 tests passed for the Home
+  pet-gallery and cart-drawer cancellation batch.
+- Focused Checkout regression: 2 suites and 103 tests passed.
+- Focused product-detail/cart action lifecycle regression: 2 suites and 83
+  tests passed.
+- Focused profile-order/cart quantity lifecycle regression: 4 suites and 87
+  tests passed.
+- Full frontend Jest: 243 suites and 1759/1759 tests passed.
 - TypeScript: `NODE_OPTIONS=--max-old-space-size=768 npx tsc --noEmit --pretty false --skipLibCheck` passed.
 - Production: bounded production build passed (`npm run build`, exit code 0).
 

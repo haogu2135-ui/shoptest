@@ -8,6 +8,7 @@ import { hasStoredValue } from './safeStorage';
 type OpenCartDrawerOptions = {
   authenticated?: boolean;
   items?: CartItem[];
+  signal?: AbortSignal;
 };
 
 export const openCartDrawer = (items?: CartItem[]) =>
@@ -24,9 +25,13 @@ export const openCartDrawerWithSnapshot = async (options: OpenCartDrawerOptions 
   }
 
   try {
-    const response = await cartApi.getItems(0);
+    const response = options.signal
+      ? await cartApi.getItems(0, { signal: options.signal })
+      : await cartApi.getItems(0);
+    if (options.signal?.aborted) return false;
     return openCartDrawer(response.data);
   } catch (error) {
+    if (options.signal?.aborted) return false;
     reportNonBlockingError('cartDrawer.openCartDrawerWithSnapshot', error);
     return openCartDrawer();
   }

@@ -32,4 +32,12 @@ describe('ProductQuestionManagement source guards', () => {
     expect(pageSource).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
     expect(pageSource).not.toMatch(/<Input\b|Input\.Search|Input\.TextArea/);
   });
+
+  it('cancels stale summary/list and permission reads', () => {
+    expect(pageSource).toContain('const questionsAbortRef = useRef<AbortController | null>(null);');
+    expect(pageSource).toContain('questionsAbortRef.current?.abort();');
+    expect(pageSource).toContain('adminApi.getQuestionSummary({ status: normalizedStatus, search: normalizedSearch }, { signal: abortController.signal })');
+    expect(pageSource).toContain('adminApi.getQuestions({ status: normalizedStatus, search: normalizedSearch, limit }, { signal: abortController.signal })');
+    expect(pageSource).toContain('adminApi.getMyPermissions({ signal: abortController.signal })');
+  });
 });

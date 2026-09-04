@@ -16,6 +16,10 @@ jest.mock('../api/admin', () => ({
   },
 }));
 
+jest.mock('../api', () => ({
+  createApiAbortController: () => new AbortController(),
+}));
+
 jest.mock('../hooks/useAuth', () => ({
   useAuth: jest.fn(),
 }));

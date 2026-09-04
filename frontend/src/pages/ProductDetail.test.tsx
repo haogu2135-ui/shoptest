@@ -12,6 +12,7 @@ import {
 const readProductDetailSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'ProductDetail.tsx'), 'utf8') as string;
 const readProductDetailHelpersSource = () => require('fs').readFileSync(require('path').resolve(__dirname, 'productDetailHelpers.tsx'), 'utf8') as string;
 const readProductDetailNonCriticalSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useProductDetailNonCriticalContent.ts'), 'utf8') as string;
+const readProductDetailPurchaseActionSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useProductDetailPurchaseActions.ts'), 'utf8') as string;
 const readProductDetailEngagementSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useProductDetailEngagementActions.ts'), 'utf8') as string;
 const readProductDetailCommunitySource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useProductDetailCommunityActions.ts'), 'utf8') as string;
 const readProductDetailRecommendationSource = () => require('fs').readFileSync(require('path').resolve(__dirname, '../hooks/useProductDetailRecommendationActions.ts'), 'utf8') as string;
@@ -29,6 +30,7 @@ let mockSuspendLazySubcomponents = false;
 const mockLazySubcomponentSuspender = new Promise(() => undefined);
 
 jest.mock('../api', () => ({
+  createApiAbortController: () => new AbortController(),
   cartApi: { addItem: jest.fn(), getItems: jest.fn() },
   productApi: {
     getById: jest.fn(),
@@ -372,7 +374,7 @@ describe('ProductDetail mobile buybar layout contract', () => {
     const source = readProductDetailSource();
     const nativeScrollSource = readNativeScrollSource();
     const warmupStart = source.indexOf("const fallbackTimer = process.env.NODE_ENV === 'test'");
-    const warmupEffect = source.slice(warmupStart, source.indexOf('}, [authSessionVersion, id, language, reloadToken, warmNonCriticalContent]);', warmupStart));
+    const warmupEffect = source.slice(warmupStart, source.indexOf('}, [authSessionVersion, cancelNonCriticalContent, id, language, reloadToken, warmNonCriticalContent]);', warmupStart));
 
     expect(nativeScrollSource).toContain("window.addEventListener('scroll', listener, options);");
     expect(nativeScrollSource).toContain("window.removeEventListener('scroll', listener, options);");
@@ -400,22 +402,21 @@ describe('ProductDetail mobile buybar layout contract', () => {
     expect(source).toContain("navigate('/coupons')");
     expect(source).toContain("navigate('/pet-finder')");
     expect(source).toContain("shop:open-support");
-    expect(source).toContain('reloadToken, warmNonCriticalContent');
-    expect(source).not.toContain('reloadToken, t, warmNonCriticalContent');
+    expect(source).toContain('cancelNonCriticalContent, id, language, reloadToken, warmNonCriticalContent');
   });
 
 it('keeps main product fetch cleanup-bound', () => {
     const source = readProductDetailSource();
-    const effectStart = source.indexOf('useEffect(() => {\n    let disposed = false;\n    const nonCriticalRequestSeq');
+    const effectStart = source.indexOf('useEffect(() => {\n    let disposed = false;\n    const abortController = new AbortController();');
     const fetchStart = source.indexOf('const fetchProduct = async () => {', effectStart);
     const fetchSource = source.slice(fetchStart, source.indexOf('fetchProduct();', fetchStart));
-    const effectSource = source.slice(effectStart, source.indexOf('}, [authSessionVersion, id, language, reloadToken, warmNonCriticalContent]);', effectStart));
+    const effectSource = source.slice(effectStart, source.indexOf('useEffect(() => {', effectStart + 1));
 
     expect(effectStart).toBeGreaterThan(-1);
     expect(fetchStart).toBeGreaterThan(effectStart);
-    expect(fetchSource).toMatch(/const res = await productApi\.getById\(Number\(id\)\);\s*if \(disposed\) return;\s*setProduct/);
-    expect(fetchSource).toMatch(/catch \(error\) \{\s*if \(disposed\) return;\s*reportNonBlockingError\('ProductDetail\.fetchProduct', error\);/);
-    expect(fetchSource).toMatch(/finally \{\s*if \(disposed\) return;\s*setLoading\(false\);/);
+    expect(fetchSource).toMatch(/const res = await productApi\.getById\(Number\(id\), \{ signal: abortController\.signal \}\);\s*if \(disposed \|\| abortController\.signal\.aborted\) return;\s*setProduct/);
+    expect(fetchSource).toMatch(/catch \(error\) \{\s*if \(disposed \|\| abortController\.signal\.aborted\) return;\s*reportNonBlockingError\('ProductDetail\.fetchProduct', error\);/);
+    expect(fetchSource).toMatch(/finally \{\s*if \(disposed \|\| abortController\.signal\.aborted\) return;\s*setLoading\(false\);/);
     expect(effectSource).toContain('disposed = true;');
   });
 
@@ -441,10 +442,28 @@ it('keeps main product fetch cleanup-bound', () => {
     expect(community).toContain('const handleAskQuestion = async () => {');
   });
 
+  it('keeps product detail action feedback scoped to the active page lifecycle', () => {
+    const source = readProductDetailSource();
+    const purchase = readProductDetailPurchaseActionSource();
+    const engagement = readProductDetailEngagementSource();
+    const recommendation = readProductDetailRecommendationSource();
+
+    expect(source).toContain('scopeKey: id');
+    expect(purchase).toContain('const purchaseRequestSeqRef = useRef(0);');
+    expect(purchase).toContain('purchaseReadAbortRef.current?.abort();');
+    expect(purchase).toContain('cartApi.getItems(0, { signal: abortController.signal });');
+    expect(purchase).toContain('if (!isCurrentRequest()) return;');
+    expect(engagement).toContain('const scopeSeqRef = useRef(0);');
+    expect(engagement).toContain('if (!mountedRef.current || scopeSeqRef.current !== scopeSeq) return;');
+    expect(recommendation).toContain('const scopeSeqRef = useRef(0);');
+    expect(recommendation).toContain('scopeKey?: string;');
+    expect(recommendation).toContain('if (mountedRef.current && scopeSeqRef.current === scopeSeq) setRecommendationAddingId(null);');
+  });
+
   it('guards non-critical product detail requests against stale responses', () => {
     const source = readProductDetailSource();
     const hookSource = readProductDetailNonCriticalSource();
-    const reviewsStart = hookSource.indexOf('const fetchReviews = useCallback(async (requestSeq: number) => {');
+    const reviewsStart = hookSource.indexOf('const fetchReviews = useCallback(async (requestSeq: number');
     const warmupStart = hookSource.indexOf('const warmNonCriticalContent = useCallback((requestSeq: number) => {');
     const effectStart = source.indexOf('const nonCriticalRequestSeq = nonCriticalRequestSeqRef.current + 1;');
     const nonCriticalSource = hookSource.slice(reviewsStart, warmupStart);
@@ -453,22 +472,22 @@ it('keeps main product fetch cleanup-bound', () => {
 
     expect(source).toContain('useProductDetailNonCriticalContent({');
     expect(hookSource).toContain('const nonCriticalRequestSeqRef = useRef(0);');
-    expect(hookSource).toContain('const isCurrentNonCriticalRequest = useCallback((requestSeq: number) => (');
+    expect(hookSource).toContain('const isCurrentNonCriticalRequest = useCallback((requestSeq: number, signal?: AbortSignal) => (');
     expect(reviewsStart).toBeGreaterThan(-1);
     expect(warmupStart).toBeGreaterThan(reviewsStart);
     expect(effectStart).toBeGreaterThan(-1);
-    expect(nonCriticalSource).toContain('if (!isCurrentNonCriticalRequest(requestSeq)) return;');
+    expect(nonCriticalSource).toContain('if (!isCurrentNonCriticalRequest(requestSeq, signal)) return;');
     expect(nonCriticalSource).toContain('setReviews(res.data.reviews || []);');
     expect(nonCriticalSource).toContain('setRecommendations(cached);');
     expect(nonCriticalSource).toContain('setQuestions(answeredQuestions);');
     expect(nonCriticalSource).toContain('setReviewableOrders(ordersRes.data || []);');
-    expect(warmupSource).toContain('fetchReviews(requestSeq);');
-    expect(warmupSource).toContain('fetchQuestions(requestSeq);');
-    expect(warmupSource).toContain('fetchRecommendations(requestSeq);');
-    expect(warmupSource).toContain('fetchReviewableOrders(requestSeq);');
+    expect(warmupSource).toContain('fetchReviews(requestSeq, abortController.signal);');
+    expect(warmupSource).toContain('fetchQuestions(requestSeq, abortController.signal);');
+    expect(warmupSource).toContain('fetchRecommendations(requestSeq, abortController.signal);');
+    expect(warmupSource).toContain('fetchReviewableOrders(requestSeq, abortController.signal);');
     expect(effectSource).toContain('nonCriticalRequestSeqRef.current = nonCriticalRequestSeq;');
     expect(effectSource).toContain('warmNonCriticalContent(nonCriticalRequestSeq)');
-    expect(effectSource).toContain('nonCriticalRequestSeqRef.current += 1;');
+    expect(effectSource).toContain('cancelNonCriticalContent();');
   });
 });
 
@@ -498,7 +517,7 @@ describe('ProductDetail loading state', () => {
   it('renders a structured, accessible product detail skeleton while the product request is pending', async () => {
     renderProductDetail();
 
-    await waitFor(() => expect(productApi.getById).toHaveBeenCalledWith(101));
+    await waitFor(() => expect(productApi.getById).toHaveBeenCalledWith(101, expect.objectContaining({ signal: expect.any(Object) })));
 
     const skeleton = screen.getByRole('status', { name: 'Loading...' });
     expect(skeleton).toHaveAttribute('aria-busy', 'true');
@@ -530,7 +549,7 @@ describe('ProductDetail loading state', () => {
 
     const { container } = renderProductDetail();
 
-    await waitFor(() => expect(productApi.getById).toHaveBeenCalledWith(101));
+    await waitFor(() => expect(productApi.getById).toHaveBeenCalledWith(101, expect.objectContaining({ signal: expect.any(Object) })));
     await screen.findAllByText('Smart feeder bowl');
     const gallery = container.querySelector('.product-detail-main-image') as HTMLElement;
     const heroImage = container.querySelector('.product-detail-main-image__img') as HTMLImageElement;

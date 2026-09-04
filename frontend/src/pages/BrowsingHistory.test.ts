@@ -133,3 +133,11 @@ describe('BrowsingHistory modularization', () => {
   });
 });
 
+describe('BrowsingHistory request lifecycle', () => {
+  it('cancels history product loads and suppresses expected abort failures', () => {
+    expect(pageOnlySource).toContain("import { cartApi, createApiAbortController, productApi } from '../api';");
+    expect(pageOnlySource).toContain('productApi.getByIds(preferences.recent, { signal: abortController.signal })');
+    expect(pageOnlySource).toContain('if (disposed || abortController.signal.aborted) return;');
+    expect(pageOnlySource).toContain('abortController.abort();');
+  });
+});

@@ -25,4 +25,12 @@ describe('IpBlacklistManagement type-safety contracts', () => {
     expect(pageSource).toContain("aria-label={blacklistSnapshotLoading ? t('common.loading') : undefined}");
     expect(pageSource).toContain('spinning={blacklistSnapshotLoading}');
   });
+
+  it('cancels stale blacklist and status reads', () => {
+    expect(pageSource).toContain('const dataAbortRef = useRef<AbortController | null>(null);');
+    expect(pageSource).toContain('dataAbortRef.current?.abort();');
+    expect(pageSource).toContain('}, { signal: abortController.signal }).then((listResponse) => {');
+    expect(pageSource).toContain('adminApi.getIpBlacklistStatus({ signal: abortController.signal })');
+    expect(pageSource).toContain('adminApi.getMyPermissions({ signal: abortController.signal })');
+  });
 });

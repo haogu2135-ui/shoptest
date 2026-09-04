@@ -111,19 +111,21 @@ const ReviewManagement: React.FC = () => {
 
   useEffect(() => {
     let disposed = false;
-    adminApi.getMyPermissions()
+    const abortController = createApiAbortController();
+    adminApi.getMyPermissions({ signal: abortController.signal })
       .then((res) => {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         setCurrentRole(getEffectiveRole(res.data.role, res.data.roleCode));
         setAdminPermissions(res.data.permissions || []);
       })
       .catch(() => {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         setCurrentRole('');
         setAdminPermissions([]);
       });
     return () => {
       disposed = true;
+      abortController.abort();
     };
   }, []);
 
@@ -168,8 +170,9 @@ const ReviewManagement: React.FC = () => {
       setLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
+      const shouldUpdateLoading = isCurrentRequest();
       if (reviewAbortRef.current === abortController) reviewAbortRef.current = null;
-      if (isCurrentRequest()) setLoading(false);
+      if (shouldUpdateLoading) setLoading(false);
     }
   }, [debouncedKeyword, language, statusFilter, t]);
 

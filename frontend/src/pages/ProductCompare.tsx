@@ -105,10 +105,11 @@ const ProductCompare: React.FC = () => {
       setCompareLoadError(true);
       announceAccessibleMessage(t('pages.compare.loadFailed'), 'error');
     } finally {
+      const shouldUpdateLoading = isCurrentRequest();
       if (compareAbortRef.current === abortController) {
         compareAbortRef.current = null;
       }
-      if (isCurrentRequest()) {
+      if (shouldUpdateLoading) {
         setLoading(false);
       }
     }

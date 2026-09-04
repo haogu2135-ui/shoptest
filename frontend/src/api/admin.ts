@@ -1,5 +1,5 @@
 import type { AxiosResponse } from 'axios';
-import { cachedGet } from './cache';
+import { cachedGet, withAbortSignal } from './cache';
 import { dispatchDomEvent } from '../utils/domEvents';
 import type {
   User,
@@ -136,33 +136,53 @@ import type {
 } from './core';
 
 export const adminApi = {
-    getDashboard: () => {
-        if (adminRuntime.dashboardCache && adminRuntime.dashboardCache.expiresAt > Date.now()) {
+    getDashboard: (options?: ApiRequestOptions) => {
+        if (options?.bypassCache) {
+            adminRuntime.dashboardCache = null;
+        }
+        if (options?.signal) {
+            return api.get<DashboardStats>('/admin/dashboard', withRequestOptions({}, options))
+                .then((response) => {
+                    if (!options.bypassCache) {
+                        adminRuntime.dashboardCache = { response, expiresAt: Date.now() + ADMIN_DASHBOARD_CACHE_MS };
+                    }
+                    return response;
+                });
+        }
+        if (!options?.bypassCache && adminRuntime.dashboardCache && adminRuntime.dashboardCache.expiresAt > Date.now()) {
             return Promise.resolve(adminRuntime.dashboardCache.response);
         }
-        if (adminRuntime.dashboardRequest) return adminRuntime.dashboardRequest;
-        adminRuntime.dashboardRequest = api.get<DashboardStats>('/admin/dashboard')
+        if (!options?.bypassCache && adminRuntime.dashboardRequest) return adminRuntime.dashboardRequest;
+        let request: Promise<AxiosResponse<DashboardStats>>;
+        request = api.get<DashboardStats>('/admin/dashboard', withRequestOptions({}, options))
             .then((response) => {
-                adminRuntime.dashboardCache = { response, expiresAt: Date.now() + ADMIN_DASHBOARD_CACHE_MS };
+                if (!options?.bypassCache) {
+                    adminRuntime.dashboardCache = { response, expiresAt: Date.now() + ADMIN_DASHBOARD_CACHE_MS };
+                }
                 return response;
             })
             .finally(() => {
-                adminRuntime.dashboardRequest = null;
+                if (adminRuntime.dashboardRequest === request) {
+                    adminRuntime.dashboardRequest = null;
+                }
             });
-        return adminRuntime.dashboardRequest;
+        if (!options?.bypassCache) {
+            adminRuntime.dashboardRequest = request;
+        }
+        return withAbortSignal(request, options?.signal);
     },
     getRegistryStatus: (options?: ApiRequestOptions) =>
         api.get<AdminRegistryStatus>('/admin/registry', withRequestOptions({}, options)),
     getSystemStatus: (options?: ApiRequestOptions) =>
         api.get<AdminSystemStatus>('/admin/system/status', withRequestOptions({}, options)),
-    getConfigCenter: (params?: { dataId?: string; group?: string; namespace?: string }) =>
-        api.get<AdminConfigCenterSnapshot>('/admin/config-center', { params }),
+    getConfigCenter: (params?: { dataId?: string; group?: string; namespace?: string }, options?: ApiRequestOptions) =>
+        api.get<AdminConfigCenterSnapshot>('/admin/config-center', withRequestOptions({ params }, options)),
     publishConfigCenter: (payload: AdminConfigCenterPublishRequest) =>
         api.post<AdminConfigCenterSnapshot>('/admin/config-center/publish', payload),
     applyConfigCenter: (payload: AdminConfigCenterPublishRequest) =>
         api.post<AdminConfigCenterSnapshot>('/admin/config-center/apply', payload),
-    getLogManagementStatus: (params?: { loggerName?: string }) =>
-        api.get<AdminLogManagementStatus>('/admin/logs', { params }),
+    getLogManagementStatus: (params?: { loggerName?: string }, options?: ApiRequestOptions) =>
+        api.get<AdminLogManagementStatus>('/admin/logs', withRequestOptions({ params }, options)),
     setDebugLogging: (payload: AdminLogDebugRequest) =>
         api.put<AdminLogManagementStatus>('/admin/logs/debug', payload),
     downloadLogs: (params: { start: string; end: string; keyword?: string; level?: string }) => api.get('/admin/logs/download', {
@@ -172,9 +192,9 @@ export const adminApi = {
     getTrafficControlStatus: (options?: ApiRequestOptions) => api.get<AdminTrafficControlStatus>('/admin/traffic-control', withRequestOptions({}, options)),
     clearRateLimitCounters: () => api.post<AdminTrafficControlStatus>('/admin/traffic-control/rate-limit/clear'),
     resetCircuitBreaker: (name?: string) => api.post<AdminTrafficControlStatus>('/admin/traffic-control/circuit-breakers/reset', { name }),
-    getAlerts: (params?: { status?: string; severity?: string; category?: string; limit?: number }) =>
-        api.get<SystemAlert[]>('/admin/alerts', { params }),
-    getAlertSummary: () => api.get<SystemAlertSummary>('/admin/alerts/summary'),
+    getAlerts: (params?: { status?: string; severity?: string; category?: string; limit?: number }, options?: ApiRequestOptions) =>
+        api.get<SystemAlert[]>('/admin/alerts', withRequestOptions({ params }, options)),
+    getAlertSummary: (options?: ApiRequestOptions) => api.get<SystemAlertSummary>('/admin/alerts/summary', withRequestOptions({}, options)),
     runAlertSelfCheck: () => api.post<void>('/admin/alerts/self-check'),
     acknowledgeAlert: (id: number, note?: string) => api.post<SystemAlert>(`/admin/alerts/${toPathId(id)}/acknowledge`, { note: normalizeTextParam(note, 200) }),
     resolveAlert: (id: number, note?: string) => api.post<SystemAlert>(`/admin/alerts/${toPathId(id)}/resolve`, { note: normalizeTextParam(note, 200) }),
@@ -222,8 +242,9 @@ export const adminApi = {
         api.post<AdminBugReport>(`/admin/bugs/${toPathId(id)}/status`, normalizeBugStatusPayload(payload)),
     markBugScanned: (id: number, payload?: Partial<AdminBugReport> & { note?: string }) =>
         api.post<AdminBugReport>(`/admin/bugs/${toPathId(id)}/scan`, normalizeBugStatusPayload({ status: 'FIXING', ...(payload || {}) })),
-    getIpBlacklist: (params?: { status?: string; source?: string; ipAddress?: string; limit?: number }) =>
+    getIpBlacklist: (params?: { status?: string; source?: string; ipAddress?: string; limit?: number }, options?: ApiRequestOptions) =>
         api.get<IpBlacklistEntry[]>('/admin/ip-blacklist', {
+            ...withRequestOptions({}, options),
             params: {
                 status: normalizeTextParam(params?.status, 40) || undefined,
                 source: normalizeTextParam(params?.source, 40) || undefined,
@@ -231,7 +252,7 @@ export const adminApi = {
                 limit: normalizeBoundedPositiveInt(params?.limit, 200, 1000),
             },
         }),
-    getIpBlacklistStatus: () => api.get<IpBlacklistStatus>('/admin/ip-blacklist/status'),
+    getIpBlacklistStatus: (options?: ApiRequestOptions) => api.get<IpBlacklistStatus>('/admin/ip-blacklist/status', withRequestOptions({}, options)),
     blockIpAddress: (payload: { ipAddress: string; reason?: string; blockMinutes?: number }) =>
         api.post<IpBlacklistEntry>('/admin/ip-blacklist', {
             ipAddress: normalizeTextParam(payload.ipAddress, 45),
@@ -399,12 +420,12 @@ export const adminApi = {
         },
         responseType: 'blob',
     }),
-    getAuditLogs: (params?: Record<string, unknown>) => api.get<SecurityAuditLog[]>('/admin/audit-logs', {
+    getAuditLogs: (params?: Record<string, unknown>, options?: ApiRequestOptions) => api.get<SecurityAuditLog[]>('/admin/audit-logs', withRequestOptions({
         params: normalizeAuditLogParams(params, { includeLimit: true }),
-    }),
-    getAuditLogSummary: (params?: Record<string, unknown>) => api.get<SecurityAuditSummary>('/admin/audit-logs/summary', {
+    }, options)),
+    getAuditLogSummary: (params?: Record<string, unknown>, options?: ApiRequestOptions) => api.get<SecurityAuditSummary>('/admin/audit-logs/summary', withRequestOptions({
         params: normalizeAuditLogParams(params, { includeTopLimit: true }),
-    }),
+    }, options)),
     purgeAuditLogs: (retentionDays = 180) => api.post<SecurityAuditPurgeResponse>('/admin/audit-logs/purge', null, {
         params: { retentionDays: normalizeBoundedPositiveInt(retentionDays, 180, 3650) },
     }),
@@ -538,14 +559,14 @@ export const adminApi = {
         clearReviewCache();
         clearAdminReviewCache();
     }),
-    getQuestionSummary: (params?: { status?: string; search?: string }) => {
+    getQuestionSummary: (params?: { status?: string; search?: string }, options?: ApiRequestOptions) => {
         const normalizedParams = {
             status: normalizeTextParam(params?.status, 40).toUpperCase() || undefined,
             search: normalizeTextParam(params?.search, 120) || undefined,
         };
-        return api.get<ProductQuestionAdminSummary>('/admin/questions/summary', { params: normalizedParams });
+        return api.get<ProductQuestionAdminSummary>('/admin/questions/summary', withRequestOptions({ params: normalizedParams }, options));
     },
-    getQuestions: (params?: { status?: string; search?: string; limit?: number }) => {
+    getQuestions: (params?: { status?: string; search?: string; limit?: number }, options?: ApiRequestOptions) => {
         const normalizedParams = {
             status: normalizeTextParam(params?.status, 40).toUpperCase() || undefined,
             search: normalizeTextParam(params?.search, 120) || undefined,
@@ -553,7 +574,7 @@ export const adminApi = {
         };
         const cacheKey = `${normalizedParams.status || ''}:${normalizedParams.search || ''}:${normalizedParams.limit}`;
         return cachedGet(adminQuestionCache, adminQuestionRequests, cacheKey, ADMIN_REVIEW_CACHE_MS, () =>
-            api.get<ProductQuestion[]>('/admin/questions', { params: normalizedParams }).then(withArrayData));
+            api.get<ProductQuestion[]>('/admin/questions', withRequestOptions({ params: normalizedParams }, cacheLoaderOptions(options))).then(withArrayData), options);
     },
     answerQuestion: (id: number, answer: string) =>
         api.put<ProductQuestion>(`/admin/questions/${toPathId(id)}/answer`, { answer: normalizeTextParam(answer, 1000) })
@@ -616,7 +637,7 @@ export const adminApi = {
     updateAnnouncement: (id: number, announcement: Partial<SiteAnnouncement>) =>
         api.put<SiteAnnouncement>(`/admin/announcements/${toPathId(id)}`, normalizeAnnouncementPayload(announcement)).finally(clearAnnouncementCache),
     deleteAnnouncement: (id: number) => api.delete(`/admin/announcements/${toPathId(id)}`).finally(clearAnnouncementCache),
-    getSeckillCampaigns: () => api.get<SeckillCampaign[]>('/admin/seckill/campaigns'),
+    getSeckillCampaigns: (options?: ApiRequestOptions) => api.get<SeckillCampaign[]>('/admin/seckill/campaigns', withRequestOptions({}, options)),
     createSeckillCampaign: (payload: SeckillCampaignWritePayload) =>
         api.post<SeckillCampaign>('/admin/seckill/campaigns', payload),
     updateSeckillCampaign: (id: number, payload: SeckillCampaignWritePayload) =>

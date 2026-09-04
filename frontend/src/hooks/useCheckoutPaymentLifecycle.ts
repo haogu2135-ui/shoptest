@@ -243,7 +243,7 @@ export const useCheckoutPaymentLifecycle = ({
           writeCheckoutPaymentPollResult(createdOrderId, ownerId, latestPayment, orderRes.data);
         }
       } catch (error) {
-        if (disposed || abortController.signal.aborted) return;
+        if (disposed || pollAbortController?.signal.aborted) return;
         reportNonBlockingError('Checkout.pollPendingPayment', error);
       } finally {
         pollAbortController = null;

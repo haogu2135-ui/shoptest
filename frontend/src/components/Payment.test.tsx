@@ -86,7 +86,9 @@ describe('Payment channel loading', () => {
 
   it('ignores channel responses after unmount', async () => {
     let resolveChannels: (value: unknown) => void = () => undefined;
-    (paymentApi.getChannels as jest.Mock).mockReturnValue(new Promise((resolve) => {
+    let requestSignal: AbortSignal | undefined;
+    (paymentApi.getChannels as jest.Mock).mockImplementation((options?: { signal?: AbortSignal }) => new Promise((resolve) => {
+      requestSignal = options?.signal;
       resolveChannels = resolve;
     }));
 
@@ -94,7 +96,9 @@ describe('Payment channel loading', () => {
       <Payment amount={12.5} orderId={9} onSuccess={jest.fn()} onCancel={jest.fn()} />,
     );
 
+    await waitFor(() => expect(requestSignal).toBeDefined());
     unmount();
+    expect(requestSignal?.aborted).toBe(true);
 
     await act(async () => {
       resolveChannels({ data: [channel] });

@@ -13,6 +13,10 @@ jest.mock('../api/admin', () => ({
   },
 }));
 
+jest.mock('../api', () => ({
+  createApiAbortController: () => new AbortController(),
+}));
+
 jest.mock('../i18n', () => {
   const t = (key: string, params?: Record<string, string | number>) => {
     let label = key;

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, type Dispatch, type SetStateAction } from 'react';
-import { cartApi, productApi } from '../api';
+import { cartApi, createApiAbortController, productApi } from '../api';
 import type { Language } from '../i18n';
 import type { CartItem, ProductPublic as Product } from '../types';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
@@ -59,6 +59,7 @@ export const useCartSessionData = ({
 }: UseCartSessionDataParams) => {
   const mountedRef = useRef(true);
   const cartSnapshotRequestRef = useRef(0);
+  const cartSnapshotAbortRef = useRef<AbortController | null>(null);
   const cartFetchErrorFallbackRef = useRef(t('pages.cart.fetchFailed'));
   const cartFetchErrorLanguageRef = useRef(language);
 
@@ -89,6 +90,9 @@ export const useCartSessionData = ({
 
   const fetchCartItems = useCallback(async () => {
     if (!mountedRef.current) return;
+    cartSnapshotAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    cartSnapshotAbortRef.current = abortController;
     const authenticated = hasAuthenticatedCartSession();
     const requestId = beginCartSnapshotRequest();
     if (!authenticated) {
@@ -102,12 +106,13 @@ export const useCartSessionData = ({
       setCartItems(guestItems);
       setSelectedIds(guestItems.filter(canCheckout).map((item) => item.id));
       if (isCurrentCartSnapshotRequest(requestId)) setLoading(false);
+      if (cartSnapshotAbortRef.current === abortController) cartSnapshotAbortRef.current = null;
       return;
     }
     try {
       setLoadError(false);
       setLoadErrorMessage(null);
-      const response = await cartApi.getItems(0);
+      const response = await cartApi.getItems(0, { signal: abortController.signal });
       if (!mountedRef.current) return;
       const nextItems = normalizeCartItems(response.data);
       if (!isCurrentCartSnapshotRequest(requestId)) return;
@@ -117,7 +122,7 @@ export const useCartSessionData = ({
       setCartItems(nextItems);
       setSelectedIds(nextItems.filter(canCheckout).map((item) => item.id));
     } catch (error: unknown) {
-      if (!mountedRef.current) return;
+      if (abortController.signal.aborted || !mountedRef.current) return;
       if (!isCurrentCartSnapshotRequest(requestId)) return;
       if (isAuthExpiredError(error)) {
         const guestItems = normalizeCartItems(getGuestCartItems());
@@ -135,6 +140,7 @@ export const useCartSessionData = ({
         announceAccessibleMessage(errorMessage, 'error');
       }
     } finally {
+      if (cartSnapshotAbortRef.current === abortController) cartSnapshotAbortRef.current = null;
       if (isCurrentCartSnapshotRequest(requestId)) setLoading(false);
     }
   }, [
@@ -208,21 +214,31 @@ export const useCartSessionData = ({
   useEffect(() => {
     return () => {
       mountedRef.current = false;
+      cartSnapshotAbortRef.current?.abort();
     };
   }, []);
 
   useEffect(() => {
     if (!conversionConfig.cartRecentlyViewed.enabled) return;
     let disposed = false;
+    let activeAbortController: AbortController | null = null;
     // The preferences-updated listener re-invokes this loader inside the same effect
     // run, so `disposed` alone cannot tell two concurrent loads apart: a slow earlier
     // fetch would resolve last and repaint the panel with the older history. Each run
     // claims a sequence number so only the newest one writes.
     let recentLoadSeq = 0;
     const loadRecentlyViewedProducts = async () => {
+      activeAbortController?.abort();
+      const abortController = createApiAbortController();
+      activeAbortController = abortController;
       const requestSeq = recentLoadSeq + 1;
       recentLoadSeq = requestSeq;
-      const isCurrentLoad = () => !disposed && mountedRef.current && recentLoadSeq === requestSeq;
+      const isCurrentLoad = () => (
+        !disposed
+        && mountedRef.current
+        && recentLoadSeq === requestSeq
+        && !abortController.signal.aborted
+      );
       const preferences = loadProductViewPreferences();
       if (preferences.recent.length === 0) {
         if (!isCurrentLoad()) return;
@@ -238,7 +254,7 @@ export const useCartSessionData = ({
           setRecentProducts(cachedProducts);
           return;
         }
-        const response = await productApi.getByIds(recentIds);
+        const response = await productApi.getByIds(recentIds, { signal: abortController.signal });
         if (!isCurrentLoad()) return;
         const productById = new Map(response.data.map((product) => [product.id, localizeProduct(product, language)]));
         const nextRecentProducts = preferences.recent
@@ -249,6 +265,7 @@ export const useCartSessionData = ({
         setCachedRecentProducts(cacheKey, nextRecentProducts);
         setRecentProducts(nextRecentProducts);
       } catch (error) {
+        if (abortController.signal.aborted) return;
         reportNonBlockingError('Cart.loadRecentProducts', error);
         if (!isCurrentLoad()) return;
         setRecentProducts([]);
@@ -258,6 +275,8 @@ export const useCartSessionData = ({
     window.addEventListener('shop:product-view-preferences-updated', loadRecentlyViewedProducts);
     return () => {
       disposed = true;
+      activeAbortController?.abort();
+      activeAbortController = null;
       window.removeEventListener('shop:product-view-preferences-updated', loadRecentlyViewedProducts);
     };
   }, [language, setRecentProducts]);
@@ -297,4 +316,3 @@ export const useCartSessionData = ({
     resetCheckoutStateAfterCartMutation,
   };
 };
-

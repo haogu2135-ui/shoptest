@@ -51,4 +51,12 @@ describe('NotificationManagement readiness checklist guards', () => {
     expect(f3519Css).not.toMatch(/overflow-x:\s*auto/);
     expect(f3519Css).not.toMatch(/scrollbar-width:\s*none/);
   });
+
+  it('cancels stale permission reads and ignores unmounted results', () => {
+    expect(pageSource).toContain('const permissionsAbortRef = useRef<AbortController | null>(null);');
+    expect(pageSource).toContain('permissionsAbortRef.current?.abort();');
+    expect(pageSource).toContain('adminApi.getMyPermissions({ signal: abortController.signal })');
+    expect(pageSource).toContain('mountedRef.current = false;');
+    expect(pageSource).toContain('if (!isCurrentRequest()) return;');
+  });
 });

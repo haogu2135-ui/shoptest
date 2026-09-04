@@ -131,8 +131,9 @@ const PetGallery: React.FC = () => {
       setQuota(null);
       setLoadError(true);
     } finally {
+      const shouldUpdateLoading = isCurrentRequest();
       if (galleryAbortRef.current === abortController) galleryAbortRef.current = null;
-      if (isCurrentRequest()) setLoading(false);
+      if (shouldUpdateLoading) setLoading(false);
     }
   }, [isAuthenticated]);
 

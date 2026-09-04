@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Form, Table } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
@@ -8,6 +8,7 @@ import ShopInputNumber from '../components/ShopInputNumber';
 import ShopModal from '../components/ShopModal';
 import type { ColumnsType } from 'antd/es/table';
 import { PlusOutlined, ReloadOutlined, SearchOutlined, StopOutlined, UnlockOutlined } from '@ant-design/icons';
+import { createApiAbortController } from '../api';
 import { adminApi } from '../api/admin';
 import type { IpBlacklistEntry, IpBlacklistStatus } from '../types';
 import { useLanguage } from '../i18n';
@@ -105,6 +106,9 @@ const IpBlacklistManagement: React.FC = () => {
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const [form] = Form.useForm();
+  const mountedRef = useRef(true);
+  const dataAbortRef = useRef<AbortController | null>(null);
+  const permissionsAbortRef = useRef<AbortController | null>(null);
   const canBlockIp = hasAdminPermission(adminPermissions, currentRole, IP_BLACKLIST_BLOCK_PERMISSION);
   const canReleaseIp = hasAdminPermission(adminPermissions, currentRole, IP_BLACKLIST_RELEASE_PERMISSION);
   const blacklistActionDisabled = loading || Boolean(listLoadError) || !listSnapshotLoaded;
@@ -159,6 +163,12 @@ const IpBlacklistManagement: React.FC = () => {
   const selectAllVisibleBlacklistEntriesLabel = t('pages.ipBlacklistAdmin.selectAllVisibleEntries');
 
   const fetchData = useCallback(async (nextStatus: string, nextSource: string, nextIpAddress: string) => {
+    dataAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    dataAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && dataAbortRef.current === abortController
+      && !abortController.signal.aborted;
     setLoading(true);
     try {
       let listError: unknown = null;
@@ -169,7 +179,8 @@ const IpBlacklistManagement: React.FC = () => {
           source: nextSource === 'ALL' ? undefined : nextSource,
           ipAddress: nextIpAddress.trim() || undefined,
           limit: 300,
-        }).then((listResponse) => {
+        }, { signal: abortController.signal }).then((listResponse) => {
+          if (!isCurrentRequest()) return false;
           const nextEntries = normalizeEntryList(listResponse.data);
           setEntries(nextEntries);
           setSelectedEntryIds((ids) => ids.filter((id) => nextEntries.some((entry) => entry.id === id)));
@@ -177,19 +188,23 @@ const IpBlacklistManagement: React.FC = () => {
           setListSnapshotLoaded(true);
           return true;
         }).catch((error: unknown) => {
+          if (!isCurrentRequest()) return false;
           listError = error;
           setSelectedEntryIds([]);
           return false;
         }),
-        adminApi.getIpBlacklistStatus().then((statusResponse) => {
+        adminApi.getIpBlacklistStatus({ signal: abortController.signal }).then((statusResponse) => {
+          if (!isCurrentRequest()) return false;
           const nextStatusInfo = normalizeStatusInfo(statusResponse.data);
           if (nextStatusInfo) setStatusInfo(nextStatusInfo);
           return true;
         }).catch((error: unknown) => {
+          if (!isCurrentRequest()) return false;
           statusError = error;
           return false;
         }),
       ]);
+      if (!isCurrentRequest()) return;
       if (!listLoaded) {
         const errorMessage = getApiErrorMessage(listError, t('pages.ipBlacklistAdmin.loadFailed'), language);
         setListLoadError(errorMessage);
@@ -198,11 +213,14 @@ const IpBlacklistManagement: React.FC = () => {
         message.warning(getApiErrorMessage(statusError, t('pages.ipBlacklistAdmin.statusLoadFailed'), language));
       }
     } catch (error: unknown) {
+      if (!isCurrentRequest()) return;
       const errorMessage = getApiErrorMessage(error, t('pages.ipBlacklistAdmin.loadFailed'), language);
       setListLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      setLoading(false);
+      const shouldUpdateLoading = isCurrentRequest();
+      if (dataAbortRef.current === abortController) dataAbortRef.current = null;
+      if (shouldUpdateLoading) setLoading(false);
     }
   }, [language, t]);
 
@@ -211,25 +229,43 @@ const IpBlacklistManagement: React.FC = () => {
   }, [fetchData, ipAddress, source, status]);
 
   useEffect(() => {
-    fetchData('ALL', 'ALL', '');
+    void fetchData('ALL', 'ALL', '');
   }, [fetchData]);
 
   useEffect(() => {
-    let disposed = false;
-    adminApi.getMyPermissions()
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      dataAbortRef.current?.abort();
+      permissionsAbortRef.current?.abort();
+      dataAbortRef.current = null;
+      permissionsAbortRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    permissionsAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    permissionsAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && permissionsAbortRef.current === abortController
+      && !abortController.signal.aborted;
+    adminApi.getMyPermissions({ signal: abortController.signal })
       .then((response) => {
-        if (disposed) return;
+        if (!isCurrentRequest()) return;
         setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
         setAdminPermissions(response.data.permissions || []);
       })
       .catch(() => {
-        if (disposed) return;
+        if (!isCurrentRequest()) return;
         setCurrentRole('');
         setAdminPermissions([]);
+      })
+      .finally(() => {
+        if (permissionsAbortRef.current === abortController) {
+          permissionsAbortRef.current = null;
+        }
       });
-    return () => {
-      disposed = true;
-    };
   }, []);
 
   const blockIp = async () => {

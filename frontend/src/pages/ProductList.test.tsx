@@ -112,6 +112,18 @@ jest.mock('../i18n', () => {
   };
 });
 
+describe('ProductList session lifecycle contracts', () => {
+  it('cancels session-scoped wishlist and recommendation reads', () => {
+    const source = readProductListSurface();
+
+    expect(source).toContain("import { categoryApi, createApiAbortController, productApi, wishlistApi } from '../api';");
+    expect(source).toContain('categoryApi.getTopLevel({ signal: abortController.signal })');
+    expect(source).toContain('wishlistApi.getByUser(0, { signal: abortController.signal })');
+    expect(source).toContain('productApi.getPersonalizedRecommendations({ signal: abortController.signal })');
+    expect(source).toContain('abortController.abort();');
+  });
+});
+
 const catalogProduct = {
   id: 101,
   name: 'Smart feeder bowl',

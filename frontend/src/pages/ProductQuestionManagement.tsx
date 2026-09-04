@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { Table } from 'antd';
 import ShopSearchField from '../components/ShopSearchField';
 import ShopPopconfirm from '../components/ShopPopconfirm';
@@ -7,6 +7,7 @@ import ShopSelect from '../components/ShopSelect';
 import ShopModal from '../components/ShopModal';
 import { ShopTextArea } from '../components/ShopInput';
 import { CheckCircleOutlined, ClockCircleOutlined, DeleteOutlined, MessageOutlined, QuestionCircleOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
+import { createApiAbortController } from '../api';
 import { adminApi } from '../api/admin';
 import type { ProductQuestion, ProductQuestionAdminSummary } from '../types';
 import { useLanguage } from '../i18n';
@@ -47,6 +48,9 @@ const ProductQuestionManagement: React.FC = () => {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
+  const mountedRef = useRef(true);
+  const questionsAbortRef = useRef<AbortController | null>(null);
+  const permissionsAbortRef = useRef<AbortController | null>(null);
   const { t, language } = useLanguage();
   const canAnswerQuestions = hasAdminPermission(adminPermissions, currentRole, QUESTIONS_ANSWER_PERMISSION);
   const canDeleteQuestions = hasAdminPermission(adminPermissions, currentRole, QUESTIONS_DELETE_PERMISSION);
@@ -64,45 +68,77 @@ const ProductQuestionManagement: React.FC = () => {
   );
 
   const loadQuestions = useCallback(async () => {
+    questionsAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    questionsAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && questionsAbortRef.current === abortController
+      && !abortController.signal.aborted;
     try {
       setLoading(true);
       const normalizedStatus = normalizeStatus(statusFilter);
       const normalizedSearch = searchText.trim() || undefined;
-      const summaryRes = await adminApi.getQuestionSummary({ status: normalizedStatus, search: normalizedSearch });
+      const summaryRes = await adminApi.getQuestionSummary({ status: normalizedStatus, search: normalizedSearch }, { signal: abortController.signal });
       const limit = summaryRes.data.maxAdminRows || 200;
-      const questionsRes = await adminApi.getQuestions({ status: normalizedStatus, search: normalizedSearch, limit });
+      const questionsRes = await adminApi.getQuestions({ status: normalizedStatus, search: normalizedSearch, limit }, { signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       setSummary(summaryRes.data);
       setQuestions(questionsRes.data);
       setLoadError(null);
     } catch (err: unknown) {
+      if (!isCurrentRequest()) return;
       const errorMessage = getApiErrorMessage(err, t('pages.adminQuestions.fetchFailed'), language);
       setLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      setLoading(false);
+      const shouldUpdateLoading = isCurrentRequest();
+      if (questionsAbortRef.current === abortController) {
+        questionsAbortRef.current = null;
+      }
+      if (shouldUpdateLoading) {
+        setLoading(false);
+      }
     }
   }, [language, normalizeStatus, searchText, statusFilter, t]);
 
   useEffect(() => {
-    loadQuestions();
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      questionsAbortRef.current?.abort();
+      permissionsAbortRef.current?.abort();
+      questionsAbortRef.current = null;
+      permissionsAbortRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    void loadQuestions();
   }, [loadQuestions]);
 
   useEffect(() => {
-    let disposed = false;
-    adminApi.getMyPermissions()
+    permissionsAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    permissionsAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && permissionsAbortRef.current === abortController
+      && !abortController.signal.aborted;
+    adminApi.getMyPermissions({ signal: abortController.signal })
       .then((res) => {
-        if (disposed) return;
+        if (!isCurrentRequest()) return;
         setCurrentRole(getEffectiveRole(res.data.role, res.data.roleCode));
         setAdminPermissions(res.data.permissions || []);
       })
       .catch(() => {
-        if (disposed) return;
+        if (!isCurrentRequest()) return;
         setCurrentRole('');
         setAdminPermissions([]);
+      })
+      .finally(() => {
+        if (permissionsAbortRef.current === abortController) {
+          permissionsAbortRef.current = null;
+        }
       });
-    return () => {
-      disposed = true;
-    };
   }, []);
 
   const visibleQuestions = questions;

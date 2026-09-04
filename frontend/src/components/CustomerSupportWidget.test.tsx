@@ -182,9 +182,11 @@ describe('CustomerSupportWidget reconnect cleanup source contracts', () => {
     expect(source).toContain("if (process.env.NODE_ENV === 'test') return;");
     expect(source).toContain('}, [activeGuestContext, connected, open, activeSessionId, sortSupportSessions]);');
     expect(pollingEffect).toContain('const pollSessionId = sessionRef.current?.id;');
-    expect(pollingEffect).toContain('supportApi.getMessages(pollSessionId, { afterId, limit: SUPPORT_MESSAGE_WINDOW })');
+    expect(pollingEffect).toContain('const abortController = createApiAbortController();');
+    expect(pollingEffect).toContain('supportApi.getMessages(pollSessionId, { afterId, limit: SUPPORT_MESSAGE_WINDOW, signal: abortController.signal })');
     expect(pollingEffect).toContain('supportApi.getGuestMessages(pollSessionId, guestContextForPoll.orderNo, guestContextForPoll.email');
     expect(pollingEffect).toContain("reportNonBlockingError('CustomerSupportWidget.pollMessages', error);");
+    expect(pollingEffect).toContain('pollAbortController?.abort();');
   });
 
   it('keeps guest message polling bound to the latest guest context', () => {

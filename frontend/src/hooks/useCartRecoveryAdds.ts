@@ -1,6 +1,6 @@
-import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
+import { useCallback, useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
-import { cartApi } from '../api';
+import { cartApi, createApiAbortController } from '../api';
 import type { Language } from '../i18n';
 import type { CartItem, ProductPublic as Product } from '../types';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
@@ -48,6 +48,13 @@ export const useCartRecoveryAdds = ({
   setSelectedIds,
   t,
 }: UseCartRecoveryAddsParams) => {
+  const recoveryReadAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => {
+    recoveryReadAbortRef.current?.abort();
+    recoveryReadAbortRef.current = null;
+  }, []);
+
   const addSuggestedProduct = useCallback(async (product: Product) => {
     if (hasStaleCartData) {
       throw new Error(t('pages.cart.staleDataWarning'));
@@ -60,26 +67,38 @@ export const useCartRecoveryAdds = ({
     const productWithSafeId = { ...product, id: productId };
     const authenticated = hasAuthenticatedCartSession();
     if (authenticated) {
-      await cartApi.addItem(0, productId, 1);
-      const response = await cartApi.getItems(0);
-      if (!mountedRef.current) return;
-      clearRecentProductsCache();
-      if (isCurrentCartSnapshotRequest(cartSnapshotRequestId)) {
-        const nextItems = normalizeCartItems(response.data);
-        setCartItems(nextItems);
-        const addedItemIds = nextItems
-          .filter((item) => item.productId === productId && canCheckout(item))
-          .map((item) => item.id);
-        setSelectedIds((ids) => Array.from(new Set([...ids, ...addedItemIds])));
+      const abortController = createApiAbortController();
+      recoveryReadAbortRef.current?.abort();
+      recoveryReadAbortRef.current = abortController;
+      try {
+        await cartApi.addItem(0, productId, 1);
+        if (!mountedRef.current || abortController.signal.aborted) return;
+        const response = await cartApi.getItems(0, { signal: abortController.signal });
+        if (!mountedRef.current || abortController.signal.aborted) return;
+        clearRecentProductsCache();
+        if (isCurrentCartSnapshotRequest(cartSnapshotRequestId)) {
+          const nextItems = normalizeCartItems(response.data);
+          setCartItems(nextItems);
+          const addedItemIds = nextItems
+            .filter((item) => item.productId === productId && canCheckout(item))
+            .map((item) => item.id);
+          setSelectedIds((ids) => Array.from(new Set([...ids, ...addedItemIds])));
+        }
+        dispatchDomEvent('shop:cart-updated');
+        return;
+      } catch (error) {
+        if (!mountedRef.current || abortController.signal.aborted) return;
+        throw error;
+      } finally {
+        if (recoveryReadAbortRef.current === abortController) recoveryReadAbortRef.current = null;
       }
-      dispatchDomEvent('shop:cart-updated');
-      return;
     }
     const addedItem = addGuestCartItem(productWithSafeId, 1);
     if (!addedItem) {
       throw new Error(t('messages.addFailed'));
     }
     const nextItems = normalizeCartItems(getGuestCartItems());
+    if (!mountedRef.current) return;
     setCartItems(nextItems);
     clearRecentProductsCache();
     const addedItemIds = nextItems
@@ -108,11 +127,15 @@ export const useCartRecoveryAdds = ({
     setAddingRecentId(product.id);
     try {
       await addSuggestedProduct(product);
-      announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
+      if (mountedRef.current) {
+        announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
+      }
     } catch (err: unknown) {
-      announceAccessibleMessage(getApiErrorMessage(err, t('messages.addFailed'), language), 'error');
+      if (mountedRef.current) {
+        announceAccessibleMessage(getApiErrorMessage(err, t('messages.addFailed'), language), 'error');
+      }
     } finally {
-      setAddingRecentId(null);
+      if (mountedRef.current) setAddingRecentId(null);
     }
   }, [addSuggestedProduct, language, navigate, setAddingRecentId, t]);
 

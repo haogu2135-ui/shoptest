@@ -780,6 +780,7 @@ const CheckoutContent: React.FC<CheckoutContentProps> = ({ form }) => {
     createdOrder,
     guestPaymentEmail,
     language,
+    mountedRef,
     navigate,
     payment,
     paymentCreateRequestSeqRef,

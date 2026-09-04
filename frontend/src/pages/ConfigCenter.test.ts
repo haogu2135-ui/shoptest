@@ -33,4 +33,13 @@ describe('ConfigCenter mobile editor containment guards', () => {
     expect(pageSource).not.toMatch(/import \{[^}]*\bInput\b[^}]*\} from 'antd'/);
     expect(pageSource).not.toMatch(/const \{ TextArea \} = Input|<TextArea\b|<Input\b/);
   });
+
+  it('cancels stale config and permission reads', () => {
+    expect(pageSource).toContain('const snapshotAbortRef = useRef<AbortController | null>(null);');
+    expect(pageSource).toContain('snapshotAbortRef.current?.abort();');
+    expect(pageSource).toContain('adminApi.getConfigCenter({');
+    expect(pageSource).toContain('}, { signal: abortController.signal });');
+    expect(pageSource).toContain('adminApi.getMyPermissions({ signal: abortController.signal })');
+    expect(pageSource).toContain('permissionsAbortRef.current?.abort();');
+  });
 });

@@ -11,6 +11,16 @@ const readCouponCenterSource = () => [
 const readCouponCenterCss = () => fs.readFileSync(path.resolve(__dirname, 'CouponCenter.css'), 'utf8');
 
 describe('CouponCenter mobile coupon rail contract', () => {
+  it('cancels superseded coupon data loads without treating aborts as errors', () => {
+    const source = readCouponCenterPage();
+
+    expect(source).toContain('const loadCouponsAbortRef = useRef<AbortController | null>(null);');
+    expect(source).toContain('loadCouponsAbortRef.current?.abort();');
+    expect(source).toContain('couponApi.getPublic({ signal: abortController.signal })');
+    expect(source).toContain('couponApi.getByUser(0, { signal: abortController.signal })');
+    expect(source).toContain('if (abortController.signal.aborted) return;');
+  });
+
   it('keeps coupon claim API error handling typed without broad any usage', () => {
     const source = readCouponCenterPage();
 

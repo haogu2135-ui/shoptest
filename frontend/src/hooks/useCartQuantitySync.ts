@@ -36,6 +36,10 @@ export const useCartQuantitySync = ({
     ),
     [isMounted],
   );
+  const isLifecycleActive = useCallback(
+    () => !disposedRef.current && isMounted(),
+    [isMounted],
+  );
 
   const clearQuantityTimer = useCallback((itemId: number) => {
     const timerId = quantityTimersRef.current[itemId];
@@ -56,10 +60,11 @@ export const useCartQuantitySync = ({
       quantityRequestVersionRef.current[itemId] = (quantityRequestVersionRef.current[itemId] || 0) + 1;
       delete quantityRequestPromisesRef.current[itemId];
     });
-    clearQuantityPending(itemIds);
-  }, [clearQuantityPending, clearQuantityTimer]);
+    if (isLifecycleActive()) clearQuantityPending(itemIds);
+  }, [clearQuantityPending, clearQuantityTimer, isLifecycleActive]);
 
   const scheduleQuantitySync = useCallback((itemId: number, quantity: number) => {
+    if (!isLifecycleActive()) return;
     clearQuantityTimer(itemId);
     const requestVersion = (quantityRequestVersionRef.current[itemId] || 0) + 1;
     quantityRequestVersionRef.current[itemId] = requestVersion;
@@ -92,10 +97,10 @@ export const useCartQuantitySync = ({
       quantityRequestPromisesRef.current[itemId] = syncPromise;
       void syncPromise.catch(() => undefined);
     }, syncDelayMs);
-  }, [clearQuantityTimer, isActive, onQuantitySyncError, setQuantityPending, syncDelayMs]);
+  }, [clearQuantityTimer, isActive, isLifecycleActive, onQuantitySyncError, setQuantityPending, syncDelayMs]);
 
   const flushPendingQuantityUpdates = useCallback(async (checkoutSnapshot: CartItem[]) => {
-    if (!hasAuthenticatedCartSession()) return;
+    if (!isLifecycleActive() || !hasAuthenticatedCartSession()) return;
     const affectedIds = new Set<number>();
     const inFlightPromises = checkoutSnapshot
       .map((item) => {
@@ -116,6 +121,7 @@ export const useCartQuantitySync = ({
     if (inFlightPromises.length > 0) {
       await Promise.allSettled(inFlightPromises);
     }
+    if (!isLifecycleActive()) return;
 
     const itemsToSync = checkoutSnapshot.filter((item) => affectedIds.has(item.id));
     itemsToSync.forEach((item) => {
@@ -128,18 +134,21 @@ export const useCartQuantitySync = ({
         itemsToSync,
         (item) => cartApi.updateQuantity(item.id, normalizeCartQuantity(item, item.quantity)),
       );
+      if (!isLifecycleActive()) return;
       const failed = results.find((result) => result.status === 'rejected') as PromiseRejectedResult | undefined;
       if (failed) {
         throw failed.reason;
       }
       dispatchDomEvent('shop:cart-updated');
     } catch (error: unknown) {
+      if (!isLifecycleActive()) return;
       await onQuantitySyncError(error);
+      if (!isLifecycleActive()) return;
       throw error;
     } finally {
-      clearQuantityPending(itemsToSync.map((item) => item.id));
+      if (isLifecycleActive()) clearQuantityPending(itemsToSync.map((item) => item.id));
     }
-  }, [clearQuantityPending, clearQuantityTimer, onQuantitySyncError]);
+  }, [clearQuantityPending, clearQuantityTimer, isLifecycleActive, onQuantitySyncError]);
 
   useEffect(() => {
     disposedRef.current = false;

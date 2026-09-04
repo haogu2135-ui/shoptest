@@ -398,19 +398,21 @@ const CouponManagement: React.FC = () => {
 
   useEffect(() => {
     let disposed = false;
-    adminApi.getMyPermissions()
+    const abortController = new AbortController();
+    adminApi.getMyPermissions({ signal: abortController.signal })
       .then((response) => {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
         setAdminPermissions(response.data.permissions || []);
       })
       .catch(() => {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         setCurrentRole('');
         setAdminPermissions([]);
       });
     return () => {
       disposed = true;
+      abortController.abort();
     };
   }, []);
 

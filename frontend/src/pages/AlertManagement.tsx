@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Table } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
@@ -7,6 +7,7 @@ import ShopSelect from '../components/ShopSelect';
 import ShopInputNumber from '../components/ShopInputNumber';
 import type { ColumnsType } from 'antd/es/table';
 import { AlertOutlined, CheckCircleOutlined, DeleteOutlined, ReloadOutlined, SearchOutlined, ToolOutlined } from '@ant-design/icons';
+import { createApiAbortController } from '../api';
 import { adminApi } from '../api/admin';
 import type { SystemAlert, SystemAlertSummary } from '../types';
 import { useLanguage } from '../i18n';
@@ -68,6 +69,9 @@ const AlertManagement: React.FC = () => {
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const [permissionsLoaded, setPermissionsLoaded] = useState(false);
+  const mountedRef = useRef(true);
+  const dataAbortRef = useRef<AbortController | null>(null);
+  const permissionsAbortRef = useRef<AbortController | null>(null);
   const formatTime = useCallback((value?: string) => value ? new Date(value).toLocaleString(dateLocale) : '-', [dateLocale]);
   const canReadAlerts = hasAdminPermission(adminPermissions, currentRole, 'alerts');
   const canPurgeResolved = hasAdminPermission(adminPermissions, currentRole, ALERTS_PURGE_PERMISSION);
@@ -118,6 +122,7 @@ const AlertManagement: React.FC = () => {
   }, []);
 
   const loadData = useCallback(async () => {
+    dataAbortRef.current?.abort();
     if (!permissionsLoaded) {
       return;
     }
@@ -129,6 +134,11 @@ const AlertManagement: React.FC = () => {
       setLoading(false);
       return;
     }
+    const abortController = createApiAbortController();
+    dataAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && dataAbortRef.current === abortController
+      && !abortController.signal.aborted;
     setLoading(true);
     try {
       setLoadError(null);
@@ -138,46 +148,72 @@ const AlertManagement: React.FC = () => {
           severity: severity === 'ALL' ? undefined : severity,
           category: category.trim() || undefined,
           limit: 300,
-        }),
-        adminApi.getAlertSummary(),
+        }, { signal: abortController.signal }),
+        adminApi.getAlertSummary({ signal: abortController.signal }),
       ]);
+      if (!isCurrentRequest()) return;
       setAlerts(alertResponse.data);
       setSummary(summaryResponse.data);
       setSelectedAlertIds((ids) => ids.filter((id) => alertResponse.data.some((alert) => alert.id === id)));
     } catch (error: unknown) {
+      if (!isCurrentRequest()) return;
       const errorMessage = getApiErrorMessage(error, t('pages.alertAdmin.loadFailed'), language);
       setLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      setLoading(false);
+      const shouldUpdateLoading = isCurrentRequest();
+      if (dataAbortRef.current === abortController) {
+        dataAbortRef.current = null;
+      }
+      if (shouldUpdateLoading) {
+        setLoading(false);
+      }
     }
   }, [canReadAlerts, category, language, permissionsLoaded, severity, status, t]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      dataAbortRef.current?.abort();
+      permissionsAbortRef.current?.abort();
+      dataAbortRef.current = null;
+      permissionsAbortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (!permissionsLoaded) {
       return;
     }
-    loadData();
+    void loadData();
   }, [loadData, permissionsLoaded]);
 
   useEffect(() => {
-    let disposed = false;
-    adminApi.getMyPermissions()
+    permissionsAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    permissionsAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && permissionsAbortRef.current === abortController
+      && !abortController.signal.aborted;
+    adminApi.getMyPermissions({ signal: abortController.signal })
       .then((response) => {
-        if (disposed) return;
+        if (!isCurrentRequest()) return;
         setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
         setAdminPermissions(response.data.permissions || []);
         setPermissionsLoaded(true);
       })
       .catch(() => {
-        if (disposed) return;
+        if (!isCurrentRequest()) return;
         setCurrentRole('');
         setAdminPermissions([]);
         setPermissionsLoaded(true);
+      })
+      .finally(() => {
+        if (permissionsAbortRef.current === abortController) {
+          permissionsAbortRef.current = null;
+        }
       });
-    return () => {
-      disposed = true;
-    };
   }, []);
 
   const runSelfCheck = async () => {

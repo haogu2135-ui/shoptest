@@ -113,8 +113,9 @@ const StockAlerts: React.FC = () => {
         setLoadError(localizedError);
         announceAccessibleMessage(localizedError, 'error');
       } finally {
+        const shouldUpdateLoading = isCurrentRequest();
         if (productFetchAbortRef.current === abortController) productFetchAbortRef.current = null;
-        if (isCurrentRequest()) setLoading(false);
+        if (shouldUpdateLoading) setLoading(false);
       }
     };
     loadProducts();

@@ -38,4 +38,12 @@ describe('LogManagement mobile RangePicker guards', () => {
     expect(f3532Css).toMatch(/body \.log-management__rangePopup\.shop-mobile-popup-layer \.ant-picker-panel-container,[\s\S]*?body \.log-management__rangePopup\.shop-mobile-popup-layer \.ant-picker-range-wrapper\s*\{[\s\S]*?width:\s*100%;[\s\S]*?min-width:\s*0;[\s\S]*?max-width:\s*100%;[\s\S]*?overflow:\s*auto\s*!important;/);
     expect(f3532Css).toMatch(/body \.log-management__rangePopup\.shop-mobile-popup-layer \.ant-picker-panels\s*\{[\s\S]*?flex-direction:\s*column;[\s\S]*?width:\s*100%;[\s\S]*?min-width:\s*0;/);
   });
+
+  it('cancels stale logger and permission reads', () => {
+    expect(pageSource).toContain('const statusAbortRef = useRef<AbortController | null>(null);');
+    expect(pageSource).toContain('statusAbortRef.current?.abort();');
+    expect(pageSource).toContain('adminApi.getLogManagementStatus({ loggerName: requestedLogger }, { signal: abortController.signal })');
+    expect(pageSource).toContain('adminApi.getMyPermissions({ signal: abortController.signal })');
+    expect(pageSource).toContain('permissionsAbortRef.current?.abort();');
+  });
 });

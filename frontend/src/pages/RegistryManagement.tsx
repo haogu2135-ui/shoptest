@@ -63,10 +63,11 @@ const RegistryManagement: React.FC = () => {
       setLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
+      const shouldUpdateLoading = isCurrentRequest();
       if (statusAbortRef.current === abortController) {
         statusAbortRef.current = null;
       }
-      if (isCurrentRequest()) {
+      if (shouldUpdateLoading) {
         setLoading(false);
       }
     }

@@ -1,7 +1,8 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Form } from 'antd';
 import dayjs, { Dayjs } from 'dayjs';
 import { ClockCircleOutlined, EditOutlined, FireOutlined, PlusOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { createApiAbortController } from '../api';
 import { adminApi } from '../api/admin';
 import type { Product, SeckillCampaign, SeckillCampaignWritePayload, SeckillItemWritePayload } from '../types';
 import ShopAlert from '../components/ShopAlert';
@@ -68,25 +69,48 @@ const SeckillManagement: React.FC = () => {
   const [items, setItems] = useState<ItemDraft[]>([]);
   const [saving, setSaving] = useState(false);
   const [statusUpdatingId, setStatusUpdatingId] = useState<number | null>(null);
+  const mountedRef = useRef(true);
+  const dataAbortRef = useRef<AbortController | null>(null);
 
   const loadData = useCallback(async () => {
+    dataAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    dataAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && dataAbortRef.current === abortController
+      && !abortController.signal.aborted;
     setLoading(true);
     setProductsLoading(true);
     try {
       const [campaignResponse, productResponse] = await Promise.all([
-        adminApi.getSeckillCampaigns(),
-        adminApi.getProducts({ page: 1, size: 500 }),
+        adminApi.getSeckillCampaigns({ signal: abortController.signal }),
+        adminApi.getProducts({ page: 1, size: 500 }, { signal: abortController.signal }),
       ]);
+      if (!isCurrentRequest()) return;
       setCampaigns(Array.isArray(campaignResponse.data) ? campaignResponse.data : []);
       setProducts(productResponse.data.items || []);
       setError('');
-    } catch (requestError) {
+    } catch (requestError: unknown) {
+      if (!isCurrentRequest()) return;
       setError(getApiErrorMessage(requestError, t('pages.adminSeckill.loadFailed'), language));
     } finally {
-      setLoading(false);
-      setProductsLoading(false);
+      const shouldUpdateLoading = isCurrentRequest();
+      if (dataAbortRef.current === abortController) dataAbortRef.current = null;
+      if (shouldUpdateLoading) {
+        setLoading(false);
+        setProductsLoading(false);
+      }
     }
   }, [language, t]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      dataAbortRef.current?.abort();
+      dataAbortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     void loadData();

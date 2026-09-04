@@ -401,7 +401,7 @@ ${orderActions}`;
     expect(shell).toContain('export const ProductDetailSkeleton');
     expect(shell).toContain('export const ProductDetailLazyFallback');
     expect(nonCritical).toContain('export const useProductDetailNonCriticalContent');
-    expect(nonCritical).toContain('const fetchReviews = useCallback(async (requestSeq: number) => {');
+    expect(nonCritical).toContain('const fetchReviews = useCallback(async (requestSeq: number, signal = nonCriticalAbortRef.current?.signal) => {');
     expect(nonCritical).toContain('const warmNonCriticalContent = useCallback((requestSeq: number) => {');
     expect(gallery).toContain('export const useProductDetailGallery');
     expect(gallery).toContain('const selectGalleryImage = (image: string, index: number) => {');

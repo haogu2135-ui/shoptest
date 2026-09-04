@@ -688,27 +688,33 @@ export const paymentApi = {
 
 // 评价相关 API
 export const reviewApi = {
-    getAll: (productId: number) => {
+    getAll: (productId: number, options?: ApiRequestOptions) => {
         const normalizedProductId = normalizePositiveInt(productId);
-        if (!normalizedProductId) return Promise.resolve({ data: { reviews: [], averageRating: 0 } } as unknown as AxiosResponse<ProductReviewSummary>);
+        if (!normalizedProductId) return withAbortSignal(Promise.resolve({ data: { reviews: [], averageRating: 0 } } as unknown as AxiosResponse<ProductReviewSummary>), options?.signal);
         const hasToken = Boolean(getStoredItem('token'));
         if (hasToken) {
-            return api.get<ProductReviewSummary>(`/reviews/product/${normalizedProductId}`, optionalAnonymousGetConfig());
+            return api.get<ProductReviewSummary>(`/reviews/product/${normalizedProductId}`, optionalAnonymousGetConfig(undefined, options));
         }
         const cached = reviewCache.get(normalizedProductId);
-        if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.response);
+        if (cached && cached.expiresAt > Date.now()) return withAbortSignal(Promise.resolve(cached.response), options?.signal);
         const pending = reviewRequests.get(normalizedProductId);
-        if (pending) return pending;
-        const request = api.get<ProductReviewSummary>(`/reviews/product/${normalizedProductId}`, anonymousGetConfig())
+        if (pending) return withAbortSignal(pending, options?.signal);
+        const request = api.get<ProductReviewSummary>(
+            `/reviews/product/${normalizedProductId}`,
+            anonymousGetConfig(undefined, cacheLoaderOptions(options)),
+        )
             .then((response) => {
                 setTimedCacheEntry(reviewCache, normalizedProductId, { response, expiresAt: Date.now() + REVIEW_CACHE_MS });
                 return response;
             })
             .finally(() => reviewRequests.delete(normalizedProductId));
         setBoundedMapEntry(reviewRequests, normalizedProductId, request);
-        return request;
+        return withAbortSignal(request, options?.signal);
     },
-    getReviewableOrders: (productId: number) => api.get<ReviewableOrder[]>(`/reviews/product/${toPathId(productId)}/reviewable-orders`).then(withArrayData),
+    getReviewableOrders: (productId: number, options?: ApiRequestOptions) => api.get<ReviewableOrder[]>(
+        `/reviews/product/${toPathId(productId)}/reviewable-orders`,
+        withRequestOptions({}, options),
+    ).then(withArrayData),
     uploadImage: (file: File) => {
         const formData = new FormData();
         formData.append('file', file);
@@ -726,14 +732,17 @@ export const reviewApi = {
 };
 
 export const questionApi = {
-    getByProduct: (productId: number) => {
+    getByProduct: (productId: number, options?: ApiRequestOptions) => {
         const normalizedProductId = normalizePositiveInt(productId);
-        if (!normalizedProductId) return Promise.resolve({ data: [] } as unknown as AxiosResponse<ProductQuestionPublic[]>);
+        if (!normalizedProductId) return withAbortSignal(Promise.resolve({ data: [] } as unknown as AxiosResponse<ProductQuestionPublic[]>), options?.signal);
         const cached = questionCache.get(normalizedProductId);
-        if (cached && cached.expiresAt > Date.now()) return Promise.resolve(cached.response);
+        if (cached && cached.expiresAt > Date.now()) return withAbortSignal(Promise.resolve(cached.response), options?.signal);
         const pending = questionRequests.get(normalizedProductId);
-        if (pending) return pending;
-        const request = api.get<ProductQuestionPublic[]>(`/product-questions/product/${normalizedProductId}`, anonymousGetConfig())
+        if (pending) return withAbortSignal(pending, options?.signal);
+        const request = api.get<ProductQuestionPublic[]>(
+            `/product-questions/product/${normalizedProductId}`,
+            anonymousGetConfig(undefined, cacheLoaderOptions(options)),
+        )
             .then((response) => {
                 const normalized = withArrayData(response);
                 setTimedCacheEntry(questionCache, normalizedProductId, { response: normalized, expiresAt: Date.now() + QUESTION_CACHE_MS });
@@ -741,7 +750,7 @@ export const questionApi = {
             })
             .finally(() => questionRequests.delete(normalizedProductId));
         setBoundedMapEntry(questionRequests, normalizedProductId, request);
-        return request;
+        return withAbortSignal(request, options?.signal);
     },
     ask: (productId: number, question: string) =>
         api.post<ProductQuestionPublic>(`/product-questions/product/${toPathId(productId)}`, { question: normalizeTextParam(question, MAX_PRODUCT_QUESTION_LENGTH) })

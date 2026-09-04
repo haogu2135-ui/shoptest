@@ -514,7 +514,9 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         if (disposed || abortController.signal.aborted) return;
         setMessages(mergeSupportMessages([], messagesRes.data));
         supportApi.markRead(sessionRes.data.id, { signal: abortController.signal })
-          .catch((error) => reportNonBlockingError('CustomerSupportWidget.markReadAfterSessionLoad', error));
+          .catch((error) => {
+            if (!abortController.signal.aborted) reportNonBlockingError('CustomerSupportWidget.markReadAfterSessionLoad', error);
+          });
         supportApi.getSessions({ limit: SUPPORT_SESSION_HISTORY_WINDOW, signal: abortController.signal })
           .then((res) => {
             if (!disposed && !abortController.signal.aborted) setSessionHistory(sortSupportSessions(res.data || []));
@@ -653,9 +655,12 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
     if (process.env.NODE_ENV === 'test') return;
     let disposed = false;
     let polling = false;
+    let pollAbortController: AbortController | null = null;
     const timer = window.setInterval(async () => {
-      if (polling) return;
+      if (disposed || polling) return;
       polling = true;
+      const abortController = createApiAbortController();
+      pollAbortController = abortController;
       try {
         const pollSessionId = sessionRef.current?.id;
         if (!pollSessionId) return;
@@ -663,12 +668,12 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         const guestContextForPoll = activeGuestContextRef.current;
         const [messagesRes, sessionsRes] = guestContextForPoll
           ? await Promise.all([
-            supportApi.getGuestMessages(pollSessionId, guestContextForPoll.orderNo, guestContextForPoll.email, { afterId, limit: SUPPORT_MESSAGE_WINDOW }),
+            supportApi.getGuestMessages(pollSessionId, guestContextForPoll.orderNo, guestContextForPoll.email, { afterId, limit: SUPPORT_MESSAGE_WINDOW, signal: abortController.signal }),
             Promise.resolve({ data: sessionRef.current ? [sessionRef.current] : [] }),
           ])
           : await Promise.all([
-            supportApi.getMessages(pollSessionId, { afterId, limit: SUPPORT_MESSAGE_WINDOW }),
-            supportApi.getSessions({ limit: SUPPORT_SESSION_HISTORY_WINDOW }),
+            supportApi.getMessages(pollSessionId, { afterId, limit: SUPPORT_MESSAGE_WINDOW, signal: abortController.signal }),
+            supportApi.getSessions({ limit: SUPPORT_SESSION_HISTORY_WINDOW, signal: abortController.signal }),
           ]);
         if (
           guestContextForPoll
@@ -677,7 +682,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
             || activeGuestContextRef.current?.email !== guestContextForPoll.email
           )
         ) return;
-        if (disposed || sessionRef.current?.id !== pollSessionId) return;
+        if (disposed || abortController.signal.aborted || sessionRef.current?.id !== pollSessionId) return;
         const sortedSessions = sortSupportSessions(sessionsRes.data || []);
         const selectedSession = sortedSessions.find((item) => item.id === pollSessionId);
         if (selectedSession) {
@@ -695,14 +700,18 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
             .catch((error) => reportNonBlockingError('CustomerSupportWidget.markReadAfterPoll', error));
         }
       } catch (error) {
-        reportNonBlockingError('CustomerSupportWidget.pollMessages', error);
+        if (!disposed && !abortController.signal.aborted) {
+          reportNonBlockingError('CustomerSupportWidget.pollMessages', error);
+        }
       } finally {
+        if (pollAbortController === abortController) pollAbortController = null;
         polling = false;
       }
     }, 10000);
     return () => {
       disposed = true;
       window.clearInterval(timer);
+      pollAbortController?.abort();
     };
   }, [activeGuestContext, connected, open, activeSessionId, sortSupportSessions]);
 
@@ -787,6 +796,8 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
 
   const closeOrderDetail = useCallback(() => {
     detailRequestSeqRef.current += 1;
+    detailAbortRef.current?.abort();
+    detailAbortRef.current = null;
     setDetailLoading(false);
     setDetailOrder(null);
     setDetailItems([]);
@@ -1009,6 +1020,9 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   const openOrderDetail = async (orderId: unknown) => {
     const normalizedOrderId = normalizeSupportOrderId(orderId);
     if (!normalizedOrderId) return;
+    detailAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    detailAbortRef.current = abortController;
     const requestId = detailRequestSeqRef.current + 1;
     detailRequestSeqRef.current = requestId;
     setDetailLoading(true);
@@ -1016,20 +1030,24 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
       const guestEmail = activeGuestContext?.email;
       const guestOrderNo = activeGuestContext?.orderNo;
       const [orderRes, itemsRes] = await Promise.all([
-        orderApi.getById(normalizedOrderId, guestEmail, guestOrderNo),
-        orderApi.getItems(normalizedOrderId, guestEmail, guestOrderNo),
+        orderApi.getById(normalizedOrderId, guestEmail, guestOrderNo, { signal: abortController.signal }),
+        orderApi.getItems(normalizedOrderId, guestEmail, guestOrderNo, { signal: abortController.signal }),
       ]);
-      if (detailRequestSeqRef.current !== requestId) return;
+      if (abortController.signal.aborted || detailRequestSeqRef.current !== requestId) return;
       setDetailOrder(orderRes.data);
       setDetailItems(itemsRes.data);
     } catch (error) {
+      if (abortController.signal.aborted) return;
       if (detailRequestSeqRef.current === requestId) {
         reportNonBlockingError('CustomerSupportWidget.openOrderDetail', error);
         announceAccessibleMessage(t('pages.support.orderLoadFailed'), 'error');
       }
     } finally {
       if (detailRequestSeqRef.current === requestId) {
-        setDetailLoading(false);
+        if (detailAbortRef.current === abortController) {
+          detailAbortRef.current = null;
+          if (!abortController.signal.aborted) setDetailLoading(false);
+        }
       }
     }
   };
@@ -1069,6 +1087,9 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
 
   const switchSession = async (sessionId: number) => {
     if (!Number.isSafeInteger(sessionId) || sessionId <= 0) return;
+    sessionSwitchAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    sessionSwitchAbortRef.current = abortController;
     const requestId = sessionSwitchRequestSeqRef.current + 1;
     sessionSwitchRequestSeqRef.current = requestId;
     const target = sessionHistory.find((item) => item.id === sessionId);
@@ -1081,32 +1102,40 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
     setMessages([]);
     try {
       const messagesRes = activeGuestContext
-        ? await supportApi.getGuestMessages(sessionId, activeGuestContext.orderNo, activeGuestContext.email, { limit: SUPPORT_MESSAGE_WINDOW })
-        : await supportApi.getMessages(sessionId, { limit: SUPPORT_MESSAGE_WINDOW });
-      if (sessionSwitchRequestSeqRef.current !== requestId || sessionRef.current?.id !== sessionId) return;
+        ? await supportApi.getGuestMessages(sessionId, activeGuestContext.orderNo, activeGuestContext.email, { limit: SUPPORT_MESSAGE_WINDOW, signal: abortController.signal })
+        : await supportApi.getMessages(sessionId, { limit: SUPPORT_MESSAGE_WINDOW, signal: abortController.signal });
+      if (abortController.signal.aborted || sessionSwitchRequestSeqRef.current !== requestId || sessionRef.current?.id !== sessionId) return;
       setMessages(mergeSupportMessages([], messagesRes.data));
       if (!activeGuestContext) {
-        supportApi.getSessions({ limit: SUPPORT_SESSION_HISTORY_WINDOW })
+        supportApi.getSessions({ limit: SUPPORT_SESSION_HISTORY_WINDOW, signal: abortController.signal })
           .then((res) => {
-            if (sessionSwitchRequestSeqRef.current === requestId) {
+            if (!abortController.signal.aborted && sessionSwitchRequestSeqRef.current === requestId) {
               setSessionHistory(sortSupportSessions(res.data || []));
             }
           })
-          .catch((error) => reportNonBlockingError('CustomerSupportWidget.loadSessionHistoryAfterSwitch', error));
-        supportApi.markRead(sessionId)
-          .catch((error) => reportNonBlockingError('CustomerSupportWidget.markReadAfterSwitch', error));
+          .catch((error) => {
+            if (!abortController.signal.aborted) reportNonBlockingError('CustomerSupportWidget.loadSessionHistoryAfterSwitch', error);
+          });
+        supportApi.markRead(sessionId, { signal: abortController.signal })
+          .catch((error) => {
+            if (!abortController.signal.aborted) reportNonBlockingError('CustomerSupportWidget.markReadAfterSwitch', error);
+          });
       } else {
-        supportApi.markGuestRead(sessionId, activeGuestContext.orderNo, activeGuestContext.email)
-          .catch((error) => reportNonBlockingError('CustomerSupportWidget.markGuestReadAfterSwitch', error));
+        supportApi.markGuestRead(sessionId, activeGuestContext.orderNo, activeGuestContext.email, { signal: abortController.signal })
+          .catch((error) => {
+            if (!abortController.signal.aborted) reportNonBlockingError('CustomerSupportWidget.markGuestReadAfterSwitch', error);
+          });
       }
     } catch (error) {
+      if (abortController.signal.aborted) return;
       reportNonBlockingError('CustomerSupportWidget.switchSession', error);
       if (sessionSwitchRequestSeqRef.current === requestId && sessionRef.current?.id === sessionId) {
         setSessionSwitchError(t('pages.support.loadFailed'));
       }
       announceAccessibleMessage(t('pages.support.loadFailed'), 'error');
     } finally {
-      if (sessionSwitchRequestSeqRef.current === requestId && sessionRef.current?.id === sessionId) {
+      if (sessionSwitchAbortRef.current === abortController) sessionSwitchAbortRef.current = null;
+      if (!abortController.signal.aborted && sessionSwitchRequestSeqRef.current === requestId && sessionRef.current?.id === sessionId) {
         setSessionSwitching(false);
       }
     }

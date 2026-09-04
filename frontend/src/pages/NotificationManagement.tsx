@@ -1,10 +1,11 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Form } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopSegmented from '../components/ShopSegmented';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import ShopSelect from '../components/ShopSelect';
 import { CheckCircleOutlined, LinkOutlined, NotificationOutlined, ReloadOutlined, SendOutlined, ThunderboltOutlined } from '@ant-design/icons';
+import { createApiAbortController } from '../api';
 import { adminApi } from '../api/admin';
 import { useLanguage } from '../i18n';
 import { stripUnsafeHtml } from '../utils/sanitizeHtml';
@@ -37,6 +38,8 @@ const NotificationManagement: React.FC = () => {
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const [permissionStatus, setPermissionStatus] = useState<PermissionStatus>('loading');
+  const mountedRef = useRef(true);
+  const permissionsAbortRef = useRef<AbortController | null>(null);
   const { t, language } = useLanguage();
   const notificationType = Form.useWatch('type', form) || 'PROMOTION';
   const contentFormat = Form.useWatch('contentFormat', form) || 'HTML';
@@ -46,41 +49,41 @@ const NotificationManagement: React.FC = () => {
     && hasAdminPermission(adminPermissions, currentRole, NOTIFICATIONS_BROADCAST_PERMISSION);
 
   const loadPermissions = useCallback(async () => {
+    permissionsAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    permissionsAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && permissionsAbortRef.current === abortController
+      && !abortController.signal.aborted;
     setPermissionStatus('loading');
     try {
-      const response = await adminApi.getMyPermissions();
+      const response = await adminApi.getMyPermissions({ signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
       setAdminPermissions(response.data.permissions || []);
       setPermissionStatus('ready');
-    } catch (error) {
+    } catch (error: unknown) {
+      if (!isCurrentRequest()) return;
       reportNonBlockingError('NotificationManagement.loadPermissions', error);
       setCurrentRole('');
       setAdminPermissions([]);
       setPermissionStatus('error');
+    } finally {
+      if (permissionsAbortRef.current === abortController) {
+        permissionsAbortRef.current = null;
+      }
     }
   }, []);
 
   useEffect(() => {
-    let disposed = false;
-    setPermissionStatus('loading');
-    adminApi.getMyPermissions()
-      .then((response) => {
-        if (disposed) return;
-        setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
-        setAdminPermissions(response.data.permissions || []);
-        setPermissionStatus('ready');
-      })
-      .catch((error) => {
-        if (disposed) return;
-        reportNonBlockingError('NotificationManagement.loadPermissionsEffect', error);
-        setCurrentRole('');
-        setAdminPermissions([]);
-        setPermissionStatus('error');
-      });
+    mountedRef.current = true;
+    void loadPermissions();
     return () => {
-      disposed = true;
+      mountedRef.current = false;
+      permissionsAbortRef.current?.abort();
+      permissionsAbortRef.current = null;
     };
-  }, []);
+  }, [loadPermissions]);
 
   const previewHtml = useMemo(() => stripUnsafeHtml(messageContent), [messageContent]);
   const safePreviewHtml = useMemo(

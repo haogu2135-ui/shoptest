@@ -458,6 +458,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
     setCheckoutPaymentSubmitting(paymentMethod || 'standard');
     try {
       await flushPendingQuantityUpdates(checkoutItems);
+      if (!mountedRef.current) return;
       syncCheckoutCartItemIds(checkoutItems);
       if (paymentMethod) {
         setSessionStorageItem('checkoutPaymentMethod', paymentMethod);
@@ -467,6 +468,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       setOpen(false);
       navigate('/checkout');
     } catch (error) {
+      if (!mountedRef.current) return;
       reportNonBlockingError('CartDrawer.goCheckout', error);
       return;
     } finally {

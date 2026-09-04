@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { useNavigate } from 'react-router-dom';
-import { cartApi, productApi } from '../api';
+import { cartApi, createApiAbortController, productApi } from '../api';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
@@ -66,6 +66,7 @@ const BrowsingHistory: React.FC = () => {
 
   useEffect(() => {
     let disposed = false;
+    const abortController = createApiAbortController();
     const fetchProducts = async () => {
       if (!hasHistory) {
         setProducts([]);
@@ -76,20 +77,21 @@ const BrowsingHistory: React.FC = () => {
       setLoading(true);
       setLoadError(false);
       try {
-        const response = await productApi.getByIds(preferences.recent);
+        const response = await productApi.getByIds(preferences.recent, { signal: abortController.signal });
         if (disposed) return;
         setProducts(response.data.map((product) => localizeProduct(product, language)));
       } catch (error) {
+        if (disposed || abortController.signal.aborted) return;
         reportNonBlockingError('BrowsingHistory.fetchProducts', error);
-        if (disposed) return;
         setLoadError(true);
       } finally {
-        if (!disposed) setLoading(false);
+        if (!disposed && !abortController.signal.aborted) setLoading(false);
       }
     };
     fetchProducts();
     return () => {
       disposed = true;
+      abortController.abort();
     };
   }, [hasHistory, language, preferences.recent, reloadToken]);
 

@@ -1,6 +1,6 @@
-import { type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
+import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
-import { cartApi, clearStoredAuthSession, orderApi, paymentApi, productApi } from '../api';
+import { cartApi, clearStoredAuthSession, createApiAbortController, orderApi, paymentApi, productApi } from '../api';
 import type { CartItem, CouponQuote, OrderCustomer, PaymentCustomer, ProductPublic as Product, UserAddress } from '../types';
 import type { Language } from '../i18n';
 import {
@@ -47,6 +47,7 @@ type UseCheckoutOrderActionsParams = {
   createdOrder: OrderCustomer | null;
   guestPaymentEmail?: string;
   language: Language;
+  mountedRef: MutableRefObject<boolean>;
   navigate: NavigateFunction;
   payment: PaymentCustomer | null;
   paymentCreateRequestSeqRef: MutableRefObject<number>;
@@ -108,6 +109,7 @@ export const useCheckoutOrderActions = ({
   createdOrder,
   guestPaymentEmail,
   language,
+  mountedRef,
   navigate,
   payment,
   paymentCreateRequestSeqRef,
@@ -147,6 +149,19 @@ export const useCheckoutOrderActions = ({
   t,
   readGuestCartSnapshot,
 }: UseCheckoutOrderActionsParams) => {
+  const suggestedProductCartAbortRef = useRef<AbortController | null>(null);
+  const simulatePaymentAbortRef = useRef<AbortController | null>(null);
+  const restoreProductsAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => {
+    suggestedProductCartAbortRef.current?.abort();
+    suggestedProductCartAbortRef.current = null;
+    simulatePaymentAbortRef.current?.abort();
+    simulatePaymentAbortRef.current = null;
+    restoreProductsAbortRef.current?.abort();
+    restoreProductsAbortRef.current = null;
+  }, []);
+
   const buildAddress = (values: CheckoutFormValues) => {
     const address = selectedAddressId !== 'new'
       ? addresses.find((item) => String(item.id) === String(selectedAddressId)) || null
@@ -181,18 +196,26 @@ export const useCheckoutOrderActions = ({
     const productWithSafeId = { ...product, id: productId };
     const hasToken = hasAuthenticatedCartSession();
     if (hasToken) {
+      const abortController = createApiAbortController();
+      suggestedProductCartAbortRef.current?.abort();
+      suggestedProductCartAbortRef.current = abortController;
       try {
         await cartApi.addItem(0, productId, 1);
-        const response = await cartApi.getItems(0);
+        if (!mountedRef.current || abortController.signal.aborted) return;
+        const response = await cartApi.getItems(0, { signal: abortController.signal });
+        if (!mountedRef.current || abortController.signal.aborted) return;
         const purchasableItems = response.data.filter(isPurchasable);
         setCartItems(purchasableItems);
         syncCheckoutCartItemIds(purchasableItems);
         dispatchDomEvent('shop:cart-updated');
         return;
       } catch (error: unknown) {
+        if (!mountedRef.current || abortController.signal.aborted) return;
         if (!isAuthExpiredError(error)) {
           throw error;
         }
+      } finally {
+        if (suggestedProductCartAbortRef.current === abortController) suggestedProductCartAbortRef.current = null;
       }
     }
     const addedItem = addGuestCartItem(productWithSafeId, 1);
@@ -403,21 +426,31 @@ export const useCheckoutOrderActions = ({
   const simulatePayment = async () => {
     if (!payment || paymentSimulatingRef.current) return;
     paymentSimulatingRef.current = true;
+    const abortController = createApiAbortController();
+    simulatePaymentAbortRef.current?.abort();
+    simulatePaymentAbortRef.current = abortController;
     setSimulatingPayment(true);
     try {
-      const paymentRes = await paymentApi.simulateCallback(payment.id);
+      const paymentRes = await paymentApi.simulateCallback(payment.id, { signal: abortController.signal });
+      if (!mountedRef.current || abortController.signal.aborted) return;
       setPayment(paymentRes.data);
       if (createdOrder?.id && hasAuthenticatedCartSession()) {
-        const orderRes = await orderApi.getById(createdOrder.id);
+        const orderRes = await orderApi.getById(createdOrder.id, undefined, undefined, { signal: abortController.signal });
+        if (!mountedRef.current || abortController.signal.aborted) return;
         setCreatedOrder(orderRes.data);
       } else if (createdOrder) {
+        if (!mountedRef.current || abortController.signal.aborted) return;
         setCreatedOrder({ ...createdOrder, status: 'PENDING_SHIPMENT' });
       }
     } catch (error: unknown) {
+      if (!mountedRef.current || abortController.signal.aborted) return;
       showCheckoutMessage('error', getApiErrorMessage(error, t('pages.checkout.simulatePaymentFailed'), language));
     } finally {
-      setSimulatingPayment(false);
-      paymentSimulatingRef.current = false;
+      if (simulatePaymentAbortRef.current === abortController) {
+        simulatePaymentAbortRef.current = null;
+        if (mountedRef.current && !abortController.signal.aborted) setSimulatingPayment(false);
+        paymentSimulatingRef.current = false;
+      }
     }
   };
 
@@ -429,28 +462,38 @@ export const useCheckoutOrderActions = ({
         submittedCartItems,
         (item) => cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs),
       );
+      if (!mountedRef.current) return false;
       const failed = results.find((result) => result.status === 'rejected') as PromiseRejectedResult | undefined;
       if (failed) {
         throw failed.reason;
       }
       dispatchDomEvent('shop:cart-updated');
-      return;
+      return true;
     }
     const productIds = Array.from(new Set(submittedCartItems.map((item) => item.productId).filter((id) => Number.isFinite(Number(id)) && Number(id) > 0)));
     let latestProducts = new Map<number, Product>();
     if (productIds.length > 0) {
+      const abortController = createApiAbortController();
+      restoreProductsAbortRef.current?.abort();
+      restoreProductsAbortRef.current = abortController;
       try {
-        const res = await productApi.getByIds(productIds, { bypassCache: true });
+        const res = await productApi.getByIds(productIds, { bypassCache: true, signal: abortController.signal });
+        if (!mountedRef.current || abortController.signal.aborted) return false;
         latestProducts = new Map((Array.isArray(res.data) ? res.data : []).map((product) => [Number(product.id), product]));
       } catch (error) {
+        if (!mountedRef.current || abortController.signal.aborted) return false;
         reportNonBlockingError('checkout.restoreSubmittedCartItems product refresh failed', error);
+      } finally {
+        if (restoreProductsAbortRef.current === abortController) restoreProductsAbortRef.current = null;
       }
     }
+    if (!mountedRef.current) return false;
     submittedCartItems.forEach((item) => {
       const latestProduct = latestProducts.get(item.productId);
       const restoreLine = buildGuestRestoreCartLine(item, latestProduct, checkoutCartItemName(item));
       addGuestCartItem(restoreLine.product, restoreLine.quantity, restoreLine.selectedSpecs, restoreLine.restorePrice);
     });
+    return true;
   };
 
   const rollbackPendingPayment = () => {
@@ -463,7 +506,8 @@ export const useCheckoutOrderActions = ({
     setCancelingPayment(true);
     try {
       await orderApi.cancel(createdOrder.id, guestPaymentEmail, guestPaymentEmail ? createdOrder.orderNo : undefined);
-      await restoreSubmittedCartItems();
+      const restored = await restoreSubmittedCartItems();
+      if (!restored || !mountedRef.current) return;
       clearCheckoutIdempotencyKey();
       clearCheckoutPendingOrder();
       setPayment(null);
@@ -473,9 +517,11 @@ export const useCheckoutOrderActions = ({
       showCheckoutMessage('success', t('pages.checkout.rollbackPaymentSuccess'));
       navigate('/cart');
     } catch (error: unknown) {
-      showCheckoutMessage('error', getApiErrorMessage(error, t('pages.checkout.rollbackPaymentFailed'), language));
+      if (mountedRef.current) {
+        showCheckoutMessage('error', getApiErrorMessage(error, t('pages.checkout.rollbackPaymentFailed'), language));
+      }
     } finally {
-      setCancelingPayment(false);
+      if (mountedRef.current) setCancelingPayment(false);
     }
   };
 

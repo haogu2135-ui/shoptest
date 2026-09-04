@@ -2,6 +2,7 @@ import { act, render } from '@testing-library/react';
 import React from 'react';
 
 jest.mock('../api', () => ({
+  createApiAbortController: jest.fn(() => new AbortController()),
   cartApi: {
     getItems: jest.fn(),
   },
@@ -42,7 +43,7 @@ jest.mock('../pages/cartHelpers', () => ({
 }));
 
 const { useCartSessionData } = require('./useCartSessionData') as typeof import('./useCartSessionData');
-const { productApi: mockProductApi } = require('../api');
+const { createApiAbortController: mockCreateApiAbortController, productApi: mockProductApi } = require('../api');
 const { loadProductViewPreferences: mockLoadPreferences } = require('../utils/productViewPreferences');
 const { getGuestCartItems: mockGetGuestCartItems } = require('../utils/guestCart');
 const { hasAuthenticatedCartSession: mockHasAuthenticatedCartSession } = require('../utils/cartSession');
@@ -117,20 +118,23 @@ describe('useCartSessionData recently-viewed loads', () => {
     (mockGetCachedRecentProducts as jest.Mock).mockReturnValue(null);
     (mockGetSavedForLaterItemsSnapshot as jest.Mock).mockReturnValue([]);
     (mockNormalizeCartItems as jest.Mock).mockImplementation((items: unknown[]) => items);
+    (mockCreateApiAbortController as jest.Mock).mockImplementation(() => new AbortController());
   });
 
   it('keeps the newest recently-viewed products when a superseded load resolves last', async () => {
     // Each call parks its resolver so two loads can be in flight at once and be
     // completed out of order.
     const deferreds: Array<Deferred<{ data: Array<{ id: number; name: string }> }>> = [];
-    (mockProductApi.getByIds as jest.Mock).mockImplementation(() => {
+    const signals: Array<AbortSignal | undefined> = [];
+    (mockProductApi.getByIds as jest.Mock).mockImplementation((_ids: number[], options?: { signal?: AbortSignal }) => {
       const deferred = createDeferred<{ data: Array<{ id: number; name: string }> }>();
       deferreds.push(deferred);
+      signals.push(options?.signal);
       return deferred.promise;
     });
 
     let latestRecent: Array<{ id: number; name: string }> = [];
-    render(<Harness onRecent={(products) => { latestRecent = products; }} />);
+    const view = render(<Harness onRecent={(products) => { latestRecent = products; }} />);
 
     await act(async () => {
       await Promise.resolve();
@@ -145,6 +149,8 @@ describe('useCartSessionData recently-viewed loads', () => {
       await Promise.resolve();
     });
     expect(deferreds).toHaveLength(2);
+    expect(signals[0]?.aborted).toBe(true);
+    expect(signals[1]?.aborted).toBe(false);
 
     // Newer load answers first; the superseded one then answers with stale history
     // that must not replace it.
@@ -154,5 +160,8 @@ describe('useCartSessionData recently-viewed loads', () => {
     await flushMicrotasks();
 
     expect(latestRecent.map((product) => product.name)).toEqual(['current-product']);
+
+    view.unmount();
+    expect(signals[1]?.aborted).toBe(true);
   });
 });

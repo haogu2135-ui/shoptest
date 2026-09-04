@@ -4,6 +4,7 @@ import {
   ShopOutlined, ShoppingOutlined, TeamOutlined, DollarOutlined, CheckCircleOutlined, ClockCircleOutlined, WarningOutlined, RiseOutlined, TruckOutlined,
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
+import { createApiAbortController } from '../api';
 import { adminApi } from '../api/admin';
 import type { DashboardStats } from '../types';
 import { useAuth } from '../hooks/useAuth';
@@ -365,9 +366,13 @@ const AdminDashboard: React.FC = () => {
   );
 
   const accessDeniedHandledRef = useRef(false);
+  const dashboardAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     let disposed = false;
+    const abortController = createApiAbortController();
+    dashboardAbortRef.current?.abort();
+    dashboardAbortRef.current = abortController;
     const fetchStats = async () => {
       if (authLoading) return;
       if (!token || !isAdminRole(user?.role)) {
@@ -384,15 +389,18 @@ const AdminDashboard: React.FC = () => {
       }
       accessDeniedHandledRef.current = false;
       try {
-        const res = await adminApi.getDashboard();
-        if (disposed) return;
+        const res = await adminApi.getDashboard({ signal: abortController.signal });
+        if (disposed || abortController.signal.aborted || dashboardAbortRef.current !== abortController) return;
         setStats(res.data);
         setLoadError('');
       } catch (error: unknown) {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted || dashboardAbortRef.current !== abortController) return;
         setLoadError(getApiErrorMessage(error, t('pages.adminDashboard.loadFailed'), language));
       } finally {
-        if (!disposed) {
+        if (dashboardAbortRef.current === abortController) {
+          dashboardAbortRef.current = null;
+        }
+        if (!disposed && !abortController.signal.aborted) {
           setLoading(false);
         }
       }
@@ -400,6 +408,10 @@ const AdminDashboard: React.FC = () => {
     fetchStats();
     return () => {
       disposed = true;
+      if (dashboardAbortRef.current === abortController) {
+        dashboardAbortRef.current = null;
+      }
+      abortController.abort();
     };
   }, [authLoading, language, navigate, t, token, user?.role]);
 

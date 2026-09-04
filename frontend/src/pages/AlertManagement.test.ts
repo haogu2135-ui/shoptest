@@ -32,4 +32,13 @@ describe('AlertManagement responsive table guard', () => {
     expect(f2762Css).toMatch(/@media \(max-width:\s*900px\),\s*\(max-height:\s*640px\)\s*\{[\s\S]*?\.alert-management__table \.ant-table\s*\{[\s\S]*?min-width:\s*1180px\s*!important;[\s\S]*?table-layout:\s*fixed;/);
     expect(f2762Css).toMatch(/\.alert-management__table \.alert-management__alertColumn\s*\{[\s\S]*?width:\s*320px;[\s\S]*?min-width:\s*320px;[\s\S]*?max-width:\s*320px;/);
   });
+
+  it('cancels stale alert and permission reads', () => {
+    expect(pageSource).toContain('const dataAbortRef = useRef<AbortController | null>(null);');
+    expect(pageSource).toContain('dataAbortRef.current?.abort();');
+    expect(pageSource).toContain('}, { signal: abortController.signal }),');
+    expect(pageSource).toContain('adminApi.getAlertSummary({ signal: abortController.signal })');
+    expect(pageSource).toContain('adminApi.getMyPermissions({ signal: abortController.signal })');
+    expect(pageSource).toContain('permissionsAbortRef.current?.abort();');
+  });
 });

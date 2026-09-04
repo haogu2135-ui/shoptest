@@ -7,7 +7,7 @@ import ShopSelect from '../components/ShopSelect';
 import ShopModal from '../components/ShopModal';
 import { ShopTextArea } from '../components/ShopInput';
 import { AlertOutlined, CheckCircleOutlined, CustomerServiceOutlined, GiftOutlined, SearchOutlined, SendOutlined, ShoppingOutlined, ThunderboltOutlined } from '@ant-design/icons';
-import { supportApi, supportWebSocketProtocols, supportWebSocketUrl, userApi } from '../api';
+import { createApiAbortController, supportApi, supportWebSocketProtocols, supportWebSocketUrl, userApi } from '../api';
 import { adminApi, adminSupportApi } from '../api/admin';
 import type { Order, OrderItem, SupportAdminSummary, SupportMessage, SupportSession } from '../types';
 import { useLanguage } from '../i18n';
@@ -199,27 +199,39 @@ const SupportManagement: React.FC = () => {
 
   useEffect(() => {
     if (!readAdminSupportToken()) return;
-    userApi.getProfile()
-      .then((res) => setCurrentAdminId(Number(res.data.id || 0)))
-      .catch(() => setCurrentAdminId(0));
+    let disposed = false;
+    const abortController = createApiAbortController();
+    userApi.getProfile({ signal: abortController.signal })
+      .then((res) => {
+        if (!disposed && !abortController.signal.aborted) setCurrentAdminId(Number(res.data.id || 0));
+      })
+      .catch(() => {
+        if (!disposed && !abortController.signal.aborted) setCurrentAdminId(0);
+      });
+    return () => {
+      disposed = true;
+      abortController.abort();
+    };
   }, []);
 
   useEffect(() => {
     if (!readAdminSupportToken()) return;
     let disposed = false;
-    adminApi.getMyPermissions()
+    const abortController = createApiAbortController();
+    adminApi.getMyPermissions({ signal: abortController.signal })
       .then((res) => {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         setCurrentRole(getEffectiveRole(res.data.role, res.data.roleCode));
         setAdminPermissions(res.data.permissions || []);
       })
       .catch(() => {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         setCurrentRole('');
         setAdminPermissions([]);
       });
     return () => {
       disposed = true;
+      abortController.abort();
     };
   }, []);
 
@@ -490,8 +502,9 @@ const SupportManagement: React.FC = () => {
       setMessageError(errorMessage);
       message.error(errorMessage);
     } finally {
+      const shouldUpdateLoading = isCurrentRequest();
       if (messageAbortRef.current === abortController) messageAbortRef.current = null;
-      if (isCurrentRequest()) {
+      if (shouldUpdateLoading) {
         setMessageLoading(false);
       }
     }

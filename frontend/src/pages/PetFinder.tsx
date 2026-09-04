@@ -3,7 +3,7 @@ import { ShopIcon, SI } from '../components/ShopIcon';
 import ShopSelect from '../components/ShopSelect';
 import ShopRangeSlider from '../components/ShopRangeSlider';
 import { useNavigate } from 'react-router-dom';
-import { productApi } from '../api';
+import { createApiAbortController, productApi } from '../api';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
@@ -65,16 +65,17 @@ const finderCandidateKeywords = (petType: PetType, need: NeedType) => {
   return uniqueFinderKeywords(selectedKeywords.length > 0 ? selectedKeywords : FINDER_CANDIDATE_KEYWORDS);
 };
 
-const loadLiveFinderProducts = async (petType: PetType, need: NeedType) => {
+const loadLiveFinderProducts = async (petType: PetType, need: NeedType, signal?: AbortSignal) => {
   try {
-    const res = await productApi.getFinderCandidates(finderCandidateKeywords(petType, need), 36);
+    const res = await productApi.getFinderCandidates(finderCandidateKeywords(petType, need), 36, { signal });
     if (res.data.length > 0) {
       return res.data;
     }
   } catch (error) {
+    if (signal?.aborted) throw error;
     reportNonBlockingError('PetFinder.loadOptimizedCandidates', error);
   }
-  const res = await productApi.getAll();
+  const res = await productApi.getAll(undefined, undefined, undefined, undefined, { signal });
   return res.data;
 };
 
@@ -140,11 +141,13 @@ const PetFinder: React.FC = () => {
 
   useEffect(() => {
     let isCurrent = true;
+    const abortController = createApiAbortController();
+    const isActive = () => isCurrent && !abortController.signal.aborted;
     const fetchProducts = async () => {
       try {
         setLoading(true);
-        const liveProducts = await loadLiveFinderProducts(petType, need);
-        if (!isCurrent) return;
+        const liveProducts = await loadLiveFinderProducts(petType, need, abortController.signal);
+        if (!isActive()) return;
         const localizedProducts = liveProducts.map((product) => localizeProduct(product, language));
         if (localizedProducts.length > 0) {
           saveProductCatalogSnapshot(liveProducts);
@@ -160,8 +163,8 @@ const PetFinder: React.FC = () => {
         }
         setLoadError(false);
       } catch (error) {
+        if (!isActive()) return;
         reportNonBlockingError('PetFinder.loadProducts', error);
-        if (!isCurrent) return;
         const snapshot = loadProductCatalogSnapshot();
         const fallbackProducts = snapshot?.products?.length
           ? snapshot.products
@@ -170,7 +173,7 @@ const PetFinder: React.FC = () => {
         setUsingCatalogFallback(fallbackProducts.length > 0);
         setLoadError(fallbackProducts.length === 0);
       } finally {
-        if (isCurrent) {
+        if (isActive()) {
           setLoading(false);
         }
       }
@@ -178,6 +181,7 @@ const PetFinder: React.FC = () => {
     fetchProducts();
     return () => {
       isCurrent = false;
+      abortController.abort();
     };
   }, [language, need, petType, reloadKey]);
 

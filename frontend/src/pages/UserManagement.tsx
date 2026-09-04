@@ -226,36 +226,40 @@ const UserManagement: React.FC = () => {
   useEffect(() => {
     if (!hasStoredValue('token')) return;
     let disposed = false;
-    userApi.getProfile()
+    const abortController = createApiAbortController();
+    userApi.getProfile({ signal: abortController.signal })
       .then((res) => {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         setCurrentUserId(Number(res.data.id || 0));
         setCurrentRole(getEffectiveRole(res.data.role, res.data.roleCode));
       })
       .catch(() => {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         setCurrentUserId(0);
         setCurrentRole('');
       });
     return () => {
       disposed = true;
+      abortController.abort();
     };
   }, []);
 
   useEffect(() => {
     let disposed = false;
-    adminApi.getMyPermissions()
+    const abortController = createApiAbortController();
+    adminApi.getMyPermissions({ signal: abortController.signal })
       .then((res) => {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         setCurrentRole(getEffectiveRole(res.data.role, res.data.roleCode));
         setAdminPermissions(res.data.permissions || []);
       })
       .catch(() => {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         setAdminPermissions([]);
       });
     return () => {
       disposed = true;
+      abortController.abort();
     };
   }, []);
 

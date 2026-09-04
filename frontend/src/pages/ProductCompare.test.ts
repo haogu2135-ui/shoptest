@@ -104,7 +104,7 @@ describe('ProductCompare unmount and stale response guards', () => {
     expect(page).toContain('mountedRef.current = false;');
     expect(page).toContain('compareFetchSeqRef.current += 1;');
     expect(page).toMatch(/const response = await productApi\.getByIds\(ids, \{ signal: abortController\.signal \}\);\s*\n\s*if \(!isCurrentRequest\(\)\) return;/);
-    expect(page).toMatch(/if \(isCurrentRequest\(\)\) \{\s*\n\s*setLoading\(false\);/);
+    expect(page).toMatch(/const shouldUpdateLoading = isCurrentRequest\(\);[\s\S]*?if \(shouldUpdateLoading\) \{\s*\n\s*setLoading\(false\);/);
 
     // In-flight compare fetches are aborted instead of left running after
     // unmount or after a newer fetch supersedes them.

@@ -34,7 +34,7 @@ describe('RegistryManagement async state guards', () => {
       pageSource.indexOf('}, [language, t]);'),
     );
     expect(loadBody).toContain('if (!isCurrentRequest()) return;\n      setStatus(response.data);');
-    expect(loadBody).toMatch(/if \(isCurrentRequest\(\)\) \{\s*setLoading\(false\);/);
+    expect(loadBody).toMatch(/const shouldUpdateLoading = isCurrentRequest\(\);[\s\S]*?if \(shouldUpdateLoading\) \{\s*setLoading\(false\);/);
     expect(loadBody).not.toMatch(/\}\s*catch \(error: unknown\) \{\s*const errorMessage/);
   });
 });

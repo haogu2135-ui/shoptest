@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Form, Table } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopCheckbox from '../components/ShopCheckbox';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import { CheckCircleOutlined, CloudSyncOutlined, CodeOutlined, ReloadOutlined, SendOutlined } from '@ant-design/icons';
+import { createApiAbortController } from '../api';
 import { adminApi } from '../api/admin';
 import type { AdminConfigCenterSnapshot } from '../types';
 import { useLanguage } from '../i18n';
@@ -61,11 +62,20 @@ const ConfigCenter: React.FC = () => {
   const [applying, setApplying] = useState(false);
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
+  const mountedRef = useRef(true);
+  const snapshotAbortRef = useRef<AbortController | null>(null);
+  const permissionsAbortRef = useRef<AbortController | null>(null);
   const canApplyConfig = hasAdminPermission(adminPermissions, currentRole, CONFIG_CENTER_APPLY_PERMISSION);
   const canPublishConfig = hasAdminPermission(adminPermissions, currentRole, CONFIG_CENTER_PUBLISH_PERMISSION);
   const actionDisabled = !snapshot || loading || Boolean(loadError);
 
   const loadSnapshot = useCallback(async (params?: Partial<FormValues>) => {
+    snapshotAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    snapshotAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && snapshotAbortRef.current === abortController
+      && !abortController.signal.aborted;
     setLoading(true);
     try {
       setLoadError(null);
@@ -73,7 +83,8 @@ const ConfigCenter: React.FC = () => {
         dataId: params?.dataId || form.getFieldValue('dataId'),
         group: params?.group || form.getFieldValue('group'),
         namespace: params?.namespace ?? form.getFieldValue('namespace'),
-      });
+      }, { signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       setSnapshot(response.data);
       form.setFieldsValue({
         dataId: response.data.dataId,
@@ -83,34 +94,59 @@ const ConfigCenter: React.FC = () => {
         applyRuntime: true,
       });
     } catch (error: unknown) {
+      if (!isCurrentRequest()) return;
       const errorMessage = getApiErrorMessage(error, t('pages.configCenter.loadFailed'), language);
       setLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      setLoading(false);
+      const shouldUpdateLoading = isCurrentRequest();
+      if (snapshotAbortRef.current === abortController) {
+        snapshotAbortRef.current = null;
+      }
+      if (shouldUpdateLoading) {
+        setLoading(false);
+      }
     }
   }, [form, language, t]);
 
   useEffect(() => {
-    loadSnapshot();
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      snapshotAbortRef.current?.abort();
+      permissionsAbortRef.current?.abort();
+      snapshotAbortRef.current = null;
+      permissionsAbortRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    void loadSnapshot();
   }, [loadSnapshot]);
 
   useEffect(() => {
-    let disposed = false;
-    adminApi.getMyPermissions()
+    permissionsAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    permissionsAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && permissionsAbortRef.current === abortController
+      && !abortController.signal.aborted;
+    adminApi.getMyPermissions({ signal: abortController.signal })
       .then((response) => {
-        if (disposed) return;
+        if (!isCurrentRequest()) return;
         setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
         setAdminPermissions(response.data.permissions || []);
       })
       .catch(() => {
-        if (disposed) return;
+        if (!isCurrentRequest()) return;
         setCurrentRole('');
         setAdminPermissions([]);
+      })
+      .finally(() => {
+        if (permissionsAbortRef.current === abortController) {
+          permissionsAbortRef.current = null;
+        }
       });
-    return () => {
-      disposed = true;
-    };
   }, []);
 
   const handlePublish = async () => {

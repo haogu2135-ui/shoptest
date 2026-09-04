@@ -1249,7 +1249,7 @@ it('keeps home empty category and product rails on multipath commercial recovery
     // Loading currency is seq-only so aborted-without-successor still clears the spinner.
     expect(productList).toMatch(/const isCurrentRequest = \(\) => productRequestSeqRef\.current === requestSeq;/);
     expect(productList).toContain('if (abortController.signal.aborted) return;');
-    expect(productList).toMatch(/if \(isCurrentRequest\(\)\) \{\s*setLoading\(false\);/);
+    expect(productList).toMatch(/const shouldUpdateLoading = isCurrentRequest\(\);[\s\S]*?if \(shouldUpdateLoading\) \{\s*setLoading\(false\);/);
     expect(productList).toContain('emptyCouponsActionLabel');
     expect(productList).toContain('emptyPetFinderActionLabel');
     expect(productList).toContain("navigate('/coupons')");

@@ -126,6 +126,38 @@ describe('useCartQuantitySync', () => {
     expect(mockUpdateQuantity).toHaveBeenCalledTimes(1);
   });
 
+  it('does not start follow-up quantity writes or UI callbacks after unmount', async () => {
+    const pending = deferred<unknown>();
+    mockUpdateQuantity.mockReturnValueOnce(pending.promise);
+    const clearPending = jest.fn();
+    const onError = jest.fn();
+    const ref = React.createRef<CartQuantitySyncApi>();
+    const { unmount } = render(<SyncProbe ref={ref} clearPending={clearPending} onError={onError} />);
+
+    act(() => {
+      ref.current?.scheduleQuantitySync(10, 3);
+      jest.advanceTimersByTime(350);
+    });
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    let flush: Promise<void> | undefined;
+    act(() => {
+      flush = ref.current?.flushPendingQuantityUpdates([cartItem({ id: 10, quantity: 7 })]);
+    });
+    unmount();
+    pending.resolve({ data: {} });
+    await act(async () => {
+      await flush;
+    });
+
+    expect(mockUpdateQuantity).toHaveBeenCalledTimes(1);
+    expect(mockDispatchDomEvent).not.toHaveBeenCalled();
+    expect(clearPending).not.toHaveBeenCalled();
+    expect(onError).not.toHaveBeenCalled();
+  });
+
   it('does not flush quantities for guest carts', async () => {
     mockAuthenticated = false;
     const ref = React.createRef<CartQuantitySyncApi>();
@@ -138,3 +170,11 @@ describe('useCartQuantitySync', () => {
     expect(mockUpdateQuantity).not.toHaveBeenCalled();
   });
 });
+
+const deferred = <T,>() => {
+  let resolvePromise: (value: T | PromiseLike<T>) => void = () => undefined;
+  const promise = new Promise<T>((resolve) => {
+    resolvePromise = resolve;
+  });
+  return { promise, resolve: resolvePromise };
+};

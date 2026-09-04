@@ -84,7 +84,9 @@ describe('cart timer cleanup source contracts', () => {
     expect(cartSurface).toContain('if (!mountedRef.current) return;');
     expect(cartSessionDataSource).toContain('if (isCurrentCartSnapshotRequest(requestId)) setLoading(false);');
     expect(cartMutationsSource).toContain('if (mountedRef.current) setRestoringSaved(false);');
-    expect(cartSessionDataSource).toMatch(/const fetchCartItems = useCallback\(async \(\) => \{\s+if \(!mountedRef\.current\) return;\s+const authenticated/);
+    expect(cartSessionDataSource).toMatch(/const fetchCartItems = useCallback\(async \(\) => \{\s+if \(!mountedRef\.current\) return;\s+cartSnapshotAbortRef\.current\?\.abort\(\);\s+const abortController = createApiAbortController\(\);\s+cartSnapshotAbortRef\.current = abortController;\s+const authenticated/);
+    expect(cartSessionDataSource).toContain('cartApi.getItems(0, { signal: abortController.signal });');
+    expect(cartSessionDataSource).toContain('if (abortController.signal.aborted || !mountedRef.current) return;');
     expect(cartMutationsSource).toMatch(/await cartApi\.removeItem\(item\.id\);\s+if \(!mountedRef\.current\) return;/);
     expect(cartMutationsSource).toMatch(/await cartApi\.removeItems\(normalizedIds\);\s+if \(!mountedRef\.current\) return;/);
     expect(cartMutationsSource).toMatch(/await cartApi\.getItems\(0\);\s+if \(!mountedRef\.current\) return;/);

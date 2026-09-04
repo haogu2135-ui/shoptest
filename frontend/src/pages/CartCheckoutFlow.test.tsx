@@ -842,7 +842,7 @@ describe('cart to checkout flows', () => {
     await screen.findAllByText('Member Kibble');
     expect(screen.getByRole('checkbox', { name: 'Select all' })).toHaveAccessibleName('Select all');
 
-    expect(cartApi.getItems).toHaveBeenCalledWith(0);
+    expect(cartApi.getItems).toHaveBeenCalledWith(0, expect.objectContaining({ signal: expect.anything() }));
 
     useQuantityFakeTimers();
     fireEvent.click(screen.getAllByRole('button', { name: 'Increase quantity: Member Kibble' })[0]);
@@ -1120,7 +1120,7 @@ ${recoveryAdds}`;
     expect(fetchStart).toBeGreaterThan(-1);
     expect(fetchEnd).toBeGreaterThan(fetchStart);
     expect(fetchSource).toContain('const requestId = beginCartSnapshotRequest();');
-    expect(fetchSource).toContain('const response = await cartApi.getItems(0);');
+    expect(fetchSource).toContain('const response = await cartApi.getItems(0, { signal: abortController.signal });');
     expect(fetchSource).toContain('if (!isCurrentCartSnapshotRequest(requestId)) return;');
     expect(fetchSource).toContain('if (isCurrentCartSnapshotRequest(requestId)) setLoading(false);');
     expect(mutationStart).toBeGreaterThan(-1);
@@ -1131,7 +1131,9 @@ ${recoveryAdds}`;
     expect(suggestedStart).toBeGreaterThan(-1);
     expect(suggestedEnd).toBeGreaterThan(suggestedStart);
     expect(suggestedSource).toContain('const cartSnapshotRequestId = invalidateCartSnapshotRequests();');
-    expect(suggestedSource).toContain('const response = await cartApi.getItems(0);');
+    expect(suggestedSource).toContain('const response = await cartApi.getItems(0, { signal: abortController.signal });');
+    expect(suggestedSource).toContain('recoveryReadAbortRef.current?.abort();');
+    expect(suggestedSource).toContain('if (!mountedRef.current || abortController.signal.aborted) return;');
     expect(suggestedSource).toContain('if (isCurrentCartSnapshotRequest(cartSnapshotRequestId)) {');
     expect(suggestedSource).toContain('setCartItems(nextItems);');
   });

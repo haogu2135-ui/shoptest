@@ -886,8 +886,9 @@ const ProductManagement: React.FC = () => {
       setProductLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
+      const shouldUpdateLoading = isCurrentRequest();
       if (productFetchAbortRef.current === abortController) productFetchAbortRef.current = null;
-      if (isCurrentRequest()) setLoading(false);
+      if (shouldUpdateLoading) setLoading(false);
     }
   }, [debouncedSearchKeyword, filterCategory, filterStatus, language, listingQualityFilter, productPage, productPageSize, t]);
 
@@ -952,8 +953,9 @@ const ProductManagement: React.FC = () => {
     } catch (error) {
       if (isCurrentRequest()) setImportHistory([]);
     } finally {
+      const shouldUpdateLoading = isCurrentRequest();
       if (importHistoryAbortRef.current === abortController) importHistoryAbortRef.current = null;
-      if (isCurrentRequest()) setImportHistoryLoading(false);
+      if (shouldUpdateLoading) setImportHistoryLoading(false);
     }
   }, []);
 
@@ -992,20 +994,22 @@ const ProductManagement: React.FC = () => {
 
   useEffect(() => {
     let disposed = false;
-    adminApi.getMyPermissions()
+    const abortController = createApiAbortController();
+    adminApi.getMyPermissions({ signal: abortController.signal })
       .then((response) => {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
         setAdminPermissions(response.data.permissions || []);
       })
       .catch((error) => {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         reportNonBlockingError('ProductManagement.loadPermissions', error);
         setCurrentRole('');
         setAdminPermissions([]);
       });
     return () => {
       disposed = true;
+      abortController.abort();
     };
   }, []);
 

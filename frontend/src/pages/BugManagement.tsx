@@ -235,6 +235,8 @@ const BugManagement: React.FC = () => {
   const bugListAbortRef = useRef<AbortController | null>(null);
   const bugSummaryRequestSeqRef = useRef(0);
   const bugSummaryAbortRef = useRef<AbortController | null>(null);
+  const permissionsRequestSeqRef = useRef(0);
+  const permissionsAbortRef = useRef<AbortController | null>(null);
   const bugDetailRequestsRef = useRef(new Map<number, { requestSeq: number; abortController: AbortController }>());
   const mountedRef = useRef(true);
   const handledCreateRequestRef = useRef('');
@@ -435,9 +437,12 @@ const BugManagement: React.FC = () => {
     return () => {
       mountedRef.current = false;
       bugSummaryRequestSeqRef.current += 1;
+      permissionsRequestSeqRef.current += 1;
       bugSummaryAbortRef.current?.abort();
+      permissionsAbortRef.current?.abort();
       bugListAbortRef.current = null;
       bugSummaryAbortRef.current = null;
+      permissionsAbortRef.current = null;
       bugDetailRequestsRef.current.forEach(({ abortController }) => abortController.abort());
       bugDetailRequestsRef.current.clear();
     };
@@ -508,16 +513,27 @@ const BugManagement: React.FC = () => {
   }, [loadBugs, loadSummary]);
 
   const loadPermissions = useCallback(async () => {
+    const requestSeq = permissionsRequestSeqRef.current + 1;
+    permissionsRequestSeqRef.current = requestSeq;
+    permissionsAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    permissionsAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && permissionsRequestSeqRef.current === requestSeq
+      && !abortController.signal.aborted;
     try {
-      const response = await adminApi.getMyPermissions({ bypassCache: true });
+      const response = await adminApi.getMyPermissions({ bypassCache: true, signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
       setAdminPermissions(response.data.permissions || []);
     } catch (error) {
+      if (!isCurrentRequest()) return;
       reportNonBlockingError('BugManagement.loadPermissions', error);
       setCurrentRole('');
       setAdminPermissions([]);
     } finally {
-      setPermissionsLoaded(true);
+      if (permissionsAbortRef.current === abortController) permissionsAbortRef.current = null;
+      if (isCurrentRequest()) setPermissionsLoaded(true);
     }
   }, []);
 

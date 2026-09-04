@@ -79,7 +79,7 @@ describe('SystemMonitor mobile diagnostics guards', () => {
     expect(pageSource).toMatch(/const isCurrentRequest = \(\) => mountedRef\.current\s*&& statusFetchSeqRef\.current === requestSeq\s*&& !abortController\.signal\.aborted;/);
     expect(pageSource).toMatch(/if \(!isCurrentRequest\(\)\) return;\s*setStatus\(response\.data\);/);
     expect(pageSource).toMatch(/catch \(error: unknown\) \{\s*if \(!isCurrentRequest\(\)\) return;/);
-    expect(pageSource).toMatch(/if \(isCurrentRequest\(\)\) \{\s*setLoading\(false\);/);
+    expect(pageSource).toMatch(/const shouldUpdateLoading = isCurrentRequest\(\);[\s\S]*?if \(shouldUpdateLoading\) \{\s*setLoading\(false\);/);
     expect(pageSource).toMatch(/mountedRef\.current = false;\s*statusFetchSeqRef\.current \+= 1;/);
 
     // In-flight system status requests are aborted rather than left running

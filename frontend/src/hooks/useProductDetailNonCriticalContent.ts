@@ -1,5 +1,5 @@
 import { useCallback, useRef, type Dispatch, type SetStateAction } from 'react';
-import { productApi, questionApi, reviewApi } from '../api';
+import { createApiAbortController, productApi, questionApi, reviewApi } from '../api';
 import type { Language } from '../i18n';
 import type { ProductPublic as Product, ProductQuestionPublic, PublicReview, ReviewableOrder } from '../types';
 import { getLocalStorageItem } from '../utils/safeStorage';
@@ -39,77 +39,78 @@ export const useProductDetailNonCriticalContent = ({
 }: UseProductDetailNonCriticalContentParams) => {
   const nonCriticalRequestSeqRef = useRef(0);
   const nonCriticalLoadedRef = useRef(false);
+  const nonCriticalAbortRef = useRef<AbortController | null>(null);
 
-  const isCurrentNonCriticalRequest = useCallback((requestSeq: number) => (
-    nonCriticalRequestSeqRef.current === requestSeq
+  const isCurrentNonCriticalRequest = useCallback((requestSeq: number, signal?: AbortSignal) => (
+    nonCriticalRequestSeqRef.current === requestSeq && !signal?.aborted
   ), []);
 
-  const fetchReviews = useCallback(async (requestSeq: number) => {
+  const fetchReviews = useCallback(async (requestSeq: number, signal = nonCriticalAbortRef.current?.signal) => {
     try {
-      const res = await reviewApi.getAll(Number(id));
-      if (!isCurrentNonCriticalRequest(requestSeq)) return;
+      const res = await reviewApi.getAll(Number(id), signal ? { signal } : undefined);
+      if (!isCurrentNonCriticalRequest(requestSeq, signal)) return;
       setReviews(res.data.reviews || []);
       setAverageRating(Number(res.data.averageRating || 0));
     } catch (error) {
-      if (!isCurrentNonCriticalRequest(requestSeq)) return;
+      if (!isCurrentNonCriticalRequest(requestSeq, signal)) return;
       reportNonBlockingError('ProductDetail.fetchReviews', error);
     }
   }, [id, isCurrentNonCriticalRequest, setAverageRating, setReviews]);
 
-  const fetchRecommendations = useCallback(async (requestSeq: number) => {
-    if (!isCurrentNonCriticalRequest(requestSeq)) return;
+  const fetchRecommendations = useCallback(async (requestSeq: number, signal = nonCriticalAbortRef.current?.signal) => {
+    if (!isCurrentNonCriticalRequest(requestSeq, signal)) return;
     setRecommendationsLoading(true);
     setRecommendationsLoadFailed(false);
     try {
       const cacheKey = `${language}|${id}`;
       const cached = getCachedProductRecommendations(cacheKey);
       if (cached) {
-        if (!isCurrentNonCriticalRequest(requestSeq)) return;
+        if (!isCurrentNonCriticalRequest(requestSeq, signal)) return;
         setRecommendations(cached);
         setRecommendationsLoadFailed(false);
         return;
       }
-      const res = await productApi.getRecommendations(Number(id));
+      const res = await productApi.getRecommendations(Number(id), signal ? { signal } : undefined);
       const items = res.data.map((item: Product) => localizeProduct(item, language));
-      if (!isCurrentNonCriticalRequest(requestSeq)) return;
+      if (!isCurrentNonCriticalRequest(requestSeq, signal)) return;
       cacheProductRecommendations(cacheKey, items);
       setRecommendations(items);
       setRecommendationsLoadFailed(false);
     } catch (error) {
-      if (!isCurrentNonCriticalRequest(requestSeq)) return;
+      if (!isCurrentNonCriticalRequest(requestSeq, signal)) return;
       reportNonBlockingError('ProductDetail.fetchRecommendations', error);
       setRecommendations([]);
       setRecommendationsLoadFailed(true);
     } finally {
-      if (isCurrentNonCriticalRequest(requestSeq)) {
+      if (isCurrentNonCriticalRequest(requestSeq, signal)) {
         setRecommendationsLoading(false);
       }
     }
   }, [id, isCurrentNonCriticalRequest, language, setRecommendations, setRecommendationsLoadFailed, setRecommendationsLoading]);
 
-  const fetchQuestions = useCallback(async (requestSeq: number) => {
+  const fetchQuestions = useCallback(async (requestSeq: number, signal = nonCriticalAbortRef.current?.signal) => {
     try {
-      const res = await questionApi.getByProduct(Number(id));
-      if (!isCurrentNonCriticalRequest(requestSeq)) return;
+      const res = await questionApi.getByProduct(Number(id), signal ? { signal } : undefined);
+      if (!isCurrentNonCriticalRequest(requestSeq, signal)) return;
       const answeredQuestions = res.data || [];
       setQuestions(answeredQuestions);
       setPendingQuestions((current) => current.filter((pendingQuestion) => (
         !answeredQuestions.some((question) => normalizeQuestionText(question.question) === normalizeQuestionText(pendingQuestion.question))
       )));
     } catch (error) {
-      if (!isCurrentNonCriticalRequest(requestSeq)) return;
+      if (!isCurrentNonCriticalRequest(requestSeq, signal)) return;
       reportNonBlockingError('ProductDetail.fetchQuestions', error);
       setQuestions([]);
     }
   }, [id, isCurrentNonCriticalRequest, setPendingQuestions, setQuestions]);
 
-  const fetchReviewableOrders = useCallback(async (requestSeq: number) => {
+  const fetchReviewableOrders = useCallback(async (requestSeq: number, signal = nonCriticalAbortRef.current?.signal) => {
     try {
-      const ordersRes = await reviewApi.getReviewableOrders(Number(id));
-      if (!isCurrentNonCriticalRequest(requestSeq)) return;
+      const ordersRes = await reviewApi.getReviewableOrders(Number(id), signal ? { signal } : undefined);
+      if (!isCurrentNonCriticalRequest(requestSeq, signal)) return;
       setReviewableOrders(ordersRes.data || []);
     } catch (error) {
-      if (!isCurrentNonCriticalRequest(requestSeq)) return;
+      if (!isCurrentNonCriticalRequest(requestSeq, signal)) return;
       reportNonBlockingError('ProductDetail.fetchReviewableOrders', error);
       setReviewableOrders([]);
     }
@@ -119,20 +120,30 @@ export const useProductDetailNonCriticalContent = ({
     if (!isCurrentNonCriticalRequest(requestSeq)) return;
     if (nonCriticalLoadedRef.current) return;
     nonCriticalLoadedRef.current = true;
+    nonCriticalAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    nonCriticalAbortRef.current = abortController;
     const token = getLocalStorageItem('token');
-    fetchReviews(requestSeq);
-    fetchQuestions(requestSeq);
-    fetchRecommendations(requestSeq);
+    fetchReviews(requestSeq, abortController.signal);
+    fetchQuestions(requestSeq, abortController.signal);
+    fetchRecommendations(requestSeq, abortController.signal);
     if (token) {
-      fetchReviewableOrders(requestSeq);
+      fetchReviewableOrders(requestSeq, abortController.signal);
     }
   }, [fetchQuestions, fetchRecommendations, fetchReviewableOrders, fetchReviews, isCurrentNonCriticalRequest]);
+
+  const cancelNonCriticalContent = useCallback(() => {
+    nonCriticalRequestSeqRef.current += 1;
+    nonCriticalAbortRef.current?.abort();
+    nonCriticalAbortRef.current = null;
+  }, []);
 
   return {
     fetchQuestions,
     fetchReviewableOrders,
     fetchReviews,
     isCurrentNonCriticalRequest,
+    cancelNonCriticalContent,
     nonCriticalLoadedRef,
     nonCriticalRequestSeqRef,
     warmNonCriticalContent,

@@ -639,7 +639,7 @@ describe('Checkout payment availability', () => {
     expect(source).not.toMatch(/setTimeout\s*\([\s\S]{0,400}window\.location/);
     expect(source).toContain("from '../hooks/useCheckoutPaymentLifecycle'");
     expect(source).toContain('useCheckoutPaymentLifecycle({');
-    expect(readCheckoutOrderActionsSource()).toContain("import { cartApi, clearStoredAuthSession, orderApi, paymentApi, productApi } from '../api';");
+    expect(readCheckoutOrderActionsSource()).toContain("import { cartApi, clearStoredAuthSession, createApiAbortController, orderApi, paymentApi, productApi } from '../api';");
     expect(readCheckoutCartBootstrapSource()).toContain("import { addressApi, cartApi, clearStoredAuthSession, createApiAbortController } from '../api';");
     expect(readCheckoutCouponQuoteSource()).toContain("import { couponApi, createApiAbortController } from '../api';");
     expect(lifecycle).toContain("import { createApiAbortController, orderApi, paymentApi } from '../api';");
@@ -744,6 +744,26 @@ describe('Checkout payment availability', () => {
     expect(simulateSource).toContain('paymentSimulatingRef.current = false;');
     expect(simulateSource.indexOf('paymentSimulatingRef.current = true;')).toBeLessThan(simulateSource.indexOf('setSimulatingPayment(true);'));
     expect(simulateSource.lastIndexOf('setSimulatingPayment(false);')).toBeLessThan(simulateSource.lastIndexOf('paymentSimulatingRef.current = false;'));
+  });
+
+  it('cancels checkout action reads when the page unmounts or a request is superseded', () => {
+    const source = readCheckoutPageSource();
+    const orderActions = readCheckoutOrderActionsSource();
+
+    expect(orderActions).toContain("import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';");
+    expect(orderActions).toContain("import { cartApi, clearStoredAuthSession, createApiAbortController, orderApi, paymentApi, productApi } from '../api';");
+    expect(orderActions).toContain('mountedRef: MutableRefObject<boolean>;');
+    expect(orderActions).toContain('cartApi.getItems(0, { signal: abortController.signal })');
+    expect(orderActions).toContain('paymentApi.simulateCallback(payment.id, { signal: abortController.signal })');
+    expect(orderActions).toContain('orderApi.getById(createdOrder.id, undefined, undefined, { signal: abortController.signal })');
+    expect(orderActions).toContain('productApi.getByIds(productIds, { bypassCache: true, signal: abortController.signal })');
+    expect(orderActions).toContain('if (!mountedRef.current || abortController.signal.aborted) return;');
+    expect(orderActions).toContain('suggestedProductCartAbortRef.current?.abort();');
+    expect(orderActions).toContain('simulatePaymentAbortRef.current?.abort();');
+    expect(orderActions).toContain('restoreProductsAbortRef.current?.abort();');
+    expect(orderActions).toContain('const restored = await restoreSubmittedCartItems();');
+    expect(orderActions).toContain('if (!restored || !mountedRef.current) return;');
+    expect(source).toContain('mountedRef,\n    navigate,');
   });
 
   it('keeps guest checkout drafts until guest payment is confirmed paid', () => {
@@ -1073,7 +1093,7 @@ describe('Checkout payment availability', () => {
     expect(source).toContain('resolveGuestRestorePrice');
     expect(helpersSource).toContain('export const resolveGuestRestorePrice = (item: CartItem, product?: Product | null) => {');
     expect(helpersSource).toContain('parseCartItemSelectedSpecs');
-    expect(restoreSource).toContain('productApi.getByIds(productIds, { bypassCache: true })');
+    expect(restoreSource).toContain('productApi.getByIds(productIds, { bypassCache: true, signal: abortController.signal })');
     expect(restoreSource).toContain('latestProducts = new Map');
     expect(restoreSource).toContain('buildGuestRestoreCartLine(item, latestProduct, checkoutCartItemName(item))');
     expect(restoreSource).toContain('addGuestCartItem(restoreLine.product, restoreLine.quantity, restoreLine.selectedSpecs, restoreLine.restorePrice)');

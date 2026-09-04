@@ -227,6 +227,19 @@ const flushScheduledIdleTasks = async () => {
 };
 
 describe('Navbar Android app download entry', () => {
+  it('binds announcement, admin, and badge reads to the Navbar lifecycle', () => {
+    const source = readNavbarSource();
+
+    expect(source).toContain("import { announcementApi, cartApi, couponApi, createApiAbortController, notificationApi, productApi, userApi, wishlistApi } from '../api';");
+    expect(source).toContain('announcementApi.getActive(4, { signal: abortController.signal })');
+    expect(source).toContain('userApi.getProfile({ signal: abortController.signal })');
+    expect(source).toContain('adminApi.getMyPermissions({ signal: abortController.signal })');
+    expect(source).toContain('productApi.getByIds(productIds, { signal })');
+    expect(source).toContain('cartApi.getItems(0, { signal })');
+    expect(source).toContain('notificationApi.getUnreadCount(0, false, { signal })');
+    expect(source).toContain('Object.values(badgeAbortControllers).forEach((controller) => controller?.abort());');
+  });
+
   beforeEach(() => {
     jest.clearAllMocks();
     document.body.classList.remove('shop-mobile-app');
@@ -699,7 +712,7 @@ describe('Navbar Android app download entry', () => {
     await flushScheduledIdleTasks();
 
     await waitFor(() => {
-      expect(cartApi.getItems).toHaveBeenCalledWith(0);
+      expect(cartApi.getItems).toHaveBeenCalledWith(0, expect.objectContaining({ signal: expect.anything() }));
     });
 
     await waitFor(() => {

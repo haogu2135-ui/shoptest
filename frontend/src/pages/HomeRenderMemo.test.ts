@@ -18,6 +18,26 @@ const homePageSource = readHomeSource();
 const homeCatalogSource = readHomeCatalogHook();
 
 describe('Home render memoization contracts', () => {
+  it('keeps Home network loaders cancellable when their lifecycle ends', () => {
+    expect(homeCatalogSource).toContain("import { categoryApi, createApiAbortController, productApi, wishlistApi } from '../api';");
+    expect(homeCatalogSource).toContain('productApi.getAll(undefined, undefined, undefined, { page: 0, size: HOME_PRODUCT_PAGE_SIZE }, { signal: abortController.signal })');
+    expect(homeCatalogSource).toContain('productApi.getFeatured(HOME_FEATURED_LIMIT, { signal: abortController.signal })');
+    expect(homeCatalogSource).toContain('productApi.getPersonalizedRecommendations({ signal: abortController.signal })');
+    expect(homeCatalogSource).toContain('productApi.getByIds(recentProductIds, { signal: abortController.signal })');
+    expect(homeCatalogSource).toContain('abortController.abort();');
+  });
+
+  it('cancels Home pet gallery refreshes when idle work is superseded or unmounted', () => {
+    expect(homeSource).toContain("import React, { useCallback, useEffect, useRef } from 'react';");
+    expect(homeSource).toContain("import { cartApi, createApiAbortController, petGalleryApi, productApi, wishlistApi } from '../api';");
+    expect(homeSource).toContain('petGalleryApi.getAll(false, { signal: abortController.signal })');
+    expect(homeSource).toContain('petGalleryApi.getQuota(false, { signal: abortController.signal })');
+    expect(homeSource).toContain('const isCurrentRequest = () => mountedRef.current');
+    expect(homeSource).toContain('petGalleryAbortRef.current?.abort();');
+    expect(homeSource).toContain('if (!isCurrentRequest()) return;');
+    expect(homeSource).toContain('if (abortController.signal.aborted) throw error;');
+  });
+
   it('filters storage updates to product-view preference changes only', () => {
     const storageEffectStart = homeCatalogSource.indexOf('const handlePreferencesUpdated = (event?: Event) => {');
     const storageEffect = homeCatalogSource.slice(storageEffectStart, homeCatalogSource.indexOf('};', storageEffectStart));

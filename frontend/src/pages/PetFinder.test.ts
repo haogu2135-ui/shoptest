@@ -68,4 +68,13 @@ describe('PetFinder responsive controls', () => {
     expect(unlabeledNativeSelects).toEqual([]);
     expect(unlabeledAntdSelects).toEqual([]);
   });
+
+  it('cancels superseded finder and fallback catalog loads', () => {
+    expect(source).toContain("import { createApiAbortController, productApi } from '../api';");
+    expect(source).toContain('const loadLiveFinderProducts = async (petType: PetType, need: NeedType, signal?: AbortSignal)');
+    expect(source).toContain('productApi.getFinderCandidates(finderCandidateKeywords(petType, need), 36, { signal })');
+    expect(source).toContain('productApi.getAll(undefined, undefined, undefined, undefined, { signal })');
+    expect(source).toContain('const isActive = () => isCurrent && !abortController.signal.aborted;');
+    expect(source).toContain('abortController.abort();');
+  });
 });

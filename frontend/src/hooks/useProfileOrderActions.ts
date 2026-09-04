@@ -1,4 +1,4 @@
-import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
+import { useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { cartApi, orderApi } from '../api';
 import type { Language } from '../i18n';
@@ -80,6 +80,12 @@ export const useProfileOrderActions = ({
   setTrackingVisible,
   t,
 }: UseProfileOrderActionsParams) => {
+  const reorderingRef = useRef(false);
+  const cancelingOrderIdsRef = useRef(new Set<number>());
+  const confirmingReceiptRef = useRef(false);
+  const requestingReturnRef = useRef(false);
+  const submittingReturnShipmentRef = useRef(false);
+
   const handleViewOrder = async (order: OrderCustomer) => {
     const requestSeq = orderDetailRequestSeqRef.current + 1;
     orderDetailRequestSeqRef.current = requestSeq;
@@ -103,20 +109,20 @@ export const useProfileOrderActions = ({
   };
 
   const handleReorder = async () => {
-    if (!getLocalStorageItem('token') || orderItems.length === 0) return;
+    if (!mountedRef.current || reorderingRef.current || !getLocalStorageItem('token') || orderItems.length === 0) return;
+    reorderingRef.current = true;
     setReordering(true);
     let added = 0;
     const expectedQuantity = orderItems.reduce((sum, item) => sum + item.quantity, 0);
     try {
       for (const item of orderItems) {
-        if (!mountedRef.current) return;
         try {
           await cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs);
-          if (!mountedRef.current) return;
           added += item.quantity;
         } catch (error) {
-          if (!mountedRef.current) return;
-          reportNonBlockingError('Profile.reorderItem', error);
+          if (mountedRef.current) {
+            reportNonBlockingError('Profile.reorderItem', error);
+          }
         }
       }
       if (!mountedRef.current) return;
@@ -131,6 +137,7 @@ export const useProfileOrderActions = ({
       dispatchDomEvent('shop:cart-updated');
       dispatchDomEvent('shop:open-cart');
     } finally {
+      reorderingRef.current = false;
       if (mountedRef.current) {
         setReordering(false);
       }
@@ -138,27 +145,37 @@ export const useProfileOrderActions = ({
   };
 
   const handleCancelOrder = async (orderId: number) => {
+    if (!mountedRef.current || cancelingOrderIdsRef.current.has(orderId)) return;
+    cancelingOrderIdsRef.current.add(orderId);
     try {
       await orderApi.cancel(orderId);
+      if (!mountedRef.current) return;
       announceAccessibleMessage(t('pages.profile.orderCancelled'), 'success');
     } catch (err: unknown) {
+      if (!mountedRef.current) return;
       announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.cancelFailed'), language), 'error');
     } finally {
-      fetchOrders();
+      cancelingOrderIdsRef.current.delete(orderId);
+      if (mountedRef.current) void fetchOrders();
     }
   };
 
   const handleConfirmReceipt = async (orderId: number) => {
+    if (!mountedRef.current || confirmingReceiptRef.current) return;
+    confirmingReceiptRef.current = true;
     setConfirmingReceipt(true);
     try {
       await orderApi.confirm(orderId);
+      if (!mountedRef.current) return;
       setReceiptConfirmOrder(null);
       announceAccessibleMessage(t('pages.profile.receiptConfirmed'), 'success');
-      fetchOrders();
+      void fetchOrders();
     } catch (err: unknown) {
+      if (!mountedRef.current) return;
       announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.confirmFailed'), language), 'error');
     } finally {
-      setConfirmingReceipt(false);
+      confirmingReceiptRef.current = false;
+      if (mountedRef.current) setConfirmingReceipt(false);
     }
   };
 
@@ -172,44 +189,52 @@ export const useProfileOrderActions = ({
   };
 
   const handleReturnOrder = async () => {
-    if (!returnRequestOrder) return;
+    if (!mountedRef.current || requestingReturnRef.current || !returnRequestOrder) return;
     const cleanedReason = normalizeReturnReason(returnReason);
     if (!isReturnReasonReady(cleanedReason)) {
       announceAccessibleMessage(t('pages.profile.returnReasonRequired'), 'warning');
       return;
     }
+    requestingReturnRef.current = true;
     try {
       setRequestingReturn(true);
       await orderApi.returnOrder(returnRequestOrder.id, cleanedReason);
+      if (!mountedRef.current) return;
       announceAccessibleMessage(t('pages.profile.returnRequested'), 'success');
       setReturnRequestOrder(null);
       setReturnReason('');
-      fetchOrders();
+      void fetchOrders();
     } catch (err: unknown) {
+      if (!mountedRef.current) return;
       announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.returnFailed'), language), 'error');
     } finally {
-      setRequestingReturn(false);
+      requestingReturnRef.current = false;
+      if (mountedRef.current) setRequestingReturn(false);
     }
   };
 
   const handleSubmitReturnShipment = async () => {
-    if (!returnShipmentOrder) return;
+    if (!mountedRef.current || submittingReturnShipmentRef.current || !returnShipmentOrder) return;
     const cleanedTracking = normalizeReturnTrackingNumber(returnTrackingNumber);
     if (!isReturnTrackingReady(cleanedTracking)) {
       announceAccessibleMessage(t('pages.profile.returnTrackingInvalid'), 'error');
       return;
     }
+    submittingReturnShipmentRef.current = true;
     try {
       setSubmittingReturnShipment(true);
       await orderApi.submitReturnShipment(returnShipmentOrder.id, cleanedTracking);
+      if (!mountedRef.current) return;
       announceAccessibleMessage(t('pages.profile.returnShipmentSubmitted'), 'success');
       setReturnShipmentOrder(null);
       setReturnTrackingNumber('');
-      fetchOrders();
+      void fetchOrders();
     } catch (err: unknown) {
+      if (!mountedRef.current) return;
       announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.returnShipmentFailed'), language), 'error');
     } finally {
-      setSubmittingReturnShipment(false);
+      submittingReturnShipmentRef.current = false;
+      if (mountedRef.current) setSubmittingReturnShipment(false);
     }
   };
 

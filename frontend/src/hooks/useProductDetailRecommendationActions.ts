@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { MouseEvent } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import { cartApi } from '../api';
@@ -18,6 +18,7 @@ import {
 type UseProductDetailRecommendationActionsParams = {
   language: Language;
   navigate: NavigateFunction;
+  scopeKey?: string;
   t: (key: string, params?: Record<string, string | number>) => string;
 };
 
@@ -28,10 +29,30 @@ type UseProductDetailRecommendationActionsParams = {
 export const useProductDetailRecommendationActions = ({
   language,
   navigate,
+  scopeKey,
   t,
 }: UseProductDetailRecommendationActionsParams) => {
   const [recommendationAddingId, setRecommendationAddingId] = useState<number | null>(null);
   const recommendationRequestIdsRef = useRef<Set<number>>(new Set());
+  const scopeSeqRef = useRef(0);
+  const mountedRef = useRef(true);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      scopeSeqRef.current += 1;
+      recommendationRequestIdsRef.current.clear();
+    };
+  }, []);
+
+  useEffect(() => {
+    if (mountedRef.current) setRecommendationAddingId(null);
+    return () => {
+    scopeSeqRef.current += 1;
+    recommendationRequestIdsRef.current.clear();
+    };
+  }, [scopeKey]);
 
   const handleAddRecommendationToCart = async (
     event: MouseEvent<HTMLElement>,
@@ -53,28 +74,32 @@ export const useProductDetailRecommendationActions = ({
     }
 
     const token = getLocalStorageItem('token');
+    const scopeSeq = scopeSeqRef.current;
     try {
       recommendationRequestIdsRef.current.add(recommendationId);
       setRecommendationAddingId(recommendationId);
       if (token) {
         await cartApi.addItem(0, recommendationId, 1);
+        if (!mountedRef.current || scopeSeqRef.current !== scopeSeq) return;
         dispatchDomEvent('shop:cart-updated');
       } else {
         addGuestCartItem(item as Product, 1, undefined, item.effectivePrice ?? item.price);
       }
+      if (!mountedRef.current || scopeSeqRef.current !== scopeSeq) return;
       announceAccessibleMessage(t('messages.addCartSuccess'), 'success');
       dispatchDomEvent('shop:open-cart');
     } catch (err: unknown) {
+      if (!mountedRef.current || scopeSeqRef.current !== scopeSeq) return;
       announceAccessibleMessage(getApiErrorMessage(err, t('messages.addFailed'), language), 'error');
     } finally {
       recommendationRequestIdsRef.current.delete(recommendationId);
-      setRecommendationAddingId(null);
+      if (mountedRef.current && scopeSeqRef.current === scopeSeq) setRecommendationAddingId(null);
     }
   };
 
   const resetRecommendationCartState = useCallback(() => {
     recommendationRequestIdsRef.current.clear();
-    setRecommendationAddingId(null);
+    if (mountedRef.current) setRecommendationAddingId(null);
   }, []);
 
   return {

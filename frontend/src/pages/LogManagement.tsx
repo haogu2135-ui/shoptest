@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import ShopSelect from '../components/ShopSelect';
@@ -7,6 +7,7 @@ import ShopRangePicker from '../components/ShopRangePicker';
 import ShopSwitch from '../components/ShopSwitch';
 import { BugOutlined, ClockCircleOutlined, DownloadOutlined, FileTextOutlined, ReloadOutlined } from '@ant-design/icons';
 import dayjs, { Dayjs } from 'dayjs';
+import { createApiAbortController } from '../api';
 import { adminApi } from '../api/admin';
 import type { AdminLogManagementStatus } from '../types';
 import { useLanguage } from '../i18n';
@@ -45,46 +46,81 @@ const LogManagement: React.FC = () => {
   const [downloading, setDownloading] = useState(false);
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
+  const mountedRef = useRef(true);
+  const statusAbortRef = useRef<AbortController | null>(null);
+  const permissionsAbortRef = useRef<AbortController | null>(null);
   const canToggleDebug = hasAdminPermission(adminPermissions, currentRole, LOGS_DEBUG_PERMISSION);
   const canDownloadLogs = hasAdminPermission(adminPermissions, currentRole, LOGS_DOWNLOAD_PERMISSION);
 
   const loadStatus = useCallback(async (nextLogger: string) => {
     const requestedLogger = nextLogger.trim() || DEFAULT_LOGGER;
+    statusAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    statusAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && statusAbortRef.current === abortController
+      && !abortController.signal.aborted;
     setLoading(true);
     try {
       setLoadError(null);
-      const response = await adminApi.getLogManagementStatus({ loggerName: requestedLogger });
+      const response = await adminApi.getLogManagementStatus({ loggerName: requestedLogger }, { signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       setStatus(response.data);
       setLoggerName(response.data.loggerName);
     } catch (error: unknown) {
+      if (!isCurrentRequest()) return;
       const errorMessage = getApiErrorMessage(error, t('pages.logAdmin.loadFailed'), language);
       setLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      setLoading(false);
+      const shouldUpdateLoading = isCurrentRequest();
+      if (statusAbortRef.current === abortController) {
+        statusAbortRef.current = null;
+      }
+      if (shouldUpdateLoading) {
+        setLoading(false);
+      }
     }
   }, [language, t]);
 
   useEffect(() => {
-    loadStatus(DEFAULT_LOGGER);
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      statusAbortRef.current?.abort();
+      permissionsAbortRef.current?.abort();
+      statusAbortRef.current = null;
+      permissionsAbortRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    void loadStatus(DEFAULT_LOGGER);
   }, [loadStatus]);
 
   useEffect(() => {
-    let disposed = false;
-    adminApi.getMyPermissions()
+    permissionsAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    permissionsAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && permissionsAbortRef.current === abortController
+      && !abortController.signal.aborted;
+    adminApi.getMyPermissions({ signal: abortController.signal })
       .then((response) => {
-        if (disposed) return;
+        if (!isCurrentRequest()) return;
         setCurrentRole(getEffectiveRole(response.data.role, response.data.roleCode));
         setAdminPermissions(response.data.permissions || []);
       })
       .catch(() => {
-        if (disposed) return;
+        if (!isCurrentRequest()) return;
         setCurrentRole('');
         setAdminPermissions([]);
+      })
+      .finally(() => {
+        if (permissionsAbortRef.current === abortController) {
+          permissionsAbortRef.current = null;
+        }
       });
-    return () => {
-      disposed = true;
-    };
   }, []);
 
   const toggleDebug = async (enabled: boolean) => {
