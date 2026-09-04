@@ -6,7 +6,7 @@ import ShopBadge from './ShopBadge';
 import ShopModal from './ShopModal';
 import ShopSelect from './ShopSelect';
 import { useNavigate } from 'react-router-dom';
-import { orderApi, supportApi, supportWebSocketProtocols, supportWebSocketUrl } from '../api';
+import { createApiAbortController, orderApi, supportApi, supportWebSocketProtocols, supportWebSocketUrl } from '../api';
 import type { OrderCustomer, OrderItemCustomer, SupportMessageCustomer, SupportSessionCustomer } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
@@ -197,8 +197,18 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   const handledOpenRequestRef = useRef<number | null>(null);
   const detailRequestSeqRef = useRef(0);
   const sessionSwitchRequestSeqRef = useRef(0);
+  const unreadAbortRef = useRef<AbortController | null>(null);
+  const ordersAbortRef = useRef<AbortController | null>(null);
+  const detailAbortRef = useRef<AbortController | null>(null);
+  const sessionSwitchAbortRef = useRef<AbortController | null>(null);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
+  useEffect(() => () => {
+    unreadAbortRef.current?.abort();
+    ordersAbortRef.current?.abort();
+    detailAbortRef.current?.abort();
+    sessionSwitchAbortRef.current?.abort();
+  }, []);
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
   const supportOrderItemName = (item: Pick<OrderItemCustomer, 'productId' | 'productName'>) => (
     (item.productName || '').trim() || t('pages.profile.productFallback', { id: item.productId })
@@ -380,16 +390,23 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   useEffect(() => {
     if (!token) return;
     let disposed = false;
-    supportApi.getUnreadCount()
+    const abortController = createApiAbortController();
+    unreadAbortRef.current?.abort();
+    unreadAbortRef.current = abortController;
+    supportApi.getUnreadCount({ signal: abortController.signal })
       .then((res) => {
-        if (!disposed) setUnread(res.data.count);
+        if (!disposed && !abortController.signal.aborted) setUnread(res.data.count);
       })
       .catch((error) => {
-        if (!disposed) setUnread(0);
-        if (!disposed) reportNonBlockingError('CustomerSupportWidget.loadUnreadCount', error);
+        if (!disposed && !abortController.signal.aborted) {
+          setUnread(0);
+          reportNonBlockingError('CustomerSupportWidget.loadUnreadCount', error);
+        }
       });
     return () => {
       disposed = true;
+      abortController.abort();
+      if (unreadAbortRef.current === abortController) unreadAbortRef.current = null;
     };
   }, [token]);
 
@@ -401,10 +418,13 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
 
   const fetchSupportOrders = useCallback(async () => {
     if (!getLocalStorageItem('token')) return;
+    ordersAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    ordersAbortRef.current = abortController;
     setOrdersLoading(true);
     setOrdersLoadFailed(false);
     try {
-      const res = await orderApi.getMine();
+      const res = await orderApi.getMine({ signal: abortController.signal });
       const ordersData = res.data || [];
 
       const sortedOrders = [...ordersData].sort((left, right) => {
@@ -412,13 +432,18 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
         const rightTime = getSafeTime(right.createdAt);
         return rightTime - leftTime || right.id - left.id;
       });
+      if (abortController.signal.aborted) return;
       setOrders(sortedOrders.slice(0, 30));
     } catch (error) {
+      if (abortController.signal.aborted) return;
       reportNonBlockingError('CustomerSupportWidget.fetchSupportOrders', error);
       setOrders([]);
       setOrdersLoadFailed(true);
     } finally {
-      setOrdersLoading(false);
+      if (ordersAbortRef.current === abortController) {
+        ordersAbortRef.current = null;
+        if (!abortController.signal.aborted) setOrdersLoading(false);
+      }
     }
   }, []);
 
@@ -476,33 +501,34 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   useEffect(() => {
     if (!open || !token) return;
     let disposed = false;
+    const abortController = createApiAbortController();
 
     const load = async () => {
       setSessionLoading(true);
       try {
-        const sessionRes = await supportApi.createSession();
-        if (disposed) return;
+        const sessionRes = await supportApi.createSession({ signal: abortController.signal });
+        if (disposed || abortController.signal.aborted) return;
         setSession(sessionRes.data);
         upsertSessionHistory(sessionRes.data);
-        const messagesRes = await supportApi.getMessages(sessionRes.data.id, { limit: SUPPORT_MESSAGE_WINDOW });
-        if (disposed) return;
+        const messagesRes = await supportApi.getMessages(sessionRes.data.id, { limit: SUPPORT_MESSAGE_WINDOW, signal: abortController.signal });
+        if (disposed || abortController.signal.aborted) return;
         setMessages(mergeSupportMessages([], messagesRes.data));
-        supportApi.markRead(sessionRes.data.id)
+        supportApi.markRead(sessionRes.data.id, { signal: abortController.signal })
           .catch((error) => reportNonBlockingError('CustomerSupportWidget.markReadAfterSessionLoad', error));
-        supportApi.getSessions({ limit: SUPPORT_SESSION_HISTORY_WINDOW })
+        supportApi.getSessions({ limit: SUPPORT_SESSION_HISTORY_WINDOW, signal: abortController.signal })
           .then((res) => {
-            if (!disposed) setSessionHistory(sortSupportSessions(res.data || []));
+            if (!disposed && !abortController.signal.aborted) setSessionHistory(sortSupportSessions(res.data || []));
           })
           .catch((error) => {
-            if (!disposed) reportNonBlockingError('CustomerSupportWidget.loadSessionHistory', error);
+            if (!disposed && !abortController.signal.aborted) reportNonBlockingError('CustomerSupportWidget.loadSessionHistory', error);
           });
         setUnread(0);
       } catch (error) {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         reportNonBlockingError('CustomerSupportWidget.loadSession', error);
         announceAccessibleMessage(t('pages.support.loadFailed'), 'error');
       } finally {
-        if (!disposed) {
+        if (!disposed && !abortController.signal.aborted) {
           setSessionLoading(false);
         }
       }
@@ -511,6 +537,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
     load();
     return () => {
       disposed = true;
+      abortController.abort();
     };
   }, [open, token, t, sortSupportSessions, upsertSessionHistory]);
 
@@ -574,36 +601,40 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
   useEffect(() => {
     if (!open || !activeGuestContext) return;
     let disposed = false;
+    const abortController = createApiAbortController();
 
     const load = async () => {
       setSessionLoading(true);
       try {
         const [sessionRes, orderTrackRes] = await Promise.all([
-          supportApi.createGuestSession(activeGuestContext.orderNo, activeGuestContext.email),
-          orderApi.track(activeGuestContext.orderNo, activeGuestContext.email)
+          supportApi.createGuestSession(activeGuestContext.orderNo, activeGuestContext.email, { signal: abortController.signal }),
+          orderApi.track(activeGuestContext.orderNo, activeGuestContext.email, { signal: abortController.signal })
             .catch((error) => {
+              if (abortController.signal.aborted) return null;
               reportNonBlockingError('CustomerSupportWidget.trackGuestOrderForContext', error);
               return null;
             }),
         ]);
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         setSession(sessionRes.data);
         sessionRef.current = sessionRes.data;
         setSessionHistory([sessionRes.data]);
         if (orderTrackRes?.data?.order) {
           setOrders([orderTrackRes.data.order]);
         }
-        const messagesRes = await supportApi.getGuestMessages(sessionRes.data.id, activeGuestContext.orderNo, activeGuestContext.email, { limit: SUPPORT_MESSAGE_WINDOW });
-        if (disposed) return;
+        const messagesRes = await supportApi.getGuestMessages(sessionRes.data.id, activeGuestContext.orderNo, activeGuestContext.email, { limit: SUPPORT_MESSAGE_WINDOW, signal: abortController.signal });
+        if (disposed || abortController.signal.aborted) return;
         setMessages(mergeSupportMessages([], messagesRes.data));
         setUnread(0);
-        supportApi.markGuestRead(sessionRes.data.id, activeGuestContext.orderNo, activeGuestContext.email)
-          .catch((error) => reportNonBlockingError('CustomerSupportWidget.markGuestReadAfterSessionLoad', error));
+        supportApi.markGuestRead(sessionRes.data.id, activeGuestContext.orderNo, activeGuestContext.email, { signal: abortController.signal })
+          .catch((error) => {
+            if (!abortController.signal.aborted) reportNonBlockingError('CustomerSupportWidget.markGuestReadAfterSessionLoad', error);
+          });
       } catch (err: unknown) {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         announceAccessibleMessage(getApiErrorMessage(err, t('pages.support.loadFailed'), language), 'error');
       } finally {
-        if (!disposed) {
+        if (!disposed && !abortController.signal.aborted) {
           setSessionLoading(false);
         }
       }
@@ -612,6 +643,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
     load();
     return () => {
       disposed = true;
+      abortController.abort();
     };
   }, [activeGuestContext, language, open, t]);
 

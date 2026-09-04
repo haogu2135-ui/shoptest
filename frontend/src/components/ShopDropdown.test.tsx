@@ -82,4 +82,26 @@ describe('ShopDropdown', () => {
     expect(screen.getByRole('menuitem', { name: 'Currency' })).toBeDisabled();
     expect(screen.getByRole('separator')).toBeInTheDocument();
   });
+
+  it('supports keyboard navigation and returns focus to the trigger', () => {
+    jest.useFakeTimers();
+    const { rerender } = render(
+      <ShopDropdown open items={[{ key: 'a', label: 'First' }, { key: 'b', label: 'Second' }]}>
+        <button type="button">Menu</button>
+      </ShopDropdown>,
+    );
+    jest.runOnlyPendingTimers();
+    const first = screen.getByRole('menuitem', { name: 'First' });
+    expect(first).toHaveFocus();
+    fireEvent.keyDown(first, { key: 'ArrowDown' });
+    expect(screen.getByRole('menuitem', { name: 'Second' })).toHaveFocus();
+    fireEvent.keyDown(screen.getByRole('menuitem', { name: 'Second' }), { key: 'Escape' });
+    rerender(
+      <ShopDropdown open={false} items={[{ key: 'a', label: 'First' }, { key: 'b', label: 'Second' }]}>
+        <button type="button">Menu</button>
+      </ShopDropdown>,
+    );
+    expect(screen.getByRole('button', { name: 'Menu' })).toHaveFocus();
+    jest.useRealTimers();
+  });
 });

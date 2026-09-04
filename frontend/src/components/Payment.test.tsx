@@ -4,6 +4,7 @@ import { Payment } from './Payment';
 import { paymentApi } from '../api';
 
 jest.mock('../api', () => ({
+  createApiAbortController: () => new AbortController(),
   paymentApi: { getChannels: jest.fn(), create: jest.fn() },
 }));
 

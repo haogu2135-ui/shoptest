@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
-import { addressApi, orderApi, petProfileApi, userApi } from '../api';
+import { addressApi, createApiAbortController, orderApi, petProfileApi, userApi } from '../api';
 import type { Language } from '../i18n';
 import type { OrderCustomer, OrderItemCustomer, PetProfile, UserAddress, UserProfile } from '../types';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
@@ -54,6 +54,10 @@ export const useProfileSessionData = ({
   const ordersRef = useRef<OrderCustomer[]>([]);
   const ordersRequestSeqRef = useRef(0);
   const paymentReturnSyncSeqRef = useRef(0);
+  const userAbortRef = useRef<AbortController | null>(null);
+  const ordersAbortRef = useRef<AbortController | null>(null);
+  const addressesAbortRef = useRef<AbortController | null>(null);
+  const petsAbortRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -61,31 +65,43 @@ export const useProfileSessionData = ({
       mountedRef.current = false;
       ordersRequestSeqRef.current += 1;
       paymentReturnSyncSeqRef.current += 1;
+      userAbortRef.current?.abort();
+      ordersAbortRef.current?.abort();
+      addressesAbortRef.current?.abort();
+      petsAbortRef.current?.abort();
     };
   }, []);
 
   const fetchUserInfo = useCallback(async () => {
+    userAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    userAbortRef.current = abortController;
     try {
-      const response = await userApi.getProfile();
+      const response = await userApi.getProfile({ signal: abortController.signal });
       if (!mountedRef.current) return;
       setUser(response.data);
     } catch (error) {
+      if (abortController.signal.aborted) return;
       reportNonBlockingError('Profile.fetchUserInfo', error);
       if (mountedRef.current) {
         announceAccessibleMessage(profileLocalizationRef.current.t('pages.profile.fetchUserFailed'), 'error');
       }
     } finally {
-      if (mountedRef.current) {
+      if (userAbortRef.current === abortController && mountedRef.current) {
         setLoading(false);
       }
+      if (userAbortRef.current === abortController) userAbortRef.current = null;
     }
   }, [profileLocalizationRef, setLoading, setUser]);
 
   const fetchOrders = useCallback(async () => {
+    ordersAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    ordersAbortRef.current = abortController;
     const requestSeq = ordersRequestSeqRef.current + 1;
     ordersRequestSeqRef.current = requestSeq;
     try {
-      const response = await orderApi.getMine();
+      const response = await orderApi.getMine({ signal: abortController.signal });
       const sortedOrders = sortOrdersNewestFirst(response.data || []);
       if (!mountedRef.current || ordersRequestSeqRef.current !== requestSeq) return;
       ordersRef.current = sortedOrders;
@@ -96,7 +112,7 @@ export const useProfileSessionData = ({
         sortedOrders.slice(0, PROFILE_ORDER_ITEM_PREVIEW_LIMIT),
         async (order) => {
           try {
-            const res = await orderApi.getItems(order.id);
+            const res = await orderApi.getItems(order.id, undefined, undefined, { signal: abortController.signal });
             return { orderId: order.id, items: res.data || [], failed: false } as OrderItemsPreviewResult;
           } catch (error) {
             reportNonBlockingError('Profile.fetchOrderItemsPreview', error);
@@ -115,12 +131,15 @@ export const useProfileSessionData = ({
           .map((result) => [result.orderId, true] as const),
       ));
     } catch (error) {
+      if (abortController.signal.aborted) return;
       reportNonBlockingError('Profile.fetchOrders', error);
       if (mountedRef.current && ordersRequestSeqRef.current === requestSeq) {
         setOrdersLoadFailed(true);
         setOrdersInitialLoadComplete(true);
         announceAccessibleMessage(profileLocalizationRef.current.t('pages.profile.fetchOrdersFailed'), 'error');
       }
+    } finally {
+      if (ordersAbortRef.current === abortController) ordersAbortRef.current = null;
     }
   }, [
     profileLocalizationRef,
@@ -132,30 +151,42 @@ export const useProfileSessionData = ({
   ]);
 
   const fetchAddresses = useCallback(async () => {
+    addressesAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    addressesAbortRef.current = abortController;
     try {
-      const response = await addressApi.getByUser(0);
+      const response = await addressApi.getByUser(0, { signal: abortController.signal });
       if (!mountedRef.current) return;
       setAddresses(response.data);
       setAddressesLoadFailed(false);
     } catch (error) {
+      if (abortController.signal.aborted) return;
       reportNonBlockingError('Profile.fetchAddresses', error);
       if (mountedRef.current) {
         setAddressesLoadFailed(true);
       }
+    } finally {
+      if (addressesAbortRef.current === abortController) addressesAbortRef.current = null;
     }
   }, [setAddresses, setAddressesLoadFailed]);
 
   const fetchPetProfiles = useCallback(async () => {
+    petsAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    petsAbortRef.current = abortController;
     try {
-      const response = await petProfileApi.getMine();
+      const response = await petProfileApi.getMine({ signal: abortController.signal });
       if (!mountedRef.current) return;
       setPetProfiles(response.data || []);
     } catch (error) {
+      if (abortController.signal.aborted) return;
       reportNonBlockingError('Profile.fetchPetProfiles', error);
       if (mountedRef.current) {
         setPetProfiles([]);
         announceAccessibleMessage(profileLocalizationRef.current.t('pages.profile.fetchPetProfilesFailed'), 'error');
       }
+    } finally {
+      if (petsAbortRef.current === abortController) petsAbortRef.current = null;
     }
   }, [profileLocalizationRef, setPetProfiles]);
 

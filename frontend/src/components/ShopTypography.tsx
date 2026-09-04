@@ -93,6 +93,7 @@ const ShopTypographyText: React.FC<ShopTypographyTextProps> = ({
   ...rest
 }) => {
   const [copied, setCopied] = React.useState(false);
+  const copyTimerRef = React.useRef<number | null>(null);
   const copyConfig = copyable
     ? (typeof copyable === 'object' ? copyable : {})
     : null;
@@ -112,11 +113,21 @@ const ShopTypographyText: React.FC<ShopTypographyTextProps> = ({
       }
       copyConfig.onCopy?.();
       setCopied(true);
-      window.setTimeout(() => setCopied(false), 1500);
+      if (copyTimerRef.current !== null) window.clearTimeout(copyTimerRef.current);
+      copyTimerRef.current = window.setTimeout(() => {
+        copyTimerRef.current = null;
+        setCopied(false);
+      }, 1500);
     } catch (error) {
       reportNonBlockingError('ShopTypography.copyText', error);
     }
   };
+
+  React.useEffect(() => () => {
+    if (copyTimerRef.current !== null) window.clearTimeout(copyTimerRef.current);
+  }, []);
+
+  const ell = resolveEllipsis(ellipsis);
 
   return (
     <span
@@ -126,11 +137,11 @@ const ShopTypographyText: React.FC<ShopTypographyTextProps> = ({
         'ant-typography',
         typeClass(type),
         strong ? 'shop-typography-text--strong' : '',
-        ellipsis ? 'shop-typography-text--ellipsis ant-typography-ellipsis' : '',
+        ell.className,
         copyConfig ? 'shop-typography-text--copyable' : '',
         className,
       ].filter(Boolean).join(' ')}
-      style={style}
+      style={{ ...ell.style, ...style }}
     >
       {wrapDecorations(children, { strong, code, mark, underline, delete: del, italic })}
       {copyConfig ? (
@@ -164,6 +175,7 @@ const ShopTypographyTitle: React.FC<ShopTypographyTitleProps> = ({
   ...rest
 }) => {
   const Tag = (`h${Math.min(5, Math.max(1, level))}` as 'h1' | 'h2' | 'h3' | 'h4' | 'h5');
+  const ell = resolveEllipsis(ellipsis);
   return (
     <Tag
       {...rest}
@@ -173,10 +185,10 @@ const ShopTypographyTitle: React.FC<ShopTypographyTitleProps> = ({
         `shop-typography-title--h${level}`,
         typeClass(type),
         strong ? 'shop-typography-text--strong' : '',
-        ellipsis ? 'shop-typography-text--ellipsis ant-typography-ellipsis' : '',
+        ell.className,
         className,
       ].filter(Boolean).join(' ')}
-      style={style}
+      style={{ ...ell.style, ...style }}
     >
       {wrapDecorations(children, { strong, code, mark, underline, delete: del, italic })}
     </Tag>
@@ -237,7 +249,7 @@ const ShopTypographyLink: React.FC<ShopTypographyLinkProps> = ({
     {...rest}
     href={href}
     target={target}
-    rel={rel}
+    rel={target === '_blank' ? (rel || 'noopener noreferrer') : rel}
     className={[
       'shop-typography-link',
       'ant-typography',

@@ -106,6 +106,7 @@ const ShopButton: React.FC<ShopButtonProps> = ({
     size === 'small' ? 'ant-btn-sm' : size === 'large' ? 'ant-btn-lg' : '';
   const antShapeClass =
     shape === 'circle' ? 'ant-btn-circle' : shape === 'round' ? 'ant-btn-round' : '';
+  const accessibleLabel = label || title || (hasIconOnly ? 'Button' : undefined);
 
   return (
     <button
@@ -144,8 +145,8 @@ const ShopButton: React.FC<ShopButtonProps> = ({
         className,
       ].filter(Boolean).join(' ')}
       disabled={isDisabled}
-      aria-label={label}
-      title={title || label}
+      aria-label={accessibleLabel}
+      title={title || accessibleLabel}
       aria-busy={loading || undefined}
       aria-describedby={ariaDescribedBy}
       aria-controls={ariaControls}

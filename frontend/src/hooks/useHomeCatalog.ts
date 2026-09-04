@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import type { Dispatch, MutableRefObject, SetStateAction } from 'react';
 import type { CategoryPublic, ProductPublic as Product } from '../types';
-import { categoryApi, productApi, wishlistApi } from '../api';
+import { categoryApi, createApiAbortController, productApi, wishlistApi } from '../api';
 import { localizeProduct } from '../utils/localizedProduct';
 import {
   buildProductCatalogFallbackCategories,
@@ -70,20 +70,28 @@ export const useHomeCatalog = ({
       return;
     }
     let disposed = false;
-    wishlistApi.getByUser(0)
+    const abortController = createApiAbortController();
+    wishlistApi.getByUser(0, { signal: abortController.signal })
       .then((response) => {
-        if (!disposed) setWishlistedProductIds(new Set(response.data.map((item) => item.productId)));
+        if (!disposed && !abortController.signal.aborted) {
+          setWishlistedProductIds(new Set(response.data.map((item) => item.productId)));
+        }
       })
-      .catch(() => {
-        if (!disposed) setWishlistedProductIds(new Set());
+      .catch((error) => {
+        if (!disposed && !abortController.signal.aborted) {
+          reportNonBlockingError('Home.fetchWishlist', error);
+          setWishlistedProductIds(new Set());
+        }
       });
     return () => {
       disposed = true;
+      abortController.abort();
     };
   }, [isAuthenticated, setWishlistedProductIds]);
 
   useEffect(() => {
     let disposed = false;
+    const abortController = createApiAbortController();
     const fetchHome = async () => {
       // Stale-while-revalidate: only blank to skeleton when nothing is paintable yet.
       if (!catalogReadyRef.current) {
@@ -92,11 +100,11 @@ export const useHomeCatalog = ({
       setLoadError(false);
       try {
         const [productsRes, featuredRes, categoriesRes] = await Promise.all([
-          productApi.getAll(undefined, undefined, undefined, { page: 0, size: HOME_PRODUCT_PAGE_SIZE }),
-          productApi.getFeatured(HOME_FEATURED_LIMIT),
-          categoryApi.getTopLevel(),
+          productApi.getAll(undefined, undefined, undefined, { page: 0, size: HOME_PRODUCT_PAGE_SIZE }, { signal: abortController.signal }),
+          productApi.getFeatured(HOME_FEATURED_LIMIT, { signal: abortController.signal }),
+          categoryApi.getTopLevel({ signal: abortController.signal }),
         ]);
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         const boundedCatalog = mergeProductsById(featuredRes.data, productsRes.data);
         saveProductCatalogSnapshot(boundedCatalog);
         const localizedProducts = boundedCatalog.map((product) => localizeProduct(product, language));
@@ -109,8 +117,8 @@ export const useHomeCatalog = ({
         setLoadError(false);
         catalogReadyRef.current = true;
       } catch (error) {
+        if (disposed || abortController.signal.aborted) return;
         reportNonBlockingError('Home.fetchHome', error);
-        if (disposed) return;
         const fallbackSourceProducts = loadProductCatalogSnapshot()?.products || loadFallbackProductCatalog();
         const fallbackProducts = fallbackSourceProducts.map((product) => localizeProduct(product, language));
         if (fallbackProducts.length > 0) {
@@ -134,13 +142,14 @@ export const useHomeCatalog = ({
           setCategories([]);
         }
       } finally {
-        if (!disposed) setLoading(false);
+        if (!disposed && !abortController.signal.aborted) setLoading(false);
       }
     };
 
     fetchHome();
     return () => {
       disposed = true;
+      abortController.abort();
     };
   }, [
     catalogReadyRef,
@@ -162,12 +171,17 @@ export const useHomeCatalog = ({
         setPersonalizedProducts([]);
         return;
       }
+      if (abortController.signal.aborted) return;
       try {
-        const response = await productApi.getPersonalizedRecommendations();
-        if (!disposed) setPersonalizedProducts(response.data.map((product) => localizeProduct(product, language)));
+        const response = await productApi.getPersonalizedRecommendations({ signal: abortController.signal });
+        if (!disposed && !abortController.signal.aborted) {
+          setPersonalizedProducts(response.data.map((product) => localizeProduct(product, language)));
+        }
       } catch (error) {
-        reportNonBlockingError('Home.fetchPersonalizedProducts', error);
-        if (!disposed) setPersonalizedProducts([]);
+        if (!disposed && !abortController.signal.aborted) {
+          reportNonBlockingError('Home.fetchPersonalizedProducts', error);
+          setPersonalizedProducts([]);
+        }
       }
     };
 
@@ -175,9 +189,11 @@ export const useHomeCatalog = ({
       setPersonalizedProducts([]);
       return;
     }
+    const abortController = createApiAbortController();
     const task = scheduleIdleTask(fetchPersonalizedProducts, 1500);
     return () => {
       disposed = true;
+      abortController.abort();
       cancelIdleTask(task);
     };
   }, [isAuthenticated, language, setPersonalizedProducts]);
@@ -202,19 +218,20 @@ export const useHomeCatalog = ({
       return;
     }
     let disposed = false;
+    const abortController = createApiAbortController();
     setRecentlyViewedHydrated(false);
     const recentProductIds = viewPreferencesRecent.slice(0, 8);
     const task = scheduleIdleTask(() => {
-      productApi.getByIds(recentProductIds)
+      productApi.getByIds(recentProductIds, { signal: abortController.signal })
         .then((response) => {
-          if (!disposed) {
+          if (!disposed && !abortController.signal.aborted) {
             setRecentlyViewedDetails(response.data.map((product) => localizeProduct(product, language)));
             setRecentlyViewedHydrated(true);
           }
         })
         .catch((error) => {
-          reportNonBlockingError('Home.fetchRecentlyViewedDetails', error);
-          if (!disposed) {
+          if (!disposed && !abortController.signal.aborted) {
+            reportNonBlockingError('Home.fetchRecentlyViewedDetails', error);
             setRecentlyViewedDetails([]);
             setRecentlyViewedHydrated(true);
           }
@@ -222,6 +239,7 @@ export const useHomeCatalog = ({
     }, 1900);
     return () => {
       disposed = true;
+      abortController.abort();
       cancelIdleTask(task);
     };
   }, [language, setRecentlyViewedDetails, setRecentlyViewedHydrated, viewPreferencesRecent]);

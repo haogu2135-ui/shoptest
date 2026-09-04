@@ -20,6 +20,7 @@ const readWishlistPage = () => fs.readFileSync(path.resolve(__dirname, 'Wishlist
 const readWishlistCss = () => fs.readFileSync(path.resolve(__dirname, 'Wishlist.css'), 'utf8');
 
 jest.mock('../api', () => ({
+  createApiAbortController: () => new AbortController(),
   cartApi: { addItem: jest.fn() },
   wishlistApi: {
     getByUser: jest.fn(),
@@ -227,7 +228,10 @@ describe('Wishlist async lifecycle', () => {
 
     const { unmount } = renderWishlist();
 
-    await waitFor(() => expect(wishlistApi.getByUser).toHaveBeenCalledWith(0));
+    await waitFor(() => expect(wishlistApi.getByUser).toHaveBeenCalledWith(
+      0,
+      expect.objectContaining({ signal: expect.anything() }),
+    ));
 
     unmount();
 

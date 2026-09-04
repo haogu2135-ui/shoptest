@@ -12,6 +12,7 @@ jest.mock('../api', () => ({
   cartApi: { getItems: jest.fn() },
   clearStoredAuthSession: jest.fn(),
   couponApi: { getAvailableByUser: jest.fn() },
+  createApiAbortController: () => new AbortController(),
   notificationApi: { getUnreadCount: jest.fn() },
   productApi: { getByIds: jest.fn() },
   userApi: { getProfile: jest.fn(), logout: jest.fn() },

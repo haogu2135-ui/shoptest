@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { useLocation, useNavigate, useParams, useSearchParams } from 'react-router-dom';
-import { orderApi, paymentApi } from '../api';
+import { createApiAbortController, orderApi, paymentApi } from '../api';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
@@ -76,6 +76,11 @@ const PaymentInstructions: React.FC = () => {
   const [verifyError, setVerifyError] = useState('');
   const [reloadToken, setReloadToken] = useState(0);
   const verifyRequestSeqRef = useRef(0);
+  const refreshRequestSeqRef = useRef(0);
+  const mountedRef = useRef(true);
+  const channelAbortRef = useRef<AbortController | null>(null);
+  const verifyAbortRef = useRef<AbortController | null>(null);
+  const refreshAbortRef = useRef<AbortController | null>(null);
   const normalizedOrderNo = cleanParam(orderNo, 80);
   const searchQuery = searchParams.toString();
   const guestEmailFromQuery = searchParams.get('guestEmail') || searchParams.get('email') || '';
@@ -119,6 +124,14 @@ const PaymentInstructions: React.FC = () => {
   }, [guestEmail, guestEmailInput]);
 
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+    channelAbortRef.current?.abort();
+    verifyAbortRef.current?.abort();
+    refreshRequestSeqRef.current += 1;
+    refreshAbortRef.current?.abort();
+  }, []);
 
   const openTrackOrder = () => {
     if (normalizedOrderNo) {
@@ -167,16 +180,22 @@ const PaymentInstructions: React.FC = () => {
   }, [location.pathname, navigate, normalizedOrderNo, searchQuery]);
 
   useEffect(() => {
+    const abortController = createApiAbortController();
+    channelAbortRef.current?.abort();
+    channelAbortRef.current = abortController;
     let disposed = false;
-    paymentApi.getChannels()
+    paymentApi.getChannels({ signal: abortController.signal })
       .then((response) => {
         if (!disposed) setPaymentChannels(response.data || []);
       })
       .catch((error) => {
+        if (abortController.signal.aborted) return;
         reportNonBlockingError('PaymentInstructions.loadChannels', error);
       });
     return () => {
       disposed = true;
+      abortController.abort();
+      if (channelAbortRef.current === abortController) channelAbortRef.current = null;
     };
   }, []);
 
@@ -189,6 +208,9 @@ const PaymentInstructions: React.FC = () => {
       return;
     }
     let disposed = false;
+    const abortController = createApiAbortController();
+    verifyAbortRef.current?.abort();
+    verifyAbortRef.current = abortController;
     const requestSeq = verifyRequestSeqRef.current + 1;
     verifyRequestSeqRef.current = requestSeq;
     const verifyPaymentDetails = async () => {
@@ -197,7 +219,7 @@ const PaymentInstructions: React.FC = () => {
       try {
         let nextOrder: OrderCustomer | null = null;
         if (guestEmail) {
-          const response = await orderApi.track(normalizedOrderNo, guestEmail);
+          const response = await orderApi.track(normalizedOrderNo, guestEmail, { signal: abortController.signal });
           nextOrder = response.data.order;
         } else {
           const response = await orderApi.getMine();
@@ -215,7 +237,7 @@ const PaymentInstructions: React.FC = () => {
         if (disposed || verifyRequestSeqRef.current !== requestSeq) return;
         let nextPayment: PaymentCustomer | null = null;
         try {
-          const paymentResponse = await paymentApi.getLatestByOrder(nextOrder.id, guestEmail || undefined, nextOrder.orderNo || normalizedOrderNo);
+          const paymentResponse = await paymentApi.getLatestByOrder(nextOrder.id, guestEmail || undefined, nextOrder.orderNo || normalizedOrderNo, { signal: abortController.signal });
           nextPayment = paymentResponse.data;
         } catch (error) {
           const responseStatus = Number((error as { response?: { status?: number } })?.response?.status);
@@ -230,6 +252,7 @@ const PaymentInstructions: React.FC = () => {
                 paymentMethod,
                 guestEmail || undefined,
                 nextOrder.orderNo || normalizedOrderNo,
+                { signal: abortController.signal },
               );
               nextPayment = createdPayment.data;
             } catch (createError) {
@@ -241,6 +264,7 @@ const PaymentInstructions: React.FC = () => {
         }
         if (!disposed && verifyRequestSeqRef.current === requestSeq) setPayment(nextPayment);
       } catch (error) {
+        if (abortController.signal.aborted) return;
         reportNonBlockingError('PaymentInstructions.verifyPaymentDetails', error);
         if (disposed || verifyRequestSeqRef.current !== requestSeq) return;
         setOrder(null);
@@ -253,6 +277,10 @@ const PaymentInstructions: React.FC = () => {
     void verifyPaymentDetails();
     return () => {
       disposed = true;
+      abortController.abort();
+      refreshRequestSeqRef.current += 1;
+      refreshAbortRef.current?.abort();
+      if (verifyAbortRef.current === abortController) verifyAbortRef.current = null;
     };
   }, [guestEmail, isAuthenticated, normalizedOrderNo, reloadToken, t]);
 
@@ -261,24 +289,38 @@ const PaymentInstructions: React.FC = () => {
       setReloadToken((value) => value + 1);
       return;
     }
+    refreshAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    refreshAbortRef.current = abortController;
+    const requestSeq = refreshRequestSeqRef.current + 1;
+    refreshRequestSeqRef.current = requestSeq;
+    const isCurrentRequest = () => mountedRef.current
+      && refreshAbortRef.current === abortController
+      && refreshRequestSeqRef.current === requestSeq
+      && !abortController.signal.aborted;
     setRefreshing(true);
     try {
       if (payment?.id) {
-        const response = await paymentApi.sync(payment.id, guestEmail || undefined, order.orderNo || normalizedOrderNo);
+        const response = await paymentApi.sync(payment.id, guestEmail || undefined, order.orderNo || normalizedOrderNo, { signal: abortController.signal });
+        if (!isCurrentRequest()) return;
         setPayment(response.data);
         if (normalizePaymentStatus(response.data?.status) === 'PAID') {
           announceAccessibleMessage(t('pages.paymentInstructions.paidTitle'), 'success');
         }
       } else {
-        const paymentResponse = await paymentApi.getLatestByOrder(order.id, guestEmail || undefined, order.orderNo || normalizedOrderNo);
+        const paymentResponse = await paymentApi.getLatestByOrder(order.id, guestEmail || undefined, order.orderNo || normalizedOrderNo, { signal: abortController.signal });
+        if (!isCurrentRequest()) return;
         setPayment(paymentResponse.data);
       }
+      if (!isCurrentRequest()) return;
       setVerifyError('');
     } catch (error) {
+      if (!isCurrentRequest()) return;
       reportNonBlockingError('PaymentInstructions.refreshPaymentStatus', error);
       announceAccessibleMessage(t('pages.paymentInstructions.verifyFailed'), 'warning');
     } finally {
-      setRefreshing(false);
+      if (isCurrentRequest()) setRefreshing(false);
+      if (refreshAbortRef.current === abortController) refreshAbortRef.current = null;
     }
   }, [guestEmail, normalizedOrderNo, order, payment?.id, t]);
 

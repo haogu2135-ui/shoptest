@@ -16,4 +16,9 @@ describe('ShopSpace', () => {
     expect(screen.getByText('One')).toBeInTheDocument();
     expect(screen.getByText('Two')).toBeInTheDocument();
   });
+
+  it('normalizes negative numeric gaps', () => {
+    const { container } = render(<ShopSpace size={[-4, 6] as [number, number]}><span>Item</span></ShopSpace>);
+    expect(container.querySelector('.shop-space')).toHaveStyle({ gap: '0px 6px' });
+  });
 });

@@ -61,6 +61,7 @@ const expectDescribedByText = (field: HTMLElement, expectedText: string) => {
 };
 
 jest.mock('../api', () => ({
+  createApiAbortController: () => new AbortController(),
   addressApi: { getByUser: jest.fn() },
   appConfigApi: { get: jest.fn() },
   cartApi: { getItems: jest.fn(), addItem: jest.fn() },
@@ -451,9 +452,9 @@ describe('Checkout payment availability', () => {
     expect(formSections).toContain('options={regionOptions}');
     expect(source).toContain("classList.add('checkout-page-active')");
     expect(source).toContain('handleCheckoutFormFocusCapture');
-    expect(regionCascader).toContain('closeWhenScrollPositionChanges');
-    expect(regionCascader).toContain('closeStaleCheckoutCascaderAfterScroll');
-    expect(regionCascader).toContain('window.requestAnimationFrame(closeWhenScrollPositionChanges)');
+    expect(regionCascader).not.toContain('closeWhenScrollPositionChanges');
+    expect(regionCascader).not.toContain('closeStaleCheckoutCascaderAfterScroll');
+    expect(regionCascader).not.toContain('window.requestAnimationFrame(closeWhenScrollPositionChanges)');
     expect(regionCascader).toContain("window.addEventListener('scroll', closeOnViewportMove, true)");
     expect(regionCascader).toContain("document.addEventListener('scroll', closeOnViewportMove, true)");
     expect(regionCascader).toContain("document.addEventListener('keydown', closeOnEscape, true)");
@@ -602,7 +603,7 @@ describe('Checkout payment availability', () => {
     expect(source).toContain('useCheckoutPaymentChannels({');
     expect(source.slice(componentStart, hookCallStart)).not.toContain('paymentApi.getChannels()');
     expect(channelsEffectStart).toBeGreaterThan(-1);
-    expect(channelsEffect).toContain('paymentApi.getChannels()');
+    expect(channelsEffect).toContain('paymentApi.getChannels({ signal: abortController.signal })');
     expect(channelsEffect).toContain('let disposed = false;');
     expect(channelsEffect).toContain('const requestSeq = paymentChannelsRequestSeqRef.current + 1;');
     expect(channelsEffect).toContain('const isCurrentPaymentChannelsRequest = () => (');
@@ -639,8 +640,8 @@ describe('Checkout payment availability', () => {
     expect(source).toContain("from '../hooks/useCheckoutPaymentLifecycle'");
     expect(source).toContain('useCheckoutPaymentLifecycle({');
     expect(readCheckoutOrderActionsSource()).toContain("import { cartApi, clearStoredAuthSession, orderApi, paymentApi, productApi } from '../api';");
-    expect(readCheckoutCartBootstrapSource()).toContain("import { addressApi, cartApi, clearStoredAuthSession } from '../api';");
-    expect(readCheckoutCouponQuoteSource()).toContain("import { couponApi } from '../api';");
+    expect(readCheckoutCartBootstrapSource()).toContain("import { addressApi, cartApi, clearStoredAuthSession, createApiAbortController } from '../api';");
+    expect(readCheckoutCouponQuoteSource()).toContain("import { couponApi, createApiAbortController } from '../api';");
     expect(lifecycle).toContain("import { createApiAbortController, orderApi, paymentApi } from '../api';");
     expect(refreshEffectStart).toBeGreaterThan(-1);
     expect(pollingStart).toBeGreaterThan(refreshEffectStart);
@@ -661,6 +662,8 @@ describe('Checkout payment availability', () => {
     expect(pollingEffect).toContain('const abortController = createApiAbortController();');
     expect(pollingEffect).toContain('pollAbortController = abortController;');
     expect(pollingEffect).toContain('{ signal: abortController.signal },');
+    expect(pollingEffect).toContain('orderApi.getById(createdOrderId, undefined, undefined, { signal: abortController.signal })');
+    expect(pollingEffect).toContain('orderApi.getById(createdOrderId, guestPaymentEmail, guestOrderNo, { signal: abortController.signal })');
     expect(pollingEffect).toContain('if (disposed || abortController.signal.aborted) return;');
     expect(pollingEffect).toContain('if (disposed) return;');
     expect(pollingEffect).toContain('window.clearInterval(timer);');
@@ -771,8 +774,10 @@ describe('Checkout payment availability', () => {
     expect(source).toContain('useCheckoutCartBootstrap({');
     expect(source).not.toContain('useMemo(() => readCheckoutCartItemIds(), [])');
     expect(loadEffect).toContain('const selectedCartItemIds = readCheckoutCartItemIds();');
-    expect(loadEffect).toContain('cartApi.getItems(0)');
-    expect(loadEffect).toContain('addressApi.getByUser(0)');
+    expect(loadEffect).toContain('const abortController = createApiAbortController();');
+    expect(loadEffect).toContain('cartApi.getItems(0, { signal: abortController.signal })');
+    expect(loadEffect).toContain('addressApi.getByUser(0, { signal: abortController.signal })');
+    expect(loadEffect).toContain('abortController.abort();');
     expect(bootstrap).toContain('checkoutReloadKey,');
     expect(bootstrap).toContain('mergeCheckoutFormSnapshot,');
     expect(bootstrap).toContain('showCheckoutMessage,');
@@ -921,19 +926,22 @@ describe('Checkout payment availability', () => {
     const quoteEffectStart = quoteSource.indexOf('const couponQuoteCartKey =');
     const quoteEffect = quoteSource.slice(quoteEffectStart, quoteSource.indexOf('}, [', quoteEffectStart));
 
-    const firstAsyncGuard = quoteEffect.indexOf('if (disposed || !mountedRef.current || couponQuoteSeqRef.current !== requestSeq) return;');
+    const firstAsyncGuard = quoteEffect.indexOf('if (disposed || !mountedRef.current || couponQuoteSeqRef.current !== requestSeq || abortController.signal.aborted) return;');
     const readyStatus = quoteEffect.indexOf("setCouponQuoteStatus('ready');");
     const firstErrorStatus = quoteEffect.indexOf("setCouponQuoteStatus('error');");
-    const catchGuard = quoteEffect.lastIndexOf('if (disposed || !mountedRef.current || couponQuoteSeqRef.current !== requestSeq) return;');
+    const catchGuard = quoteEffect.lastIndexOf('if (disposed || !mountedRef.current || couponQuoteSeqRef.current !== requestSeq || abortController.signal.aborted) return;');
     const catchErrorStatus = quoteEffect.lastIndexOf("setCouponQuoteStatus('error');");
 
     expect(quoteEffect).toContain('let disposed = false;');
+    expect(quoteEffect).toContain('const abortController = createApiAbortController();');
+    expect(quoteEffect).toContain('}, { signal: abortController.signal })');
+    expect(quoteEffect).toContain('abortController.abort();');
     expect(firstAsyncGuard).toBeGreaterThan(-1);
     expect(firstErrorStatus).toBeGreaterThan(firstAsyncGuard);
     expect(readyStatus).toBeGreaterThan(firstAsyncGuard);
     expect(catchGuard).toBeGreaterThan(firstAsyncGuard);
     expect(catchErrorStatus).toBeGreaterThan(catchGuard);
-    expect(quoteEffect).toContain('return () => {\n      disposed = true;\n    };');
+    expect(quoteEffect).toContain('return () => {\n      disposed = true;\n      abortController.abort();\n    };');
   });
 
   it('does not refetch coupon quotes for language-only changes', () => {

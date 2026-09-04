@@ -41,8 +41,9 @@ const ShopBadge: React.FC<ShopBadgeProps> = ({
 }) => {
   const isStatusMode = Boolean(status) || (text != null && children == null && count === 0 && !showZero);
   const numeric = toCountNumber(count);
+  const safeOverflowCount = Number.isFinite(overflowCount) ? Math.max(0, Math.floor(overflowCount)) : 99;
   const showCount = showZero ? true : numeric > 0;
-  const display = numeric > overflowCount ? `${overflowCount}+` : String(numeric);
+  const display = numeric > safeOverflowCount ? `${safeOverflowCount}+` : String(numeric);
   const offsetStyle = offset
     ? ({
         ['--shop-badge-offset-x' as string]: `${offset[0]}px`,
@@ -97,7 +98,7 @@ const ShopBadge: React.FC<ShopBadgeProps> = ({
         <sup
           className="shop-badge__count ant-badge-count"
           title={title || display}
-          aria-hidden="true"
+          aria-label={title || display}
         >
           <bdi>{display}</bdi>
         </sup>

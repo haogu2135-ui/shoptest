@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import './ShopAvatar.css';
 
 export type ShopAvatarProps = {
@@ -30,6 +30,9 @@ const ShopAvatar: React.FC<ShopAvatarProps> = ({
   alt,
 }) => {
   const [imgFailed, setImgFailed] = useState(false);
+  useEffect(() => {
+    setImgFailed(false);
+  }, [src]);
   const px = resolveSize(size);
   const showImage = Boolean(src) && !imgFailed;
 

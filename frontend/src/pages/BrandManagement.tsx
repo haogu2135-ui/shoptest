@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Form, Table } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
@@ -7,6 +7,7 @@ import ShopSelect from '../components/ShopSelect';
 import ShopInputNumber from '../components/ShopInputNumber';
 import ShopModal from '../components/ShopModal';
 import { CheckCircleOutlined, DeleteOutlined, EditOutlined, GlobalOutlined, PictureOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { createApiAbortController } from '../api';
 import { adminApi } from '../api/admin';
 import type { Brand } from '../types';
 import { useLanguage } from '../i18n';
@@ -57,6 +58,9 @@ const BrandManagement: React.FC = () => {
   const [logoPreviewUrl, setLogoPreviewUrl] = useState('');
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
+  const brandsRequestSeqRef = useRef(0);
+  const brandsAbortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
   const [form] = Form.useForm();
   const { t, language } = useLanguage();
   const canWriteBrands = hasAdminPermission(adminPermissions, currentRole, BRANDS_WRITE_PERMISSION);
@@ -144,20 +148,38 @@ const BrandManagement: React.FC = () => {
   }, [brands, keyword, statusFilter]);
 
   const fetchBrands = useCallback(async () => {
+    const requestSeq = brandsRequestSeqRef.current + 1;
+    brandsRequestSeqRef.current = requestSeq;
+    brandsAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    brandsAbortRef.current = abortController;
     setLoading(true);
     try {
-      const response = await adminApi.getBrands();
+      const response = await adminApi.getBrands(undefined, { signal: abortController.signal });
+      if (!mountedRef.current || abortController.signal.aborted || brandsRequestSeqRef.current !== requestSeq) return;
       setBrandLoadError(null);
       setBrands(response.data);
       setBrandSnapshotLoaded(true);
     } catch (error: unknown) {
+      if (!mountedRef.current || abortController.signal.aborted || brandsRequestSeqRef.current !== requestSeq) return;
       const errorMessage = getApiErrorMessage(error, t('pages.brandAdmin.fetchFailed'), language);
       setBrandLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      setLoading(false);
+      if (brandsAbortRef.current === abortController) brandsAbortRef.current = null;
+      if (mountedRef.current && brandsRequestSeqRef.current === requestSeq) setLoading(false);
     }
   }, [language, t]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+    mountedRef.current = false;
+    brandsRequestSeqRef.current += 1;
+    brandsAbortRef.current?.abort();
+    brandsAbortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     fetchBrands();

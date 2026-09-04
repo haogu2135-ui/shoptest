@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useState, type MutableRefObject } from 'react';
+import { useCallback, useEffect, useRef, useState, type MutableRefObject } from 'react';
 import { loadRegionData, type RegionOption } from '../regionData';
 import type { Language } from '../i18n';
 import type { CheckoutMessageType, CheckoutTranslationFn } from '../utils/checkoutHelpers';
@@ -16,7 +16,6 @@ type UseCheckoutRegionCascaderParams = {
  * - lazy language-scoped region option load
  * - controlled open state + portal hide/remove on close
  * - close on scroll/viewport move/escape while open
- * - continuous stale-dropdown cleanup while scrolling
  */
 export const useCheckoutRegionCascader = ({
   language,
@@ -28,27 +27,33 @@ export const useCheckoutRegionCascader = ({
   const [regionOptions, setRegionOptions] = useState<RegionOption[]>([]);
   const [regionOptionsLanguage, setRegionOptionsLanguage] = useState('');
   const [regionOptionsLoading, setRegionOptionsLoading] = useState(false);
+  const regionRequestSeqRef = useRef(0);
 
   const loadCheckoutRegionOptions = useCallback(async () => {
     if (regionOptions.length > 0 && regionOptionsLanguage === language) {
       return regionOptions;
     }
+    const requestSeq = regionRequestSeqRef.current + 1;
+    regionRequestSeqRef.current = requestSeq;
+    const isCurrentRequest = () => (
+      mountedRef.current && regionRequestSeqRef.current === requestSeq
+    );
     setRegionOptionsLoading(true);
     try {
       const options = await loadRegionData(language);
-      if (mountedRef.current) {
+      if (isCurrentRequest()) {
         setRegionOptions(options);
         setRegionOptionsLanguage(language);
       }
       return options;
     } catch (error) {
       reportNonBlockingError('Checkout.loadRegionData', error);
-      if (mountedRef.current) {
+      if (isCurrentRequest()) {
         showCheckoutMessage('error', t('pages.checkout.regionLoadFailed'));
       }
       return [] as RegionOption[];
     } finally {
-      if (mountedRef.current) {
+      if (isCurrentRequest()) {
         setRegionOptionsLoading(false);
       }
     }
@@ -89,55 +94,12 @@ export const useCheckoutRegionCascader = ({
   }, [setCheckoutRegionCascaderVisibility]);
 
   useEffect(() => {
-    const scrollContainers = Array.from(document.querySelectorAll<HTMLElement>('.ant-layout-content, .shop-app-shell, .checkout-page'));
-    let previousWindowScrollY = window.scrollY;
-    let previousDocumentScrollTop = document.scrollingElement?.scrollTop ?? 0;
-    let previousContainerScrollTop = scrollContainers.map((element) => element.scrollTop);
-    let animationFrame = 0;
-    const closeStaleCheckoutCascaderAfterScroll = () => {
-      const documentScrollTop = document.scrollingElement?.scrollTop ?? 0;
-      const containerMoved = scrollContainers.some((element, index) => Math.abs(element.scrollTop - (previousContainerScrollTop[index] || 0)) > 1);
-      const moved = Math.abs(window.scrollY - previousWindowScrollY) > 1
-        || Math.abs(documentScrollTop - previousDocumentScrollTop) > 1
-        || containerMoved;
-      if (moved && document.querySelector('.ant-cascader-dropdown')) {
-        setCheckoutRegionCascaderVisibility(false);
-      }
-      previousWindowScrollY = window.scrollY;
-      previousDocumentScrollTop = documentScrollTop;
-      previousContainerScrollTop = scrollContainers.map((element) => element.scrollTop);
-      animationFrame = window.requestAnimationFrame(closeStaleCheckoutCascaderAfterScroll);
-    };
-    animationFrame = window.requestAnimationFrame(closeStaleCheckoutCascaderAfterScroll);
-    return () => window.cancelAnimationFrame(animationFrame);
-  }, [setCheckoutRegionCascaderVisibility]);
-
-  useEffect(() => {
     if (!checkoutRegionCascaderOpen) return;
     const closeOnViewportMove = () => closeCheckoutRegionCascader();
     const closeOnEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape') closeCheckoutRegionCascader();
     };
-    const initialWindowScrollY = window.scrollY;
-    const initialDocumentScrollTop = document.scrollingElement?.scrollTop ?? 0;
-    const scrollContainers = Array.from(document.querySelectorAll<HTMLElement>('.ant-layout-content, .shop-app-shell, .checkout-page'));
-    const initialContainerScrollTop = scrollContainers.map((element) => element.scrollTop);
-    let animationFrame = 0;
-    const closeWhenScrollPositionChanges = () => {
-      const documentScrollTop = document.scrollingElement?.scrollTop ?? 0;
-      const containerMoved = scrollContainers.some((element, index) => Math.abs(element.scrollTop - (initialContainerScrollTop[index] || 0)) > 1);
-      if (
-        Math.abs(window.scrollY - initialWindowScrollY) > 1
-        || Math.abs(documentScrollTop - initialDocumentScrollTop) > 1
-        || containerMoved
-      ) {
-        closeCheckoutRegionCascader();
-        return;
-      }
-      animationFrame = window.requestAnimationFrame(closeWhenScrollPositionChanges);
-    };
     const passiveCaptureOptions: AddEventListenerOptions = { capture: true, passive: true };
-    animationFrame = window.requestAnimationFrame(closeWhenScrollPositionChanges);
     window.addEventListener('scroll', closeOnViewportMove, true);
     window.addEventListener('resize', closeOnViewportMove);
     document.addEventListener('scroll', closeOnViewportMove, true);
@@ -151,7 +113,6 @@ export const useCheckoutRegionCascader = ({
       document.removeEventListener('touchmove', closeOnViewportMove, passiveCaptureOptions);
       document.removeEventListener('wheel', closeOnViewportMove, passiveCaptureOptions);
       document.removeEventListener('keydown', closeOnEscape, true);
-      window.cancelAnimationFrame(animationFrame);
     };
   }, [checkoutRegionCascaderOpen, closeCheckoutRegionCascader]);
 

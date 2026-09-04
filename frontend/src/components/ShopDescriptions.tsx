@@ -24,9 +24,9 @@ export type ShopDescriptionsProps = {
 
 const resolveColumnCount = (column: ShopDescriptionsColumn | undefined): number => {
   if (column == null) return 3;
-  if (typeof column === 'number' && Number.isFinite(column) && column > 0) return Math.floor(column);
+  if (typeof column === 'number' && Number.isFinite(column) && column > 0) return Math.min(12, Math.floor(column));
   const obj = column as Record<string, number>;
-  return Math.max(1, Math.floor(obj.lg || obj.md || obj.sm || obj.xs || obj.xl || obj.xxl || 1));
+  return Math.min(12, Math.max(1, Math.floor(obj.lg || obj.md || obj.sm || obj.xs || obj.xl || obj.xxl || 1)));
 };
 
 const ShopDescriptionsItem: React.FC<ShopDescriptionsItemProps> = ({
@@ -36,10 +36,14 @@ const ShopDescriptionsItem: React.FC<ShopDescriptionsItemProps> = ({
   style,
   children,
 }) => (
+  // Keep malformed spans from creating invalid grid declarations.
+  (() => {
+    const safeSpan = Number.isFinite(span) ? Math.max(1, Math.min(12, Math.floor(span))) : 1;
+    return (
   <div
     className={['shop-descriptions__item', 'ant-descriptions-item', className].filter(Boolean).join(' ')}
     style={{
-      gridColumn: span > 1 ? `span ${span}` : undefined,
+      gridColumn: safeSpan > 1 ? `span ${safeSpan}` : undefined,
       ...style,
     }}
   >
@@ -48,6 +52,8 @@ const ShopDescriptionsItem: React.FC<ShopDescriptionsItemProps> = ({
     ) : null}
     <div className="shop-descriptions__content ant-descriptions-item-content">{children}</div>
   </div>
+    );
+  })()
 );
 
 const ShopDescriptionsRoot: React.FC<ShopDescriptionsProps> = ({

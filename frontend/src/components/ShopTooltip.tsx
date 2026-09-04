@@ -1,4 +1,4 @@
-import React, { useId, useState } from 'react';
+import React, { useEffect, useId, useRef, useState } from 'react';
 import './ShopTooltip.css';
 
 export type ShopTooltipPlacement = 'top' | 'bottom' | 'left' | 'right';
@@ -19,16 +19,49 @@ const hasTitle = (title: React.ReactNode | undefined): boolean => {
   return true;
 };
 
+const normalizeDelay = (value: number | undefined) => (
+  typeof value === 'number' && Number.isFinite(value)
+    ? Math.max(0, Math.min(Math.floor(value), 10_000))
+    : 0
+);
+
 const ShopTooltip: React.FC<ShopTooltipProps> = ({
   title,
   children,
   className = '',
   overlayClassName = '',
   placement = 'top',
+  mouseEnterDelay = 0,
+  mouseLeaveDelay = 0,
 }) => {
   const [open, setOpen] = useState(false);
   const tooltipId = useId();
+  const showTimerRef = useRef<number | null>(null);
+  const hideTimerRef = useRef<number | null>(null);
   const enabled = hasTitle(title);
+  const enterDelay = normalizeDelay(mouseEnterDelay);
+  const leaveDelay = normalizeDelay(mouseLeaveDelay);
+
+  const clearTimers = () => {
+    if (showTimerRef.current !== null) window.clearTimeout(showTimerRef.current);
+    if (hideTimerRef.current !== null) window.clearTimeout(hideTimerRef.current);
+    showTimerRef.current = null;
+    hideTimerRef.current = null;
+  };
+
+  const scheduleOpen = () => {
+    clearTimers();
+    if (enterDelay === 0) setOpen(true);
+    else showTimerRef.current = window.setTimeout(() => setOpen(true), enterDelay);
+  };
+
+  const scheduleClose = () => {
+    clearTimers();
+    if (leaveDelay === 0) setOpen(false);
+    else hideTimerRef.current = window.setTimeout(() => setOpen(false), leaveDelay);
+  };
+
+  useEffect(() => () => clearTimers(), [enabled]);
 
   if (!enabled) {
     return <>{children}</>;
@@ -37,10 +70,14 @@ const ShopTooltip: React.FC<ShopTooltipProps> = ({
   return (
     <span
       className={['shop-tooltip', 'ant-tooltip-open', className].filter(Boolean).join(' ')}
-      onMouseEnter={() => setOpen(true)}
-      onMouseLeave={() => setOpen(false)}
-      onFocus={() => setOpen(true)}
-      onBlur={() => setOpen(false)}
+      onMouseEnter={scheduleOpen}
+      onMouseLeave={scheduleClose}
+      onFocus={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) scheduleOpen();
+      }}
+      onBlur={(event) => {
+        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) scheduleClose();
+      }}
     >
       <span className="shop-tooltip__trigger" aria-describedby={open ? tooltipId : undefined}>
         {children}

@@ -15,6 +15,7 @@ jest.mock('../api/admin', () => ({
 }));
 
 jest.mock('../api', () => ({
+  createApiAbortController: () => new AbortController(),
   userApi: {
     getProfile: jest.fn(),
   },
@@ -203,7 +204,10 @@ describe('UserManagement admin search', () => {
     await waitFor(() => {
       expect(mockAdminApi.getUsersPage).toHaveBeenCalledTimes(2);
     });
-    expect(mockAdminApi.getUsersPage).toHaveBeenLastCalledWith(expect.objectContaining({ keyword: 'anabel' }));
+    expect(mockAdminApi.getUsersPage).toHaveBeenLastCalledWith(
+      expect.objectContaining({ keyword: 'anabel' }),
+      expect.objectContaining({ signal: expect.anything() }),
+    );
   });
 
   it('keeps the operator page size when a filter change refetches', async () => {
@@ -229,6 +233,7 @@ describe('UserManagement admin search', () => {
     });
     expect(mockAdminApi.getUsersPage).toHaveBeenLastCalledWith(
       expect.objectContaining({ keyword: 'ana', size: 50 }),
+      expect.objectContaining({ signal: expect.anything() }),
     );
   });
 });

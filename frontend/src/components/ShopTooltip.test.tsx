@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import ShopTooltip from './ShopTooltip';
 
 describe('ShopTooltip', () => {
@@ -26,5 +26,41 @@ describe('ShopTooltip', () => {
     );
     expect(screen.getByRole('button', { name: 'Plain' })).toBeInTheDocument();
     expect(container.querySelector('.shop-tooltip')).toBeNull();
+  });
+
+  it('honors bounded enter and leave delays', () => {
+    jest.useFakeTimers();
+    const { container } = render(
+      <ShopTooltip title="Delayed" mouseEnterDelay={100} mouseLeaveDelay={200}>
+        <button type="button">Action</button>
+      </ShopTooltip>,
+    );
+    const root = container.querySelector('.shop-tooltip') as HTMLElement;
+
+    fireEvent.mouseEnter(root);
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    act(() => jest.advanceTimersByTime(100));
+    expect(screen.getByRole('tooltip')).toBeInTheDocument();
+    fireEvent.mouseLeave(root);
+    act(() => jest.advanceTimersByTime(199));
+    expect(screen.getByRole('tooltip')).toBeInTheDocument();
+    act(() => jest.advanceTimersByTime(1));
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    jest.useRealTimers();
+  });
+
+  it('cancels a pending show when the pointer leaves', () => {
+    jest.useFakeTimers();
+    const { container } = render(
+      <ShopTooltip title="Delayed" mouseEnterDelay={100}>
+        <button type="button">Action</button>
+      </ShopTooltip>,
+    );
+    const root = container.querySelector('.shop-tooltip') as HTMLElement;
+    fireEvent.mouseEnter(root);
+    fireEvent.mouseLeave(root);
+    act(() => jest.advanceTimersByTime(100));
+    expect(screen.queryByRole('tooltip')).not.toBeInTheDocument();
+    jest.useRealTimers();
   });
 });

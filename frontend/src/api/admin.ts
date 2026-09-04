@@ -169,7 +169,7 @@ export const adminApi = {
         params,
         responseType: 'blob',
     }),
-    getTrafficControlStatus: () => api.get<AdminTrafficControlStatus>('/admin/traffic-control'),
+    getTrafficControlStatus: (options?: ApiRequestOptions) => api.get<AdminTrafficControlStatus>('/admin/traffic-control', withRequestOptions({}, options)),
     clearRateLimitCounters: () => api.post<AdminTrafficControlStatus>('/admin/traffic-control/rate-limit/clear'),
     resetCircuitBreaker: (name?: string) => api.post<AdminTrafficControlStatus>('/admin/traffic-control/circuit-breakers/reset', { name }),
     getAlerts: (params?: { status?: string; severity?: string; category?: string; limit?: number }) =>
@@ -205,8 +205,8 @@ export const adminApi = {
                 scanQueueOnly: Boolean(params?.scanQueueOnly),
             },
         }),
-    getBug: (id: number) => api.get<AdminBugReport>(`/admin/bugs/${toPathId(id)}`),
-    getBugSummary: () => api.get<AdminBugReportSummary>('/admin/bugs/summary'),
+    getBug: (id: number, options?: ApiRequestOptions) => api.get<AdminBugReport>(`/admin/bugs/${toPathId(id)}`, withRequestOptions({}, options)),
+    getBugSummary: (options?: ApiRequestOptions) => api.get<AdminBugReportSummary>('/admin/bugs/summary', withRequestOptions({}, options)),
     uploadBugAttachment: (file: File) => {
         const formData = new FormData();
         formData.append('file', file);
@@ -244,7 +244,7 @@ export const adminApi = {
             ids: normalizePositiveIntList(ids, maxIds),
             note: normalizeTextParam(note, 200),
         }),
-    getPetGalleryPhotos: (params?: { page?: number; size?: number; status?: string; source?: string; keyword?: string }) => {
+    getPetGalleryPhotos: (params?: { page?: number; size?: number; status?: string; source?: string; keyword?: string }, options?: ApiRequestOptions) => {
         const normalizedParams = {
             page: normalizeBoundedPositiveInt(params?.page, 1, 1_000_000),
             size: normalizeBoundedPositiveInt(params?.size, 12, 100),
@@ -252,11 +252,11 @@ export const adminApi = {
             source: normalizeTextParam(params?.source, 40) || undefined,
             keyword: normalizeTextParam(params?.keyword, 120) || undefined,
         };
-        return api.get<AdminPetGalleryPage | AdminPetGalleryPhoto[]>('/admin/pet-gallery', { params: normalizedParams })
+        return api.get<AdminPetGalleryPage | AdminPetGalleryPhoto[]>('/admin/pet-gallery', withRequestOptions({ params: normalizedParams }, options))
             .then(normalizeAdminPetGalleryPageResponse);
     },
     deletePetGalleryPhoto: (id: number) => api.delete(`/admin/pet-gallery/${toPathId(id)}`).finally(clearPetGalleryCache),
-    getUsersPage: (params?: { keyword?: string; role?: string; status?: string; page?: number; size?: number }) => {
+    getUsersPage: (params?: { keyword?: string; role?: string; status?: string; page?: number; size?: number }, options?: ApiRequestOptions) => {
         const normalizedParams = {
             keyword: normalizeTextParam(params?.keyword, 120) || undefined,
             role: normalizeTextParam(params?.role, 40) || undefined,
@@ -266,7 +266,7 @@ export const adminApi = {
         };
         const cacheKey = `${normalizedParams.keyword || ''}:${normalizedParams.role || ''}:${normalizedParams.status || ''}:${normalizedParams.page}:${normalizedParams.size}`;
         return cachedGet(adminUserCache, adminUserRequests, cacheKey, ADMIN_USER_CACHE_MS, () =>
-            api.get<AdminUserPage | User[]>('/admin/users', { params: normalizedParams }).then(normalizeAdminUserPageResponse));
+            api.get<AdminUserPage | User[]>('/admin/users', withRequestOptions({ params: normalizedParams }, cacheLoaderOptions(options))).then(normalizeAdminUserPageResponse), options);
     },
     getUsers: (params?: { keyword?: string; role?: string; status?: string }) => {
         const normalizedParams = {
@@ -281,13 +281,13 @@ export const adminApi = {
             api.get<AdminUserPage | User[]>('/admin/users', { params: normalizedParams }).then(normalizeAdminUserPageResponse))
             .then((response) => ({ ...response, data: response.data.items }) as AxiosResponse<User[]>);
     },
-    getUserSummary: (params?: { keyword?: string; role?: string; status?: string }) => api.get<UserAdminSummary>('/admin/users/summary', {
+    getUserSummary: (params?: { keyword?: string; role?: string; status?: string }, options?: ApiRequestOptions) => api.get<UserAdminSummary>('/admin/users/summary', withRequestOptions({
         params: {
             keyword: normalizeTextParam(params?.keyword, 120) || undefined,
             role: normalizeTextParam(params?.role, 40) || undefined,
             status: normalizeTextParam(params?.status, 40) || undefined,
         },
-    }),
+    }, options)),
     exportUsers: (params?: { keyword?: string; role?: string; status?: string }) => api.get('/admin/users/export', {
         params: {
             keyword: normalizeTextParam(params?.keyword, 120) || undefined,
@@ -372,7 +372,7 @@ export const adminApi = {
             }),
         );
     },
-    getOrdersPage: (params?: { status?: string; search?: string; quick?: string; page?: number; size?: number }) => {
+    getOrdersPage: (params?: { status?: string; search?: string; quick?: string; page?: number; size?: number }, options?: ApiRequestOptions) => {
         const normalizedParams = {
             status: normalizeTextParam(params?.status, 40) || undefined,
             search: normalizeTextParam(params?.search, 120) || undefined,
@@ -386,7 +386,8 @@ export const adminApi = {
             adminOrderRequests,
             cacheKey,
             ADMIN_ORDER_CACHE_MS,
-            () => api.get<AdminOrderPage>('/admin/orders/page', { params: normalizedParams }),
+            () => api.get<AdminOrderPage>('/admin/orders/page', withRequestOptions({ params: normalizedParams }, cacheLoaderOptions(options))),
+            options,
         );
     },
     getOrder: (id: number) => api.get<Order>(`/admin/orders/${toPathId(id)}`),
@@ -417,11 +418,11 @@ export const adminApi = {
             trackingNumber: normalizeTextParam(trackingNumber, 120) || undefined,
             trackingCarrierCode: normalizeTextParam(trackingCarrierCode, 40) || undefined,
         }).finally(clearAdminOrderCache),
-    getOrderItems: (orderId: number) => api.get<OrderItem[]>(`/admin/orders/${toPathId(orderId)}/items`).then(withArrayData),
-    getOrderPayments: (orderId: number) => api.get<AdminPayment[]>(`/admin/orders/${toPathId(orderId)}/payments`).then(withArrayData),
+    getOrderItems: (orderId: number, options?: ApiRequestOptions) => api.get<OrderItem[]>(`/admin/orders/${toPathId(orderId)}/items`, withRequestOptions({}, options)).then(withArrayData),
+    getOrderPayments: (orderId: number, options?: ApiRequestOptions) => api.get<AdminPayment[]>(`/admin/orders/${toPathId(orderId)}/payments`, withRequestOptions({}, options)).then(withArrayData),
     syncOrderPayment: (paymentId: number) => api.post<AdminPayment>(`/admin/orders/payments/${toPathId(paymentId)}/sync`),
-    getProducts: (params?: { keyword?: string; categoryId?: number; status?: string; featured?: boolean; discount?: boolean; minPrice?: number; maxPrice?: number; page?: number; size?: number; sort?: string }) =>
-        api.get<AdminProductPage | Product[]>('/admin/products', {
+    getProducts: (params?: { keyword?: string; categoryId?: number; status?: string; featured?: boolean; discount?: boolean; minPrice?: number; maxPrice?: number; page?: number; size?: number; sort?: string }, options?: ApiRequestOptions) =>
+        api.get<AdminProductPage | Product[]>('/admin/products', withRequestOptions({
             params: params ? {
                 keyword: normalizeTextParam(params.keyword, 120) || undefined,
                 categoryId: normalizePositiveInt(params.categoryId) || undefined,
@@ -434,28 +435,28 @@ export const adminApi = {
                 size: params.size == null ? undefined : normalizeBoundedPositiveInt(params.size, 50, 500),
                 sort: normalizeTextParam(params.sort, 80) || undefined,
             } : undefined,
-        }).then(normalizeProductAdminPageResponse),
-    getInventorySummary: () => api.get<AdminInventorySummary>('/admin/products/inventory-summary'),
+        }, options)).then(normalizeProductAdminPageResponse),
+    getInventorySummary: (options?: ApiRequestOptions) => api.get<AdminInventorySummary>('/admin/products/inventory-summary', withRequestOptions({}, options)),
     createProduct: (product: ProductMutationPayload) =>
         api.post<Product>('/admin/products', normalizeProductPayload(product)).finally(() => clearProductCache()),
     updateProduct: (id: number, product: ProductMutationPayload) =>
         api.put<Product>(`/admin/products/${toPathId(id)}`, normalizeProductPayload(product)).finally(() => clearProductCache(toPathId(id))),
     deleteProduct: (id: number) =>
         api.delete(`/admin/products/${toPathId(id)}`).finally(() => clearProductCache(toPathId(id))),
-    getProductCategories: () => api.get<Category[]>('/admin/products/categories/options', { params: { limit: 500 } })
+    getProductCategories: (options?: ApiRequestOptions) => api.get<Category[]>('/admin/products/categories/options', withRequestOptions({ params: { limit: 500 } }, options))
         .then(withArrayData)
         .catch((error) => {
             if (!isMissingAdminOptionEndpointError(error)) throw error;
-            return api.get<Category[]>('/admin/categories', { params: { limit: 500 } }).then(withArrayData);
+            return api.get<Category[]>('/admin/categories', withRequestOptions({ params: { limit: 500 } }, options)).then(withArrayData);
         }),
-    getProductBrands: (params?: { activeOnly?: boolean }) =>
-        api.get<Brand[]>('/admin/products/brands/options', { params: { activeOnly: params?.activeOnly ? true : undefined, limit: 500 } })
+    getProductBrands: (params?: { activeOnly?: boolean }, options?: ApiRequestOptions) =>
+        api.get<Brand[]>('/admin/products/brands/options', withRequestOptions({ params: { activeOnly: params?.activeOnly ? true : undefined, limit: 500 } }, options))
             .then(withArrayData)
             .catch((error) => {
                 if (!isMissingAdminOptionEndpointError(error)) throw error;
-                return api.get<Brand[]>('/admin/brands', { params: { activeOnly: params?.activeOnly ? true : undefined, limit: 500 } }).then(withArrayData);
+                return api.get<Brand[]>('/admin/brands', withRequestOptions({ params: { activeOnly: params?.activeOnly ? true : undefined, limit: 500 } }, options)).then(withArrayData);
             }),
-    getCategories: () => api.get<Category[]>('/admin/categories').then(withArrayData),
+    getCategories: (options?: ApiRequestOptions) => api.get<Category[]>('/admin/categories', withRequestOptions({}, options)).then(withArrayData),
     createCategory: (category: Partial<Category>) => api.post<Category>('/admin/categories', normalizeCategoryPayload(category)).finally(() => {
         clearCategoryCache();
         clearProductCache();
@@ -468,8 +469,8 @@ export const adminApi = {
         clearCategoryCache();
         clearProductCache();
     }),
-    getBrands: (params?: { activeOnly?: boolean }) =>
-        api.get<Brand[]>('/admin/brands', { params: params?.activeOnly ? { activeOnly: true } : undefined }),
+    getBrands: (params?: { activeOnly?: boolean }, options?: ApiRequestOptions) =>
+        api.get<Brand[]>('/admin/brands', withRequestOptions({ params: params?.activeOnly ? { activeOnly: true } : undefined }, options)),
     createBrand: (brand: Partial<Brand>) => api.post<Brand>('/admin/brands', normalizeBrandPayload(brand)).finally(() => {
         clearBrandCache();
         clearProductCache();
@@ -508,13 +509,13 @@ export const adminApi = {
         formData.append('file', file);
         return api.post<ProductImportResult>('/admin/products/import/preview', formData);
     },
-    getProductImportHistory: (limit = 6) =>
-        api.get<ProductImportHistoryEntry[]>('/admin/products/import/history', {
+    getProductImportHistory: (limit = 6, options?: ApiRequestOptions) =>
+        api.get<ProductImportHistoryEntry[]>('/admin/products/import/history', withRequestOptions({
             params: { limit: normalizeBoundedPositiveInt(limit, 6, 20) },
-        }).then(withArrayData),
+        }, options)).then(withArrayData),
     importProductFromUrl: (url: string) =>
         api.post<ProductUrlImportPreview>('/admin/products/import-url', { url: normalizeTextParam(url, 2048) }),
-    getReviews: (params?: { status?: string; search?: string; page?: number; size?: number }) => {
+    getReviews: (params?: { status?: string; search?: string; page?: number; size?: number }, options?: ApiRequestOptions) => {
         const normalizedParams = {
             status: normalizeTextParam(params?.status, 40).toUpperCase() || undefined,
             search: normalizeTextParam(params?.search, 120) || undefined,
@@ -523,7 +524,7 @@ export const adminApi = {
         };
         const cacheKey = `reviews:${normalizedParams.status || ''}:${normalizedParams.search || ''}:${normalizedParams.page}:${normalizedParams.size}`;
         return cachedGet(adminReviewCache, adminReviewRequests, cacheKey, ADMIN_REVIEW_CACHE_MS, () =>
-            api.get<AdminReviewPage | Review[]>('/admin/reviews', { params: normalizedParams }).then(normalizeAdminReviewPageResponse));
+            api.get<AdminReviewPage | Review[]>('/admin/reviews', withRequestOptions({ params: normalizedParams }, cacheLoaderOptions(options))).then(normalizeAdminReviewPageResponse), options);
     },
     deleteReview: (id: number) => api.delete(`/admin/reviews/${toPathId(id)}`).finally(() => {
         clearReviewCache();
@@ -565,14 +566,14 @@ export const adminApi = {
             clearQuestionCache();
             clearAdminQuestionCache();
         }),
-    getCouponSummary: (params?: { keyword?: string; status?: string; scope?: string }) => api.get<CouponAdminSummary>('/admin/coupons/summary', {
+    getCouponSummary: (params?: { keyword?: string; status?: string; scope?: string }, options?: ApiRequestOptions) => api.get<CouponAdminSummary>('/admin/coupons/summary', withRequestOptions({
         params: {
             keyword: normalizeTextParam(params?.keyword, 120) || undefined,
             status: normalizeTextParam(params?.status, 40).toUpperCase() || undefined,
             scope: normalizeTextParam(params?.scope, 40).toUpperCase() || undefined,
         },
-    }),
-    getCoupons: (params?: { keyword?: string; status?: string; scope?: string; page?: number; size?: number }) => {
+    }, options)),
+    getCoupons: (params?: { keyword?: string; status?: string; scope?: string; page?: number; size?: number }, options?: ApiRequestOptions) => {
         const normalizedParams = {
             keyword: normalizeTextParam(params?.keyword, 120) || undefined,
             status: normalizeTextParam(params?.status, 40).toUpperCase() || undefined,
@@ -580,7 +581,7 @@ export const adminApi = {
             page: normalizeBoundedPositiveInt(params?.page, 1, 1_000_000),
             size: normalizeBoundedPositiveInt(params?.size, 20, 100),
         };
-        return api.get<AdminCouponPage | Coupon[]>('/admin/coupons', { params: normalizedParams })
+        return api.get<AdminCouponPage | Coupon[]>('/admin/coupons', withRequestOptions({ params: normalizedParams }, options))
             .then(normalizeAdminCouponPageResponse);
     },
     createCoupon: (coupon: Partial<Coupon>) => api.post<Coupon>('/admin/coupons', normalizeCouponPayload(coupon)).finally(clearCouponCache),
@@ -588,26 +589,26 @@ export const adminApi = {
     deleteCoupon: (id: number) => api.delete(`/admin/coupons/${toPathId(id)}`).finally(clearCouponCache),
     grantCoupon: (id: number, userIds: number[], maxUsers = 100) => api.post<{ granted: number }>(`/admin/coupons/${toPathId(id)}/grant`, { userIds: normalizePositiveIntList(userIds, maxUsers) }).finally(clearCouponCache),
     runPetBirthdayCoupons: () => api.post<{ granted: number }>('/admin/pet-birthday-coupons/run').finally(clearCouponCache),
-    getPetBirthdayCouponConfig: () => api.get<PetBirthdayCouponConfig>('/admin/pet-birthday-coupons/config'),
+    getPetBirthdayCouponConfig: (options?: ApiRequestOptions) => api.get<PetBirthdayCouponConfig>('/admin/pet-birthday-coupons/config', withRequestOptions({}, options)),
     updatePetBirthdayCouponConfig: (config: Partial<PetBirthdayCouponConfig>) =>
         api.put<PetBirthdayCouponConfig>('/admin/pet-birthday-coupons/config', config),
     broadcastNotification: (payload: { type: string; title: string; message: string; contentFormat: 'TEXT' | 'HTML' }) =>
         api.post<{ sent: number }>('/admin/notifications/broadcast', payload),
-    getAnnouncementSummary: (params?: { status?: string; keyword?: string }) => api.get<SiteAnnouncementAdminSummary>('/admin/announcements/summary', {
+    getAnnouncementSummary: (params?: { status?: string; keyword?: string }, options?: ApiRequestOptions) => api.get<SiteAnnouncementAdminSummary>('/admin/announcements/summary', withRequestOptions({
         params: {
             status: normalizeTextParam(params?.status, 40).toUpperCase() || undefined,
             keyword: normalizeTextParam(params?.keyword, 120) || undefined,
         },
-    }),
-    getAnnouncements: (params?: { page?: number; size?: number; status?: string; keyword?: string }) => {
+    }, options)),
+    getAnnouncements: (params?: { page?: number; size?: number; status?: string; keyword?: string }, options?: ApiRequestOptions) => {
         const normalizedParams = {
             page: normalizeBoundedPositiveInt(params?.page, 1, 1_000_000),
             size: normalizeBoundedPositiveInt(params?.size, 20, 100),
             status: normalizeTextParam(params?.status, 40).toUpperCase() || undefined,
             keyword: normalizeTextParam(params?.keyword, 120) || undefined,
         };
-        const config = params ? { params: normalizedParams } : undefined;
-        return api.get<SiteAnnouncementAdminPage | SiteAnnouncement[]>('/admin/announcements', config)
+        const config = params ? { params: normalizedParams } : {};
+        return api.get<SiteAnnouncementAdminPage | SiteAnnouncement[]>('/admin/announcements', withRequestOptions(config, options))
             .then(normalizeSiteAnnouncementPageResponse);
     },
     createAnnouncement: (announcement: Partial<SiteAnnouncement>) =>
@@ -625,13 +626,15 @@ export const adminApi = {
 };
 
 export const adminSupportApi = {
-    getSummary: () => api.get<SupportAdminSummary>('/admin/support/summary'),
-    getSessions: (params?: string | AdminSupportSessionQuery) =>
-        api.get<SupportAdminSessionPage | SupportSession[]>('/admin/support/sessions', {
+    getSummary: (options?: ApiRequestOptions) => api.get<SupportAdminSummary>('/admin/support/summary', withRequestOptions({}, options)),
+    getSessions: (params?: string | AdminSupportSessionQuery, options?: ApiRequestOptions) =>
+        api.get<SupportAdminSessionPage | SupportSession[]>('/admin/support/sessions', withRequestOptions({
             params: normalizeAdminSupportSessionParams(params),
-        }).then(normalizeAdminSupportSessionPageResponse),
-    getMessages: (sessionId: number, options?: SupportMessageQuery) =>
-        api.get<SupportMessage[]>(`/admin/support/sessions/${toPathId(sessionId)}/messages`, { params: normalizeSupportMessageParams(options) }),
+        }, options)).then(normalizeAdminSupportSessionPageResponse),
+    getMessages: (sessionId: number, params?: SupportMessageQuery, options?: ApiRequestOptions) =>
+        api.get<SupportMessage[]>(`/admin/support/sessions/${toPathId(sessionId)}/messages`, withRequestOptions({
+            params: normalizeSupportMessageParams(params),
+        }, options || (params?.signal ? { signal: params.signal } : undefined))),
     sendMessage: (sessionId: number, content: string) =>
         api.post<{ message: SupportMessage; session: SupportSession }>(`/admin/support/sessions/${toPathId(sessionId)}/messages`, {
             content: normalizeSupportMessageContent(content),

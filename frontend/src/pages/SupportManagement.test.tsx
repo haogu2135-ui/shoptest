@@ -1,4 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import fs from 'fs';
 import path from 'path';
@@ -46,6 +46,19 @@ jest.mock('../api', () => ({
 }));
 
 const SupportManagement = require('./SupportManagement').default as typeof import('./SupportManagement').default;
+
+type Deferred<T> = {
+  promise: Promise<T>;
+  resolve: (value: T) => void;
+};
+
+const createDeferred = <T,>(): Deferred<T> => {
+  let resolve: Deferred<T>['resolve'] = () => undefined;
+  const promise = new Promise<T>((promiseResolve) => {
+    resolve = promiseResolve;
+  });
+  return { promise, resolve };
+};
 
 describe('SupportManagement', () => {
   beforeEach(() => {
@@ -121,7 +134,36 @@ describe('SupportManagement', () => {
     expect(replyInput).toBeDisabled();
     expect(screen.getAllByText(/^(No admin permission|Sin permiso de administración)$/).length).toBeGreaterThan(0);
 
-    await waitFor(() => expect(mockGetMessages).toHaveBeenCalledWith(42, { limit: 80 }));
+    await waitFor(() => expect(mockGetMessages).toHaveBeenCalledWith(42, { limit: 80 }, { signal: expect.any(AbortSignal) }));
+  });
+
+  it('aborts queue requests after unmount', async () => {
+    const sessionsRequest = createDeferred<unknown>();
+    const summaryRequest = createDeferred<unknown>();
+    mockGetSessions.mockReturnValue(sessionsRequest.promise);
+    mockGetSummary.mockReturnValue(summaryRequest.promise);
+
+    const { unmount } = render(
+      <MemoryRouter>
+        <LanguageProvider>
+          <SupportManagement />
+        </LanguageProvider>
+      </MemoryRouter>
+    );
+
+    await waitFor(() => expect(mockGetSessions).toHaveBeenCalled());
+    const queueSignal = mockGetSessions.mock.calls[0][1].signal as AbortSignal;
+    const summarySignal = mockGetSummary.mock.calls[0][0].signal as AbortSignal;
+    unmount();
+
+    expect(queueSignal.aborted).toBe(true);
+    expect(summarySignal.aborted).toBe(true);
+
+    sessionsRequest.resolve({ data: { items: [], total: 0, page: 1, size: 20, totalPages: 0 } });
+    summaryRequest.resolve({ data: {} });
+    await act(async () => {
+      await Promise.resolve();
+    });
   });
 
   it('keeps polling interval callbacks gated after cleanup', () => {

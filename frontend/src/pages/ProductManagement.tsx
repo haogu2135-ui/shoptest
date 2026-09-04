@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useMemo } from 'react';
 import { Table, Form } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
@@ -16,6 +16,7 @@ import {
   SearchOutlined, MinusCircleOutlined, UploadOutlined, DownloadOutlined, CopyOutlined, SyncOutlined, LinkOutlined,
 } from '@ant-design/icons';
 import { adminApi } from '../api/admin';
+import { createApiAbortController } from '../api';
 import type {
   Product,
   CategoryPublic,
@@ -739,6 +740,15 @@ const ProductManagement: React.FC = () => {
   const debouncedSearchKeyword = useDebounce(searchKeyword.trim(), PRODUCT_SEARCH_DEBOUNCE_MS, resetProductPageForSearch);
   const [productPageSize, setProductPageSize] = useState(DEFAULT_ADMIN_PRODUCT_PAGE_SIZE);
   const [productTotal, setProductTotal] = useState(0);
+  const productFetchSeqRef = useRef(0);
+  const productFetchAbortRef = useRef<AbortController | null>(null);
+  const categoryOptionsFetchSeqRef = useRef(0);
+  const categoryOptionsAbortRef = useRef<AbortController | null>(null);
+  const brandOptionsFetchSeqRef = useRef(0);
+  const brandOptionsAbortRef = useRef<AbortController | null>(null);
+  const importHistoryFetchSeqRef = useRef(0);
+  const importHistoryAbortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
   const detailContentPreview = Form.useWatch('detailContent', form);
   const descriptionPreview = Form.useWatch('description', form);
   const spanishNamePreview = Form.useWatch(['localizedContent', 'es', 'name'], form);
@@ -837,6 +847,14 @@ const ProductManagement: React.FC = () => {
   const categoryOptions = useMemo(() => toTreeOptions(categoryTree, undefined, language), [categoryTree, language]);
 
   const fetchProducts = useCallback(async () => {
+    const requestSeq = productFetchSeqRef.current + 1;
+    productFetchSeqRef.current = requestSeq;
+    productFetchAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    productFetchAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && productFetchSeqRef.current === requestSeq
+      && !abortController.signal.aborted;
     try {
       setLoading(true);
       const response = await adminApi.getProducts({
@@ -846,7 +864,8 @@ const ProductManagement: React.FC = () => {
         page: Math.max(0, productPage - 1),
         size: productPageSize,
         sort: listingQualityFilter === 'stock' ? 'lowstock' : ADMIN_PRODUCT_DEFAULT_SORT,
-      });
+      }, { signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       const productPageData = response.data;
       setProducts(productPageData.items);
       setProductTotal(productPageData.total);
@@ -862,44 +881,95 @@ const ProductManagement: React.FC = () => {
         setProductPageSize(productPageData.size);
       }
     } catch (error: unknown) {
+      if (!isCurrentRequest()) return;
       const errorMessage = getApiErrorMessage(error, t('pages.productAdmin.fetchProductsFailed'), language);
       setProductLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      setLoading(false);
+      if (productFetchAbortRef.current === abortController) productFetchAbortRef.current = null;
+      if (isCurrentRequest()) setLoading(false);
     }
   }, [debouncedSearchKeyword, filterCategory, filterStatus, language, listingQualityFilter, productPage, productPageSize, t]);
 
   const fetchCategories = useCallback(async () => {
+    const requestSeq = categoryOptionsFetchSeqRef.current + 1;
+    categoryOptionsFetchSeqRef.current = requestSeq;
+    categoryOptionsAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    categoryOptionsAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && categoryOptionsFetchSeqRef.current === requestSeq
+      && !abortController.signal.aborted;
     try {
-      const response = await adminApi.getProductCategories();
+      const response = await adminApi.getProductCategories({ signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       setCategories(response.data);
       setCategoryOptionsTruncated(String(response.headers?.['x-admin-list-truncated'] || '').toLowerCase() === 'true');
     } catch (error: unknown) {
+      if (!isCurrentRequest()) return;
       message.error(getApiErrorMessage(error, t('pages.productAdmin.fetchCategoriesFailed'), language));
+    } finally {
+      if (categoryOptionsAbortRef.current === abortController) categoryOptionsAbortRef.current = null;
     }
   }, [language, t]);
 
   const fetchBrands = useCallback(async () => {
+    const requestSeq = brandOptionsFetchSeqRef.current + 1;
+    brandOptionsFetchSeqRef.current = requestSeq;
+    brandOptionsAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    brandOptionsAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && brandOptionsFetchSeqRef.current === requestSeq
+      && !abortController.signal.aborted;
     try {
-      const response = await adminApi.getProductBrands({ activeOnly: false });
+      const response = await adminApi.getProductBrands({ activeOnly: false }, { signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       setBrands(response.data);
       setBrandOptionsTruncated(String(response.headers?.['x-admin-list-truncated'] || '').toLowerCase() === 'true');
     } catch (error: unknown) {
+      if (!isCurrentRequest()) return;
       message.error(getApiErrorMessage(error, t('pages.productAdmin.fetchBrandsFailed'), language));
+    } finally {
+      if (brandOptionsAbortRef.current === abortController) brandOptionsAbortRef.current = null;
     }
   }, [language, t]);
 
   const fetchImportHistory = useCallback(async () => {
+    const requestSeq = importHistoryFetchSeqRef.current + 1;
+    importHistoryFetchSeqRef.current = requestSeq;
+    importHistoryAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    importHistoryAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && importHistoryFetchSeqRef.current === requestSeq
+      && !abortController.signal.aborted;
     try {
       setImportHistoryLoading(true);
-      const response = await adminApi.getProductImportHistory(6);
+      const response = await adminApi.getProductImportHistory(6, { signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       setImportHistory(response.data);
     } catch (error) {
-      setImportHistory([]);
+      if (isCurrentRequest()) setImportHistory([]);
     } finally {
-      setImportHistoryLoading(false);
+      if (importHistoryAbortRef.current === abortController) importHistoryAbortRef.current = null;
+      if (isCurrentRequest()) setImportHistoryLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      productFetchSeqRef.current += 1;
+      categoryOptionsFetchSeqRef.current += 1;
+      brandOptionsFetchSeqRef.current += 1;
+      importHistoryFetchSeqRef.current += 1;
+      productFetchAbortRef.current?.abort();
+      categoryOptionsAbortRef.current?.abort();
+      brandOptionsAbortRef.current?.abort();
+      importHistoryAbortRef.current?.abort();
+    };
   }, []);
 
   useEffect(() => {

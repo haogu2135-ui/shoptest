@@ -13,6 +13,7 @@ export type ShopDatePickerProps = {
   title?: string;
   placeholder?: string;
   allowClear?: boolean;
+  clearLabel?: string;
   /** When true, uses datetime-local (YYYY-MM-DDTHH:mm). */
   showTime?: boolean;
 };
@@ -32,6 +33,7 @@ const ShopDatePicker: React.FC<ShopDatePickerProps> = ({
   title,
   placeholder = '',
   allowClear = true,
+  clearLabel = 'Clear',
   showTime = false,
 }) => {
   const inputValue = toInputValue(value, showTime);
@@ -62,8 +64,8 @@ const ShopDatePicker: React.FC<ShopDatePickerProps> = ({
         <button
           type="button"
           className="shop-date-picker__clear"
-          aria-label="Clear"
-          title="Clear"
+          aria-label={clearLabel}
+          title={clearLabel}
           onClick={() => onChange?.(null)}
         >
           ×

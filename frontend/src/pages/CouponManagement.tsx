@@ -88,6 +88,14 @@ const CouponManagement: React.FC = () => {
   const mountedRef = useRef(true);
   const pageSizeRef = useRef(DEFAULT_COUPON_PAGE_SIZE);
   const userSearchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const couponLoadSeqRef = useRef(0);
+  const couponLoadAbortRef = useRef<AbortController | null>(null);
+  const couponSummarySeqRef = useRef(0);
+  const couponSummaryAbortRef = useRef<AbortController | null>(null);
+  const userLookupSeqRef = useRef(0);
+  const userLookupAbortRef = useRef<AbortController | null>(null);
+  const birthdayConfigSeqRef = useRef(0);
+  const birthdayConfigAbortRef = useRef<AbortController | null>(null);
   const couponType = Form.useWatch('couponType', form);
   const couponPaginationItemRender = useMemo(() => buildPaginationItemRender(
     `${t('common.previousPage')}: ${t('adminLayout.coupons')}`,
@@ -220,11 +228,25 @@ const CouponManagement: React.FC = () => {
         clearTimeout(userSearchTimerRef.current);
         userSearchTimerRef.current = null;
       }
+      couponLoadSeqRef.current += 1;
+      couponSummarySeqRef.current += 1;
+      userLookupSeqRef.current += 1;
+      birthdayConfigSeqRef.current += 1;
+      couponLoadAbortRef.current?.abort();
+      couponSummaryAbortRef.current?.abort();
+      userLookupAbortRef.current?.abort();
+      birthdayConfigAbortRef.current?.abort();
     };
   }, []);
 
   const loadCoupons = useCallback(async (page = 1, size = pageSizeRef.current, isDisposed?: () => boolean) => {
-    const canUpdate = () => mountedRef.current && !isDisposed?.();
+    const requestSeq = couponLoadSeqRef.current + 1;
+    couponLoadSeqRef.current = requestSeq;
+    couponLoadAbortRef.current?.abort();
+    const abortController = new AbortController();
+    couponLoadAbortRef.current = abortController;
+    const canUpdate = () => mountedRef.current && !isDisposed?.()
+      && couponLoadSeqRef.current === requestSeq && !abortController.signal.aborted;
     if (!canUpdate()) return;
     setLoading(true);
     try {
@@ -234,7 +256,7 @@ const CouponManagement: React.FC = () => {
         scope: scopeFilter,
         page,
         size,
-      });
+      }, { signal: abortController.signal });
       if (!canUpdate()) return;
       setCouponLoadError(null);
       setCoupons(res.data.items);
@@ -255,6 +277,7 @@ const CouponManagement: React.FC = () => {
       setCouponLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
+      if (couponLoadAbortRef.current === abortController) couponLoadAbortRef.current = null;
       if (canUpdate()) {
         setLoading(false);
       }
@@ -262,30 +285,45 @@ const CouponManagement: React.FC = () => {
   }, [debouncedKeyword, language, scopeFilter, statusFilter, t]);
 
   const loadCouponSummary = useCallback(async (isDisposed?: () => boolean) => {
-    const canUpdate = () => mountedRef.current && !isDisposed?.();
+    const requestSeq = couponSummarySeqRef.current + 1;
+    couponSummarySeqRef.current = requestSeq;
+    couponSummaryAbortRef.current?.abort();
+    const abortController = new AbortController();
+    couponSummaryAbortRef.current = abortController;
+    const canUpdate = () => mountedRef.current && !isDisposed?.()
+      && couponSummarySeqRef.current === requestSeq && !abortController.signal.aborted;
     if (!canUpdate()) return;
     try {
       const res = await adminApi.getCouponSummary({
         keyword: debouncedKeyword || undefined,
         status: statusFilter,
         scope: scopeFilter,
-      });
+      }, { signal: abortController.signal });
       if (!canUpdate()) return;
       setCouponSummary(res.data);
     } catch (error) {
+      if (!canUpdate()) return;
       reportNonBlockingError('CouponManagement.loadCouponSummary', error);
       if (canUpdate()) {
         setCouponSummary(null);
       }
+    } finally {
+      if (couponSummaryAbortRef.current === abortController) couponSummaryAbortRef.current = null;
     }
   }, [debouncedKeyword, scopeFilter, statusFilter]);
 
   const loadUsers = useCallback(async (search?: string, isDisposed?: () => boolean) => {
-    const canUpdate = () => mountedRef.current && !isDisposed?.();
+    const requestSeq = userLookupSeqRef.current + 1;
+    userLookupSeqRef.current = requestSeq;
+    userLookupAbortRef.current?.abort();
+    const abortController = new AbortController();
+    userLookupAbortRef.current = abortController;
+    const canUpdate = () => mountedRef.current && !isDisposed?.()
+      && userLookupSeqRef.current === requestSeq && !abortController.signal.aborted;
     if (!canUpdate()) return;
     setUserLookupLoading(true);
     try {
-      const res = await adminApi.getUsersPage({ keyword: search?.trim() || undefined, page: 1, size: 20 });
+      const res = await adminApi.getUsersPage({ keyword: search?.trim() || undefined, page: 1, size: 20 }, { signal: abortController.signal });
       if (!canUpdate()) return;
       setUsers(res.data.items || []);
     } catch (error) {
@@ -294,6 +332,7 @@ const CouponManagement: React.FC = () => {
         setUsers([]);
       }
     } finally {
+      if (userLookupAbortRef.current === abortController) userLookupAbortRef.current = null;
       if (canUpdate()) {
         setUserLookupLoading(false);
       }
@@ -308,11 +347,17 @@ const CouponManagement: React.FC = () => {
   }, [loadUsers]);
 
   const loadBirthdayConfig = useCallback(async (isDisposed?: () => boolean) => {
-    const canUpdate = () => mountedRef.current && !isDisposed?.();
+    const requestSeq = birthdayConfigSeqRef.current + 1;
+    birthdayConfigSeqRef.current = requestSeq;
+    birthdayConfigAbortRef.current?.abort();
+    const abortController = new AbortController();
+    birthdayConfigAbortRef.current = abortController;
+    const canUpdate = () => mountedRef.current && !isDisposed?.()
+      && birthdayConfigSeqRef.current === requestSeq && !abortController.signal.aborted;
     if (!canUpdate()) return;
     setBirthdayConfigLoading(true);
     try {
-      const res = await adminApi.getPetBirthdayCouponConfig();
+      const res = await adminApi.getPetBirthdayCouponConfig({ signal: abortController.signal });
       if (!canUpdate()) return;
       setBirthdayConfigLoadError(null);
       setBirthdayConfig(res.data);
@@ -324,6 +369,7 @@ const CouponManagement: React.FC = () => {
       setBirthdayConfigLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
+      if (birthdayConfigAbortRef.current === abortController) birthdayConfigAbortRef.current = null;
       if (canUpdate()) {
         setBirthdayConfigLoading(false);
       }

@@ -3,7 +3,7 @@ import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { ShopIcon, SI } from './ShopIcon';
 import ShopModal from './ShopModal';
 import ShopButton from './ShopButton';
-import { paymentApi } from '../api';
+import { createApiAbortController, paymentApi } from '../api';
 import { useLanguage } from '../i18n';
 import { createPaymentMethodOptions, filterPaymentChannelsForMarket, PaymentMethod, paymentMethodLabel } from '../utils/paymentMethods';
 import { useMarket } from '../hooks/useMarket';
@@ -41,6 +41,8 @@ export const Payment: React.FC<PaymentProps> = ({
     const [paymentChannelsLoading, setPaymentChannelsLoading] = useState(false);
     const [paymentChannelsError, setPaymentChannelsError] = useState('');
     const [loading, setLoading] = useState(false);
+    const paymentChannelsAbortRef = useRef<AbortController | null>(null);
+    const paymentCreateAbortRef = useRef<AbortController | null>(null);
     const { t, language } = useLanguage();
     const { formatMoney, currency } = useMarket();
     const languageRef = useRef(language);
@@ -74,16 +76,24 @@ export const Payment: React.FC<PaymentProps> = ({
     const confirmPaymentLabel = `${t('pages.payment.confirm')}: ${paymentContextLabel} · ${selectedPaymentLabel}`;
 
     const loadPaymentChannels = useCallback(async (isActive: () => boolean = () => true) => {
+        paymentChannelsAbortRef.current?.abort();
+        const abortController = createApiAbortController();
+        paymentChannelsAbortRef.current = abortController;
+        const isCurrentRequest = () => (
+            isActive()
+            && paymentChannelsAbortRef.current === abortController
+            && !abortController.signal.aborted
+        );
         setPaymentChannelsLoading(true);
         setPaymentChannelsError('');
         try {
-            const res = await paymentApi.getChannels();
-            if (!isActive()) return;
+            const res = await paymentApi.getChannels({ signal: abortController.signal });
+            if (!isCurrentRequest()) return;
             const channels = res.data || [];
             setPaymentChannels(channels);
             setPaymentMethod(getDefaultPaymentMethod(channels, currency));
         } catch (error: unknown) {
-            if (!isActive()) return;
+            if (!isCurrentRequest()) return;
             setPaymentChannels([]);
             setPaymentMethod('');
             setPaymentChannelsError(getApiErrorMessage(
@@ -92,7 +102,8 @@ export const Payment: React.FC<PaymentProps> = ({
                 languageRef.current
             ));
         } finally {
-            if (isActive()) setPaymentChannelsLoading(false);
+            if (isCurrentRequest()) setPaymentChannelsLoading(false);
+            if (paymentChannelsAbortRef.current === abortController) paymentChannelsAbortRef.current = null;
         }
     }, [currency]);
 
@@ -101,8 +112,15 @@ export const Payment: React.FC<PaymentProps> = ({
         void loadPaymentChannels(() => !disposed);
         return () => {
             disposed = true;
+            paymentChannelsAbortRef.current?.abort();
+            paymentChannelsAbortRef.current = null;
         };
     }, [loadPaymentChannels]);
+
+    useEffect(() => () => {
+        paymentCreateAbortRef.current?.abort();
+        paymentCreateAbortRef.current = null;
+    }, []);
 
     useEffect(() => {
         if (!paymentChannels.length) return;
@@ -111,6 +129,9 @@ export const Payment: React.FC<PaymentProps> = ({
     }, [currency, paymentChannels, paymentMethod, paymentOptions]);
 
     const handlePayment = async () => {
+        paymentCreateAbortRef.current?.abort();
+        const abortController = createApiAbortController();
+        paymentCreateAbortRef.current = abortController;
         setLoading(true);
         try {
             const safePaymentMethod = marketPaymentChannels.some((channel) => channel.code === paymentMethod)
@@ -123,7 +144,8 @@ export const Payment: React.FC<PaymentProps> = ({
             if (safePaymentMethod !== paymentMethod) {
                 setPaymentMethod(safePaymentMethod);
             }
-            const response = await paymentApi.create(orderId, safePaymentMethod, guestEmail, orderNo);
+            const response = await paymentApi.create(orderId, safePaymentMethod, guestEmail, orderNo, { signal: abortController.signal });
+            if (abortController.signal.aborted || paymentCreateAbortRef.current !== abortController) return;
             const payment = response.data;
             if (payment.paymentUrl) {
                 if (!navigateToCommercialPaymentUrl(payment.paymentUrl)) {
@@ -135,9 +157,13 @@ export const Payment: React.FC<PaymentProps> = ({
             }
             onSuccess();
         } catch (error: unknown) {
+            if (abortController.signal.aborted || paymentCreateAbortRef.current !== abortController) return;
             announceAccessibleMessage(getApiErrorMessage(error, t('pages.payment.createFailed'), language), 'error');
         } finally {
-            setLoading(false);
+            if (paymentCreateAbortRef.current === abortController) {
+                paymentCreateAbortRef.current = null;
+                if (!abortController.signal.aborted) setLoading(false);
+            }
         }
     };
 

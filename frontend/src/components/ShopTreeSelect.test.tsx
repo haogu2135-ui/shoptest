@@ -83,4 +83,25 @@ describe('ShopTreeSelect', () => {
     fireEvent.click(screen.getByRole('option', { name: 'Dogs' }));
     expect(onChange).toHaveBeenCalledWith(2);
   });
+
+  it('supports keyboard navigation and a custom clear label', () => {
+    const onChange = jest.fn();
+    render(
+      <ShopTreeSelect
+        ariaLabel="Category"
+        treeData={treeData}
+        value={4}
+        allowClear
+        clearLabel="Reset category"
+        onChange={onChange}
+        open
+        treeDefaultExpandAll
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Reset category' })).toBeInTheDocument();
+    const listbox = screen.getByRole('listbox', { name: 'Category' });
+    fireEvent.keyDown(listbox, { key: 'ArrowUp' });
+    fireEvent.keyDown(listbox, { key: 'Enter' });
+    expect(onChange).toHaveBeenCalledWith(2);
+  });
 });

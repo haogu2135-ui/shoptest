@@ -16,4 +16,9 @@ describe('ShopAlert', () => {
     expect(onClose).toHaveBeenCalled();
     expect(screen.queryByText('Watch queue')).not.toBeInTheDocument();
   });
+
+  it('uses a localized close label', () => {
+    render(<ShopAlert closable closeLabel="Cerrar" message="Notice" />);
+    expect(screen.getByRole('button', { name: 'Cerrar' })).toHaveAttribute('title', 'Cerrar');
+  });
 });

@@ -23,9 +23,11 @@ const resolveGap = (size: ShopSpaceSize | undefined): string => {
   if (size == null) return '8px';
   if (Array.isArray(size)) {
     const [row, col] = size;
-    return `${Number(row) || 0}px ${Number(col) || 0}px`;
+    const safeRow = Number.isFinite(row) ? Math.max(0, row) : 0;
+    const safeCol = Number.isFinite(col) ? Math.max(0, col) : 0;
+    return `${safeRow}px ${safeCol}px`;
   }
-  if (typeof size === 'number' && Number.isFinite(size)) return `${size}px`;
+  if (typeof size === 'number' && Number.isFinite(size)) return `${Math.max(0, size)}px`;
   const preset = PRESET[String(size)];
   return preset != null ? `${preset}px` : '8px';
 };

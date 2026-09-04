@@ -145,4 +145,33 @@ describe('ShopSelect', () => {
     expect(screen.getByRole('option', { name: 'FedEx' })).toBeInTheDocument();
   });
 
+  it('supports keyboard option navigation and de-duplicates values', () => {
+    const onChange = jest.fn();
+    render(
+      <ShopSelect
+        ariaLabel="Carrier"
+        open
+        value=""
+        options={[
+          { value: 'dhl', label: 'DHL' },
+          { value: 'dhl', label: 'Duplicate DHL' },
+          { value: 'fedex', label: 'FedEx' },
+        ]}
+        onChange={onChange}
+      />,
+    );
+    expect(screen.getAllByRole('option')).toHaveLength(2);
+    const listbox = screen.getByRole('listbox', { name: 'Carrier' });
+    fireEvent.keyDown(listbox, { key: 'ArrowDown' });
+    fireEvent.keyDown(listbox, { key: 'Enter' });
+    expect(onChange).toHaveBeenCalledWith('fedex');
+  });
+
+  it('uses a custom clear label', () => {
+    render(
+      <ShopSelect ariaLabel="Status" value="ready" allowClear clearLabel="Reset status" options={[{ value: 'ready', label: 'Ready' }]} />,
+    );
+    expect(screen.getByRole('button', { name: 'Reset status' })).toBeInTheDocument();
+  });
+
 });

@@ -36,6 +36,29 @@ describe('ShopInput', () => {
     expect(consoleError.mock.calls.flat().join(' ')).not.toContain('changing an uncontrolled input to be controlled');
     consoleError.mockRestore();
   });
+
+  it('clears an uncontrolled value and emits one empty change event', () => {
+    const onChange = jest.fn();
+    render(<ShopInput aria-label="Search" defaultValue="treats" allowClear onChange={onChange} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+
+    expect(screen.getByLabelText('Search')).toHaveValue('');
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange.mock.calls[0][0].target.value).toBe('');
+  });
+
+  it('keeps a controlled value for the parent to clear', () => {
+    const onChange = jest.fn();
+    const { rerender } = render(<ShopInput aria-label="Search" value="treats" allowClear onChange={onChange} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+
+    expect(screen.getByLabelText('Search')).toHaveValue('treats');
+    expect(onChange).toHaveBeenCalledTimes(1);
+    rerender(<ShopInput aria-label="Search" value="" allowClear onChange={onChange} />);
+    expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument();
+  });
 });
 
 describe('ShopPasswordInput', () => {
@@ -96,5 +119,16 @@ describe('ShopTextArea', () => {
     expect(screen.getByLabelText('Notes')).toHaveValue('Leave at reception');
     expect(consoleError.mock.calls.flat().join(' ')).not.toContain('changing an uncontrolled input to be controlled');
     consoleError.mockRestore();
+  });
+
+  it('supports clearing a text area', () => {
+    const onChange = jest.fn();
+    render(<ShopTextArea aria-label="Notes" defaultValue="Leave at door" allowClear onChange={onChange} />);
+
+    fireEvent.click(screen.getByRole('button', { name: 'Clear' }));
+
+    expect(screen.getByLabelText('Notes')).toHaveValue('');
+    expect(onChange).toHaveBeenCalledTimes(1);
+    expect(onChange.mock.calls[0][0].target.value).toBe('');
   });
 });

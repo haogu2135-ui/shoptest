@@ -23,6 +23,7 @@ export type ShopSelectProps = {
   disabled?: boolean;
   loading?: boolean;
   allowClear?: boolean;
+  clearLabel?: string;
   showSearch?: boolean;
   searchPlaceholder?: string;
   id?: string;
@@ -53,6 +54,7 @@ const ShopSelect: React.FC<ShopSelectProps> = ({
   disabled = false,
   loading = false,
   allowClear = false,
+  clearLabel = 'Clear',
   showSearch = false,
   searchPlaceholder = '',
   id,
@@ -69,6 +71,20 @@ const ShopSelect: React.FC<ShopSelectProps> = ({
   const searchRef = useRef<HTMLInputElement | null>(null);
   const listId = useId();
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({});
+  const [activeOptionValue, setActiveOptionValue] = useState<string | undefined>(value);
+  const safePopupMaxHeight = Number.isFinite(popupMaxHeight)
+    ? Math.max(120, Math.min(Math.floor(popupMaxHeight), 720))
+    : 280;
+  const safePopupZIndex = Number.isFinite(popupZIndex) ? popupZIndex : 2400;
+
+  const normalizedOptions = useMemo(() => {
+    const seen = new Set<string>();
+    return options.filter((option) => {
+      if (seen.has(option.value)) return false;
+      seen.add(option.value);
+      return true;
+    });
+  }, [options]);
 
   const setOpen = (next: boolean) => {
     if (!isControlled) setUncontrolledOpen(next);
@@ -77,16 +93,26 @@ const ShopSelect: React.FC<ShopSelectProps> = ({
   };
 
   const selected = useMemo(
-    () => options.find((option) => option.value === value),
-    [options, value],
+    () => normalizedOptions.find((option) => option.value === value),
+    [normalizedOptions, value],
   );
 
   const filteredOptions = useMemo(() => {
-    if (!showSearch) return options;
+    if (!showSearch) return normalizedOptions;
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return options;
-    return options.filter((option) => optionSearchText(option).includes(query));
-  }, [options, searchQuery, showSearch]);
+    if (!query) return normalizedOptions;
+    return normalizedOptions.filter((option) => optionSearchText(option).includes(query));
+  }, [normalizedOptions, searchQuery, showSearch]);
+
+  useEffect(() => {
+    if (!resolvedOpen) return;
+    const firstEnabled = filteredOptions.find((option) => !option.disabled);
+    setActiveOptionValue((current) => (
+      filteredOptions.some((option) => option.value === current && !option.disabled)
+        ? current
+        : selected && !selected.disabled ? selected.value : firstEnabled?.value
+    ));
+  }, [filteredOptions, resolvedOpen, selected]);
 
   useEffect(() => {
     if (!resolvedOpen || typeof window === 'undefined') return;
@@ -97,8 +123,8 @@ const ShopSelect: React.FC<ShopSelectProps> = ({
       const width = Math.min(Math.max(rect.width, 140), maxWidth);
       const searchOffset = showSearch ? 52 : 0;
       const estimatedHeight = (filteredOptions.length > 0
-        ? Math.min(popupMaxHeight, filteredOptions.length * 44 + 16)
-        : Math.min(popupMaxHeight, 180)) + searchOffset;
+        ? Math.min(safePopupMaxHeight, filteredOptions.length * 44 + 16)
+        : Math.min(safePopupMaxHeight, 180)) + searchOffset;
       let left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - width - 8));
       let top = rect.bottom + 6;
       if (left + width > window.innerWidth - 8) {
@@ -115,8 +141,8 @@ const ShopSelect: React.FC<ShopSelectProps> = ({
         minWidth: width,
         maxWidth: 'calc(100vw - 16px)',
         boxSizing: 'border-box',
-        maxHeight: popupMaxHeight + searchOffset,
-        zIndex: popupZIndex,
+        maxHeight: safePopupMaxHeight + searchOffset,
+        zIndex: safePopupZIndex,
       });
     };
     updatePosition();
@@ -126,7 +152,7 @@ const ShopSelect: React.FC<ShopSelectProps> = ({
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };
-  }, [filteredOptions.length, popupMaxHeight, popupZIndex, resolvedOpen, showSearch]);
+  }, [filteredOptions.length, safePopupMaxHeight, safePopupZIndex, resolvedOpen, showSearch]);
 
   useEffect(() => {
     if (!resolvedOpen || typeof document === 'undefined') return;
@@ -164,6 +190,27 @@ const ShopSelect: React.FC<ShopSelectProps> = ({
   const isDisabled = disabled || loading;
   const resolvedSearchPlaceholder = searchPlaceholder || placeholder || 'Search';
 
+  const selectActiveOption = () => {
+    const option = filteredOptions.find((item) => item.value === activeOptionValue && !item.disabled);
+    if (!option || isDisabled) return;
+    onChange?.(option.value);
+    setOpen(false);
+  };
+
+  const moveActiveOption = (direction: 1 | -1, edge?: 'start' | 'end') => {
+    const enabledOptions = filteredOptions.filter((option) => !option.disabled);
+    if (enabledOptions.length === 0) return;
+    if (edge) {
+      setActiveOptionValue((edge === 'start' ? enabledOptions[0] : enabledOptions[enabledOptions.length - 1]).value);
+      return;
+    }
+    const currentIndex = enabledOptions.findIndex((option) => option.value === activeOptionValue);
+    const nextIndex = currentIndex < 0
+      ? (direction > 0 ? 0 : enabledOptions.length - 1)
+      : (currentIndex + direction + enabledOptions.length) % enabledOptions.length;
+    setActiveOptionValue(enabledOptions[nextIndex].value);
+  };
+
   const popup = resolvedOpen && typeof document !== 'undefined'
     ? createPortal(
         <div
@@ -171,7 +218,26 @@ const ShopSelect: React.FC<ShopSelectProps> = ({
           className={`shop-select__popup ${showSearch ? 'shop-select__popup--searchable' : ''} ${popupClassName}`.trim()}
           role="listbox"
           aria-label={ariaLabel}
+          aria-activedescendant={activeOptionValue ? `${listId}-option-${filteredOptions.findIndex((option) => option.value === activeOptionValue)}` : undefined}
           aria-busy={loading || undefined}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowDown') {
+              event.preventDefault();
+              moveActiveOption(1);
+            } else if (event.key === 'ArrowUp') {
+              event.preventDefault();
+              moveActiveOption(-1);
+            } else if (event.key === 'Home') {
+              event.preventDefault();
+              moveActiveOption(1, 'start');
+            } else if (event.key === 'End') {
+              event.preventDefault();
+              moveActiveOption(-1, 'end');
+            } else if (event.key === 'Enter') {
+              event.preventDefault();
+              selectActiveOption();
+            }
+          }}
           style={popupStyle}
         >
           {showSearch ? (
@@ -208,7 +274,8 @@ const ShopSelect: React.FC<ShopSelectProps> = ({
                   key={option.value}
                   type="button"
                   role="option"
-                  className={`shop-select__option${active ? ' shop-select__option--selected' : ''} ${option.className || ''}`.trim()}
+                  id={`${listId}-option-${filteredOptions.indexOf(option)}`}
+                  className={`shop-select__option${active ? ' shop-select__option--selected' : ''}${activeOptionValue === option.value ? ' shop-select__option--active' : ''} ${option.className || ''}`.trim()}
                   aria-selected={active}
                   aria-label={optionLabel}
                   title={optionLabel}
@@ -218,6 +285,7 @@ const ShopSelect: React.FC<ShopSelectProps> = ({
                     onChange?.(option.value);
                     setOpen(false);
                   }}
+                  onMouseEnter={() => setActiveOptionValue(option.value)}
                 >
                   <span className="shop-select__optionLabel">{option.label}</span>
                 </button>
@@ -248,6 +316,13 @@ const ShopSelect: React.FC<ShopSelectProps> = ({
             if (isDisabled) return;
             setOpen(!resolvedOpen);
           }}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+              event.preventDefault();
+              if (!resolvedOpen) setOpen(true);
+              moveActiveOption(event.key === 'ArrowDown' ? 1 : -1);
+            }
+          }}
         >
           <span className={`shop-select__value${selected ? '' : ' shop-select__value--placeholder'}`}>{displayLabel}</span>
           <span className={`shop-select__arrow${loading ? ' shop-select__arrow--loading' : ''}`} aria-hidden="true" />
@@ -256,8 +331,8 @@ const ShopSelect: React.FC<ShopSelectProps> = ({
           <button
             type="button"
             className="shop-select__clear"
-            aria-label="Clear"
-            title="Clear"
+            aria-label={clearLabel}
+            title={clearLabel}
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();

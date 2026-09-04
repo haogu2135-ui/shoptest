@@ -61,4 +61,9 @@ describe('ShopButton', () => {
     expect(button).toHaveClass('shop-button--block');
     expect(button).toHaveClass('checkout-submit');
   });
+
+  it('gives icon-only buttons a fallback accessible name', () => {
+    render(<ShopButton icon={<span aria-hidden="true">+</span>} />);
+    expect(screen.getByRole('button', { name: 'Button' })).toBeInTheDocument();
+  });
 });

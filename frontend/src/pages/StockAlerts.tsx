@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { useNavigate } from 'react-router-dom';
-import { cartApi, productApi } from '../api';
+import { cartApi, createApiAbortController, productApi } from '../api';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
@@ -56,6 +56,9 @@ const StockAlerts: React.FC = () => {
   const [addingProductIds, setAddingProductIds] = useState<Set<number>>(() => new Set());
   const inFlightCartProductIds = useRef(new Set<number>());
   const addingReadyRef = useRef(false);
+  const productFetchSeqRef = useRef(0);
+  const productFetchAbortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
   const stockAlertProductName = (
     item: { productId: number; productName?: string; product?: Pick<Product, 'id' | 'name'> },
   ) => resolveStockAlertProductName(item, t);
@@ -66,19 +69,37 @@ const StockAlerts: React.FC = () => {
     return () => window.removeEventListener('shop:stock-alerts-updated', refresh);
   }, []);
 
+  useEffect(() => () => {
+    mountedRef.current = false;
+    productFetchSeqRef.current += 1;
+    productFetchAbortRef.current?.abort();
+    productFetchAbortRef.current = null;
+  }, []);
+
   useEffect(() => {
-    let disposed = false;
     const loadProducts = async () => {
+      const requestSeq = productFetchSeqRef.current + 1;
+      productFetchSeqRef.current = requestSeq;
+      productFetchAbortRef.current?.abort();
+      const abortController = createApiAbortController();
+      productFetchAbortRef.current = abortController;
+      const isCurrentRequest = () => mountedRef.current
+        && productFetchSeqRef.current === requestSeq
+        && !abortController.signal.aborted;
       if (alerts.length === 0) {
-        setProducts({});
-        setLoadError('');
+        if (isCurrentRequest()) {
+          setProducts({});
+          setLoadError('');
+          setLoading(false);
+        }
+        if (productFetchAbortRef.current === abortController) productFetchAbortRef.current = null;
         return;
       }
       try {
         setLoading(true);
         const productIds = Array.from(new Set(alerts.map((alert) => alert.productId)));
-        const response = await productApi.getByIds(productIds);
-        if (disposed) return;
+        const response = await productApi.getByIds(productIds, { signal: abortController.signal });
+        if (!isCurrentRequest()) return;
         const nextProducts = response.data.reduce<Record<number, Product>>((acc, item) => {
           const product = localizeProduct(item, language);
           acc[product.id] = product;
@@ -87,18 +108,16 @@ const StockAlerts: React.FC = () => {
         setProducts(nextProducts);
         setLoadError('');
       } catch (error: unknown) {
-        if (disposed) return;
+        if (!isCurrentRequest()) return;
         const localizedError = getApiErrorMessage(error, t('pages.stockAlerts.loadFailed'), language);
         setLoadError(localizedError);
         announceAccessibleMessage(localizedError, 'error');
       } finally {
-        if (!disposed) setLoading(false);
+        if (productFetchAbortRef.current === abortController) productFetchAbortRef.current = null;
+        if (isCurrentRequest()) setLoading(false);
       }
     };
     loadProducts();
-    return () => {
-      disposed = true;
-    };
   }, [alerts, language, reloadKey, t]);
 
   const removeAlert = (productId: number) => {

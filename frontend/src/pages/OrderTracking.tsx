@@ -76,6 +76,9 @@ const OrderTracking: React.FC = () => {
   const trackRequestSeqRef = useRef(0);
   const trackAbortRef = useRef<AbortController | null>(null);
   const refreshAbortRef = useRef<AbortController | null>(null);
+  const paymentAbortRef = useRef<AbortController | null>(null);
+  const paymentRequestSeqRef = useRef(0);
+  const payingRef = useRef(false);
   const { t, language } = useLanguage();
   usePageTitle(t('pages.orderTracking.title'));
   useDocumentMeta({
@@ -172,12 +175,15 @@ const OrderTracking: React.FC = () => {
       trackRequestSeqRef.current += 1;
       trackAbortRef.current?.abort();
       refreshAbortRef.current?.abort();
+      paymentAbortRef.current?.abort();
     };
   }, []);
 
   const trackOrder = useCallback(async (values: { orderNo: string; email: string }, quiet = false) => {
     trackAbortRef.current?.abort();
     refreshAbortRef.current?.abort();
+    paymentAbortRef.current?.abort();
+    paymentRequestSeqRef.current += 1;
     const requestSeq = trackRequestSeqRef.current + 1;
     trackRequestSeqRef.current = requestSeq;
     const abortController = createApiAbortController();
@@ -362,9 +368,20 @@ const OrderTracking: React.FC = () => {
 
   const continuePayment = async () => {
     if (!order || order.status !== 'PENDING_PAYMENT' || !canOperateTrackedOrder) return;
+    if (payingRef.current) return;
+    payingRef.current = true;
+    paymentAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    paymentAbortRef.current = abortController;
+    const requestSeq = paymentRequestSeqRef.current + 1;
+    paymentRequestSeqRef.current = requestSeq;
+    const isCurrentPaymentRequest = () => mountedRef.current
+      && paymentRequestSeqRef.current === requestSeq
+      && paymentAbortRef.current === abortController
+      && !abortController.signal.aborted;
     setPaying(true);
     try {
-      const paymentsRes = await paymentApi.getByOrder(order.id, canUseGuestActions ? trackedEmail : undefined, canUseGuestActions ? order.orderNo : undefined);
+      const paymentsRes = await paymentApi.getByOrder(order.id, canUseGuestActions ? trackedEmail : undefined, canUseGuestActions ? order.orderNo : undefined, { signal: abortController.signal });
       const payments = paymentsRes.data || [];
       if (payments.some((payment: PaymentCustomer) => String(payment.status || '').trim().toUpperCase() === 'RECONCILE_REQUIRED')) {
         announceAccessibleMessage(t('pages.profile.paymentReturnReconcileRequired'), 'warning');
@@ -374,7 +391,7 @@ const OrderTracking: React.FC = () => {
         || payments.find((payment: PaymentCustomer) => payment.status === 'PENDING' && !getPaymentRecoveryState(payment).isExpired);
       let payment = reusablePayment;
       if (!payment) {
-        const channelsRes = await paymentApi.getChannels();
+        const channelsRes = await paymentApi.getChannels({ signal: abortController.signal });
         const channels = channelsRes.data || [];
         const channel = channels.find((item) => item.code === order.paymentMethod)?.code
           || channels.find((item) => item.recommended)?.code
@@ -383,8 +400,9 @@ const OrderTracking: React.FC = () => {
           announceAccessibleMessage(t('pages.checkout.paymentUnavailable'), 'error');
           return;
         }
-        payment = (await paymentApi.create(order.id, channel, canUseGuestActions ? trackedEmail : undefined, canUseGuestActions ? order.orderNo : undefined)).data;
+        payment = (await paymentApi.create(order.id, channel, canUseGuestActions ? trackedEmail : undefined, canUseGuestActions ? order.orderNo : undefined, { signal: abortController.signal })).data;
       }
+      if (!isCurrentPaymentRequest()) return;
       if (payment.status === 'PAID') {
         announceAccessibleMessage(t('pages.checkout.paidTitle'), 'success');
         await refreshTrackedOrder();
@@ -395,9 +413,12 @@ const OrderTracking: React.FC = () => {
         announceAccessibleMessage(t('pages.payment.failed'), 'error');
       }
     } catch (error: unknown) {
+      if (!isCurrentPaymentRequest()) return;
       announceAccessibleMessage(getApiErrorMessage(error, t('pages.profile.continuePayFailed'), language), 'error');
     } finally {
-      setPaying(false);
+      payingRef.current = false;
+      if (paymentAbortRef.current === abortController) paymentAbortRef.current = null;
+      if (mountedRef.current && paymentRequestSeqRef.current === requestSeq) setPaying(false);
     }
   };
 

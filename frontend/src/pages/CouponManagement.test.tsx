@@ -88,9 +88,22 @@ describe('CouponManagement loader cleanup', () => {
     const { unmount } = render(<MemoryRouter><CouponManagement /></MemoryRouter>);
 
     await waitFor(() => expect(mockAdminApi.getCoupons).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockAdminApi.getCouponSummary).toHaveBeenCalledTimes(1));
+    await waitFor(() => expect(mockAdminApi.getUsersPage).toHaveBeenCalledTimes(1));
     await waitFor(() => expect(mockAdminApi.getPetBirthdayCouponConfig).toHaveBeenCalledTimes(1));
 
+    const abortSignals = [
+      mockAdminApi.getCoupons.mock.calls[0][1]?.signal,
+      mockAdminApi.getCouponSummary.mock.calls[0][1]?.signal,
+      mockAdminApi.getUsersPage.mock.calls[0][1]?.signal,
+      mockAdminApi.getPetBirthdayCouponConfig.mock.calls[0][0]?.signal,
+    ] as AbortSignal[];
+    expect(abortSignals).toHaveLength(4);
+    expect(abortSignals.every((signal) => signal instanceof AbortSignal)).toBe(true);
+
     unmount();
+
+    expect(abortSignals.every((signal) => signal.aborted)).toBe(true);
 
     await act(async () => {
       couponsRequest.reject(new Error('coupons failed'));

@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useCallback, useId, useMemo, useState } from 'react';
 import { handleRovingTablistKeyDown } from '../utils/tablistKeyboard';
 import './ShopTabs.css';
 
@@ -28,20 +28,31 @@ const ShopTabs: React.FC<ShopTabsProps> = ({
   style,
   tabBarGutter = 16,
 }) => {
-  const firstKey = items[0]?.key;
-  const firstEnabledKey = items.find((item) => !item.disabled)?.key || firstKey;
+  const tabsId = useId();
+  const normalizedItems = useMemo(() => {
+    const seen = new Set<string>();
+    return items.filter((item) => {
+      if (seen.has(item.key)) return false;
+      seen.add(item.key);
+      return true;
+    });
+  }, [items]);
+  const firstKey = normalizedItems[0]?.key;
+  const firstEnabledKey = normalizedItems.find((item) => !item.disabled)?.key || firstKey;
   const normalizedTabBarGutter = Number.isFinite(tabBarGutter)
     ? Math.max(0, Math.min(Math.floor(tabBarGutter), 96))
     : 16;
   const [internalKey, setInternalKey] = useState<string | undefined>(defaultActiveKey || firstEnabledKey);
   const currentKey = activeKey != null ? activeKey : internalKey;
-  const enabledKeys = useMemo(() => items.filter((item) => !item.disabled).map((item) => item.key), [items]);
+  const enabledKeys = useMemo(() => normalizedItems.filter((item) => !item.disabled).map((item) => item.key), [normalizedItems]);
   const activeItem = useMemo(
-    () => items.find((item) => item.key === currentKey && !item.disabled)
-      || items.find((item) => !item.disabled)
-      || items[0],
-    [items, currentKey],
+    () => normalizedItems.find((item) => item.key === currentKey && !item.disabled)
+      || normalizedItems.find((item) => !item.disabled)
+      || normalizedItems[0],
+    [normalizedItems, currentKey],
   );
+  const tabId = (key: string) => `${tabsId}-tab-${key}`;
+  const tabPanelId = (key: string) => `${tabsId}-tabpanel-${key}`;
 
   const select = useCallback((key: string, disabled?: boolean) => {
     if (disabled) return;
@@ -54,16 +65,16 @@ const ShopTabs: React.FC<ShopTabsProps> = ({
       <div className="shop-tabs__nav ant-tabs-nav" role="tablist" aria-orientation="horizontal">
         <div className="shop-tabs__navWrap ant-tabs-nav-wrap">
           <div className="shop-tabs__navList ant-tabs-nav-list" style={{ gap: normalizedTabBarGutter }}>
-            {items.map((item) => {
+            {normalizedItems.map((item) => {
               const selected = activeItem?.key === item.key;
               return (
                 <button
                   key={item.key}
                   type="button"
                   role="tab"
-                  id={`shop-tab-${item.key}`}
+                  id={tabId(item.key)}
                   aria-selected={selected}
-                  aria-controls={`shop-tabpanel-${item.key}`}
+                  aria-controls={tabPanelId(item.key)}
                   tabIndex={selected ? 0 : -1}
                   disabled={item.disabled}
                   className={[
@@ -79,7 +90,7 @@ const ShopTabs: React.FC<ShopTabsProps> = ({
                       tabKeys: enabledKeys,
                       activeKey: String(activeItem?.key || item.key),
                       onActivate: (key) => select(key),
-                      getTabElementId: (key) => `shop-tab-${key}`,
+                      getTabElementId: (key) => tabId(key),
                     });
                   }}
                 >
@@ -95,8 +106,8 @@ const ShopTabs: React.FC<ShopTabsProps> = ({
           <div
             className="shop-tabs__tabpane ant-tabs-tabpane ant-tabs-tabpane-active"
             role="tabpanel"
-            id={`shop-tabpanel-${activeItem.key}`}
-            aria-labelledby={`shop-tab-${activeItem.key}`}
+            id={tabPanelId(activeItem.key)}
+            aria-labelledby={tabId(activeItem.key)}
           >
             {activeItem.children}
           </div>

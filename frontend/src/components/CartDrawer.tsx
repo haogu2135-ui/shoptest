@@ -5,7 +5,7 @@ import ShopInputNumber from './ShopInputNumber';
 import ShopButton from './ShopButton';
 import ShopPopconfirm from './ShopPopconfirm';
 import { useNavigate } from 'react-router-dom';
-import { cartApi } from '../api';
+import { cartApi, createApiAbortController } from '../api';
 import type { CartItem, ProductPublic as Product } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
@@ -86,8 +86,14 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
   const [savingForLaterIds, setSavingForLaterIds] = useState<Record<number, boolean>>({});
   const mountedRef = useRef(true);
   const loadCartRequestRef = useRef(0);
+  const loadCartAbortRef = useRef<AbortController | null>(null);
   const refreshCartTimerRef = useRef<number | null>(null);
   const handledOpenRequestRef = useRef<number | null>(null);
+  const removingItemIdsRef = useRef(new Set<number>());
+  const savingForLaterIdsRef = useRef(new Set<number>());
+  const checkoutSubmittingRef = useRef(false);
+  const clearingBlockedRef = useRef(false);
+  const addingSuggestedProductIdsRef = useRef(new Set<number>());
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   const { currency, market, formatMoney } = useMarket();
@@ -104,21 +110,27 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
   const loadCart = useCallback(async () => {
     const requestId = loadCartRequestRef.current + 1;
     loadCartRequestRef.current = requestId;
+    loadCartAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    loadCartAbortRef.current = abortController;
     const authenticated = hasAuthenticatedCartSession();
     if (!authenticated) {
-      if (mountedRef.current) {
+      if (mountedRef.current && loadCartRequestRef.current === requestId) {
         setItems(getGuestCartItems());
         setLoadError('');
+        setLoading(false);
       }
+      if (loadCartAbortRef.current === abortController) loadCartAbortRef.current = null;
       return;
     }
     if (mountedRef.current) setLoading(true);
     try {
-      const res = await cartApi.getItems(0);
-      if (!mountedRef.current || loadCartRequestRef.current !== requestId) return;
+      const res = await cartApi.getItems(0, { signal: abortController.signal });
+      if (!mountedRef.current || abortController.signal.aborted || loadCartRequestRef.current !== requestId) return;
       setItems(res.data);
       setLoadError('');
     } catch (error: unknown) {
+      if (abortController.signal.aborted) return;
       if (mountedRef.current && loadCartRequestRef.current === requestId) {
         if (isAuthExpiredError(error)) {
           setItems(getGuestCartItems());
@@ -130,6 +142,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
         }
       }
     } finally {
+      if (loadCartAbortRef.current === abortController) loadCartAbortRef.current = null;
       if (mountedRef.current && loadCartRequestRef.current === requestId) {
         setLoading(false);
       }
@@ -181,6 +194,12 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
   const openCart = useCallback((detailItems?: CartItem[]) => {
     setOpen(true);
     if (Array.isArray(detailItems)) {
+      loadCartAbortRef.current?.abort();
+      loadCartRequestRef.current += 1;
+      if (refreshCartTimerRef.current !== null) {
+        window.clearTimeout(refreshCartTimerRef.current);
+        refreshCartTimerRef.current = null;
+      }
       setItems(detailItems);
       setLoading(false);
       return;
@@ -206,6 +225,12 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
     const refreshCart = (event: Event) => {
       const detailItems = (event as CustomEvent<{ items?: CartItem[] }>).detail?.items;
       if (Array.isArray(detailItems)) {
+        loadCartAbortRef.current?.abort();
+        loadCartRequestRef.current += 1;
+        if (refreshCartTimerRef.current !== null) {
+          window.clearTimeout(refreshCartTimerRef.current);
+          refreshCartTimerRef.current = null;
+        }
         setItems(detailItems);
         setLoading(false);
         return;
@@ -234,12 +259,18 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
     openCart(initialOpenRequest.items);
   }, [initialOpenRequest, openCart]);
 
-  useEffect(() => () => {
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
     mountedRef.current = false;
+    loadCartRequestRef.current += 1;
+    loadCartAbortRef.current?.abort();
+    loadCartAbortRef.current = null;
     if (refreshCartTimerRef.current !== null) {
       window.clearTimeout(refreshCartTimerRef.current);
       refreshCartTimerRef.current = null;
     }
+    };
   }, []);
 
   const checkoutItems = useMemo(() => items.filter(canCheckout), [items]);
@@ -340,6 +371,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       announceAccessibleMessage(t('pages.cart.staleDataWarning'), 'warning');
       return;
     }
+    if (removingItemIdsRef.current.has(item.id)) return;
+    removingItemIdsRef.current.add(item.id);
+    loadCartAbortRef.current?.abort();
+    loadCartRequestRef.current += 1;
     cancelQuantitySync([item.id]);
     try {
       const authenticated = hasAuthenticatedCartSession();
@@ -354,6 +389,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
     } catch (err: unknown) {
       if (!mountedRef.current) return;
       announceAccessibleMessage(getApiErrorMessage(err, t('messages.deleteFailed'), language), 'error');
+    } finally {
+      removingItemIdsRef.current.delete(item.id);
     }
   };
 
@@ -362,11 +399,15 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       announceAccessibleMessage(t('pages.cart.staleDataWarning'), 'warning');
       return;
     }
-    if (savingForLaterIds[item.id]) return;
+    if (savingForLaterIds[item.id] || savingForLaterIdsRef.current.has(item.id)) return;
+    savingForLaterIdsRef.current.add(item.id);
+    loadCartAbortRef.current?.abort();
+    loadCartRequestRef.current += 1;
     cancelQuantitySync([item.id]);
     const previousSavedItems = getSavedForLaterItems();
     const savedItem = saveCartItemForLater(item);
     if (!savedItem) {
+      savingForLaterIdsRef.current.delete(item.id);
       announceAccessibleMessage(t('messages.operationFailed'), 'error');
       return;
     }
@@ -387,6 +428,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       if (!mountedRef.current) return;
       announceAccessibleMessage(getApiErrorMessage(err, t('messages.operationFailed'), language), 'error');
     } finally {
+      savingForLaterIdsRef.current.delete(item.id);
       if (mountedRef.current) {
         setSavingForLaterIds((current) => {
           const next = { ...current };
@@ -398,7 +440,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
   };
 
   const goCheckout = async (paymentMethod?: string) => {
-    if (checkoutSubmitting) return;
+    if (checkoutSubmitting || checkoutSubmittingRef.current) return;
     if (hasStaleCartData) {
       announceAccessibleMessage(t('pages.cart.staleDataWarning'), 'warning');
       return;
@@ -411,6 +453,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       announceAccessibleMessage(t('pages.cart.drawerExpressBlocked', { count: blockedCount }), 'warning');
       return;
     }
+    checkoutSubmittingRef.current = true;
     setCheckoutSubmitting(true);
     setCheckoutPaymentSubmitting(paymentMethod || 'standard');
     try {
@@ -427,6 +470,7 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       reportNonBlockingError('CartDrawer.goCheckout', error);
       return;
     } finally {
+      checkoutSubmittingRef.current = false;
       if (mountedRef.current) {
         setCheckoutSubmitting(false);
         setCheckoutPaymentSubmitting(null);
@@ -440,6 +484,10 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       announceAccessibleMessage(t('pages.cart.staleDataWarning'), 'warning');
       return;
     }
+    if (clearingBlockedRef.current) return;
+    clearingBlockedRef.current = true;
+    loadCartAbortRef.current?.abort();
+    loadCartRequestRef.current += 1;
     try {
       const authenticated = hasAuthenticatedCartSession();
       if (authenticated) {
@@ -468,6 +516,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
     } catch (err: unknown) {
       if (!mountedRef.current) return;
       announceAccessibleMessage(getApiErrorMessage(err, t('messages.operationFailed'), language), 'error');
+    } finally {
+      clearingBlockedRef.current = false;
     }
   };
 
@@ -480,23 +530,29 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
     if (productId === null) {
       throw new Error(t('messages.addFailed'));
     }
+    if (addingSuggestedProductIdsRef.current.has(productId)) return;
+    addingSuggestedProductIdsRef.current.add(productId);
     const productWithSafeId = { ...product, id: productId };
-    const authenticated = hasAuthenticatedCartSession();
-    if (authenticated) {
-      await cartApi.addItem(0, productId, 1);
-      const response = await cartApi.getItems(0);
-      if (!mountedRef.current) return;
-      setItems(response.data);
-      dispatchDomEvent('shop:cart-updated', { items: response.data });
-      return;
+    try {
+      const authenticated = hasAuthenticatedCartSession();
+      if (authenticated) {
+        await cartApi.addItem(0, productId, 1);
+        const response = await cartApi.getItems(0);
+        if (!mountedRef.current) return;
+        setItems(response.data);
+        dispatchDomEvent('shop:cart-updated', { items: response.data });
+        return;
+      }
+      const addedItem = addGuestCartItem(productWithSafeId, 1);
+      if (!addedItem) {
+        throw new Error(t('messages.addFailed'));
+      }
+      const nextItems = getGuestCartItems();
+      setItems(nextItems);
+      dispatchDomEvent('shop:cart-updated', { items: nextItems });
+    } finally {
+      addingSuggestedProductIdsRef.current.delete(productId);
     }
-    const addedItem = addGuestCartItem(productWithSafeId, 1);
-    if (!addedItem) {
-      throw new Error(t('messages.addFailed'));
-    }
-    const nextItems = getGuestCartItems();
-    setItems(nextItems);
-    dispatchDomEvent('shop:cart-updated', { items: nextItems });
   };
 
   const drawerNextAction = (() => {

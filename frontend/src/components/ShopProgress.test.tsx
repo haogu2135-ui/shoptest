@@ -26,4 +26,11 @@ describe('ShopProgress', () => {
     expect(bar).toHaveClass('ant-progress-circle');
     expect(bar).toHaveTextContent('80');
   });
+
+  it('clamps percentages and keeps tiny circles usable', () => {
+    render(<ShopProgress type="circle" percent={Infinity} size={1} />);
+    const bar = screen.getByRole('progressbar');
+    expect(bar).toHaveAttribute('aria-valuenow', '0');
+    expect(bar).toHaveStyle({ width: '16px', height: '16px' });
+  });
 });

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Form, Table } from 'antd';
 import {
@@ -11,6 +11,7 @@ import {
   WarningOutlined,
 } from '@ant-design/icons';
 import { adminApi } from '../api/admin';
+import { createApiAbortController } from '../api';
 import type { Product } from '../types';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
@@ -81,6 +82,9 @@ const InventoryManagement: React.FC = () => {
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const [form] = Form.useForm<StockAdjustFormValues>();
+  const inventoryRequestSeqRef = useRef(0);
+  const inventoryAbortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
   const adjustMode = Form.useWatch('mode', form);
   const adjustAmount = Form.useWatch('amount', form);
   const debouncedKeyword = useDebounce(keyword);
@@ -96,6 +100,11 @@ const InventoryManagement: React.FC = () => {
   const refreshActionLabel = `${t('common.refresh')}: ${pageLabel}`;
 
   const fetchInventory = useCallback(async () => {
+    const requestSeq = inventoryRequestSeqRef.current + 1;
+    inventoryRequestSeqRef.current = requestSeq;
+    inventoryAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    inventoryAbortRef.current = abortController;
     setLoading(true);
     try {
       const [productsResponse, summaryResponse] = await Promise.all([
@@ -105,20 +114,33 @@ const InventoryManagement: React.FC = () => {
           page: Math.max(0, page - 1),
           size: pageSize,
           sort: 'lowstock',
-        }),
-        adminApi.getInventorySummary(),
+        }, { signal: abortController.signal }),
+        adminApi.getInventorySummary({ signal: abortController.signal }),
       ]);
+      if (!mountedRef.current || abortController.signal.aborted || inventoryRequestSeqRef.current !== requestSeq) return;
       setProducts(productsResponse.data.items);
       setTotal(productsResponse.data.total);
       setHealth(normalizeInventorySummary(summaryResponse.data));
       setLoadError(null);
       setSnapshotLoaded(true);
     } catch (error: unknown) {
+      if (!mountedRef.current || abortController.signal.aborted || inventoryRequestSeqRef.current !== requestSeq) return;
       setLoadError(getApiErrorMessage(error, t('pages.inventoryAdmin.fetchFailed'), language));
     } finally {
-      setLoading(false);
+      if (inventoryAbortRef.current === abortController) inventoryAbortRef.current = null;
+      if (mountedRef.current && inventoryRequestSeqRef.current === requestSeq) setLoading(false);
     }
   }, [categoryId, debouncedKeyword, language, page, pageSize, t]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+    mountedRef.current = false;
+    inventoryRequestSeqRef.current += 1;
+    inventoryAbortRef.current?.abort();
+    inventoryAbortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     void fetchInventory();

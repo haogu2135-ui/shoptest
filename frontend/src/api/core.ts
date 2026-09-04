@@ -472,10 +472,10 @@ export type ApiRequestOptions = {
 
 export type CheckoutRequestOptions = {
     idempotencyKey?: string;
-};
+} & ApiRequestOptions;
 
 export const cacheLoaderOptions = (options?: ApiRequestOptions): ApiRequestOptions | undefined => {
-    if (!options?.signal) return options;
+    if (!options?.signal || options.bypassCache) return options;
     const nextOptions: ApiRequestOptions = {};
     if (options.bypassCache) nextOptions.bypassCache = true;
     if (options.skipAuthRedirect) nextOptions.skipAuthRedirect = true;
@@ -513,9 +513,11 @@ export const anonymousRequestConfig = (config: AxiosRequestConfig = {}, options?
 
 export const checkoutIdempotencyConfig = (options?: CheckoutRequestOptions): AxiosRequestConfig | undefined => {
     const idempotencyKey = normalizeIdempotencyKeyParam(options?.idempotencyKey);
-    return idempotencyKey
-        ? { headers: { 'Idempotency-Key': idempotencyKey } }
-        : undefined;
+    const config: AxiosRequestConfig = {};
+    if (idempotencyKey) config.headers = { 'Idempotency-Key': idempotencyKey };
+    if (options?.signal) config.signal = options.signal;
+    if (options?.skipAuthRedirect) (config as AuthRetryConfig).skipAuthRedirect = true;
+    return Object.keys(config).length > 0 ? config : undefined;
 };
 
 const isUsableGuestAccessToken = (token: string) => {
@@ -809,6 +811,7 @@ export const paymentChannelRuntime = {
 };
 let appConfigCache: { expiresAt: number; response: AxiosResponse<AppConfig> } | null = null;
 let appConfigRequest: Promise<AxiosResponse<AppConfig>> | null = null;
+let appConfigRequestSeq = 0;
 export const adminRuntime = {
     permissionsCache: null as { expiresAt: number; response: AxiosResponse<{ role: string; roleCode?: string; permissions: string[] }> } | null,
     permissionsRequest: null as Promise<AxiosResponse<{ role: string; roleCode?: string; permissions: string[] }>> | null,
@@ -942,19 +945,39 @@ api.delete = ((url: string, config?: AxiosRequestConfig) =>
     runMutationOnce(mutationRequestKey('DELETE', url, undefined, config), () =>
         config === undefined ? rawDelete(url) : rawDelete(url, config))) as typeof api.delete;
 
-const normalizeArrayResponseData = <T,>(data: unknown): T[] => {
+const normalizeArrayResponseData = <T,>(data: unknown, seen = new WeakSet<object>()): T[] => {
     if (Array.isArray(data)) return data as T[];
     if (!data || typeof data !== 'object') return [];
+    if (seen.has(data)) return [];
+    seen.add(data);
     const candidate = data as { data?: unknown; items?: unknown; content?: unknown; records?: unknown; list?: unknown };
     const nested = [candidate.data, candidate.items, candidate.content, candidate.records, candidate.list]
         .find((value) => Array.isArray(value));
     if (Array.isArray(nested)) return nested as T[];
-    return normalizeArrayResponseData<T>(candidate.data);
+    return normalizeArrayResponseData<T>(candidate.data, seen);
 };
 
 export const withArrayData = <T,>(response: AxiosResponse<T[]>): AxiosResponse<T[]> => ({
     ...response,
     data: normalizeArrayResponseData<T>(response.data),
+});
+
+const normalizeCountResponseData = (data: unknown, seen = new WeakSet<object>()): number => {
+    if (!data || typeof data !== 'object' || seen.has(data)) return 0;
+    seen.add(data);
+    const source = data as { count?: unknown; data?: unknown; value?: unknown };
+    const candidate = source.count ?? source.value;
+    const count = Number(candidate);
+    if (Number.isFinite(count)) return Math.max(0, Math.floor(count));
+    return normalizeCountResponseData(source.data, seen);
+};
+
+export const withCountData = <T extends { count: number }>(response: AxiosResponse<T>): AxiosResponse<T> => ({
+    ...response,
+    data: {
+        ...(isRecord(response.data) ? response.data : {}),
+        count: normalizeCountResponseData(response.data),
+    } as T,
 });
 
 export const isMissingAdminOptionEndpointError = (error: unknown) => {
@@ -1012,6 +1035,12 @@ const normalizeProductPageData = <T extends ProductPublic>(data: unknown): T[] =
     return Array.isArray(content) ? content.map(normalizeProduct) : [];
 };
 
+const normalizeResponseInteger = (value: unknown): number | null => {
+    if (value === null || value === undefined || value === '' || typeof value === 'boolean') return null;
+    const numeric = Number(value);
+    return Number.isSafeInteger(numeric) ? numeric : null;
+};
+
 const normalizeProduct = <T extends ProductPublic>(product: T): T => ({
     ...product,
     images: normalizeProductImages(product),
@@ -1033,24 +1062,24 @@ export const normalizeProductPublicPageResponse = (response: AxiosResponse<Produ
     const raw = response.data as ProductPublicPage | ProductPublic[];
     const metadata: Record<string, unknown> = isRecord(raw) ? raw : {};
     const items = normalizeProductPageData<ProductPublic>(raw);
-    const rawPage = Number(metadata.page);
-    const rawSize = Number(metadata.size);
-    const page = Number.isFinite(rawPage) && rawPage >= 0 ? rawPage : 0;
-    const size = Number.isFinite(rawSize) && rawSize > 0 ? rawSize : Math.max(1, items.length);
+    const rawPage = normalizeResponseInteger(metadata.page);
+    const rawSize = normalizeResponseInteger(metadata.size);
+    const page = rawPage !== null && rawPage >= 0 ? rawPage : 0;
+    const size = rawSize !== null && rawSize > 0 ? rawSize : Math.max(1, items.length);
     const rawTotal = Array.isArray(raw)
         ? items.length
-        : Number(metadata.total ?? metadata.totalElements ?? items.length);
-    const total = Number.isFinite(rawTotal) && rawTotal >= 0 ? rawTotal : items.length;
-    const rawTotalPages = Number(metadata.totalPages);
-    const totalPages = Number.isFinite(rawTotalPages) && rawTotalPages >= 0
+        : normalizeResponseInteger(metadata.total ?? metadata.totalElements);
+    const total = rawTotal !== null && rawTotal >= 0 ? rawTotal : items.length;
+    const rawTotalPages = normalizeResponseInteger(metadata.totalPages);
+    const totalPages = rawTotalPages !== null && rawTotalPages >= 0
         ? rawTotalPages
         : (total === 0 ? 0 : Math.ceil(total / size));
     const hasNext = Array.isArray(raw)
         ? page + 1 < totalPages
-        : Boolean(metadata.hasNext ?? page + 1 < totalPages);
+        : typeof metadata.hasNext === 'boolean' ? metadata.hasNext : page + 1 < totalPages;
     const hasPrevious = Array.isArray(raw)
         ? page > 0
-        : Boolean(metadata.hasPrevious ?? page > 0);
+        : typeof metadata.hasPrevious === 'boolean' ? metadata.hasPrevious : page > 0;
     return {
         ...response,
         data: {
@@ -1070,24 +1099,24 @@ export const normalizeProductAdminPageResponse = (response: AxiosResponse<AdminP
     const raw = response.data as AdminProductPage | Product[];
     const metadata: Record<string, unknown> = isRecord(raw) ? raw : {};
     const items = normalizeProductPageData<Product>(raw);
-    const rawPage = Number(metadata.page);
-    const rawSize = Number(metadata.size);
-    const page = Number.isFinite(rawPage) && rawPage >= 0 ? rawPage : 0;
-    const size = Number.isFinite(rawSize) && rawSize > 0 ? rawSize : Math.max(1, items.length);
+    const rawPage = normalizeResponseInteger(metadata.page);
+    const rawSize = normalizeResponseInteger(metadata.size);
+    const page = rawPage !== null && rawPage >= 0 ? rawPage : 0;
+    const size = rawSize !== null && rawSize > 0 ? rawSize : Math.max(1, items.length);
     const rawTotal = Array.isArray(raw)
         ? items.length
-        : Number(metadata.total ?? metadata.totalElements ?? items.length);
-    const total = Number.isFinite(rawTotal) && rawTotal >= 0 ? rawTotal : items.length;
-    const rawTotalPages = Number(metadata.totalPages);
-    const totalPages = Number.isFinite(rawTotalPages) && rawTotalPages >= 0
+        : normalizeResponseInteger(metadata.total ?? metadata.totalElements);
+    const total = rawTotal !== null && rawTotal >= 0 ? rawTotal : items.length;
+    const rawTotalPages = normalizeResponseInteger(metadata.totalPages);
+    const totalPages = rawTotalPages !== null && rawTotalPages >= 0
         ? rawTotalPages
         : (total === 0 ? 0 : Math.ceil(total / size));
     const hasNext = Array.isArray(raw)
         ? page + 1 < totalPages
-        : Boolean(metadata.hasNext ?? page + 1 < totalPages);
+        : typeof metadata.hasNext === 'boolean' ? metadata.hasNext : page + 1 < totalPages;
     const hasPrevious = Array.isArray(raw)
         ? page > 0
-        : Boolean(metadata.hasPrevious ?? page > 0);
+        : typeof metadata.hasPrevious === 'boolean' ? metadata.hasPrevious : page > 0;
     return {
         ...response,
         data: {
@@ -1138,22 +1167,37 @@ export const cacheProductPageResponse = (cacheKey: string, response: AxiosRespon
 
 export const appConfigApi = {
     get: (options?: ApiRequestOptions) => {
-        if (appConfigCache && appConfigCache.expiresAt > Date.now()) {
+        if (!options?.bypassCache && appConfigCache && appConfigCache.expiresAt > Date.now()) {
             return Promise.resolve(appConfigCache.response);
+        }
+        if (options?.bypassCache) {
+            const requestSeq = ++appConfigRequestSeq;
+            return api.get<AppConfig>('/app/config', anonymousGetConfig(undefined, options))
+                .then((response) => {
+                    if (appConfigRequestSeq === requestSeq) {
+                        appConfigCache = { response, expiresAt: Date.now() + APP_CONFIG_CACHE_MS };
+                    }
+                    return response;
+                });
         }
         if (options?.signal) {
             return api.get<AppConfig>('/app/config', anonymousGetConfig(undefined, options));
         }
         if (appConfigRequest) return appConfigRequest;
-        appConfigRequest = api.get<AppConfig>('/app/config', anonymousGetConfig())
+        const requestSeq = ++appConfigRequestSeq;
+        let request: Promise<AxiosResponse<AppConfig>>;
+        request = api.get<AppConfig>('/app/config', anonymousGetConfig(undefined, options))
             .then((response) => {
-                appConfigCache = { response, expiresAt: Date.now() + APP_CONFIG_CACHE_MS };
+                if (appConfigRequestSeq === requestSeq) {
+                    appConfigCache = { response, expiresAt: Date.now() + APP_CONFIG_CACHE_MS };
+                }
                 return response;
             })
             .finally(() => {
-                appConfigRequest = null;
+                if (appConfigRequest === request) appConfigRequest = null;
             });
-        return appConfigRequest;
+        appConfigRequest = request;
+        return request;
     },
 };
 
@@ -1322,29 +1366,51 @@ export const clearAdminReviewCache = () => {
     clearAdminDashboardCache();
 };
 
+const normalizeAdminPageMetadata = (data: unknown, itemCount: number, defaultSize: number, fallbackSize = defaultSize) => {
+    const source = isRecord(data) ? data : {};
+    const rawTotal = normalizeResponseInteger(source.total ?? source.totalElements);
+    const rawPage = normalizeResponseInteger(source.page);
+    const rawSize = normalizeResponseInteger(source.size);
+    const total = rawTotal !== null && rawTotal >= 0 ? rawTotal : itemCount;
+    const page = rawPage !== null && rawPage >= 1 ? rawPage : 1;
+    const size = rawSize !== null && rawSize >= 1
+        ? rawSize
+        : Math.max(1, fallbackSize);
+    const rawTotalPages = normalizeResponseInteger(source.totalPages);
+    const totalPages = rawTotalPages !== null && rawTotalPages >= 0
+        ? rawTotalPages
+        : (total === 0 ? 0 : Math.ceil(total / size));
+    return {
+        total,
+        page,
+        size,
+        totalPages,
+        hasNext: typeof source.hasNext === 'boolean' ? source.hasNext : page < totalPages,
+        hasPrevious: typeof source.hasPrevious === 'boolean' ? source.hasPrevious : page > 1,
+    };
+};
+
 export const normalizeAdminReviewPageResponse = (response: AxiosResponse<AdminReviewPage | Review[]>): AxiosResponse<AdminReviewPage> => {
     if (Array.isArray(response.data)) {
+        const metadata = normalizeAdminPageMetadata(undefined, response.data.length, 20, response.data.length || 20);
         return {
             ...response,
             data: {
                 items: response.data,
-                total: response.data.length,
-                page: 1,
-                size: response.data.length,
-                totalPages: response.data.length ? 1 : 0,
+                ...metadata,
             },
         };
     }
+    const source: Record<string, unknown> = isRecord(response.data) ? response.data : {};
+    const items = Array.isArray(source.items) ? source.items as Review[] : [];
+    const metadata = normalizeAdminPageMetadata(source, items.length, 20);
     return {
         ...response,
         data: {
-            ...response.data,
-            items: Array.isArray(response.data?.items) ? response.data.items : [],
-            total: Number(response.data?.total || 0),
-            page: Number(response.data?.page || 1),
-            size: Number(response.data?.size || 20),
-            totalPages: Number(response.data?.totalPages || 0),
-            summary: response.data?.summary || {},
+            ...source,
+            items,
+            ...metadata,
+            summary: isRecord(source.summary) ? source.summary as Record<string, number> : {},
         },
     };
 };
@@ -1352,41 +1418,32 @@ export const normalizeAdminReviewPageResponse = (response: AxiosResponse<AdminRe
 export const normalizeAdminCouponPageResponse = (response: AxiosResponse<AdminCouponPage | Coupon[]>): AxiosResponse<AdminCouponPage> => {
     if (Array.isArray(response.data)) {
         const items = response.data;
+        const metadata = normalizeAdminPageMetadata(undefined, items.length, 20, items.length || 20);
         response.data = {
             items,
-            total: items.length,
-            page: 1,
-            size: Math.max(1, items.length || 20),
-            totalPages: items.length ? 1 : 0,
+            ...metadata,
         };
         return response as AxiosResponse<AdminCouponPage>;
     }
-    const items = Array.isArray(response.data?.items) ? response.data.items : [];
-    const total = Number(response.data?.total ?? items.length);
-    const page = Number(response.data?.page || 1);
-    const size = Number(response.data?.size || Math.max(1, items.length || 20));
-    const totalPages = Number(response.data?.totalPages ?? (total > 0 ? Math.ceil(total / size) : 0));
+    const source: Record<string, unknown> = isRecord(response.data) ? response.data : {};
+    const items = Array.isArray(source.items) ? source.items as Coupon[] : [];
+    const metadata = normalizeAdminPageMetadata(source, items.length, 20);
     response.data = {
-        ...response.data,
+        ...source,
         items,
-        total: Number.isFinite(total) && total >= 0 ? total : items.length,
-        page: Number.isFinite(page) && page > 0 ? page : 1,
-        size: Number.isFinite(size) && size > 0 ? size : 20,
-        totalPages: Number.isFinite(totalPages) && totalPages >= 0 ? totalPages : 0,
+        ...metadata,
     };
     return response as AxiosResponse<AdminCouponPage>;
 };
 
 export const normalizeAdminPetGalleryPageResponse = (response: AxiosResponse<AdminPetGalleryPage | AdminPetGalleryPhoto[]>): AxiosResponse<AdminPetGalleryPage> => {
     if (Array.isArray(response.data)) {
+        const metadata = normalizeAdminPageMetadata(undefined, response.data.length, 12, response.data.length || 12);
         return {
             ...response,
             data: {
                 items: response.data,
-                total: response.data.length,
-                page: 1,
-                size: response.data.length,
-                totalPages: response.data.length ? 1 : 0,
+                ...metadata,
                 summary: {
                     visiblePhotos: response.data.length,
                     userUploads: response.data.filter((photo) => (photo.source || 'USER_UPLOAD') === 'USER_UPLOAD').length,
@@ -1395,16 +1452,16 @@ export const normalizeAdminPetGalleryPageResponse = (response: AxiosResponse<Adm
             },
         };
     }
+    const source: Record<string, unknown> = isRecord(response.data) ? response.data : {};
+    const items = Array.isArray(source.items) ? source.items as AdminPetGalleryPhoto[] : [];
+    const metadata = normalizeAdminPageMetadata(source, items.length, 12);
     return {
         ...response,
         data: {
-            ...response.data,
-            items: Array.isArray(response.data?.items) ? response.data.items : [],
-            total: Number(response.data?.total || 0),
-            page: Number(response.data?.page || 1),
-            size: Number(response.data?.size || 12),
-            totalPages: Number(response.data?.totalPages || 0),
-            summary: response.data?.summary || {},
+            ...source,
+            items,
+            ...metadata,
+            summary: isRecord(source.summary) ? source.summary as Record<string, number> : {},
         },
     };
 };
@@ -1412,21 +1469,20 @@ export const normalizeAdminPetGalleryPageResponse = (response: AxiosResponse<Adm
 export const normalizeAdminUserPageResponse = (response: AxiosResponse<AdminUserPage | User[]>): AxiosResponse<AdminUserPage> => {
     if (Array.isArray(response.data)) {
         const items = response.data;
+        const metadata = normalizeAdminPageMetadata(undefined, items.length, 20, items.length || 20);
         response.data = {
             items,
-            total: items.length,
-            page: 1,
-            size: Math.max(1, items.length || 20),
-            totalPages: items.length ? 1 : 0,
+            ...metadata,
         };
         return response as AxiosResponse<AdminUserPage>;
     }
+    const source: Record<string, unknown> = isRecord(response.data) ? response.data : {};
+    const items = Array.isArray(source.items) ? source.items as User[] : [];
+    const metadata = normalizeAdminPageMetadata(source, items.length, 20);
     response.data = {
-        items: Array.isArray(response.data?.items) ? response.data.items : [],
-        total: Number(response.data?.total || 0),
-        page: Number(response.data?.page || 1),
-        size: Number(response.data?.size || 20),
-        totalPages: Number(response.data?.totalPages || 0),
+        ...source,
+        items,
+        ...metadata,
     };
     return response as AxiosResponse<AdminUserPage>;
 };
@@ -1436,31 +1492,22 @@ export const normalizeSiteAnnouncementPageResponse = (
 ): AxiosResponse<SiteAnnouncementAdminPage> => {
     if (Array.isArray(response.data)) {
         const items = response.data;
+        const metadata = normalizeAdminPageMetadata(undefined, items.length, 20, items.length || 20);
         response.data = {
             items,
-            total: items.length,
-            page: 1,
-            size: Math.max(1, items.length || 20),
-            totalPages: items.length ? 1 : 0,
+            ...metadata,
             hasNext: false,
             hasPrevious: false,
         };
         return response as AxiosResponse<SiteAnnouncementAdminPage>;
     }
-    const items = Array.isArray(response.data?.items) ? response.data.items : [];
-    const total = Number(response.data?.total ?? items.length);
-    const page = Number(response.data?.page || 1);
-    const size = Number(response.data?.size || Math.max(1, items.length || 20));
-    const totalPages = Number(response.data?.totalPages ?? (total > 0 ? Math.ceil(total / size) : 0));
+    const source: Record<string, unknown> = isRecord(response.data) ? response.data : {};
+    const items = Array.isArray(source.items) ? source.items as SiteAnnouncement[] : [];
+    const metadata = normalizeAdminPageMetadata(source, items.length, 20);
     response.data = {
-        ...response.data,
+        ...source,
         items,
-        total: Number.isFinite(total) && total >= 0 ? total : items.length,
-        page: Number.isFinite(page) && page > 0 ? page : 1,
-        size: Number.isFinite(size) && size > 0 ? size : 20,
-        totalPages: Number.isFinite(totalPages) && totalPages >= 0 ? totalPages : 0,
-        hasNext: Boolean(response.data?.hasNext ?? page < totalPages),
-        hasPrevious: Boolean(response.data?.hasPrevious ?? page > 1),
+        ...metadata,
     };
     return response as AxiosResponse<SiteAnnouncementAdminPage>;
 };
@@ -1470,33 +1517,24 @@ export const normalizeAdminSupportSessionPageResponse = (
 ): AxiosResponse<SupportAdminSessionPage> => {
     if (Array.isArray(response.data)) {
         const items = response.data.map(normalizeAdminSupportSession);
+        const metadata = normalizeAdminPageMetadata(undefined, items.length, 20, items.length || 20);
         response.data = {
             items,
-            total: items.length,
-            page: 1,
-            size: Math.max(1, items.length || 20),
-            totalPages: items.length ? 1 : 0,
+            ...metadata,
             hasNext: false,
             hasPrevious: false,
         };
         return response as AxiosResponse<SupportAdminSessionPage>;
     }
-    const items = Array.isArray(response.data?.items)
-        ? response.data.items.map(normalizeAdminSupportSession)
+    const source: Record<string, unknown> = isRecord(response.data) ? response.data : {};
+    const items = Array.isArray(source.items)
+        ? source.items.map((item) => normalizeAdminSupportSession(item as SupportSession & { contextKey?: unknown }))
         : [];
-    const total = Number(response.data?.total ?? items.length);
-    const page = Number(response.data?.page || 1);
-    const size = Number(response.data?.size || Math.max(1, items.length || 20));
-    const totalPages = Number(response.data?.totalPages ?? (total > 0 ? Math.ceil(total / size) : 0));
+    const metadata = normalizeAdminPageMetadata(source, items.length, 20);
     response.data = {
-        ...response.data,
+        ...source,
         items,
-        total: Number.isFinite(total) && total >= 0 ? total : items.length,
-        page: Number.isFinite(page) && page > 0 ? page : 1,
-        size: Number.isFinite(size) && size > 0 ? size : 20,
-        totalPages: Number.isFinite(totalPages) && totalPages >= 0 ? totalPages : 0,
-        hasNext: Boolean(response.data?.hasNext ?? page < totalPages),
-        hasPrevious: Boolean(response.data?.hasPrevious ?? page > 1),
+        ...metadata,
     };
     return response as AxiosResponse<SupportAdminSessionPage>;
 };
@@ -1823,8 +1861,8 @@ export type ProductListFilters = {
 };
 
 // 商品相关 API
-export type SupportMessageQuery = { limit?: number; afterId?: number };
-export type SupportSessionQuery = { limit?: number };
+export type SupportMessageQuery = { limit?: number; afterId?: number; signal?: AbortSignal };
+export type SupportSessionQuery = { limit?: number; signal?: AbortSignal };
 export type AdminSupportSessionQuery = {
     status?: string;
     needsReply?: boolean;

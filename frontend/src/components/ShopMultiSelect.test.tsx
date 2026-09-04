@@ -72,4 +72,32 @@ describe('ShopMultiSelect', () => {
     expect(cssSource).toMatch(/\.shop-multi-select__chip\s*\{[^}]*min-height:\s*44px/);
     expect(cssSource).not.toMatch(/\.shop-multi-select__chip\s*\{[^}]*min-height:\s*(?:3[0-9]|4[0-3])px/);
   });
+
+  it('supports keyboard option navigation and de-duplicates options', () => {
+    const onChange = jest.fn();
+    render(
+      <ShopMultiSelect
+        ariaLabel="Users"
+        open
+        options={[
+          { value: '1', label: 'Ada' },
+          { value: '1', label: 'Duplicate Ada' },
+          { value: '2', label: 'Bob' },
+        ]}
+        onChange={onChange}
+      />,
+    );
+    expect(screen.getAllByRole('option')).toHaveLength(2);
+    const listbox = screen.getByRole('listbox', { name: 'Users' });
+    fireEvent.keyDown(listbox, { key: 'ArrowDown' });
+    fireEvent.keyDown(listbox, { key: 'Enter' });
+    expect(onChange).toHaveBeenCalledWith(['2']);
+  });
+
+  it('uses a custom clear label', () => {
+    render(
+      <ShopMultiSelect ariaLabel="Filters" value={['ready']} allowClear clearLabel="Reset filters" options={[{ value: 'ready', label: 'Ready' }]} />,
+    );
+    expect(screen.getByRole('button', { name: 'Reset filters' })).toBeInTheDocument();
+  });
 });

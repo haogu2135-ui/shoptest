@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { useNavigate } from 'react-router-dom';
-import { wishlistApi, cartApi } from '../api';
+import { createApiAbortController, wishlistApi, cartApi } from '../api';
 import type { WishlistItem } from '../types';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -51,8 +51,11 @@ const Wishlist: React.FC = () => {
   const [addingAllToCart, setAddingAllToCart] = useState(false);
   const mountedRef = useRef(true);
   const wishlistFetchSeqRef = useRef(0);
+  const wishlistFetchAbortRef = useRef<AbortController | null>(null);
   const removingProductIdsRef = useRef(new Set<number>());
   const addingAllToCartRef = useRef(false);
+  const addingProductIdsRef = useRef(new Set<number>());
+  const clearingUnavailableRef = useRef(false);
   const navigate = useNavigate();
   const { t, language } = useLanguage();
   usePageTitle(t('pages.wishlist.pageTitle'));
@@ -80,21 +83,26 @@ const Wishlist: React.FC = () => {
   });
 
   const fetchWishlist = useCallback(async () => {
+    wishlistFetchAbortRef.current?.abort();
     const requestSeq = wishlistFetchSeqRef.current + 1;
     wishlistFetchSeqRef.current = requestSeq;
+    const abortController = createApiAbortController();
+    wishlistFetchAbortRef.current = abortController;
     const isCurrentRequest = () => mountedRef.current && wishlistFetchSeqRef.current === requestSeq;
     try {
-      const res = await wishlistApi.getByUser(0);
+      const res = await wishlistApi.getByUser(0, { signal: abortController.signal });
       if (!isCurrentRequest()) return;
       setItems(res.data);
       setLoadError(null);
     } catch (error) {
+      if (abortController.signal.aborted) return;
       if (!isCurrentRequest()) return;
       const errorMessage = getApiErrorMessage(error, t('pages.wishlist.fetchFailed'), language);
       setLoadError(errorMessage);
       reportNonBlockingError('Wishlist.fetchWishlist', error);
       announceAccessibleMessage(errorMessage, 'error');
     } finally {
+      if (wishlistFetchAbortRef.current === abortController) wishlistFetchAbortRef.current = null;
       if (!isCurrentRequest()) return;
       setLoading(false);
     }
@@ -105,6 +113,10 @@ const Wishlist: React.FC = () => {
     return () => {
       mountedRef.current = false;
       wishlistFetchSeqRef.current += 1;
+      wishlistFetchAbortRef.current?.abort();
+      wishlistFetchAbortRef.current = null;
+      addingProductIdsRef.current.clear();
+      clearingUnavailableRef.current = false;
     };
   }, []);
 
@@ -127,6 +139,8 @@ const Wishlist: React.FC = () => {
       return;
     }
     if (removingProductIdsRef.current.has(productId)) return;
+    wishlistFetchSeqRef.current += 1;
+    wishlistFetchAbortRef.current?.abort();
     removingProductIdsRef.current.add(productId);
     setRemovingProductIds((current) => current.includes(productId) ? current : [...current, productId]);
     try {
@@ -153,6 +167,10 @@ const Wishlist: React.FC = () => {
       announceAccessibleMessage(t('pages.wishlist.staleActionBlocked'), 'warning');
       return;
     }
+    if (addingProductIdsRef.current.has(productId)) return;
+    wishlistFetchSeqRef.current += 1;
+    wishlistFetchAbortRef.current?.abort();
+    addingProductIdsRef.current.add(productId);
     try {
       await cartApi.addItem(0, productId, 1);
       if (!mountedRef.current) return;
@@ -163,6 +181,8 @@ const Wishlist: React.FC = () => {
       if (mountedRef.current) {
         announceAccessibleMessage(getApiErrorMessage(err, t('messages.addFailed'), language), 'error');
       }
+    } finally {
+      addingProductIdsRef.current.delete(productId);
     }
   };
 
@@ -177,6 +197,8 @@ const Wishlist: React.FC = () => {
       return;
     }
     addingAllToCartRef.current = true;
+    wishlistFetchSeqRef.current += 1;
+    wishlistFetchAbortRef.current?.abort();
     setAddingAllToCart(true);
     try {
       const results = await allSettledWithConcurrency(
@@ -206,23 +228,31 @@ const Wishlist: React.FC = () => {
       return;
     }
     if (wishlistGroups.unavailableItems.length === 0) return;
-    const results = await allSettledWithConcurrency(
-      wishlistGroups.unavailableItems,
-      (item) => wishlistApi.remove(0, item.productId),
-    );
-    if (!mountedRef.current) return;
-    const removedProductIds = new Set(
-      wishlistGroups.unavailableItems
-        .filter((_, index) => results[index]?.status === 'fulfilled')
-        .map((item) => item.productId),
-    );
-    if (removedProductIds.size > 0) {
-      setItems((current) => current.filter((item) => !removedProductIds.has(item.productId)));
-      dispatchDomEvent('shop:wishlist-updated');
-      announceAccessibleMessage(t('pages.cart.clearedUnavailable', { count: removedProductIds.size }), 'success');
-      return;
+    if (clearingUnavailableRef.current) return;
+    clearingUnavailableRef.current = true;
+    wishlistFetchSeqRef.current += 1;
+    wishlistFetchAbortRef.current?.abort();
+    try {
+      const results = await allSettledWithConcurrency(
+        wishlistGroups.unavailableItems,
+        (item) => wishlistApi.remove(0, item.productId),
+      );
+      if (!mountedRef.current) return;
+      const removedProductIds = new Set(
+        wishlistGroups.unavailableItems
+          .filter((_, index) => results[index]?.status === 'fulfilled')
+          .map((item) => item.productId),
+      );
+      if (removedProductIds.size > 0) {
+        setItems((current) => current.filter((item) => !removedProductIds.has(item.productId)));
+        dispatchDomEvent('shop:wishlist-updated');
+        announceAccessibleMessage(t('pages.cart.clearedUnavailable', { count: removedProductIds.size }), 'success');
+        return;
+      }
+      announceAccessibleMessage(t('messages.operationFailed'), 'error');
+    } finally {
+      clearingUnavailableRef.current = false;
     }
-    announceAccessibleMessage(t('messages.operationFailed'), 'error');
   };
 
   const recoveryDescriptor = resolveWishlistRecoveryActionDescriptor({

@@ -9,7 +9,7 @@ describe('OrderManagement modal evidence guards', () => {
     expect(pageSource).not.toContain('itemsJson');
     expect(pageSource).not.toMatch(/JSON\.parse\s*\(/);
     expect(pageSource).toContain('const [orderItems, setOrderItems] = useState<OrderItem[]>([]);');
-    expect(pageSource).toContain('const itemsRes = await adminApi.getOrderItems(order.id);');
+    expect(pageSource).toContain('const itemsRes = await adminApi.getOrderItems(order.id, { signal: abortController.signal });');
     expect(pageSource).toContain('setOrderItems(itemsRes.data);');
     expect(pageSource).toContain('dataSource={orderItems}');
   });

@@ -19,6 +19,7 @@ export type ShopUploadProps = {
   /** Always false for ShopUpload; accepted for ant Upload API compatibility. */
   showUploadList?: boolean;
   beforeUpload?: (file: File) => ShopUploadBeforeUploadResult;
+  onChange?: (info: { file: File; fileList: File[] }) => void;
   children?: React.ReactNode;
   ariaLabel?: string;
   'aria-label'?: string;
@@ -37,6 +38,7 @@ const ShopUpload: ShopUploadComponent = ({
   multiple = false,
   className = '',
   beforeUpload,
+  onChange,
   children,
   ariaLabel,
   'aria-label': ariaLabelAttr,
@@ -60,13 +62,20 @@ const ShopUpload: ShopUploadComponent = ({
   const handleFiles = async (fileList: FileList | null) => {
     if (disabled || !fileList || fileList.length === 0) return;
     const files = Array.from(fileList);
+    const acceptedFiles: File[] = [];
     for (const file of files) {
+      let result: ShopUploadBeforeUploadResult = undefined;
       if (beforeUpload) {
         try {
-          await beforeUpload(file);
+          result = await beforeUpload(file);
         } catch (error) {
           reportNonBlockingError('ShopUpload.beforeUpload', error);
+          result = SHOP_UPLOAD_LIST_IGNORE;
         }
+      }
+      if (result !== SHOP_UPLOAD_LIST_IGNORE) {
+        acceptedFiles.push(file);
+        onChange?.({ file, fileList: acceptedFiles.slice() });
       }
       if (!multiple) break;
     }

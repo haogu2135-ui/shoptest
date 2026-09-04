@@ -156,6 +156,10 @@ const SupportManagement: React.FC = () => {
   const queueSearchRef = useRef(queueSearch);
   const audioContextRef = useRef<AudioContext | null>(null);
   const messageRequestSeqRef = useRef(0);
+  const messageAbortRef = useRef<AbortController | null>(null);
+  const queueRequestSeqRef = useRef(0);
+  const queueAbortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
   const supportOrderItemName = (item: Pick<OrderItem, 'productId' | 'productName'>) => (
@@ -179,6 +183,19 @@ const SupportManagement: React.FC = () => {
   const canReissueBirthdayCoupons = hasAdminPermission(adminPermissions, currentRole, COUPONS_BIRTHDAY_REISSUE_PERMISSION);
   const canViewOrders = hasAdminPermission(adminPermissions, currentRole, 'orders');
   const adminSupportToken = readAdminSupportToken();
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      queueRequestSeqRef.current += 1;
+      messageRequestSeqRef.current += 1;
+      queueAbortRef.current?.abort();
+      messageAbortRef.current?.abort();
+      queueAbortRef.current = null;
+      messageAbortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     if (!readAdminSupportToken()) return;
@@ -373,7 +390,15 @@ const SupportManagement: React.FC = () => {
   }, []);
 
   const loadSessions = useCallback(async (options?: { status?: string; page?: number; pageSize?: number; search?: string; isActive?: () => boolean }) => {
-    const shouldApply = () => options?.isActive?.() !== false;
+    const requestSeq = queueRequestSeqRef.current + 1;
+    queueRequestSeqRef.current = requestSeq;
+    queueAbortRef.current?.abort();
+    const abortController = new AbortController();
+    queueAbortRef.current = abortController;
+    const shouldApply = () => mountedRef.current
+      && queueRequestSeqRef.current === requestSeq
+      && options?.isActive?.() !== false
+      && !abortController.signal.aborted;
     try {
       setQueueLoading(true);
       setQueueError(null);
@@ -389,8 +414,8 @@ const SupportManagement: React.FC = () => {
           search: effectiveSearch,
           page: effectivePage,
           size: effectivePageSize,
-        }),
-        adminSupportApi.getSummary().catch(() => null),
+        }, { signal: abortController.signal }),
+        adminSupportApi.getSummary({ signal: abortController.signal }).catch(() => null),
       ]);
       if (!shouldApply()) return;
       const nextSessions = sortSupportSessions(sessionsRes.data.items);
@@ -414,6 +439,7 @@ const SupportManagement: React.FC = () => {
         message.error(errorMessage);
       }
     } finally {
+      if (queueAbortRef.current === abortController) queueAbortRef.current = null;
       if (shouldApply()) {
         setQueueLoading(false);
       }
@@ -435,6 +461,13 @@ const SupportManagement: React.FC = () => {
   const loadMessages = async (session: SupportSession) => {
     const requestSeq = messageRequestSeqRef.current + 1;
     messageRequestSeqRef.current = requestSeq;
+    messageAbortRef.current?.abort();
+    const abortController = new AbortController();
+    messageAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && messageRequestSeqRef.current === requestSeq
+      && selectedSessionRef.current?.id === session.id
+      && !abortController.signal.aborted;
     setSelectedSession(session);
     selectedSessionRef.current = session;
     setMessageLoading(true);
@@ -443,20 +476,22 @@ const SupportManagement: React.FC = () => {
     setContent('');
     handoffConversationOnMobile();
     try {
-      const res = await adminSupportApi.getMessages(session.id, { limit: SUPPORT_MESSAGE_WINDOW });
-      if (messageRequestSeqRef.current !== requestSeq || selectedSessionRef.current?.id !== session.id) return;
+      const res = await adminSupportApi.getMessages(session.id, { limit: SUPPORT_MESSAGE_WINDOW }, { signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       setMessages(mergeSupportMessages([], res.data));
       if (canUpdateSupportReadState) {
         await adminSupportApi.markRead(session.id).catch(() => undefined);
       }
+      if (!isCurrentRequest()) return;
       await loadSessions();
     } catch (err: unknown) {
-      if (messageRequestSeqRef.current !== requestSeq || selectedSessionRef.current?.id !== session.id) return;
+      if (!isCurrentRequest()) return;
       const errorMessage = getApiErrorMessage(err, t('pages.adminSupport.loadFailed'), language);
       setMessageError(errorMessage);
       message.error(errorMessage);
     } finally {
-      if (messageRequestSeqRef.current === requestSeq && selectedSessionRef.current?.id === session.id) {
+      if (messageAbortRef.current === abortController) messageAbortRef.current = null;
+      if (isCurrentRequest()) {
         setMessageLoading(false);
       }
     }

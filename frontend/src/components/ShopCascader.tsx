@@ -22,10 +22,23 @@ export type ShopCascaderProps = {
   ariaLabel?: string;
   title?: string;
   allowClear?: boolean;
+  clearLabel?: string;
   id?: string;
 };
 
 const EMPTY_PATH: string[] = [];
+
+const normalizeOptions = (options: ShopCascaderOption[]): ShopCascaderOption[] => {
+  const seen = new Set<string>();
+  return options.filter((option) => {
+    if (seen.has(option.value)) return false;
+    seen.add(option.value);
+    return true;
+  }).map((option) => ({
+    ...option,
+    children: option.children ? normalizeOptions(option.children) : undefined,
+  }));
+};
 
 const findPathLabels = (options: ShopCascaderOption[], path: string[]): string[] => {
   const labels: string[] = [];
@@ -53,9 +66,11 @@ const ShopCascader: React.FC<ShopCascaderProps> = ({
   ariaLabel,
   title,
   allowClear = false,
+  clearLabel = 'Clear',
   id,
 }) => {
   const resolvedValue = value || EMPTY_PATH;
+  const normalizedOptions = useMemo(() => normalizeOptions(options), [options]);
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isControlled = typeof open === 'boolean';
   const resolvedOpen = isControlled ? Boolean(open) : uncontrolledOpen;
@@ -63,6 +78,8 @@ const ShopCascader: React.FC<ShopCascaderProps> = ({
   const listId = useId();
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({});
   const [activePath, setActivePath] = useState<string[]>(resolvedValue);
+  const activePathKey = resolvedValue.join('\u0000');
+  const safePopupZIndex = Number.isFinite(popupZIndex) ? popupZIndex : 2400;
 
   const setOpen = (next: boolean) => {
     if (!isControlled) setUncontrolledOpen(next);
@@ -71,11 +88,11 @@ const ShopCascader: React.FC<ShopCascaderProps> = ({
 
   useEffect(() => {
     if (resolvedOpen) setActivePath(resolvedValue);
-  }, [resolvedOpen, resolvedValue]);
+  }, [activePathKey, resolvedOpen]);
 
   const columns = useMemo(() => {
-    const cols: ShopCascaderOption[][] = [options];
-    let level = options;
+    const cols: ShopCascaderOption[][] = [normalizedOptions];
+    let level = normalizedOptions;
     for (const segment of activePath) {
       const match = level.find((option) => option.value === segment);
       if (!match?.children?.length) break;
@@ -83,19 +100,16 @@ const ShopCascader: React.FC<ShopCascaderProps> = ({
       level = match.children;
     }
     return cols;
-  }, [activePath, options]);
+  }, [activePath, normalizedOptions]);
 
   useEffect(() => {
     if (!resolvedOpen || typeof window === 'undefined') return;
     const updatePosition = () => {
       const rect = triggerRef.current?.getBoundingClientRect();
       if (!rect) return;
-      const width = Math.max(rect.width, Math.min(window.innerWidth - 16, columns.length * 148));
-      let left = rect.left;
+      const width = Math.min(Math.max(rect.width, columns.length * 148), Math.max(140, window.innerWidth - 16));
+      let left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - width - 8));
       let top = rect.bottom + 6;
-      if (left + width > window.innerWidth - 8) {
-        left = Math.max(8, window.innerWidth - width - 8);
-      }
       const estimatedHeight = 280;
       if (top + estimatedHeight > window.innerHeight - 8) {
         top = Math.max(8, rect.top - 6 - estimatedHeight);
@@ -107,7 +121,7 @@ const ShopCascader: React.FC<ShopCascaderProps> = ({
         minWidth: Math.min(width, window.innerWidth - 16),
         maxWidth: 'calc(100vw - 16px)',
         maxHeight: estimatedHeight,
-        zIndex: popupZIndex,
+        zIndex: safePopupZIndex,
       });
     };
     updatePosition();
@@ -117,7 +131,17 @@ const ShopCascader: React.FC<ShopCascaderProps> = ({
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };
-  }, [columns.length, popupZIndex, resolvedOpen]);
+  }, [columns.length, resolvedOpen, safePopupZIndex]);
+
+  useEffect(() => {
+    if (!resolvedOpen || typeof window === 'undefined') return;
+    const timer = window.setTimeout(() => {
+      document.getElementById(listId)
+        ?.querySelector<HTMLButtonElement>('button[role="option"]:not([disabled])')
+        ?.focus();
+    }, 0);
+    return () => window.clearTimeout(timer);
+  }, [listId, resolvedOpen]);
 
   useEffect(() => {
     if (!resolvedOpen || typeof document === 'undefined') return;
@@ -140,7 +164,7 @@ const ShopCascader: React.FC<ShopCascaderProps> = ({
     };
   }, [listId, resolvedOpen]);
 
-  const displayLabels = findPathLabels(options, resolvedValue);
+  const displayLabels = findPathLabels(normalizedOptions, resolvedValue);
   const displayText = displayLabels.length ? displayLabels.join(' / ') : placeholder;
   const triggerLabel = displayLabels.length ? displayText : ariaLabel || placeholder || 'Select region';
   const showClear = allowClear && resolvedValue.length > 0 && !disabled;
@@ -154,6 +178,37 @@ const ShopCascader: React.FC<ShopCascaderProps> = ({
           aria-label={ariaLabel || placeholder || 'Region'}
           aria-multiselectable="false"
           style={popupStyle}
+          tabIndex={-1}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              setOpen(false);
+              return;
+            }
+            if (event.key === 'Enter') {
+              const activeElement = document.activeElement as HTMLButtonElement | null;
+              if (activeElement?.getAttribute('role') === 'option') {
+                event.preventDefault();
+                activeElement.click();
+              }
+              return;
+            }
+            if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+            const activeElement = document.activeElement as HTMLElement | null;
+            const column = activeElement?.closest('.shop-cascader__column');
+            const buttons = Array.from(column?.querySelectorAll<HTMLButtonElement>('button[role="option"]:not([disabled])') || []);
+            if (!buttons.length) return;
+            const currentIndex = buttons.indexOf(activeElement as HTMLButtonElement);
+            const nextIndex = event.key === 'Home'
+              ? 0
+              : event.key === 'End'
+                ? buttons.length - 1
+                : currentIndex < 0
+                  ? 0
+                  : (currentIndex + (event.key === 'ArrowDown' ? 1 : -1) + buttons.length) % buttons.length;
+            event.preventDefault();
+            buttons[nextIndex]?.focus();
+          }}
         >
           <div className="shop-cascader__columns">
             {columns.map((column, columnIndex) => (
@@ -212,6 +267,12 @@ const ShopCascader: React.FC<ShopCascaderProps> = ({
             if (disabled) return;
             setOpen(!resolvedOpen);
           }}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+              event.preventDefault();
+              if (!resolvedOpen) setOpen(true);
+            }
+          }}
         >
           <span className={`shop-cascader__value${displayLabels.length ? '' : ' shop-cascader__value--placeholder'}`}>
             {displayText}
@@ -222,8 +283,8 @@ const ShopCascader: React.FC<ShopCascaderProps> = ({
           <button
             type="button"
             className="shop-cascader__clear"
-            aria-label="Clear"
-            title="Clear"
+            aria-label={clearLabel}
+            title={clearLabel}
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();

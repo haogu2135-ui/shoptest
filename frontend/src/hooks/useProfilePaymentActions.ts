@@ -1,5 +1,5 @@
-import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
-import { orderApi, paymentApi } from '../api';
+import { useCallback, useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
+import { createApiAbortController, orderApi, paymentApi } from '../api';
 import type { Language } from '../i18n';
 import type { OrderCustomer, PaymentChannel, PaymentCustomer } from '../types';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
@@ -66,28 +66,54 @@ export const useProfilePaymentActions = ({
   setSelectedPaymentMethod,
   t,
 }: UseProfilePaymentActionsParams) => {
+  const refreshStateAbortRef = useRef<AbortController | null>(null);
+  const channelsAbortRef = useRef<AbortController | null>(null);
+  const continuePaymentAbortRef = useRef<AbortController | null>(null);
+  const refreshPaymentAbortRef = useRef<AbortController | null>(null);
+  const refreshingPaymentRef = useRef(false);
+
+  useEffect(() => () => {
+    refreshStateAbortRef.current?.abort();
+    channelsAbortRef.current?.abort();
+    continuePaymentAbortRef.current?.abort();
+    refreshPaymentAbortRef.current?.abort();
+  }, []);
+
   const refreshPaymentState = useCallback(async (orderId: number, isActive: () => boolean = () => true) => {
-    const [orderRes, paymentListRes] = await Promise.all([
-      orderApi.getById(orderId),
-      paymentApi.getByOrder(orderId),
-    ]);
-    if (!mountedRef.current || !isActive()) return;
-    const paymentList = paymentListRes.data || [];
-    const latestPayment = paymentList[0] || null;
-    setSelectedOrder(orderRes.data);
-    setOrderPayments(paymentList);
-    if (latestPayment) {
-      setSelectedPayment(latestPayment);
-      setSelectedPaymentMethod(getPreferredPaymentChannel(paymentChannels, latestPayment.channel));
+    refreshStateAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    refreshStateAbortRef.current = abortController;
+    const requestIsActive = () => !abortController.signal.aborted && mountedRef.current && isActive();
+    try {
+      const [orderRes, paymentListRes] = await Promise.all([
+        orderApi.getById(orderId, undefined, undefined, { signal: abortController.signal }),
+        paymentApi.getByOrder(orderId, undefined, undefined, { signal: abortController.signal }),
+      ]);
+      if (!requestIsActive()) return;
+      const paymentList = paymentListRes.data || [];
+      const latestPayment = paymentList[0] || null;
+      setSelectedOrder(orderRes.data);
+      setOrderPayments(paymentList);
+      if (latestPayment) {
+        setSelectedPayment(latestPayment);
+        setSelectedPaymentMethod(getPreferredPaymentChannel(paymentChannels, latestPayment.channel));
+      }
+    } catch (error) {
+      if (!abortController.signal.aborted) throw error;
+    } finally {
+      if (refreshStateAbortRef.current === abortController) refreshStateAbortRef.current = null;
     }
   }, [mountedRef, paymentChannels, setOrderPayments, setSelectedOrder, setSelectedPayment, setSelectedPaymentMethod]);
 
   const handleContinuePayment = useCallback(async (order: OrderCustomer) => {
     if (continuingPaymentRef.current !== null) return;
+    continuePaymentAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    continuePaymentAbortRef.current = abortController;
     continuingPaymentRef.current = order.id;
-    setPayingOrderId(order.id);
+    if (mountedRef.current) setPayingOrderId(order.id);
     try {
-      const paymentListRes = await paymentApi.getByOrder(order.id);
+      const paymentListRes = await paymentApi.getByOrder(order.id, undefined, undefined, { signal: abortController.signal });
       const paymentList = paymentListRes.data;
       const preferredMethod = getPreferredPaymentChannel(paymentChannels, order.paymentMethod || paymentList[0]?.channel);
       const paidPayment = paymentList.find((item) => normalizeStatusCode(item.status) === 'PAID');
@@ -98,21 +124,24 @@ export const useProfilePaymentActions = ({
       if (!reusablePayment && !preferredMethod) {
         throw new Error(profileLocalizationRef.current.t('pages.checkout.paymentUnavailable'));
       }
-      const latestPayment = reusablePayment || (await paymentApi.create(order.id, preferredMethod)).data;
+      const latestPayment = reusablePayment || (await paymentApi.create(order.id, preferredMethod, undefined, undefined, { signal: abortController.signal })).data;
+      if (abortController.signal.aborted || !mountedRef.current) return;
       setSelectedOrder(order);
       setOrderPayments(paymentList.some((item) => item.id === latestPayment.id) ? paymentList : [latestPayment, ...paymentList]);
       setSelectedPayment(latestPayment);
       setSelectedPaymentMethod(latestPayment.channel || preferredMethod);
       setPaymentModalVisible(true);
     } catch (err: unknown) {
+      if (abortController.signal.aborted || !mountedRef.current) return;
       const { t: latestT, language: latestLanguage } = profileLocalizationRef.current;
       announceAccessibleMessage(getApiErrorMessage(err, latestT('pages.profile.continuePayFailed'), latestLanguage, { includeClientMessage: true }), 'error');
-      fetchOrders();
+      void fetchOrders();
     } finally {
       if (continuingPaymentRef.current === order.id) {
         continuingPaymentRef.current = null;
       }
-      setPayingOrderId(null);
+      if (mountedRef.current) setPayingOrderId(null);
+      if (continuePaymentAbortRef.current === abortController) continuePaymentAbortRef.current = null;
     }
   }, [
     continuingPaymentRef,
@@ -128,6 +157,7 @@ export const useProfilePaymentActions = ({
   ]);
 
   const handleRefreshPayment = useCallback(async () => {
+    if (refreshingPaymentRef.current) return;
     if (!selectedOrder) return;
     if (normalizeStatusCode(selectedPayment?.status) === 'RECONCILE_REQUIRED') {
       announceAccessibleMessage(t('pages.profile.paymentReturnReconcileRequired'), 'warning');
@@ -138,19 +168,27 @@ export const useProfilePaymentActions = ({
       announceAccessibleMessage(t('pages.checkout.paymentUnavailable'), 'error');
       return;
     }
+    refreshingPaymentRef.current = true;
+    refreshPaymentAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    refreshPaymentAbortRef.current = abortController;
     setRefreshingPayment(true);
     try {
-      const paymentRes = await paymentApi.create(selectedOrder.id, method);
+      const paymentRes = await paymentApi.create(selectedOrder.id, method, undefined, undefined, { signal: abortController.signal });
+      if (abortController.signal.aborted || !mountedRef.current) return;
       setSelectedPayment(paymentRes.data);
       setSelectedPaymentMethod(paymentRes.data.channel);
       setOrderPayments((items) => [paymentRes.data, ...items.filter((item) => item.id !== paymentRes.data.id)]);
       announceAccessibleMessage(t('pages.profile.paymentRefreshed'), 'success');
       await fetchOrders();
     } catch (err: unknown) {
+      if (abortController.signal.aborted || !mountedRef.current) return;
       announceAccessibleMessage(getApiErrorMessage(err, t('pages.profile.continuePayFailed'), language, { includeClientMessage: true }), 'error');
       await fetchOrders();
     } finally {
-      setRefreshingPayment(false);
+      refreshingPaymentRef.current = false;
+      if (refreshPaymentAbortRef.current === abortController) refreshPaymentAbortRef.current = null;
+      if (mountedRef.current) setRefreshingPayment(false);
     }
   }, [
     fetchOrders,
@@ -167,21 +205,27 @@ export const useProfilePaymentActions = ({
   ]);
 
   const loadPaymentChannels = useCallback(async (isActive: () => boolean = () => mountedRef.current) => {
+    const abortController = createApiAbortController();
+    const previousRequest = channelsAbortRef.current;
+    previousRequest?.abort();
+    channelsAbortRef.current = abortController;
+    const requestIsActive = () => !abortController.signal.aborted && isActive();
     setPaymentChannelsLoading(true);
     setPaymentChannelsError('');
     try {
-      const res = await paymentApi.getChannels();
-      if (!isActive()) return;
+      const res = await paymentApi.getChannels({ signal: abortController.signal });
+      if (!requestIsActive()) return;
       setPaymentChannels(res.data || []);
       setPaymentChannelsLoaded(true);
     } catch (error: unknown) {
-      if (!isActive()) return;
+      if (!requestIsActive()) return;
       setPaymentChannels([]);
       setPaymentChannelsLoaded(true);
       const { t: latestT, language: latestLanguage } = profileLocalizationRef.current;
       setPaymentChannelsError(getApiErrorMessage(error, latestT('pages.checkout.paymentUnavailableDescription'), latestLanguage));
     } finally {
-      if (isActive()) {
+      if (channelsAbortRef.current === abortController) channelsAbortRef.current = null;
+      if (requestIsActive()) {
         setPaymentChannelsLoading(false);
       }
     }

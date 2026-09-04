@@ -26,8 +26,8 @@ const clampPercent = (value: number | undefined): number => {
 };
 
 const resolveCircleSize = (size: ShopProgressSize | undefined, width: number | undefined): number => {
-  if (typeof width === 'number' && Number.isFinite(width) && width > 0) return width;
-  if (typeof size === 'number' && Number.isFinite(size) && size > 0) return size;
+  if (typeof width === 'number' && Number.isFinite(width) && width > 0) return Math.max(16, width);
+  if (typeof size === 'number' && Number.isFinite(size) && size > 0) return Math.max(16, size);
   if (size === 'small') return 80;
   return 120;
 };

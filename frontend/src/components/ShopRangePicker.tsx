@@ -20,6 +20,7 @@ export type ShopRangePickerProps = {
   title?: string;
   startAriaLabel?: string;
   endAriaLabel?: string;
+  clearLabel?: string;
 };
 
 const toInputValue = (value?: Dayjs | null, showTime = false) => {
@@ -52,6 +53,7 @@ const ShopRangePicker: React.FC<ShopRangePickerProps> = ({
   title,
   startAriaLabel,
   endAriaLabel,
+  clearLabel = 'Clear',
 }) => {
   const start = value?.[0] ?? null;
   const end = value?.[1] ?? null;
@@ -103,8 +105,8 @@ const ShopRangePicker: React.FC<ShopRangePickerProps> = ({
         <button
           type="button"
           className="shop-range-picker__clear"
-          aria-label="Clear"
-          title="Clear"
+          aria-label={clearLabel}
+          title={clearLabel}
           onClick={() => onChange?.(null)}
         >
           ×

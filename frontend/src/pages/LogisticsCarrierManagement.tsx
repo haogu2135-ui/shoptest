@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Form, Table } from 'antd';
 import ShopInput from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
@@ -7,7 +7,7 @@ import ShopSelect from '../components/ShopSelect';
 import ShopInputNumber from '../components/ShopInputNumber';
 import ShopModal from '../components/ShopModal';
 import { CheckCircleOutlined, PlusOutlined, SearchOutlined, WarningOutlined } from '@ant-design/icons';
-import { logisticsCarrierApi } from '../api';
+import { createApiAbortController, logisticsCarrierApi } from '../api';
 import { adminApi } from '../api/admin';
 import type { LogisticsCarrier } from '../types';
 import { useLanguage } from '../i18n';
@@ -51,6 +51,9 @@ const LogisticsCarrierManagement: React.FC = () => {
   const [modalOpen, setModalOpen] = useState(false);
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
+  const carriersRequestSeqRef = useRef(0);
+  const carriersAbortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
   const [form] = Form.useForm<LogisticsCarrierFormValues>();
   const { t, language } = useLanguage();
   const canWriteCarriers = hasAdminPermission(adminPermissions, currentRole, LOGISTICS_CARRIERS_WRITE_PERMISSION);
@@ -128,20 +131,38 @@ const LogisticsCarrierManagement: React.FC = () => {
   const carrierSortInputLabel = `${t('pages.logisticsCarriers.sortOrder')}: ${carrierEditorLabel}`;
 
   const fetchCarriers = useCallback(async () => {
+    const requestSeq = carriersRequestSeqRef.current + 1;
+    carriersRequestSeqRef.current = requestSeq;
+    carriersAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    carriersAbortRef.current = abortController;
     setLoading(true);
     try {
-      const res = await logisticsCarrierApi.getAll(false);
+      const res = await logisticsCarrierApi.getAll(false, { signal: abortController.signal });
+      if (!mountedRef.current || abortController.signal.aborted || carriersRequestSeqRef.current !== requestSeq) return;
       setCarrierLoadError(null);
       setCarriers(res.data || []);
       setCarrierSnapshotLoaded(true);
     } catch (err: unknown) {
+      if (!mountedRef.current || abortController.signal.aborted || carriersRequestSeqRef.current !== requestSeq) return;
       const errorMessage = getApiErrorMessage(err, t('pages.logisticsCarriers.fetchFailed'), language);
       setCarrierLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      setLoading(false);
+      if (carriersAbortRef.current === abortController) carriersAbortRef.current = null;
+      if (mountedRef.current && carriersRequestSeqRef.current === requestSeq) setLoading(false);
     }
   }, [language, t]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+    mountedRef.current = false;
+    carriersRequestSeqRef.current += 1;
+    carriersAbortRef.current?.abort();
+    carriersAbortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     fetchCarriers();

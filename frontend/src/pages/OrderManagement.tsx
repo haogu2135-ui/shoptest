@@ -9,7 +9,7 @@ import ShopModal from '../components/ShopModal';
 import ShopConfirm from '../components/ShopConfirm';
 import { DownloadOutlined } from '@ant-design/icons';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { logisticsCarrierApi } from '../api';
+import { createApiAbortController, logisticsCarrierApi } from '../api';
 import { adminApi } from '../api/admin';
 import type { AdminPayment, LogisticsCarrier, Order, OrderItem } from '../types';
 import { useLanguage } from '../i18n';
@@ -199,6 +199,10 @@ const OrderManagement: React.FC = () => {
   const { formatMoney } = useMarket();
   const pageSizeRef = useRef(20);
   const detailRequestSeqRef = useRef(0);
+  const detailRequestAbortRef = useRef<AbortController | null>(null);
+  const fetchOrdersRequestSeqRef = useRef(0);
+  const fetchOrdersAbortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
   const canExportOrders = hasAdminPermission(adminPermissions, currentRole, ORDER_EXPORT_PERMISSION);
   const canUpdateOrderStatus = hasAdminPermission(adminPermissions, currentRole, ORDER_STATUS_PERMISSION);
   const canFulfillOrders = hasAdminPermission(adminPermissions, currentRole, ORDER_FULFILLMENT_PERMISSION);
@@ -243,6 +247,11 @@ const OrderManagement: React.FC = () => {
     page?: number;
     size?: number;
   } = {}) => {
+    const requestSeq = fetchOrdersRequestSeqRef.current + 1;
+    fetchOrdersRequestSeqRef.current = requestSeq;
+    fetchOrdersAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    fetchOrdersAbortRef.current = abortController;
     try {
       setLoading(true);
       const res = await adminApi.getOrdersPage({
@@ -251,7 +260,8 @@ const OrderManagement: React.FC = () => {
         search: params.search,
         page: params.page || 1,
         size: params.size || 20,
-      });
+      }, { signal: abortController.signal });
+      if (!mountedRef.current || abortController.signal.aborted || fetchOrdersRequestSeqRef.current !== requestSeq) return;
       setOrderLoadError(null);
       setOrders(res.data.items || []);
       setOrderPage({
@@ -264,13 +274,28 @@ const OrderManagement: React.FC = () => {
       setOrderSummary(res.data.summary || {});
       setOrderSnapshotLoaded(true);
     } catch (error: unknown) {
+      if (abortController.signal.aborted || !mountedRef.current || fetchOrdersRequestSeqRef.current !== requestSeq) return;
       const errorMessage = getApiErrorMessage(error, t('pages.adminOrders.fetchFailed'), language);
       setOrderLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      setLoading(false);
+      if (fetchOrdersAbortRef.current === abortController) fetchOrdersAbortRef.current = null;
+      if (mountedRef.current && fetchOrdersRequestSeqRef.current === requestSeq) setLoading(false);
     }
   }, [language, t]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+    mountedRef.current = false;
+    fetchOrdersRequestSeqRef.current += 1;
+    fetchOrdersAbortRef.current?.abort();
+    fetchOrdersAbortRef.current = null;
+    detailRequestSeqRef.current += 1;
+    detailRequestAbortRef.current?.abort();
+    detailRequestAbortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     fetchOrders({ status: filterStatus, quick: quickFilter, search: debouncedSearchText, page: 1, size: pageSizeRef.current });
@@ -292,18 +317,20 @@ const OrderManagement: React.FC = () => {
 
   useEffect(() => {
     let disposed = false;
-    logisticsCarrierApi.getAll(true)
+    const abortController = createApiAbortController();
+    logisticsCarrierApi.getAll(true, { signal: abortController.signal })
       .then((res) => {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         setCarriers(res.data || []);
       })
       .catch((error) => {
-        if (disposed) return;
+        if (disposed || abortController.signal.aborted) return;
         reportNonBlockingError('OrderManagement carriers load failed', error);
         setCarriers([]);
       });
     return () => {
       disposed = true;
+      abortController.abort();
     };
   }, []);
 
@@ -577,20 +604,23 @@ const OrderManagement: React.FC = () => {
   const handleViewItems = async (order: Order) => {
     const requestSeq = detailRequestSeqRef.current + 1;
     detailRequestSeqRef.current = requestSeq;
+    detailRequestAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    detailRequestAbortRef.current = abortController;
     setDetailOrder(order);
     setItemsLoading(true);
     setPaymentsLoading(canSyncOrderPayments);
     setOrderPayments([]);
     try {
-      const itemsRes = await adminApi.getOrderItems(order.id);
-      if (detailRequestSeqRef.current !== requestSeq) return;
+      const itemsRes = await adminApi.getOrderItems(order.id, { signal: abortController.signal });
+      if (detailRequestSeqRef.current !== requestSeq || abortController.signal.aborted) return;
       setOrderItems(itemsRes.data);
     } catch (error: unknown) {
-      if (detailRequestSeqRef.current !== requestSeq) return;
+      if (detailRequestSeqRef.current !== requestSeq || abortController.signal.aborted) return;
       setOrderItems([]);
       message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
     } finally {
-      if (detailRequestSeqRef.current === requestSeq) {
+      if (detailRequestSeqRef.current === requestSeq && !abortController.signal.aborted) {
         setItemsLoading(false);
       }
     }
@@ -598,21 +628,23 @@ const OrderManagement: React.FC = () => {
       if (detailRequestSeqRef.current === requestSeq) {
         setPaymentsLoading(false);
       }
+      if (detailRequestAbortRef.current === abortController) detailRequestAbortRef.current = null;
       return;
     }
     try {
-      const paymentsRes = await adminApi.getOrderPayments(order.id);
-      if (detailRequestSeqRef.current !== requestSeq) return;
+      const paymentsRes = await adminApi.getOrderPayments(order.id, { signal: abortController.signal });
+      if (detailRequestSeqRef.current !== requestSeq || abortController.signal.aborted) return;
       setOrderPayments(paymentsRes.data || []);
     } catch (error: unknown) {
-      if (detailRequestSeqRef.current !== requestSeq) return;
+      if (detailRequestSeqRef.current !== requestSeq || abortController.signal.aborted) return;
       setOrderPayments([]);
       message.error(getApiErrorMessage(error, t('messages.operationFailed'), language));
     } finally {
-      if (detailRequestSeqRef.current === requestSeq) {
+      if (detailRequestSeqRef.current === requestSeq && !abortController.signal.aborted) {
         setPaymentsLoading(false);
       }
     }
+    if (detailRequestAbortRef.current === abortController) detailRequestAbortRef.current = null;
   };
 
   const canRefundOrder = (order: Order) => {
@@ -784,6 +816,9 @@ const OrderManagement: React.FC = () => {
   };
 
   const closeDetailModal = () => {
+    detailRequestSeqRef.current += 1;
+    detailRequestAbortRef.current?.abort();
+    detailRequestAbortRef.current = null;
     setDetailOrder(null);
     setOrderItems([]);
     setOrderPayments([]);

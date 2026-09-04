@@ -235,11 +235,13 @@ describe('BugManagement mobile modal guards', () => {
   });
 
   it('keeps BUG list rows light and lazy-loads full details only on expansion', () => {
-    expect(apiSource).toContain('getBug: (id: number) => api.get<AdminBugReport>(`/admin/bugs/${toPathId(id)}`)');
+    expect(apiSource).toContain('getBug: (id: number, options?: ApiRequestOptions) => api.get<AdminBugReport>(`/admin/bugs/${toPathId(id)}`, withRequestOptions({}, options))');
     expect(pageSource).toContain('const [bugDetails, setBugDetails] = useState<Record<number, AdminBugReport>>({});');
     expect(pageSource).toContain('const [loadingDetailIds, setLoadingDetailIds] = useState<Set<number>>(() => new Set());');
     expect(pageSource).toContain('const loadBugDetail = useCallback(async (bugId: number) => {');
-    expect(pageSource).toContain('const response = await adminApi.getBug(bugId);');
+    expect(pageSource).toContain('const response = await adminApi.getBug(bugId, { signal: abortController.signal });');
+    expect(pageSource).toContain('const bugDetailRequestsRef = useRef(new Map<number, { requestSeq: number; abortController: AbortController }>());');
+    expect(pageSource).toContain('bugDetailRequestsRef.current.forEach(({ abortController }) => abortController.abort());');
     expect(pageSource).toContain('setBugDetails((current) => ({ ...current, [bugId]: response.data }));');
     expect(pageSource).toContain('const detail = bugDetails[bug.id] || bug;');
     expect(pageSource).toContain('const detailLoading = loadingDetailIds.has(bug.id);');

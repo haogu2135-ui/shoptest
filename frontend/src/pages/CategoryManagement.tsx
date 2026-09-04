@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Form, Table } from 'antd';
 import ShopInput, { ShopTextArea } from '../components/ShopInput';
 import ShopPopconfirm from '../components/ShopPopconfirm';
@@ -7,6 +7,7 @@ import ShopModal from '../components/ShopModal';
 import ShopTreeSelect from '../components/ShopTreeSelect';
 import { BranchesOutlined, DeleteOutlined, EditOutlined, GlobalOutlined, PictureOutlined, PlusOutlined, SearchOutlined } from '@ant-design/icons';
 import { adminApi } from '../api/admin';
+import { createApiAbortController } from '../api';
 import type { Category } from '../types';
 import {
   buildCategoryTree,
@@ -54,6 +55,9 @@ const CategoryManagement: React.FC = () => {
   const [imagePreviewUrl, setImagePreviewUrl] = useState('');
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
+  const categoriesRequestSeqRef = useRef(0);
+  const categoriesAbortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
   const [form] = Form.useForm();
   const { t, language } = useLanguage();
   const canWriteCategories = hasAdminPermission(adminPermissions, currentRole, CATEGORIES_WRITE_PERMISSION);
@@ -149,20 +153,38 @@ const CategoryManagement: React.FC = () => {
   }, [categoryTree, flatCategories, keyword, language]);
 
   const fetchCategories = useCallback(async () => {
+    const requestSeq = categoriesRequestSeqRef.current + 1;
+    categoriesRequestSeqRef.current = requestSeq;
+    categoriesAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    categoriesAbortRef.current = abortController;
     setLoading(true);
     try {
-      const res = await adminApi.getCategories();
+      const res = await adminApi.getCategories({ signal: abortController.signal });
+      if (!mountedRef.current || abortController.signal.aborted || categoriesRequestSeqRef.current !== requestSeq) return;
       setCategoryLoadError(null);
       setCategories(res.data);
       setCategorySnapshotLoaded(true);
     } catch (error: unknown) {
+      if (!mountedRef.current || abortController.signal.aborted || categoriesRequestSeqRef.current !== requestSeq) return;
       const errorMessage = getApiErrorMessage(error, t('pages.categoryAdmin.fetchFailed'), language);
       setCategoryLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      setLoading(false);
+      if (categoriesAbortRef.current === abortController) categoriesAbortRef.current = null;
+      if (mountedRef.current && categoriesRequestSeqRef.current === requestSeq) setLoading(false);
     }
   }, [language, t]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+    mountedRef.current = false;
+    categoriesRequestSeqRef.current += 1;
+    categoriesAbortRef.current?.abort();
+    categoriesAbortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     fetchCategories();

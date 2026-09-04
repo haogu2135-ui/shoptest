@@ -23,6 +23,7 @@ export type ShopMultiSelectProps = {
   disabled?: boolean;
   loading?: boolean;
   allowClear?: boolean;
+  clearLabel?: string;
   showSearch?: boolean;
   filterOption?: boolean;
   mode?: 'multiple' | 'tags';
@@ -60,6 +61,7 @@ const ShopMultiSelect: React.FC<ShopMultiSelectProps> = ({
   disabled = false,
   loading = false,
   allowClear = false,
+  clearLabel = 'Clear',
   showSearch = true,
   filterOption = true,
   mode = 'multiple',
@@ -80,6 +82,23 @@ const ShopMultiSelect: React.FC<ShopMultiSelectProps> = ({
   const listId = useId();
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({});
   const selectedValues = useMemo(() => normalizeValue(value), [value]);
+  const [activeOptionValue, setActiveOptionValue] = useState<string | undefined>();
+  const safePopupMaxHeight = Number.isFinite(popupMaxHeight)
+    ? Math.max(120, Math.min(Math.floor(popupMaxHeight), 720))
+    : 280;
+  const safePopupZIndex = Number.isFinite(popupZIndex) ? popupZIndex : 2400;
+  const safeMaxCount = Number.isFinite(maxCount)
+    ? Math.max(0, Math.floor(maxCount as number))
+    : undefined;
+
+  const normalizedOptions = useMemo(() => {
+    const seen = new Set<string>();
+    return options.filter((option) => {
+      if (seen.has(option.value)) return false;
+      seen.add(option.value);
+      return true;
+    });
+  }, [options]);
 
   const setOpen = (next: boolean) => {
     if (!isControlled) setUncontrolledOpen(next);
@@ -89,16 +108,16 @@ const ShopMultiSelect: React.FC<ShopMultiSelectProps> = ({
 
   const optionMap = useMemo(() => {
     const map = new Map<string, ShopMultiSelectOption>();
-    options.forEach((option) => map.set(option.value, option));
+    normalizedOptions.forEach((option) => map.set(option.value, option));
     return map;
-  }, [options]);
+  }, [normalizedOptions]);
 
   const filteredOptions = useMemo(() => {
-    if (!showSearch || !filterOption) return options;
+    if (!showSearch || !filterOption) return normalizedOptions;
     const query = searchQuery.trim().toLowerCase();
-    if (!query) return options;
-    return options.filter((option) => optionSearchText(option).includes(query));
-  }, [filterOption, options, searchQuery, showSearch]);
+    if (!query) return normalizedOptions;
+    return normalizedOptions.filter((option) => optionSearchText(option).includes(query));
+  }, [filterOption, normalizedOptions, searchQuery, showSearch]);
 
   const selectedLabels = selectedValues.map((item) => {
     const option = optionMap.get(item);
@@ -109,20 +128,27 @@ const ShopMultiSelect: React.FC<ShopMultiSelectProps> = ({
   });
 
   useEffect(() => {
+    if (!resolvedOpen) return;
+    const firstEnabled = filteredOptions.find((option) => !option.disabled);
+    setActiveOptionValue((current) => (
+      filteredOptions.some((option) => option.value === current && !option.disabled)
+        ? current
+        : firstEnabled?.value
+    ));
+  }, [filteredOptions, resolvedOpen]);
+
+  useEffect(() => {
     if (!resolvedOpen || typeof window === 'undefined') return;
     const updatePosition = () => {
       const rect = triggerRef.current?.getBoundingClientRect();
       if (!rect) return;
-      const width = Math.max(rect.width, 180);
+      const width = Math.min(Math.max(rect.width, 180), Math.max(140, window.innerWidth - 16));
       const searchOffset = showSearch ? 52 : 0;
       const estimatedHeight = (filteredOptions.length > 0
-        ? Math.min(popupMaxHeight, filteredOptions.length * 44 + 16)
-        : Math.min(popupMaxHeight, 180)) + searchOffset;
-      let left = rect.left;
+        ? Math.min(safePopupMaxHeight, filteredOptions.length * 44 + 16)
+        : Math.min(safePopupMaxHeight, 180)) + searchOffset;
+      let left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - width - 8));
       let top = rect.bottom + 6;
-      if (left + width > window.innerWidth - 8) {
-        left = Math.max(8, window.innerWidth - width - 8);
-      }
       if (top + estimatedHeight > window.innerHeight - 8) {
         top = Math.max(8, rect.top - 6 - estimatedHeight);
       }
@@ -131,8 +157,8 @@ const ShopMultiSelect: React.FC<ShopMultiSelectProps> = ({
         top,
         left,
         minWidth: width,
-        maxHeight: popupMaxHeight + searchOffset,
-        zIndex: popupZIndex,
+        maxHeight: safePopupMaxHeight + searchOffset,
+        zIndex: safePopupZIndex,
       });
     };
     updatePosition();
@@ -142,7 +168,7 @@ const ShopMultiSelect: React.FC<ShopMultiSelectProps> = ({
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };
-  }, [filteredOptions.length, popupMaxHeight, popupZIndex, resolvedOpen, showSearch]);
+  }, [filteredOptions.length, safePopupMaxHeight, safePopupZIndex, resolvedOpen, showSearch]);
 
   useEffect(() => {
     if (!resolvedOpen || typeof document === 'undefined') return;
@@ -178,11 +204,11 @@ const ShopMultiSelect: React.FC<ShopMultiSelectProps> = ({
   const displayText = selectedLabels.length > 0 ? selectedLabels.join(', ') : placeholder;
   const triggerLabel = selectedLabels.length > 0 ? selectedLabels.join(', ') : ariaLabel || placeholder || 'Select';
   const showClear = allowClear && selectedValues.length > 0 && !disabled && !loading;
-  const atMax = typeof maxCount === 'number' && selectedValues.length >= maxCount;
+  const atMax = safeMaxCount !== undefined && selectedValues.length >= safeMaxCount;
 
   const emitChange = (next: string[]) => {
     const unique = Array.from(new Set(next.map((item) => String(item)).filter(Boolean)));
-    const limited = typeof maxCount === 'number' ? unique.slice(0, maxCount) : unique;
+    const limited = safeMaxCount !== undefined ? unique.slice(0, safeMaxCount) : unique;
     onChange?.(limited);
   };
 
@@ -209,6 +235,25 @@ const ShopMultiSelect: React.FC<ShopMultiSelectProps> = ({
     setSearchQuery('');
   };
 
+  const moveActiveOption = (direction: 1 | -1, edge?: 'start' | 'end') => {
+    const enabledOptions = filteredOptions.filter((option) => !option.disabled && (selectedValues.includes(option.value) || !atMax));
+    if (enabledOptions.length === 0) return;
+    if (edge) {
+      setActiveOptionValue((edge === 'start' ? enabledOptions[0] : enabledOptions[enabledOptions.length - 1]).value);
+      return;
+    }
+    const currentIndex = enabledOptions.findIndex((option) => option.value === activeOptionValue);
+    const nextIndex = currentIndex < 0
+      ? (direction > 0 ? 0 : enabledOptions.length - 1)
+      : (currentIndex + direction + enabledOptions.length) % enabledOptions.length;
+    setActiveOptionValue(enabledOptions[nextIndex].value);
+  };
+
+  const commitActiveOption = () => {
+    const option = filteredOptions.find((item) => item.value === activeOptionValue && !item.disabled);
+    if (option) toggleValue(option.value);
+  };
+
   const popup = resolvedOpen && typeof document !== 'undefined'
     ? createPortal(
         <div
@@ -217,8 +262,27 @@ const ShopMultiSelect: React.FC<ShopMultiSelectProps> = ({
           role="listbox"
           aria-multiselectable="true"
           aria-label={ariaLabel}
+          aria-activedescendant={activeOptionValue ? `${listId}-option-${filteredOptions.findIndex((option) => option.value === activeOptionValue)}` : undefined}
           aria-busy={loading || undefined}
           style={popupStyle}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowDown') {
+              event.preventDefault();
+              moveActiveOption(1);
+            } else if (event.key === 'ArrowUp') {
+              event.preventDefault();
+              moveActiveOption(-1);
+            } else if (event.key === 'Home') {
+              event.preventDefault();
+              moveActiveOption(1, 'start');
+            } else if (event.key === 'End') {
+              event.preventDefault();
+              moveActiveOption(-1, 'end');
+            } else if (event.key === 'Enter' && mode !== 'tags') {
+              event.preventDefault();
+              commitActiveOption();
+            }
+          }}
         >
           {showSearch ? (
             <div className="shop-multi-select__search" role="presentation">
@@ -244,12 +308,12 @@ const ShopMultiSelect: React.FC<ShopMultiSelectProps> = ({
                   }
                   if (event.key === 'Enter') {
                     event.preventDefault();
+                    event.stopPropagation();
                     if (mode === 'tags') {
                       addTagFromQuery();
                       return;
                     }
-                    const first = filteredOptions.find((option) => !option.disabled);
-                    if (first) toggleValue(first.value);
+                    commitActiveOption();
                   }
                 }}
               />
@@ -269,12 +333,14 @@ const ShopMultiSelect: React.FC<ShopMultiSelectProps> = ({
                   key={option.value}
                   type="button"
                   role="option"
+                  id={`${listId}-option-${filteredOptions.indexOf(option)}`}
                   className={`shop-multi-select__option${active ? ' shop-multi-select__option--selected' : ''}`.trim()}
                   aria-selected={active}
                   aria-label={optionLabel}
                   title={optionLabel}
                   disabled={optionDisabled}
                   onClick={() => toggleValue(option.value)}
+                  onMouseEnter={() => setActiveOptionValue(option.value)}
                 >
                   <span className={`shop-multi-select__check${active ? ' shop-multi-select__check--on' : ''}`} aria-hidden="true" />
                   <span className="shop-multi-select__optionLabel">{option.label}</span>
@@ -306,6 +372,13 @@ const ShopMultiSelect: React.FC<ShopMultiSelectProps> = ({
             if (isDisabled) return;
             setOpen(!resolvedOpen);
           }}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+              event.preventDefault();
+              if (!resolvedOpen) setOpen(true);
+              moveActiveOption(event.key === 'ArrowDown' ? 1 : -1);
+            }
+          }}
         >
           <span className={`shop-multi-select__value${selectedValues.length ? '' : ' shop-multi-select__value--placeholder'}`}>
             {displayText}
@@ -316,8 +389,8 @@ const ShopMultiSelect: React.FC<ShopMultiSelectProps> = ({
           <button
             type="button"
             className="shop-multi-select__clear"
-            aria-label="Clear"
-            title="Clear"
+            aria-label={clearLabel}
+            title={clearLabel}
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();

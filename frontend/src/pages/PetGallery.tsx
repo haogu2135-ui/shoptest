@@ -4,7 +4,7 @@ import { ShopIcon, SI } from '../components/ShopIcon';
 import ShopModal from '../components/ShopModal';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import { useNavigate } from 'react-router-dom';
-import { petGalleryApi } from '../api';
+import { createApiAbortController, petGalleryApi } from '../api';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
@@ -94,33 +94,54 @@ const PetGallery: React.FC = () => {
   const [previewItem, setPreviewItem] = useState<GalleryItem | null>(null);
   const [lastUpdatedAt, setLastUpdatedAt] = useState(() => new Date());
   const [loadError, setLoadError] = useState(false);
+  const galleryRefreshSeqRef = useRef(0);
+  const galleryAbortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
 
   const isAuthenticated = hasStoredValue('token');
 
   const refreshGallery = useCallback(async (force = false) => {
+    const requestSeq = galleryRefreshSeqRef.current + 1;
+    galleryRefreshSeqRef.current = requestSeq;
+    galleryAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    galleryAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && galleryRefreshSeqRef.current === requestSeq
+      && !abortController.signal.aborted;
     try {
       setLoading(true);
       const [photosRes, quotaRes] = await Promise.all([
-        petGalleryApi.getAll(force),
+        petGalleryApi.getAll(force, { signal: abortController.signal }),
         isAuthenticated
-          ? petGalleryApi.getQuota(force).catch((error) => {
+          ? petGalleryApi.getQuota(force, { signal: abortController.signal }).catch((error) => {
             reportNonBlockingError('PetGallery.refreshGalleryQuota', error);
             return null;
           })
           : Promise.resolve(null),
       ]);
+      if (!isCurrentRequest()) return;
       setPhotos(photosRes.data);
       setQuota(quotaRes?.data || null);
       setLastUpdatedAt(new Date());
       setLoadError(false);
     } catch (error) {
+      if (!isCurrentRequest()) return;
       reportNonBlockingError('PetGallery.refreshGallery', error);
       setQuota(null);
       setLoadError(true);
     } finally {
-      setLoading(false);
+      if (galleryAbortRef.current === abortController) galleryAbortRef.current = null;
+      if (isCurrentRequest()) setLoading(false);
     }
   }, [isAuthenticated]);
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+    galleryRefreshSeqRef.current += 1;
+    galleryAbortRef.current?.abort();
+    galleryAbortRef.current = null;
+  }, []);
 
   useEffect(() => {
     refreshGallery();

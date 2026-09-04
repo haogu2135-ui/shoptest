@@ -7,7 +7,7 @@ import ShopSelect from '../components/ShopSelect';
 import ShopModal from '../components/ShopModal';
 import ShopConfirm from '../components/ShopConfirm';
 import { DeleteOutlined, StopOutlined, CheckCircleOutlined, SafetyCertificateOutlined, TeamOutlined, MailOutlined, PhoneOutlined, DownloadOutlined, SearchOutlined, EditOutlined } from '@ant-design/icons';
-import { userApi } from '../api';
+import { createApiAbortController, userApi } from '../api';
 import { adminApi } from '../api/admin';
 import type { AdminRole, User, UserAdminSummary } from '../types';
 import { useLanguage } from '../i18n';
@@ -100,6 +100,8 @@ const UserManagement: React.FC = () => {
   const [roleConfirmLoading, setRoleConfirmLoading] = useState(false);
   const [pageState, setPageState] = useState({ page: 1, size: DEFAULT_USER_PAGE_SIZE, total: 0 });
   const fetchUsersRequestSeqRef = useRef(0);
+  const fetchUsersAbortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
   // Filter edits refetch from page 1, but the operator's chosen page size must
   // survive that reset rather than snapping back to the default.
   const pageSizeRef = useRef(DEFAULT_USER_PAGE_SIZE);
@@ -169,14 +171,17 @@ const UserManagement: React.FC = () => {
     // earlier request must not overwrite the list the operator is now looking at.
     const requestSeq = fetchUsersRequestSeqRef.current + 1;
     fetchUsersRequestSeqRef.current = requestSeq;
+    fetchUsersAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    fetchUsersAbortRef.current = abortController;
     try {
       setLoading(true);
       const params = { keyword: debouncedKeyword || undefined, role: roleFilter, status: statusFilter, page, size };
       const [usersResponse, summaryResponse] = await Promise.all([
-        adminApi.getUsersPage(params),
-        adminApi.getUserSummary({ keyword: params.keyword, role: params.role, status: params.status }),
+        adminApi.getUsersPage(params, { signal: abortController.signal }),
+        adminApi.getUserSummary({ keyword: params.keyword, role: params.role, status: params.status }, { signal: abortController.signal }),
       ]);
-      if (fetchUsersRequestSeqRef.current !== requestSeq) return;
+      if (!mountedRef.current || abortController.signal.aborted || fetchUsersRequestSeqRef.current !== requestSeq) return;
       setUserLoadError(null);
       setUsers(usersResponse.data.items || []);
       const resolvedSize = usersResponse.data.size || size;
@@ -189,16 +194,27 @@ const UserManagement: React.FC = () => {
       setSummary(summaryResponse.data || null);
       setUserSnapshotLoaded(true);
     } catch (error: unknown) {
-      if (fetchUsersRequestSeqRef.current !== requestSeq) return;
+      if (abortController.signal.aborted || !mountedRef.current || fetchUsersRequestSeqRef.current !== requestSeq) return;
       const errorMessage = getApiErrorMessage(error, t('pages.adminUsers.fetchFailed'), language);
       setUserLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      if (fetchUsersRequestSeqRef.current === requestSeq) {
+      if (fetchUsersAbortRef.current === abortController) fetchUsersAbortRef.current = null;
+      if (mountedRef.current && fetchUsersRequestSeqRef.current === requestSeq) {
         setLoading(false);
       }
     }
   }, [debouncedKeyword, language, roleFilter, statusFilter, t]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+    mountedRef.current = false;
+    fetchUsersRequestSeqRef.current += 1;
+    fetchUsersAbortRef.current?.abort();
+    fetchUsersAbortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     // Filter changes reset to the first page but must keep the page size the

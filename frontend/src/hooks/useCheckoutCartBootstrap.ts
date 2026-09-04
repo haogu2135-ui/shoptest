@@ -1,7 +1,7 @@
 import { useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import type { FormInstance } from 'antd/es/form';
 import type { NavigateFunction } from 'react-router-dom';
-import { addressApi, cartApi, clearStoredAuthSession } from '../api';
+import { addressApi, cartApi, clearStoredAuthSession, createApiAbortController } from '../api';
 import type { CartItem, CouponQuote, UserAddress } from '../types';
 import { getGuestCartItems } from '../utils/guestCart';
 import {
@@ -112,23 +112,24 @@ export const useCheckoutCartBootstrap = ({
       return;
     }
 
+    const abortController = createApiAbortController();
     const loadCheckout = async () => {
       setLoading(true);
       setAddressLoadFailed(false);
       setCartLoadError(null);
       try {
         const [cartRes, addressRes] = await Promise.all([
-          cartApi.getItems(0),
-          addressApi.getByUser(0).catch((error) => {
+          cartApi.getItems(0, { signal: abortController.signal }),
+          addressApi.getByUser(0, { signal: abortController.signal }).catch((error) => {
             reportNonBlockingError('Checkout.loadAddresses', error);
-            if (!disposed && mountedRef.current) {
+            if (!disposed && mountedRef.current && !abortController.signal.aborted) {
               setAddressLoadFailed(true);
               showCheckoutMessage('warning', t('pages.checkout.addressLoadFailed'));
             }
             return { data: [] as UserAddress[] };
           }),
         ]);
-        if (disposed || !mountedRef.current) return;
+        if (disposed || !mountedRef.current || abortController.signal.aborted) return;
         const selectedItems = selectedCartItemIds.length === 0
           ? cartRes.data
           : cartRes.data.filter((item) => selectedCartItemIds.includes(item.id));
@@ -144,7 +145,7 @@ export const useCheckoutCartBootstrap = ({
         const defaultAddress = addressRes.data.find((address) => address.isDefault) || addressRes.data[0];
         if (defaultAddress) setSelectedAddressId(defaultAddress.id);
       } catch (error: unknown) {
-        if (disposed || !mountedRef.current) return;
+        if (disposed || !mountedRef.current || abortController.signal.aborted) return;
         if (isAuthExpiredError(error)) {
           clearExpiredCheckoutSession();
           clearCheckoutIdempotencyKey();
@@ -166,7 +167,7 @@ export const useCheckoutCartBootstrap = ({
           showCheckoutMessage('error', t('pages.checkout.loadFailed'));
         }
       } finally {
-        if (!disposed && mountedRef.current) {
+        if (!disposed && mountedRef.current && !abortController.signal.aborted) {
           setLoading(false);
         }
       }
@@ -175,6 +176,7 @@ export const useCheckoutCartBootstrap = ({
     void loadCheckout();
     return () => {
       disposed = true;
+      abortController.abort();
     };
   }, [
     checkoutReloadKey,

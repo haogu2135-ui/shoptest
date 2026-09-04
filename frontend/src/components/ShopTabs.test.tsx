@@ -86,3 +86,16 @@ describe('ShopTabs', () => {
     expect(screen.getByRole('tab', { name: 'Last' })).toHaveAttribute('aria-selected', 'true');
     jest.useRealTimers();
   });
+
+  it('keeps tab and panel ids unique across instances', () => {
+    render(
+      <>
+        <ShopTabs items={[{ key: 'a', label: 'Alpha', children: 'One' }]} />
+        <ShopTabs items={[{ key: 'a', label: 'Alpha', children: 'Two' }]} />
+      </>,
+    );
+    const tabs = screen.getAllByRole('tab', { name: 'Alpha' });
+    expect(tabs[0].id).not.toBe(tabs[1].id);
+    expect(tabs[0]).toHaveAttribute('aria-controls');
+    expect(document.getElementById(tabs[0].getAttribute('aria-controls') || '')).toBeInTheDocument();
+  });

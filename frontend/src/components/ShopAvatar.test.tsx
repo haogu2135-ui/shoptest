@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import ShopAvatar from './ShopAvatar';
 
 describe('ShopAvatar', () => {
@@ -16,5 +16,14 @@ describe('ShopAvatar', () => {
   it('renders icon mode', () => {
     render(<ShopAvatar icon={<span data-testid="ico">U</span>} />);
     expect(screen.getByTestId('ico')).toBeInTheDocument();
+  });
+
+  it('recovers from an image failure when the source changes', () => {
+    const { rerender } = render(<ShopAvatar src="/first.png">F</ShopAvatar>);
+    fireEvent.error(screen.getByRole('img'));
+    expect(screen.queryByRole('img')).not.toBeInTheDocument();
+
+    rerender(<ShopAvatar src="/second.png">S</ShopAvatar>);
+    expect(screen.getByRole('img')).toHaveAttribute('src', '/second.png');
   });
 });

@@ -1,5 +1,5 @@
 import { useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
-import { couponApi } from '../api';
+import { couponApi, createApiAbortController } from '../api';
 import type { CartItem, CouponQuote } from '../types';
 import { hasAuthenticatedCartSession } from '../utils/cartSession';
 import { conversionConfig } from '../utils/conversionConfig';
@@ -77,6 +77,7 @@ export const useCheckoutCouponQuote = ({
     }
     const requestSeq = couponQuoteSeqRef.current + 1;
     couponQuoteSeqRef.current = requestSeq;
+    const abortController = createApiAbortController();
     setCouponQuote(null);
     setCouponQuoteStatus('loading');
     setCouponQuoteErrorMessage(null);
@@ -87,9 +88,9 @@ export const useCheckoutCouponQuote = ({
     couponApi.quote({
       cartItemIds: cartItems.map((item) => item.id),
       userCouponId: selectedUserCouponId,
-    })
+    }, { signal: abortController.signal })
       .then((res) => {
-        if (disposed || !mountedRef.current || couponQuoteSeqRef.current !== requestSeq) return;
+        if (disposed || !mountedRef.current || couponQuoteSeqRef.current !== requestSeq || abortController.signal.aborted) return;
         const nextCouponQuote = normalizeCouponQuote(res.data);
         if (!nextCouponQuote) {
           const { t: latestT } = checkoutLocalizationRef.current;
@@ -119,7 +120,7 @@ export const useCheckoutCouponQuote = ({
         }
       })
       .catch((error) => {
-        if (disposed || !mountedRef.current || couponQuoteSeqRef.current !== requestSeq) return;
+        if (disposed || !mountedRef.current || couponQuoteSeqRef.current !== requestSeq || abortController.signal.aborted) return;
         setCouponQuote(null);
         setCouponQuoteStatus('error');
         const { t: latestT, language: latestLanguage } = checkoutLocalizationRef.current;
@@ -134,6 +135,7 @@ export const useCheckoutCouponQuote = ({
       });
     return () => {
       disposed = true;
+      abortController.abort();
     };
   }, [
     cartItems,

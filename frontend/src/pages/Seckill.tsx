@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { seckillApi, paymentApi } from '../api';
+import { createApiAbortController, seckillApi, paymentApi } from '../api';
 import ShopAlert from '../components/ShopAlert';
 import ShopButton from '../components/ShopButton';
 import { ShopIcon, SI } from '../components/ShopIcon';
@@ -72,6 +72,9 @@ const Seckill: React.FC = () => {
   const submitLoadingRef = useRef(false);
   const mountedRef = useRef(true);
   const paymentChannelsRequestSeqRef = useRef(0);
+  const campaignsAbortRef = useRef<AbortController | null>(null);
+  const paymentChannelsAbortRef = useRef<AbortController | null>(null);
+  const purchaseAbortRef = useRef<AbortController | null>(null);
   const purchaseCloseRef = useRef<HTMLButtonElement>(null);
   const purchaseDialogRef = useRef<HTMLElement>(null);
 
@@ -92,13 +95,19 @@ const Seckill: React.FC = () => {
     return () => {
       mountedRef.current = false;
       window.clearInterval(timer);
+      campaignsAbortRef.current?.abort();
+      paymentChannelsAbortRef.current?.abort();
+      purchaseAbortRef.current?.abort();
     };
   }, []);
 
   useEffect(() => {
     let disposed = false;
+    const abortController = createApiAbortController();
+    campaignsAbortRef.current?.abort();
+    campaignsAbortRef.current = abortController;
     setLoading(true);
-    seckillApi.getCampaigns()
+    seckillApi.getCampaigns({ signal: abortController.signal })
       .then((response) => {
         if (!disposed) {
           setCampaigns(Array.isArray(response.data) ? response.data : []);
@@ -106,6 +115,7 @@ const Seckill: React.FC = () => {
         }
       })
       .catch((requestError) => {
+        if (abortController.signal.aborted) return;
         if (!disposed) {
           const message = getApiErrorMessage(requestError, t('pages.seckill.loadFailed'), language);
           setError(message);
@@ -113,10 +123,12 @@ const Seckill: React.FC = () => {
         }
       })
       .finally(() => {
-        if (!disposed) setLoading(false);
+        if (!disposed && !abortController.signal.aborted) setLoading(false);
       });
     return () => {
       disposed = true;
+      abortController.abort();
+      if (campaignsAbortRef.current === abortController) campaignsAbortRef.current = null;
     };
   }, [language, t]);
 
@@ -130,6 +142,9 @@ const Seckill: React.FC = () => {
       return;
     }
     let disposed = false;
+    const abortController = createApiAbortController();
+    paymentChannelsAbortRef.current?.abort();
+    paymentChannelsAbortRef.current = abortController;
     const requestSeq = paymentChannelsRequestSeqRef.current + 1;
     paymentChannelsRequestSeqRef.current = requestSeq;
     const isCurrentRequest = () => !disposed
@@ -139,7 +154,7 @@ const Seckill: React.FC = () => {
     setPaymentChannelsError('');
     setPaymentChannels([]);
     setForm((current) => ({ ...current, paymentMethod: '' }));
-    paymentApi.getChannels()
+    paymentApi.getChannels({ signal: abortController.signal })
       .then((response) => {
         if (!isCurrentRequest()) return;
         const channels = Array.isArray(response.data) ? response.data : [];
@@ -154,6 +169,7 @@ const Seckill: React.FC = () => {
         setPaymentChannelsLoading(false);
       })
       .catch((requestError) => {
+        if (abortController.signal.aborted) return;
         if (!isCurrentRequest()) return;
         const message = getApiErrorMessage(
           requestError,
@@ -169,6 +185,8 @@ const Seckill: React.FC = () => {
       });
     return () => {
       disposed = true;
+      abortController.abort();
+      if (paymentChannelsAbortRef.current === abortController) paymentChannelsAbortRef.current = null;
     };
   }, [language, paymentChannelsReloadKey, t, token]);
 
@@ -278,7 +296,7 @@ const Seckill: React.FC = () => {
     setSelectedOptions({});
     setForm((current) => ({
       ...current,
-      quantity: Math.min(Math.max(1, current.quantity), Math.min(item.limitPerUser, item.remaining)),
+      quantity: Math.max(1, Math.min(Math.max(1, current.quantity), item.limitPerUser, item.remaining)),
     }));
   };
 
@@ -306,7 +324,7 @@ const Seckill: React.FC = () => {
 
   const submitPurchase = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!selected || submitLoading) return;
+    if (!selected || submitLoading || submitLoadingRef.current) return;
     if (!paymentMethodsAvailable) {
       announceAccessibleMessage(
         paymentChannelsError || t('pages.seckill.paymentUnavailable'),
@@ -324,7 +342,11 @@ const Seckill: React.FC = () => {
     }
     const quantity = Math.min(form.quantity, selected.item.limitPerUser, selected.item.remaining);
     if (quantity < 1) return;
+    submitLoadingRef.current = true;
     setSubmitLoading(true);
+    purchaseAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    purchaseAbortRef.current = abortController;
     const key = typeof window !== 'undefined' && window.crypto?.randomUUID
       ? window.crypto.randomUUID()
       : `seckill-${Date.now()}-${Math.random().toString(36).slice(2)}`;
@@ -334,17 +356,21 @@ const Seckill: React.FC = () => {
         ...form,
         quantity,
         selectedSpecs: Object.keys(selectedOptions).length > 0 ? JSON.stringify(selectedOptions) : undefined,
-      }, key);
+      }, key, { signal: abortController.signal });
+      if (abortController.signal.aborted || !mountedRef.current) return;
       const message = t('pages.seckill.orderCreated');
       announceAccessibleMessage(message, 'success');
       if (response.data.orderNo) {
         window.location.assign(`/payment/${encodeURIComponent(response.data.orderNo)}`);
       }
     } catch (requestError) {
+      if (abortController.signal.aborted || !mountedRef.current) return;
       const message = getApiErrorMessage(requestError, t('pages.seckill.purchaseFailed'), language);
       announceAccessibleMessage(message, 'error');
       setError(message);
     } finally {
+      submitLoadingRef.current = false;
+      if (purchaseAbortRef.current === abortController) purchaseAbortRef.current = null;
       if (mountedRef.current) setSubmitLoading(false);
     }
   };

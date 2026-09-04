@@ -40,15 +40,18 @@ const ShopPagination: React.FC<ShopPaginationProps> = ({
   nextLabel = 'Next page',
   ariaLabel = 'Pagination',
 }) => {
-  const totalPages = Math.max(1, Math.ceil(Math.max(0, total) / Math.max(1, pageSize)));
-  const safeCurrent = Math.min(totalPages, Math.max(1, Math.floor(current) || 1));
+  const safeTotal = Number.isFinite(total) ? Math.max(0, Math.floor(total)) : 0;
+  const safePageSize = Number.isFinite(pageSize) && pageSize > 0 ? Math.floor(pageSize) : 10;
+  const totalPages = Math.max(1, Math.ceil(safeTotal / safePageSize));
+  const safeCurrentValue = Number.isFinite(current) ? Math.floor(current) : 1;
+  const safeCurrent = Math.min(totalPages, Math.max(1, safeCurrentValue || 1));
   const pageItems = useMemo(() => buildPageItems(safeCurrent, totalPages), [safeCurrent, totalPages]);
 
-  if (total <= pageSize) return null;
+  if (safeTotal <= safePageSize) return null;
 
   return (
     <nav className={`shop-pagination ${className}`.trim()} aria-label={ariaLabel}>
-      {showTotal ? <div className="shop-pagination__total">{showTotal(total)}</div> : null}
+      {showTotal ? <div className="shop-pagination__total">{showTotal(safeTotal)}</div> : null}
       <ul className="shop-pagination__list" role="list">
         <li className={`shop-pagination__prev${safeCurrent <= 1 ? ' shop-pagination__item--disabled' : ''}`}>
           <button

@@ -7,6 +7,7 @@ import ShopSelect from '../components/ShopSelect';
 import ShopModal from '../components/ShopModal';
 import { DeleteOutlined, EyeInvisibleOutlined, CheckOutlined, MessageOutlined, SearchOutlined, StarOutlined, WarningOutlined } from '@ant-design/icons';
 import { adminApi } from '../api/admin';
+import { createApiAbortController } from '../api';
 import type { Review } from '../types';
 import { useLanguage } from '../i18n';
 import { useDebounce } from '../hooks/useDebounce';
@@ -52,6 +53,9 @@ const ReviewManagement: React.FC = () => {
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const pageSizeRef = useRef(DEFAULT_PAGE_SIZE);
+  const reviewFetchSeqRef = useRef(0);
+  const reviewAbortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
   const { t, language } = useLanguage();
   const canModerateReviews = hasAdminPermission(adminPermissions, currentRole, REVIEWS_MODERATE_PERMISSION);
   const canReplyReviews = hasAdminPermission(adminPermissions, currentRole, REVIEWS_REPLY_PERMISSION);
@@ -129,6 +133,14 @@ const ReviewManagement: React.FC = () => {
     nextStatus = statusFilter,
     nextSearch = debouncedKeyword,
   ) => {
+    const requestSeq = reviewFetchSeqRef.current + 1;
+    reviewFetchSeqRef.current = requestSeq;
+    reviewAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    reviewAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && reviewFetchSeqRef.current === requestSeq
+      && !abortController.signal.aborted;
     try {
       setLoading(true);
       const res = await adminApi.getReviews({
@@ -136,7 +148,8 @@ const ReviewManagement: React.FC = () => {
         search: nextSearch || undefined,
         page: nextPage,
         size: nextSize,
-      });
+      }, { signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       setReviews(res.data.items || []);
       const resolvedSize = res.data.size || nextSize;
       pageSizeRef.current = resolvedSize;
@@ -150,13 +163,22 @@ const ReviewManagement: React.FC = () => {
       setReviewSnapshotLoaded(true);
       setLoadError(null);
     } catch (err: unknown) {
+      if (!isCurrentRequest()) return;
       const errorMessage = getApiErrorMessage(err, t('pages.adminReviews.fetchFailed'), language);
       setLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      setLoading(false);
+      if (reviewAbortRef.current === abortController) reviewAbortRef.current = null;
+      if (isCurrentRequest()) setLoading(false);
     }
   }, [debouncedKeyword, language, statusFilter, t]);
+
+  useEffect(() => () => {
+    mountedRef.current = false;
+    reviewFetchSeqRef.current += 1;
+    reviewAbortRef.current?.abort();
+    reviewAbortRef.current = null;
+  }, []);
 
   useEffect(() => {
     fetchReviews(1, pageSizeRef.current, statusFilter, debouncedKeyword);

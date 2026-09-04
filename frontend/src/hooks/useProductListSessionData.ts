@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import type { Dispatch, SetStateAction } from 'react';
 import type { CategoryPublic, ProductPublic as Product } from '../types';
-import { categoryApi, productApi, wishlistApi } from '../api';
+import { categoryApi, createApiAbortController, productApi, wishlistApi } from '../api';
 import { localizeProduct } from '../utils/localizedProduct';
 import {
   buildProductCatalogFallbackCategories,
@@ -67,9 +67,10 @@ export const useProductListSessionData = ({
       return;
     }
     let active = true;
+    const abortController = createApiAbortController();
     let categoryRequest = getCategoryCacheRequest();
     if (!categoryRequest) {
-      categoryRequest = categoryApi.getTopLevel()
+      categoryRequest = categoryApi.getTopLevel({ signal: abortController.signal })
         .then((res) => {
           setCategoryCache({ expiresAt: Date.now() + CATEGORY_CACHE_TTL, items: res.data });
           return res.data;
@@ -81,10 +82,10 @@ export const useProductListSessionData = ({
     }
     categoryRequest
       .then((items) => {
-        if (active) setCategories(items);
+        if (active && !abortController.signal.aborted) setCategories(items);
       })
       .catch(() => {
-        if (!active) return;
+        if (!active || abortController.signal.aborted) return;
         const snapshot = loadProductCatalogSnapshot();
         const fallbackCategories = buildProductCatalogFallbackCategories(
           snapshot?.products?.length ? snapshot.products : loadFallbackProductCatalog(),
@@ -93,6 +94,7 @@ export const useProductListSessionData = ({
       });
     return () => {
       active = false;
+      abortController.abort();
     };
   }, [authSessionVersion, setCategories, t]);
 
@@ -102,15 +104,19 @@ export const useProductListSessionData = ({
       return;
     }
     let disposed = false;
-    wishlistApi.getByUser(0)
+    const abortController = createApiAbortController();
+    wishlistApi.getByUser(0, { signal: abortController.signal })
       .then((res) => {
-        if (!disposed) setWishlistedProductIds(new Set(res.data.map((item) => item.productId)));
+        if (!disposed && !abortController.signal.aborted) {
+          setWishlistedProductIds(new Set(res.data.map((item) => item.productId)));
+        }
       })
       .catch(() => {
-        if (!disposed) setWishlistedProductIds(new Set());
+        if (!disposed && !abortController.signal.aborted) setWishlistedProductIds(new Set());
       });
     return () => {
       disposed = true;
+      abortController.abort();
     };
   }, [authSessionVersion, isAuthenticated, setWishlistedProductIds]);
 
@@ -139,15 +145,19 @@ export const useProductListSessionData = ({
       return;
     }
     let disposed = false;
-    productApi.getPersonalizedRecommendations()
+    const abortController = createApiAbortController();
+    productApi.getPersonalizedRecommendations({ signal: abortController.signal })
       .then((response) => {
-        if (!disposed) setPersonalizedProducts(response.data.map((product) => localizeProduct(product, language)));
+        if (!disposed && !abortController.signal.aborted) {
+          setPersonalizedProducts(response.data.map((product) => localizeProduct(product, language)));
+        }
       })
       .catch(() => {
-        if (!disposed) setPersonalizedProducts([]);
+        if (!disposed && !abortController.signal.aborted) setPersonalizedProducts([]);
       });
     return () => {
       disposed = true;
+      abortController.abort();
     };
   }, [authSessionVersion, isAuthenticated, language, setPersonalizedProducts]);
 };

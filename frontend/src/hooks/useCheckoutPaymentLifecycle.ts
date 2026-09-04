@@ -227,26 +227,23 @@ export const useCheckoutPaymentLifecycle = ({
           guestOrderNo,
           { signal: abortController.signal },
         );
-        if (pollAbortController === abortController) {
-          pollAbortController = null;
-        }
         if (disposed || abortController.signal.aborted) return;
         const latestPayment = paymentRes.data;
         setPayment(latestPayment);
         writeCheckoutPaymentPollResult(createdOrderId, ownerId, latestPayment);
         if (shouldRefreshOrder) {
-          const orderRes = await orderApi.getById(createdOrderId);
-          if (disposed) return;
+          const orderRes = await orderApi.getById(createdOrderId, undefined, undefined, { signal: abortController.signal });
+          if (disposed || abortController.signal.aborted) return;
           setCreatedOrder(orderRes.data);
           writeCheckoutPaymentPollResult(createdOrderId, ownerId, latestPayment, orderRes.data);
         } else if (guestPaymentEmail && guestOrderNo) {
-          const orderRes = await orderApi.getById(createdOrderId, guestPaymentEmail, guestOrderNo);
-          if (disposed) return;
+          const orderRes = await orderApi.getById(createdOrderId, guestPaymentEmail, guestOrderNo, { signal: abortController.signal });
+          if (disposed || abortController.signal.aborted) return;
           setCreatedOrder(orderRes.data);
           writeCheckoutPaymentPollResult(createdOrderId, ownerId, latestPayment, orderRes.data);
         }
       } catch (error) {
-        if (disposed || pollAbortController?.signal.aborted) return;
+        if (disposed || abortController.signal.aborted) return;
         reportNonBlockingError('Checkout.pollPendingPayment', error);
       } finally {
         pollAbortController = null;

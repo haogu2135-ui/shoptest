@@ -1,7 +1,7 @@
 import React, { useCallback, useDeferredValue, useEffect, useMemo, useRef, useState } from 'react';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
 import { useNavigate } from 'react-router-dom';
-import { cartApi, couponApi } from '../api';
+import { cartApi, couponApi, createApiAbortController } from '../api';
 import type { CartItem, CouponPublic, UserCoupon } from '../types';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -66,6 +66,7 @@ const CouponCenter: React.FC = () => {
   const isAuthenticated = Boolean(token);
   const mountedRef = useRef(true);
   const loadCouponsRequestRef = useRef(0);
+  const loadCouponsAbortRef = useRef<AbortController | null>(null);
   const priorityDragRef = useRef({
     dragging: false,
     moved: false,
@@ -107,19 +108,22 @@ const CouponCenter: React.FC = () => {
   }, [t]);
 
   const loadCoupons = useCallback(async () => {
+    loadCouponsAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    loadCouponsAbortRef.current = abortController;
     const requestId = loadCouponsRequestRef.current + 1;
     loadCouponsRequestRef.current = requestId;
     setLoading(true);
     try {
       const cartPromise = isAuthenticated
-        ? cartApi.getItems(0).then((res) => res.data || []).catch(() => [] as CartItem[])
+        ? cartApi.getItems(0, { signal: abortController.signal }).then((res) => res.data || []).catch(() => [] as CartItem[])
         : Promise.resolve(getGuestCartItems());
       const [publicRes, mineRes, cartItems] = await Promise.all([
-        couponApi.getPublic(),
-        isAuthenticated ? couponApi.getByUser(0) : Promise.resolve({ data: [] as UserCoupon[] }),
+        couponApi.getPublic({ signal: abortController.signal }),
+        isAuthenticated ? couponApi.getByUser(0, { signal: abortController.signal }) : Promise.resolve({ data: [] as UserCoupon[] }),
         cartPromise,
       ]);
-      if (!mountedRef.current || requestId !== loadCouponsRequestRef.current) return;
+      if (!mountedRef.current || requestId !== loadCouponsRequestRef.current || abortController.signal.aborted) return;
       const safeCartItems = toSafeArray<CartItem>(cartItems);
       const livePublicCoupons = toSafeArray<CouponPublic>(publicRes.data);
       setPublicCoupons(livePublicCoupons.length > 0 ? livePublicCoupons : getFallbackPublicCoupons());
@@ -128,6 +132,7 @@ const CouponCenter: React.FC = () => {
       setCartItemCount(getCartItemCount(safeCartItems));
       setLoadError(false);
     } catch (error) {
+      if (abortController.signal.aborted) return;
       reportNonBlockingError('CouponCenter.loadCoupons', error);
       if (mountedRef.current && requestId === loadCouponsRequestRef.current) {
         setPublicCoupons(getFallbackPublicCoupons());
@@ -138,14 +143,18 @@ const CouponCenter: React.FC = () => {
         setLoadError(true);
       }
     } finally {
-      if (mountedRef.current && requestId === loadCouponsRequestRef.current) {
+      if (loadCouponsAbortRef.current === abortController) loadCouponsAbortRef.current = null;
+      if (mountedRef.current && requestId === loadCouponsRequestRef.current && !abortController.signal.aborted) {
         setLoading(false);
       }
     }
   }, [isAuthenticated]);
 
   useEffect(() => {
-    loadCoupons();
+    void loadCoupons();
+    return () => {
+      loadCouponsAbortRef.current?.abort();
+    };
   }, [loadCoupons]);
 
   useEffect(() => {

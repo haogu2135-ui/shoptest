@@ -66,7 +66,13 @@ export const useCartQuantitySync = ({
     setQuantityPending(itemId, true);
     quantityTimersRef.current[itemId] = window.setTimeout(() => {
       delete quantityTimersRef.current[itemId];
-      const syncPromise = cartApi.updateQuantity(itemId, quantity)
+      const previousRequest = quantityRequestPromisesRef.current[itemId];
+      const syncPromise = Promise.resolve(previousRequest)
+        .catch(() => undefined)
+        .then(() => {
+          if (disposedRef.current || !isMounted() || quantityRequestVersionRef.current[itemId] !== requestVersion) return;
+          return cartApi.updateQuantity(itemId, quantity);
+        })
         .then(() => {
           if (!isActive(itemId, requestVersion)) return;
           dispatchDomEvent('shop:cart-updated');

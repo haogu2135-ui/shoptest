@@ -7,6 +7,7 @@ import ShopSelect from '../components/ShopSelect';
 import type { ColumnsType } from 'antd/es/table';
 import type { TablePaginationConfig } from 'antd/es/table';
 import { CameraOutlined, DeleteOutlined, HeartOutlined, ReloadOutlined, SearchOutlined, UserOutlined, WarningOutlined } from '@ant-design/icons';
+import { createApiAbortController } from '../api';
 import { adminApi } from '../api/admin';
 import type { AdminPetGalleryPhoto } from '../types';
 import { useLanguage } from '../i18n';
@@ -82,6 +83,9 @@ const PetGalleryManagement: React.FC = () => {
   const [pageState, setPageState] = useState({ page: 1, size: DEFAULT_PAGE_SIZE, total: 0, totalPages: 0 });
   const [gallerySummary, setGallerySummary] = useState<Record<string, number>>({});
   const pageSizeRef = useRef(DEFAULT_PAGE_SIZE);
+  const galleryFetchSeqRef = useRef(0);
+  const galleryAbortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
   const canDeletePhotos = hasAdminPermission(adminPermissions, currentRole, PET_GALLERY_DELETE_PERMISSION);
   const galleryActionDisabled = loading || Boolean(galleryLoadError) || !gallerySnapshotLoaded;
   const galleryActionUnavailableMessage = galleryLoadError || (loading ? t('common.loading') : t('pages.petGalleryAdmin.fetchFailed'));
@@ -130,6 +134,14 @@ const PetGalleryManagement: React.FC = () => {
     nextSource = sourceFilter,
     nextKeyword = debouncedKeyword,
   ) => {
+    const requestSeq = galleryFetchSeqRef.current + 1;
+    galleryFetchSeqRef.current = requestSeq;
+    galleryAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    galleryAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && galleryFetchSeqRef.current === requestSeq
+      && !abortController.signal.aborted;
     setLoading(true);
     try {
       const response = await adminApi.getPetGalleryPhotos({
@@ -138,7 +150,8 @@ const PetGalleryManagement: React.FC = () => {
         status: nextStatus === 'ALL' ? undefined : nextStatus,
         source: nextSource === 'ALL' ? undefined : nextSource,
         keyword: nextKeyword || undefined,
-      });
+      }, { signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       setGalleryLoadError(null);
       setPhotos(response.data.items || []);
       const resolvedSize = response.data.size || nextSize;
@@ -153,13 +166,25 @@ const PetGalleryManagement: React.FC = () => {
       setLastLoadedAt(new Date());
       setGallerySnapshotLoaded(true);
     } catch (error: unknown) {
+      if (!isCurrentRequest()) return;
       const errorMessage = getApiErrorMessage(error, t('pages.petGalleryAdmin.fetchFailed'), language);
       setGalleryLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      setLoading(false);
+      if (galleryAbortRef.current === abortController) galleryAbortRef.current = null;
+      if (isCurrentRequest()) setLoading(false);
     }
   }, [debouncedKeyword, language, sourceFilter, statusFilter, t]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      galleryFetchSeqRef.current += 1;
+      galleryAbortRef.current?.abort();
+      galleryAbortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     fetchPhotos(1, pageSizeRef.current, statusFilter, sourceFilter, debouncedKeyword);

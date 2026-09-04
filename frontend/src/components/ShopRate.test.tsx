@@ -29,4 +29,13 @@ describe('ShopRate', () => {
     expect(screen.getAllByRole('img')[0].querySelectorAll('.shop-rate__star')).toHaveLength(5);
     expect(() => render(<ShopRate value={3} count={-4} />)).not.toThrow();
   });
+
+  it('uses normalized count for keyboard navigation', () => {
+    const onChange = jest.fn();
+    render(<ShopRate value={1} count={3} onChange={onChange} ariaLabel="Rating" />);
+    const first = screen.getByRole('radio', { name: '1' });
+    fireEvent.keyDown(first, { key: 'ArrowRight' });
+    expect(onChange).toHaveBeenCalledWith(2);
+    expect(screen.getByRole('radio', { name: '2' })).toHaveFocus();
+  });
 });

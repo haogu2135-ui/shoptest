@@ -1,4 +1,4 @@
-import { useCallback, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
+import { useCallback, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import type { FormInstance } from 'antd/es/form';
 import { addressApi } from '../api';
 import type { Language } from '../i18n';
@@ -55,6 +55,8 @@ export const useProfileAddressActions = ({
   setRegionOptionsLoading,
   t,
 }: UseProfileAddressActionsParams) => {
+  const regionRequestSeqRef = useRef(0);
+
   const handleSaveAddress = async () => {
     if (addressSubmitting) return;
     try {
@@ -135,22 +137,25 @@ export const useProfileAddressActions = ({
     if (regionOptions.length > 0 && regionOptionsLanguage === language) {
       return regionOptions;
     }
+    const requestSeq = regionRequestSeqRef.current + 1;
+    regionRequestSeqRef.current = requestSeq;
+    const isCurrentRequest = () => mountedRef.current && regionRequestSeqRef.current === requestSeq;
     setRegionOptionsLoading(true);
     try {
       const options = await loadRegionData(language);
-      if (mountedRef.current) {
+      if (isCurrentRequest()) {
         setRegionOptions(options);
         setRegionOptionsLanguage(language);
       }
       return options;
     } catch (error) {
       reportNonBlockingError('Profile.loadRegionData', error);
-      if (mountedRef.current) {
+      if (isCurrentRequest()) {
         announceAccessibleMessage(t('pages.profile.regionLoadFailed'), 'error');
       }
       return [];
     } finally {
-      if (mountedRef.current) {
+      if (isCurrentRequest()) {
         setRegionOptionsLoading(false);
       }
     }

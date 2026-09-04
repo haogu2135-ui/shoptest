@@ -66,4 +66,9 @@ describe('ShopDatePicker', () => {
     );
     expect(container.querySelector('.shop-date-picker.profile-pet-modal__field')).toBeTruthy();
   });
+
+  it('supports a custom clear label', () => {
+    render(<ShopDatePicker ariaLabel="Date" value={dayjs('2020-01-01')} clearLabel="Reset date" />);
+    expect(screen.getByRole('button', { name: 'Reset date' })).toBeInTheDocument();
+  });
 });

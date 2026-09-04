@@ -31,4 +31,16 @@ describe('ShopPagination', () => {
     );
     expect(container).toBeEmptyDOMElement();
   });
+
+  it('normalizes invalid paging inputs', () => {
+    render(
+      <ShopPagination
+        current={Number.POSITIVE_INFINITY}
+        total={Number.NaN}
+        pageSize={0}
+        onChange={jest.fn()}
+      />,
+    );
+    expect(screen.queryByRole('navigation', { name: 'Pagination' })).not.toBeInTheDocument();
+  });
 });

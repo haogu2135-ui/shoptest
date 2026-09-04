@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import type { SetURLSearchParams } from 'react-router-dom';
-import { paymentApi } from '../api';
+import { createApiAbortController, paymentApi } from '../api';
 import type { Language } from '../i18n';
 import type { OrderCustomer, PaymentChannel, PaymentCustomer } from '../types';
 import { announceAccessibleMessage } from '../utils/accessibleMessage';
@@ -69,29 +69,43 @@ export const useProfilePaymentReturn = ({
 }: UseProfilePaymentReturnParams) => {
   const handledPaymentReturnRef = useRef('');
   const autoResumePaymentReturnRef = useRef('');
+  const paymentReturnAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => () => {
+    paymentReturnAbortRef.current?.abort();
+  }, []);
 
   const syncPaymentReturnState = useCallback(async (order: OrderCustomer) => {
+    paymentReturnAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    paymentReturnAbortRef.current = abortController;
     const syncSeq = paymentReturnSyncSeqRef.current + 1;
     paymentReturnSyncSeqRef.current = syncSeq;
     const isCurrentPaymentReturnSync = () => mountedRef.current && paymentReturnSyncSeqRef.current === syncSeq;
-    const paymentListRes = await paymentApi.syncByOrder(order.id);
-    if (!isCurrentPaymentReturnSync()) return;
-    const mergedPayments = paymentListRes.data || [];
-    const latestPayment = mergedPayments[0] || null;
-    setOrderPayments(mergedPayments);
-    if (latestPayment) {
-      setSelectedPayment(latestPayment);
-      setSelectedPaymentMethod(getPreferredPaymentChannel(paymentChannels, latestPayment.channel));
-    }
-    await fetchOrders();
-    if (!isCurrentPaymentReturnSync()) return;
-    const { t: latestT } = profileLocalizationRef.current;
-    if (mergedPayments.some((payment) => normalizeStatusCode(payment.status) === 'RECONCILE_REQUIRED')) {
-      announceAccessibleMessage(latestT('pages.profile.paymentReturnReconcileRequired'), 'warning');
-    } else if (mergedPayments.some((payment) => normalizeStatusCode(payment.status) === 'PAID')) {
-      announceAccessibleMessage(latestT('pages.profile.paymentReturnSynced'), 'success');
-    } else {
-      announceAccessibleMessage(latestT('pages.profile.paymentReturnPending'), 'info');
+    try {
+      const paymentListRes = await paymentApi.syncByOrder(order.id, { signal: abortController.signal });
+      if (!isCurrentPaymentReturnSync()) return;
+      const mergedPayments = paymentListRes.data || [];
+      const latestPayment = mergedPayments[0] || null;
+      setOrderPayments(mergedPayments);
+      if (latestPayment) {
+        setSelectedPayment(latestPayment);
+        setSelectedPaymentMethod(getPreferredPaymentChannel(paymentChannels, latestPayment.channel));
+      }
+      await fetchOrders();
+      if (!isCurrentPaymentReturnSync()) return;
+      const { t: latestT } = profileLocalizationRef.current;
+      if (mergedPayments.some((payment) => normalizeStatusCode(payment.status) === 'RECONCILE_REQUIRED')) {
+        announceAccessibleMessage(latestT('pages.profile.paymentReturnReconcileRequired'), 'warning');
+      } else if (mergedPayments.some((payment) => normalizeStatusCode(payment.status) === 'PAID')) {
+        announceAccessibleMessage(latestT('pages.profile.paymentReturnSynced'), 'success');
+      } else {
+        announceAccessibleMessage(latestT('pages.profile.paymentReturnPending'), 'info');
+      }
+    } catch (error) {
+      if (!abortController.signal.aborted) throw error;
+    } finally {
+      if (paymentReturnAbortRef.current === abortController) paymentReturnAbortRef.current = null;
     }
   }, [
     fetchOrders,

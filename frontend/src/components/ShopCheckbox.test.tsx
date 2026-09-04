@@ -17,7 +17,9 @@ describe('ShopCheckbox', () => {
 
   it('supports indeterminate aria state', () => {
     render(<ShopCheckbox ariaLabel="Partial" indeterminate checked={false} />);
-    expect(screen.getByRole('checkbox', { name: 'Partial' })).toHaveAttribute('aria-checked', 'mixed');
+    const checkbox = screen.getByRole('checkbox', { name: 'Partial' });
+    expect(checkbox).toHaveAttribute('aria-checked', 'mixed');
+    expect(checkbox).toHaveProperty('indeterminate', true);
   });
 
   it('supports grouped options and child values', () => {
@@ -51,5 +53,15 @@ describe('ShopCheckbox', () => {
     );
     fireEvent.click(screen.getByRole('checkbox', { name: 'Blue' }));
     expect(onChange).toHaveBeenCalledWith(['blue']);
+  });
+
+  it('deduplicates option values before rendering group controls', () => {
+    render(
+      <ShopCheckboxGroup
+        ariaLabel="Filters"
+        options={[{ value: 'a', label: 'First' }, { value: 'a', label: 'Duplicate' }]}
+      />,
+    );
+    expect(screen.getAllByRole('checkbox')).toHaveLength(1);
   });
 });

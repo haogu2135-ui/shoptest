@@ -17,7 +17,8 @@ describe('product API type-safety guard', () => {
     expect(productNormalizationSource).not.toMatch(/\(product as any\)|\(group as any\)|\(raw as any\)|\bas any\b/);
     expect(productNormalizationSource).toContain('parseMaybeJson(product.images)');
     expect(productNormalizationSource).toContain('normalizeStringListParam(group.options, 40, 120)');
-    expect(productNormalizationSource).toMatch(/Number\((\w+)\.total \?\? \1\.totalElements \?\? items\.length\)/);
+    expect(productNormalizationSource).toContain('const normalizeResponseInteger = (value: unknown): number | null');
+    expect(productNormalizationSource).toContain('normalizeResponseInteger(metadata.total ?? metadata.totalElements)');
   });
 
   it('keeps stale product list-only field mapping out of the active API layer', () => {

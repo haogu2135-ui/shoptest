@@ -47,9 +47,12 @@ const ShopDropdown: React.FC<ShopDropdownProps> = ({
   const resolvedOpen = isControlled ? Boolean(open) : uncontrolledOpen;
   const wrapRef = useRef<HTMLSpanElement | null>(null);
   const triggerRef = useRef<HTMLElement | null>(null);
+  const menuRef = useRef<HTMLDivElement | null>(null);
+  const wasOpenRef = useRef(false);
   const menuId = useId();
   const [popupStyle, setPopupStyle] = useState<React.CSSProperties>({});
   const [expandedKeys, setExpandedKeys] = useState<string[]>([]);
+  const safePopupZIndex = Number.isFinite(popupZIndex) ? popupZIndex : 2400;
 
   const setOpen = (next: boolean) => {
     if (!isControlled) setUncontrolledOpen(next);
@@ -58,7 +61,17 @@ const ShopDropdown: React.FC<ShopDropdownProps> = ({
   };
 
   useEffect(() => {
-    if (!resolvedOpen) setExpandedKeys([]);
+    if (!resolvedOpen) {
+      setExpandedKeys([]);
+      if (wasOpenRef.current) triggerRef.current?.focus();
+      wasOpenRef.current = false;
+      return;
+    }
+    wasOpenRef.current = true;
+    const timer = window.setTimeout(() => {
+      menuRef.current?.querySelector<HTMLButtonElement>('button[role="menuitem"]:not([disabled])')?.focus();
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, [resolvedOpen]);
 
   useEffect(() => {
@@ -83,7 +96,7 @@ const ShopDropdown: React.FC<ShopDropdownProps> = ({
         minWidth: Math.min(width, window.innerWidth - 16),
         maxWidth: 'calc(100vw - 16px)',
         maxHeight: estimatedHeight,
-        zIndex: popupZIndex,
+        zIndex: safePopupZIndex,
       });
     };
     updatePosition();
@@ -93,7 +106,7 @@ const ShopDropdown: React.FC<ShopDropdownProps> = ({
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };
-  }, [expandedKeys.length, items.length, popupZIndex, resolvedOpen]);
+  }, [expandedKeys.length, items.length, safePopupZIndex, resolvedOpen]);
 
   useEffect(() => {
     if (!resolvedOpen || typeof document === 'undefined') return;
@@ -189,6 +202,28 @@ const ShopDropdown: React.FC<ShopDropdownProps> = ({
           id={menuId}
           className={`shop-dropdown__popup ${popupClassName}`.trim()}
           role="menu"
+          ref={menuRef}
+          tabIndex={-1}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') {
+              event.preventDefault();
+              setOpen(false);
+              return;
+            }
+            if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(event.key)) return;
+            const menuItems = Array.from(menuRef.current?.querySelectorAll<HTMLButtonElement>('button[role="menuitem"]:not([disabled])') || []);
+            if (!menuItems.length) return;
+            const currentIndex = menuItems.indexOf(document.activeElement as HTMLButtonElement);
+            const nextIndex = event.key === 'Home'
+              ? 0
+              : event.key === 'End'
+                ? menuItems.length - 1
+                : currentIndex < 0
+                  ? 0
+                  : (currentIndex + (event.key === 'ArrowDown' ? 1 : -1) + menuItems.length) % menuItems.length;
+            event.preventDefault();
+            menuItems[nextIndex]?.focus();
+          }}
           style={popupStyle}
         >
           <div className="shop-dropdown__menu">

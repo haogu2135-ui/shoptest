@@ -62,7 +62,7 @@ const ShopRate: React.FC<ShopRateProps> = ({
     >
       {stars.map((star) => {
         const fill = clamp(displayValue - (star - 1), 0, 1);
-        const selected = interactive && normalizeValue(value, count, allowHalf) === star;
+        const selected = interactive && normalizeValue(value, normalizedCount, allowHalf) === star;
         const starLabel = `${star}`;
         const content = (
           <>
@@ -96,6 +96,7 @@ const ShopRate: React.FC<ShopRateProps> = ({
             aria-checked={selected || (allowHalf && value === star - 0.5 && fill >= 0.5)}
             aria-label={starLabel}
             title={starLabel}
+            tabIndex={selected || (!value && star === 1) ? 0 : -1}
             onMouseMove={(event) => setHoverValue(pickValue(star, event))}
             onFocus={() => setHoverValue(star)}
             onBlur={() => setHoverValue(null)}
@@ -104,6 +105,17 @@ const ShopRate: React.FC<ShopRateProps> = ({
               if (event.key === 'Enter' || event.key === ' ') {
                 event.preventDefault();
                 commit(star);
+                return;
+              }
+              if (event.key === 'ArrowRight' || event.key === 'ArrowUp' || event.key === 'ArrowLeft' || event.key === 'ArrowDown') {
+                event.preventDefault();
+                const direction = event.key === 'ArrowRight' || event.key === 'ArrowUp' ? 1 : -1;
+                const nextStar = clamp(star + direction, 1, normalizedCount);
+                commit(nextStar);
+                const nextButton = event.currentTarget.parentElement?.querySelector<HTMLButtonElement>(
+                  `button[aria-label="${nextStar}"]`,
+                );
+                nextButton?.focus();
               }
             }}
           >

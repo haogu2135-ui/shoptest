@@ -1,10 +1,11 @@
 import { useNavigate } from 'react-router-dom';
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Table } from 'antd';
 import ShopPopconfirm from '../components/ShopPopconfirm';
 import type { ColumnsType } from 'antd/es/table';
 import { ClearOutlined, DashboardOutlined, ReloadOutlined, ThunderboltOutlined, UndoOutlined } from '@ant-design/icons';
 import { adminApi } from '../api/admin';
+import { createApiAbortController } from '../api';
 import type { AdminTrafficControlStatus } from '../types';
 import { useLanguage } from '../i18n';
 import PageError from '../components/PageError';
@@ -48,24 +49,48 @@ const TrafficControl: React.FC = () => {
   const [acting, setActing] = useState<string | null>(null);
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
+  const mountedRef = useRef(true);
+  const statusFetchSeqRef = useRef(0);
+  const statusAbortRef = useRef<AbortController | null>(null);
   const canClearRateLimit = hasAdminPermission(adminPermissions, currentRole, TRAFFIC_CONTROL_RATE_LIMIT_CLEAR_PERMISSION);
   const canResetCircuit = hasAdminPermission(adminPermissions, currentRole, TRAFFIC_CONTROL_CIRCUIT_RESET_PERMISSION);
   const actionDisabled = !status || loading || Boolean(loadError);
 
   const loadStatus = useCallback(async () => {
+    const requestSeq = statusFetchSeqRef.current + 1;
+    statusFetchSeqRef.current = requestSeq;
+    statusAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    statusAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && statusFetchSeqRef.current === requestSeq
+      && !abortController.signal.aborted;
     setLoading(true);
     try {
       setLoadError(null);
-      const response = await adminApi.getTrafficControlStatus();
+      const response = await adminApi.getTrafficControlStatus({ signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       setStatus(response.data);
     } catch (error: unknown) {
+      if (!isCurrentRequest()) return;
       const errorMessage = getApiErrorMessage(error, t('pages.trafficControl.loadFailed'), language);
       setLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      setLoading(false);
+      if (statusAbortRef.current === abortController) statusAbortRef.current = null;
+      if (isCurrentRequest()) setLoading(false);
     }
   }, [language, t]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      statusFetchSeqRef.current += 1;
+      statusAbortRef.current?.abort();
+      statusAbortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     loadStatus();

@@ -22,4 +22,9 @@ describe('ShopTag', () => {
     expect(onClose).toHaveBeenCalled();
     expect(screen.getByText('Active filter')).toBeInTheDocument();
   });
+
+  it('exposes a custom accessible close label', () => {
+    render(<ShopTag closable closeLabel="Remove filter">Active</ShopTag>);
+    expect(screen.getByRole('button', { name: 'Remove filter' })).toBeInTheDocument();
+  });
 });

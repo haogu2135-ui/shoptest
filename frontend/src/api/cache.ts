@@ -22,7 +22,7 @@ const createAbortError = () => {
     return error;
 };
 
-const withAbortSignal = <T,>(promise: Promise<T>, signal?: AbortSignal) => {
+export const withAbortSignal = <T,>(promise: Promise<T>, signal?: AbortSignal) => {
     if (!signal) return promise;
     if (signal.aborted) return Promise.reject(createAbortError());
     return new Promise<T>((resolve, reject) => {

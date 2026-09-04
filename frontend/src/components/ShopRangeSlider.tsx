@@ -15,6 +15,14 @@ export type ShopRangeSliderProps = {
 
 const clamp = (value: number, min: number, max: number) => Math.min(max, Math.max(min, value));
 
+const finiteOr = (value: number, fallback: number) => Number.isFinite(value) ? value : fallback;
+
+const snapToStep = (value: number, min: number, step: number) => {
+  const snapped = min + Math.round((value - min) / step) * step;
+  const precision = Math.max(0, Math.min(10, (String(step).split('.')[1] || '').length));
+  return Number(snapped.toFixed(precision));
+};
+
 const ShopRangeSlider: React.FC<ShopRangeSliderProps> = ({
   min,
   max,
@@ -26,10 +34,15 @@ const ShopRangeSlider: React.FC<ShopRangeSliderProps> = ({
   className = '',
   disabled = false,
 }) => {
-  const safeMax = Math.max(min, max);
-  const safeMin = Math.min(min, safeMax);
-  const low = clamp(Math.min(value[0], value[1]), safeMin, safeMax);
-  const high = clamp(Math.max(value[0], value[1]), safeMin, safeMax);
+  const rawMin = finiteOr(min, 0);
+  const rawMax = finiteOr(max, rawMin);
+  const safeMin = Math.min(rawMin, rawMax);
+  const safeMax = Math.max(rawMin, rawMax);
+  const safeStep = finiteOr(step, 1) > 0 ? finiteOr(step, 1) : 1;
+  const rawLow = finiteOr(value?.[0], safeMin);
+  const rawHigh = finiteOr(value?.[1], safeMax);
+  const low = clamp(snapToStep(Math.min(rawLow, rawHigh), safeMin, safeStep), safeMin, safeMax);
+  const high = clamp(snapToStep(Math.max(rawLow, rawHigh), safeMin, safeStep), safeMin, safeMax);
   const span = Math.max(1, safeMax - safeMin);
   const lowPercent = ((low - safeMin) / span) * 100;
   const highPercent = ((high - safeMin) / span) * 100;
@@ -43,12 +56,12 @@ const ShopRangeSlider: React.FC<ShopRangeSliderProps> = ({
 
   const emitChange = useCallback((next: [number, number]) => {
     const normalized: [number, number] = [
-      clamp(Math.min(next[0], next[1]), safeMin, safeMax),
-      clamp(Math.max(next[0], next[1]), safeMin, safeMax),
+      clamp(snapToStep(Math.min(next[0], next[1]), safeMin, safeStep), safeMin, safeMax),
+      clamp(snapToStep(Math.max(next[0], next[1]), safeMin, safeStep), safeMin, safeMax),
     ];
     activeValueRef.current = normalized;
     onChange(normalized);
-  }, [onChange, safeMax, safeMin]);
+  }, [onChange, safeMax, safeMin, safeStep]);
 
   const complete = useCallback(() => {
     onChangeComplete?.(activeValueRef.current);
@@ -70,7 +83,7 @@ const ShopRangeSlider: React.FC<ShopRangeSliderProps> = ({
         className="shop-range__input shop-range__input--low"
         min={safeMin}
         max={safeMax}
-        step={step}
+        step={safeStep}
         value={low}
         disabled={disabled}
         aria-label={labels[0]}
@@ -93,7 +106,7 @@ const ShopRangeSlider: React.FC<ShopRangeSliderProps> = ({
         className="shop-range__input shop-range__input--high"
         min={safeMin}
         max={safeMax}
-        step={step}
+        step={safeStep}
         value={high}
         disabled={disabled}
         aria-label={labels[1]}

@@ -87,7 +87,14 @@ const ShopListItem = (({
       className={['shop-list__item', 'ant-list-item', className].filter(Boolean).join(' ')}
       style={style}
       onClick={onClick}
-      onKeyDown={onKeyDown}
+      onKeyDown={(event) => {
+        onKeyDown?.(event);
+        if (event.defaultPrevented || !onClick) return;
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault();
+          onClick(event as unknown as React.MouseEvent<HTMLLIElement>);
+        }
+      }}
       role={role ?? (interactive ? 'button' : undefined)}
       tabIndex={tabIndex ?? (interactive ? 0 : undefined)}
       {...rest}
@@ -139,11 +146,19 @@ const ShopListInner = <T,>({
 }: ShopListProps<T>) => {
   const items = Array.isArray(dataSource) ? dataSource : [];
   const emptyText = locale?.emptyText;
+  const usedKeys = new Map<string, number>();
   const content = renderItem
     ? items.map((item, index) => (
-        <React.Fragment key={resolveRowKey(item, index, rowKey)}>
-          {renderItem(item, index)}
-        </React.Fragment>
+        (() => {
+          const baseKey = String(resolveRowKey(item, index, rowKey));
+          const occurrence = usedKeys.get(baseKey) || 0;
+          usedKeys.set(baseKey, occurrence + 1);
+          return (
+            <React.Fragment key={occurrence === 0 ? baseKey : `${baseKey}::${occurrence}`}>
+              {renderItem(item, index)}
+            </React.Fragment>
+          );
+        })()
       ))
     : children;
 
@@ -152,10 +167,15 @@ const ShopListInner = <T,>({
   let paginationNode: React.ReactNode = null;
   const paginationConfig = typeof pagination === 'object' && pagination ? pagination : null;
   if (paginationConfig) {
-    const current = Math.max(1, Number(paginationConfig.current || 1));
-    const pageSize = Math.max(1, Number(paginationConfig.pageSize || 10));
-    const total = Math.max(0, Number(paginationConfig.total || 0));
+    const pageSizeValue = Number(paginationConfig.pageSize);
+    const totalValue = Number(paginationConfig.total);
+    const pageSize = Number.isFinite(pageSizeValue) ? Math.max(1, Math.floor(pageSizeValue)) : 10;
+    const total = Number.isFinite(totalValue) ? Math.max(0, Math.floor(totalValue)) : 0;
     const totalPages = Math.max(1, Math.ceil(total / pageSize) || 1);
+    const currentValue = Number(paginationConfig.current);
+    const current = Number.isFinite(currentValue)
+      ? Math.min(totalPages, Math.max(1, Math.floor(currentValue)))
+      : 1;
     const start = total === 0 ? 0 : (current - 1) * pageSize + 1;
     const end = Math.min(total, current * pageSize);
     paginationNode = (
@@ -167,15 +187,19 @@ const ShopListInner = <T,>({
           <button
             type="button"
             className="shop-list__pageBtn"
+            aria-label="Previous page"
+            title="Previous page"
             disabled={current <= 1}
             onClick={() => paginationConfig.onChange?.(current - 1, pageSize)}
           >
             ‹
           </button>
-          <span className="shop-list__pageStatus">{current} / {totalPages}</span>
+          <span className="shop-list__pageStatus" aria-live="polite">{current} / {totalPages}</span>
           <button
             type="button"
             className="shop-list__pageBtn"
+            aria-label="Next page"
+            title="Next page"
             disabled={current >= totalPages}
             onClick={() => paginationConfig.onChange?.(current + 1, pageSize)}
           >

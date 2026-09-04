@@ -40,4 +40,22 @@ describe('ShopSegmented', () => {
     );
     expect(container).toBeEmptyDOMElement();
   });
+
+  it('skips disabled options during keyboard navigation', () => {
+    const onChange = jest.fn();
+    render(
+      <ShopSegmented
+        ariaLabel="Mode"
+        value="a"
+        onChange={onChange}
+        options={[{ label: 'A', value: 'a' }, { label: 'Blocked', value: 'blocked', disabled: true }, { label: 'C', value: 'c' }]}
+      />,
+    );
+    const first = screen.getByRole('radio', { name: 'A' });
+    first.focus();
+    fireEvent.keyDown(first, { key: 'ArrowRight' });
+    expect(onChange).toHaveBeenCalledWith('c');
+    expect(screen.getByRole('radio', { name: 'C' })).toHaveFocus();
+    expect(screen.getByRole('radio', { name: 'Blocked' })).toBeDisabled();
+  });
 });

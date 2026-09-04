@@ -10,6 +10,7 @@ import type { ColumnsType } from 'antd/es/table';
 import { BugOutlined, CheckCircleOutlined, EditOutlined, PlusOutlined, ReloadOutlined, SearchOutlined, SyncOutlined, ToolOutlined, UploadOutlined } from '@ant-design/icons';
 import { useSearchParams } from 'react-router-dom';
 import { adminApi } from '../api/admin';
+import { createApiAbortController } from '../api';
 import type { AdminBugReport, AdminBugReportPriority, AdminBugReportSeverity, AdminBugReportStatus, AdminBugReportSummary } from '../types';
 import { useLanguage } from '../i18n';
 import { useDebounce } from '../hooks/useDebounce';
@@ -232,6 +233,10 @@ const BugManagement: React.FC = () => {
   const pageSizeRef = useRef(DEFAULT_PAGE_SIZE);
   const currentPageRef = useRef(DEFAULT_PAGE_INDEX);
   const bugListAbortRef = useRef<AbortController | null>(null);
+  const bugSummaryRequestSeqRef = useRef(0);
+  const bugSummaryAbortRef = useRef<AbortController | null>(null);
+  const bugDetailRequestsRef = useRef(new Map<number, { requestSeq: number; abortController: AbortController }>());
+  const mountedRef = useRef(true);
   const handledCreateRequestRef = useRef('');
   const [form] = Form.useForm<Partial<AdminBugReport>>();
   const [statusForm] = Form.useForm<Partial<AdminBugReport> & { note?: string }>();
@@ -391,6 +396,7 @@ const BugManagement: React.FC = () => {
         scanQueueOnly,
       }, controller.signal);
       if (controller.signal.aborted) return;
+      if (!mountedRef.current) return;
       setBugListLoadError(null);
       setBugs(response.data.items || []);
       const resolvedSize = response.data.size || nextSize;
@@ -406,6 +412,7 @@ const BugManagement: React.FC = () => {
       setBugSnapshotLoaded(true);
     } catch (error: unknown) {
       if (controller.signal.aborted) return;
+      if (!mountedRef.current) return;
       const errorMessage = getApiErrorMessage(error, tx('loadFailed', 'Failed to load bugs'), language);
       setBugListLoadError(errorMessage);
       if (!options?.quiet) {
@@ -415,7 +422,7 @@ const BugManagement: React.FC = () => {
       if (bugListAbortRef.current === controller) {
         bugListAbortRef.current = null;
       }
-      if (!controller.signal.aborted && !options?.quiet) setLoading(false);
+      if (mountedRef.current && !controller.signal.aborted && !options?.quiet) setLoading(false);
     }
   }, [debouncedKeyword, language, moduleFilter, scanQueueOnly, severityFilter, statusFilter, tx]);
 
@@ -423,35 +430,76 @@ const BugManagement: React.FC = () => {
     bugListAbortRef.current?.abort();
   }, []);
 
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+      bugSummaryRequestSeqRef.current += 1;
+      bugSummaryAbortRef.current?.abort();
+      bugListAbortRef.current = null;
+      bugSummaryAbortRef.current = null;
+      bugDetailRequestsRef.current.forEach(({ abortController }) => abortController.abort());
+      bugDetailRequestsRef.current.clear();
+    };
+  }, []);
+
   const loadBugDetail = useCallback(async (bugId: number) => {
     if (bugDetails[bugId]) return;
+    const previousRequest = bugDetailRequestsRef.current.get(bugId);
+    previousRequest?.abortController.abort();
+    const requestSeq = (previousRequest?.requestSeq || 0) + 1;
+    const abortController = createApiAbortController();
+    bugDetailRequestsRef.current.set(bugId, { requestSeq, abortController });
+    const isCurrentRequest = () => mountedRef.current
+      && !abortController.signal.aborted
+      && bugDetailRequestsRef.current.get(bugId)?.requestSeq === requestSeq;
     setLoadingDetailIds((current) => new Set(current).add(bugId));
     try {
-      const response = await adminApi.getBug(bugId);
+      const response = await adminApi.getBug(bugId, { signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       setBugDetails((current) => ({ ...current, [bugId]: response.data }));
     } catch (error: unknown) {
+      if (!isCurrentRequest()) return;
       message.error(getApiErrorMessage(error, tx('loadFailed', 'Failed to load bugs'), language));
     } finally {
-      setLoadingDetailIds((current) => {
-        const next = new Set(current);
-        next.delete(bugId);
-        return next;
-      });
+      const shouldClearLoading = isCurrentRequest();
+      if (bugDetailRequestsRef.current.get(bugId)?.requestSeq === requestSeq) {
+        bugDetailRequestsRef.current.delete(bugId);
+      }
+      if (shouldClearLoading) {
+        setLoadingDetailIds((current) => {
+          const next = new Set(current);
+          next.delete(bugId);
+          return next;
+        });
+      }
     }
   }, [bugDetails, language, tx]);
 
   const loadSummary = useCallback(async (quiet = false) => {
+    const requestSeq = bugSummaryRequestSeqRef.current + 1;
+    bugSummaryRequestSeqRef.current = requestSeq;
+    bugSummaryAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    bugSummaryAbortRef.current = abortController;
+    const isCurrentRequest = () => mountedRef.current
+      && bugSummaryRequestSeqRef.current === requestSeq
+      && !abortController.signal.aborted;
     try {
-      const response = await adminApi.getBugSummary();
+      const response = await adminApi.getBugSummary({ signal: abortController.signal });
+      if (!isCurrentRequest()) return;
       setSummaryLoadError(null);
       setSummary(response.data);
       setSummarySnapshotLoaded(true);
     } catch (error: unknown) {
+      if (!isCurrentRequest()) return;
       const errorMessage = getApiErrorMessage(error, tx('summaryFailed', 'Failed to load bug summary'), language);
       setSummaryLoadError(errorMessage);
       if (!quiet) {
         message.error(errorMessage);
       }
+    } finally {
+      if (bugSummaryAbortRef.current === abortController) bugSummaryAbortRef.current = null;
     }
   }, [language, tx]);
 

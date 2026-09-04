@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import ShopList from './ShopList';
 
 describe('ShopList', () => {
@@ -28,5 +28,27 @@ describe('ShopList', () => {
       />,
     );
     expect(screen.getByText('Nothing here')).toBeInTheDocument();
+  });
+
+  it('supports keyboard activation and de-duplicates row keys', () => {
+    const onClick = jest.fn();
+    const { container } = render(
+      <ShopList
+        dataSource={[{ id: 1, name: 'One' }, { id: 1, name: 'Two' }]}
+        renderItem={(item) => <ShopList.Item onClick={onClick}>{item.name}</ShopList.Item>}
+      />,
+    );
+    const items = container.querySelectorAll('.shop-list__item');
+    expect(items).toHaveLength(2);
+    fireEvent.keyDown(items[0], { key: 'Enter' });
+    fireEvent.keyDown(items[1], { key: ' ' });
+    expect(onClick).toHaveBeenCalledTimes(2);
+  });
+
+  it('clamps invalid pagination values', () => {
+    render(
+      <ShopList dataSource={[]} pagination={{ current: 99, pageSize: 0, total: -2 }} locale={{ emptyText: 'Empty' }} />,
+    );
+    expect(screen.getByText('1 / 1')).toBeInTheDocument();
   });
 });

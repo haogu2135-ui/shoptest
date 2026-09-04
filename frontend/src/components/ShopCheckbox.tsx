@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useId, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useId, useMemo, useRef, useState } from 'react';
 import './ShopCheckbox.css';
 
 export type ShopCheckboxChangeEvent = {
@@ -56,11 +56,16 @@ const ShopCheckboxGroupContext = createContext<GroupContextValue | null>(null);
 
 const normalizeOptions = (options?: Array<string | ShopCheckboxOption>): ShopCheckboxOption[] => {
   if (!options?.length) return [];
+  const seen = new Set<string>();
   return options.map((option) => {
     if (typeof option === 'string') {
       return { label: option, value: option };
     }
     return option;
+  }).filter((option) => {
+    if (seen.has(option.value)) return false;
+    seen.add(option.value);
+    return true;
   });
 };
 
@@ -89,6 +94,11 @@ export const ShopCheckbox: React.FC<ShopCheckboxProps> = ({
   const isDisabled = disabled || Boolean(group?.disabled);
   const inputId = id || generatedId;
   const label = ariaLabel || ariaLabelAttr || title || (typeof children === 'string' ? children : 'Checkbox');
+  const inputRef = useRef<HTMLInputElement | null>(null);
+
+  useEffect(() => {
+    if (inputRef.current) inputRef.current.indeterminate = indeterminate && !resolvedChecked;
+  }, [indeterminate, resolvedChecked]);
 
   const emitChange = (nextChecked: boolean) => {
     if (isDisabled) return;
@@ -122,6 +132,7 @@ export const ShopCheckbox: React.FC<ShopCheckboxProps> = ({
         ].filter(Boolean).join(' ')}
       >
         <input
+          ref={inputRef}
           id={inputId}
           type="checkbox"
           className="shop-checkbox__input ant-checkbox-input"

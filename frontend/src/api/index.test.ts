@@ -1064,6 +1064,45 @@ const { adminApi } = require('./admin');
     ]);
   });
 
+  it('honors bypassCache when refreshing app configuration', async () => {
+    jest.resetModules();
+    mockGet
+      .mockResolvedValueOnce({ data: { version: 'cached' } })
+      .mockResolvedValueOnce({ data: { version: 'fresh' } });
+
+    const { appConfigApi } = require('./index');
+    const first = await appConfigApi.get();
+    const cached = await appConfigApi.get();
+    const refreshed = await appConfigApi.get({ bypassCache: true });
+
+    expect(first.data.version).toBe('cached');
+    expect(cached.data.version).toBe('cached');
+    expect(refreshed.data.version).toBe('fresh');
+    expect(mockGet).toHaveBeenCalledTimes(2);
+  });
+
+  it('does not let an older app configuration request replace a bypass refresh', async () => {
+    jest.resetModules();
+    let resolveInitial!: (value: unknown) => void;
+    let resolveBypass!: (value: unknown) => void;
+    mockGet
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveInitial = resolve; }))
+      .mockImplementationOnce(() => new Promise((resolve) => { resolveBypass = resolve; }));
+
+    const { appConfigApi } = require('./index');
+    const initial = appConfigApi.get();
+    const bypass = appConfigApi.get({ bypassCache: true });
+
+    resolveBypass({ data: { version: 'fresh' } });
+    await expect(bypass).resolves.toEqual({ data: { version: 'fresh' } });
+    resolveInitial({ data: { version: 'stale' } });
+    await expect(initial).resolves.toEqual({ data: { version: 'stale' } });
+
+    const cached = await appConfigApi.get();
+    expect(cached.data.version).toBe('fresh');
+    expect(mockGet).toHaveBeenCalledTimes(2);
+  });
+
   it('caches active announcements until admin announcement mutations', async () => {
     const { announcementApi } = require('./index');
 const { adminApi } = require('./admin');
@@ -1539,7 +1578,7 @@ const { adminApi } = require('./admin');
     expect(orderApi.update).toBeUndefined();
     expect(orderApi.delete).toBeUndefined();
     expect(orderApi.addItem).toBeUndefined();
-    expect(orderApiSource).toContain("getAll: () => api.get<Order[]>('/orders').then(withArrayData)");
+    expect(orderApiSource).toContain("getAll: (options?: ApiRequestOptions) => api.get<Order[]>('/orders', withRequestOptions({}, options)).then(withArrayData)");
     expect(orderApiSource).not.toContain("getAll: () => api.get<OrderCustomer[]>('/orders').then(withArrayData)");
     expect(orderApiSource).toContain("api.post<OrderCustomer>('/orders/checkout/me'");
     expect(orderApiSource).toContain("api.post<OrderCustomer>('/orders/checkout/guest'");
@@ -1583,6 +1622,53 @@ const { adminApi } = require('./admin');
     expect(mockGet.mock.calls[1][0]).toBe('/orders');
     expect(mine.data).toEqual([{ id: 31, orderNo: 'SO31' }]);
     expect(all.data).toEqual([{ id: 32, orderNo: 'SO32' }]);
+  });
+
+  it('normalizes malformed admin page metadata before it reaches tables', async () => {
+    jest.resetModules();
+    mockGet
+      .mockResolvedValueOnce({ data: { items: [{ id: 1 }], total: -4, page: Number.NaN, size: 0, totalPages: Number.NaN } })
+      .mockResolvedValueOnce({ data: { items: [{ id: 2 }], total: 42.5, page: 2.5, size: 20.5, totalPages: 9.5 } })
+      .mockResolvedValueOnce({ data: { items: [{ id: 3 }], total: 1, page: 1, size: 0, totalPages: Number.NaN } });
+
+    const { adminApi, adminSupportApi } = require('./admin');
+    const reviews = await adminApi.getReviews();
+    const coupons = await adminApi.getCoupons();
+    const sessions = await adminSupportApi.getSessions();
+
+    expect(reviews.data).toEqual(expect.objectContaining({ total: 1, page: 1, size: 20, totalPages: 1 }));
+    expect(coupons.data).toEqual(expect.objectContaining({ total: 1, page: 1, size: 20, totalPages: 1 }));
+    expect(sessions.data).toEqual(expect.objectContaining({ total: 1, page: 1, size: 20, totalPages: 1 }));
+    const { clearAdminReviewCache } = require('./core');
+    clearAdminReviewCache();
+  });
+
+  it('rejects fractional public page metadata and malformed navigation flags', async () => {
+    jest.resetModules();
+    mockGet.mockResolvedValueOnce({
+      data: {
+        items: [{ id: 11, name: 'Harness' }],
+        total: 42.5,
+        page: 2.5,
+        size: 20.5,
+        totalPages: 9.5,
+        hasNext: 'false',
+        hasPrevious: 'true',
+      },
+    });
+
+    const { productApi } = require('./index');
+    const response = await productApi.getPage(undefined, undefined, undefined, { page: 0, size: 20 });
+
+    expect(response.data).toEqual(expect.objectContaining({
+      total: 1,
+      totalElements: 1,
+      page: 0,
+      size: 1,
+      totalPages: 1,
+      hasNext: false,
+      hasPrevious: false,
+    }));
   });
 
   it('uses request bodies for guest order read credentials', async () => {
@@ -2495,6 +2581,56 @@ const { adminApi } = require('./admin');
       '/admin/registry',
       expect.objectContaining({ signal: registryController.signal }),
     ]);
+  });
+
+  it('passes detail and support-message abort signals through to request configs', async () => {
+    jest.resetModules();
+    const detailController = new AbortController();
+    const messageController = new AbortController();
+    mockGet
+      .mockResolvedValueOnce({ data: { id: 7 } })
+      .mockResolvedValueOnce({ data: [] });
+
+    const { adminApi, adminSupportApi } = require('./admin');
+
+    await adminApi.getBug(7, { signal: detailController.signal });
+    await adminSupportApi.getMessages(42, { limit: 80 }, { signal: messageController.signal });
+
+    expect(mockGet.mock.calls[0]).toEqual([
+      '/admin/bugs/7',
+      expect.objectContaining({ signal: detailController.signal }),
+    ]);
+    expect(mockGet.mock.calls[1]).toEqual([
+      '/admin/support/sessions/42/messages',
+      expect.objectContaining({
+        params: { limit: 80, afterId: undefined },
+        signal: messageController.signal,
+      }),
+    ]);
+  });
+
+  it('passes abort signals through storefront mutation request configs', async () => {
+    jest.resetModules();
+    const controller = new AbortController();
+    const { cartApi, orderApi, wishlistApi, notificationApi, petProfileApi, petGalleryApi, addressApi } = require('./index');
+
+    await cartApi.addItem(0, 8, 1, undefined, { signal: controller.signal });
+    await cartApi.removeItem(8, { signal: controller.signal });
+    await orderApi.checkout({ cartItemIds: [8], shippingAddress: 'addr', paymentMethod: 'card' }, { signal: controller.signal });
+    await wishlistApi.toggle(0, 8, { signal: controller.signal });
+    await notificationApi.markAsRead(8, undefined, { signal: controller.signal });
+    await petProfileApi.update(8, { name: 'Milo' }, { signal: controller.signal });
+    await petGalleryApi.like(8, { signal: controller.signal });
+    await addressApi.delete(8, { signal: controller.signal });
+
+    expect(mockPost.mock.calls.some((call) => call[0] === '/cart/me/add' && call[2].signal === controller.signal)).toBe(true);
+    expect(mockPost.mock.calls.some((call) => call[0] === '/orders/checkout/me' && call[2].signal === controller.signal)).toBe(true);
+    expect(mockPost.mock.calls.some((call) => call[0] === '/wishlist/me/toggle' && call[2].signal === controller.signal)).toBe(true);
+    expect(mockPut.mock.calls.some((call) => call[0] === '/notifications/8/read' && call[2].signal === controller.signal)).toBe(true);
+    expect(mockPut.mock.calls.some((call) => call[0] === '/pet-profiles/8' && call[2].signal === controller.signal)).toBe(true);
+    expect(mockPost.mock.calls.some((call) => call[0] === '/pet-gallery/8/like' && call[2].signal === controller.signal)).toBe(true);
+    expect(mockDelete.mock.calls.some((call) => call[0] === '/cart/remove/8' && call[1].signal === controller.signal)).toBe(true);
+    expect(mockDelete.mock.calls.some((call) => call[0] === '/addresses/8' && call[1].signal === controller.signal)).toBe(true);
   });
 
   it('keeps the shared admin role request alive when one caller aborts', async () => {

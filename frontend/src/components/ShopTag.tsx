@@ -8,6 +8,7 @@ export type ShopTagProps = {
   style?: React.CSSProperties;
   title?: string;
   closable?: boolean;
+  closeLabel?: string;
   onClose?: (event: React.MouseEvent<HTMLElement>) => void;
   onClick?: React.MouseEventHandler<HTMLSpanElement>;
   onKeyDown?: React.KeyboardEventHandler<HTMLSpanElement>;
@@ -29,6 +30,7 @@ const ShopTag: React.FC<ShopTagProps> = ({
   style,
   title,
   closable = false,
+  closeLabel = 'Close',
   onClose,
   onClick,
   onKeyDown,
@@ -68,7 +70,8 @@ const ShopTag: React.FC<ShopTagProps> = ({
         <button
           type="button"
           className="shop-tag__close ant-tag-close-icon"
-          aria-label="Close"
+          aria-label={closeLabel}
+          title={closeLabel}
           onClick={(event) => {
             event.stopPropagation();
             onClose?.(event);

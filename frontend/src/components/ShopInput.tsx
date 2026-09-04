@@ -30,6 +30,7 @@ export type ShopInputProps = {
   suffix?: React.ReactNode;
   addonAfter?: React.ReactNode;
   allowClear?: boolean;
+  clearLabel?: string;
   showCount?: boolean;
   'aria-label'?: string;
   'aria-describedby'?: string;
@@ -69,6 +70,7 @@ const ShopInput = forwardRef<HTMLInputElement, ShopInputProps>((props, ref) => {
   suffix,
   addonAfter,
   allowClear = false,
+  clearLabel = 'Clear',
   showCount = false,
   status = '',
   'aria-label': ariaLabel,
@@ -108,8 +110,7 @@ const ShopInput = forwardRef<HTMLInputElement, ShopInputProps>((props, ref) => {
           name={name}
           className="shop-input__control"
           type={type}
-          value={isControlled ? resolvedValue : undefined}
-          defaultValue={isControlled ? undefined : defaultValue}
+          value={resolvedValue}
           placeholder={placeholder}
           disabled={disabled}
           required={required}
@@ -140,8 +141,8 @@ const ShopInput = forwardRef<HTMLInputElement, ShopInputProps>((props, ref) => {
           <button
             type="button"
             className="shop-input__clear"
-            aria-label="Clear"
-            title="Clear"
+            aria-label={clearLabel}
+            title={clearLabel}
             onClick={(event) => {
               event.preventDefault();
               if (!isControlled) setUncontrolled('');
@@ -256,6 +257,8 @@ export type ShopTextAreaProps = {
   maxLength?: number;
   minLength?: number;
   showCount?: boolean;
+  allowClear?: boolean;
+  clearLabel?: string;
   autoSize?: boolean | { minRows?: number; maxRows?: number };
   spellCheck?: boolean;
   'aria-label'?: string;
@@ -284,6 +287,8 @@ export const ShopTextArea = forwardRef<HTMLTextAreaElement, ShopTextAreaProps>((
   maxLength,
   minLength,
   showCount = false,
+  allowClear = false,
+  clearLabel = 'Clear',
   autoSize,
   spellCheck,
   status = '',
@@ -310,6 +315,7 @@ export const ShopTextArea = forwardRef<HTMLTextAreaElement, ShopTextAreaProps>((
       className={[
         'shop-input',
         'shop-input--textarea',
+        allowClear && !disabled && !readOnly && Boolean(resolved) ? 'shop-input--withSuffix' : '',
         status ? `shop-input--${status}` : '',
         disabled ? 'shop-input--disabled' : '',
         className,
@@ -321,8 +327,7 @@ export const ShopTextArea = forwardRef<HTMLTextAreaElement, ShopTextAreaProps>((
           id={inputId}
           name={name}
           className="shop-input__control shop-input__control--textarea"
-          value={isControlled ? resolved : undefined}
-          defaultValue={isControlled ? undefined : defaultValue}
+          value={resolved}
           placeholder={placeholder}
           disabled={disabled}
           readOnly={readOnly}
@@ -350,6 +355,23 @@ export const ShopTextArea = forwardRef<HTMLTextAreaElement, ShopTextAreaProps>((
             onKeyDown?.(event);
           }}
         />
+        {allowClear && !disabled && !readOnly && Boolean(resolved) ? (
+          <button
+            type="button"
+            className="shop-input__clear"
+            aria-label={clearLabel}
+            title={clearLabel}
+            onClick={(event) => {
+              event.preventDefault();
+              if (!isControlled) setUncontrolled('');
+              if (!onChange) return;
+              const target = { value: '' } as HTMLTextAreaElement;
+              onChange({ target, currentTarget: target } as React.ChangeEvent<HTMLTextAreaElement>);
+            }}
+          >
+            ×
+          </button>
+        ) : null}
       </div>
       {showCount && typeof maxLength === 'number' ? (
         <div className="shop-input__count" aria-hidden="true">

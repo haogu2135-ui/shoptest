@@ -90,4 +90,16 @@ describe('ShopCascader', () => {
     );
     expect(screen.getByRole('button', { name: 'Region' })).toHaveTextContent('Mexico / Ciudad de México / Coyoacán');
   });
+
+  it('supports keyboard movement and a localized clear label', () => {
+    render(
+      <ShopCascader ariaLabel="Region" value={['US']} allowClear clearLabel="Limpiar" options={options} />,
+    );
+    expect(screen.getByRole('button', { name: 'Limpiar' })).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: 'Region' }));
+    const mexico = screen.getByRole('option', { name: 'Mexico' });
+    mexico.focus();
+    fireEvent.keyDown(mexico, { key: 'ArrowDown' });
+    expect(screen.getByRole('option', { name: 'United States' })).toHaveFocus();
+  });
 });

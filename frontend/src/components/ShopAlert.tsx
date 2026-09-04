@@ -9,6 +9,7 @@ export type ShopAlertProps = {
   showIcon?: boolean;
   icon?: React.ReactNode;
   closable?: boolean;
+  closeLabel?: string;
   onClose?: (event?: React.MouseEvent<HTMLButtonElement>) => void;
   action?: React.ReactNode;
   className?: string;
@@ -33,6 +34,7 @@ const ShopAlert: React.FC<ShopAlertProps> = ({
   showIcon = false,
   icon,
   closable = false,
+  closeLabel = 'Close',
   onClose,
   action,
   className = '',
@@ -89,7 +91,8 @@ const ShopAlert: React.FC<ShopAlertProps> = ({
         <button
           type="button"
           className="shop-alert__close ant-alert-close-icon"
-          aria-label="Close"
+          aria-label={closeLabel}
+          title={closeLabel}
           onClick={(event) => {
             setClosed(true);
             onClose?.(event);

@@ -11,6 +11,7 @@ import ShopSwitch from '../components/ShopSwitch';
 import { ClockCircleOutlined, LinkOutlined, PlusOutlined, SearchOutlined, SoundOutlined, ThunderboltOutlined } from '@ant-design/icons';
 import dayjs from 'dayjs';
 import { adminApi } from '../api/admin';
+import { createApiAbortController } from '../api';
 import type { SiteAnnouncement, SiteAnnouncementAdminSummary } from '../types';
 import { useLanguage } from '../i18n';
 import { useDebounce } from '../hooks/useDebounce';
@@ -98,6 +99,11 @@ const AnnouncementManagement: React.FC = () => {
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
   const pageSizeRef = useRef(DEFAULT_PAGE_SIZE);
+  const announcementsRequestSeqRef = useRef(0);
+  const announcementsAbortRef = useRef<AbortController | null>(null);
+  const summaryRequestSeqRef = useRef(0);
+  const summaryAbortRef = useRef<AbortController | null>(null);
+  const mountedRef = useRef(true);
   const [form] = Form.useForm<AnnouncementFormValues>();
   const { t, language } = useLanguage();
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
@@ -118,6 +124,11 @@ const AnnouncementManagement: React.FC = () => {
     nextStatus = statusFilter,
     nextKeyword = debouncedKeyword,
   ) => {
+    const requestSeq = announcementsRequestSeqRef.current + 1;
+    announcementsRequestSeqRef.current = requestSeq;
+    announcementsAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    announcementsAbortRef.current = abortController;
     setLoading(true);
     try {
       const response = await adminApi.getAnnouncements({
@@ -125,7 +136,8 @@ const AnnouncementManagement: React.FC = () => {
         size: nextSize,
         status: nextStatus,
         keyword: nextKeyword || undefined,
-      });
+      }, { signal: abortController.signal });
+      if (!mountedRef.current || abortController.signal.aborted || announcementsRequestSeqRef.current !== requestSeq) return;
       setAnnouncementLoadError(null);
       setAnnouncements(response.data.items || []);
       const resolvedSize = response.data.size || nextSize;
@@ -140,11 +152,13 @@ const AnnouncementManagement: React.FC = () => {
       });
       setAnnouncementSnapshotLoaded(true);
     } catch (error: unknown) {
+      if (!mountedRef.current || abortController.signal.aborted || announcementsRequestSeqRef.current !== requestSeq) return;
       const errorMessage = getApiErrorMessage(error, t('pages.announcementAdmin.fetchFailed'), language);
       setAnnouncementLoadError(errorMessage);
       message.error(errorMessage);
     } finally {
-      setLoading(false);
+      if (announcementsAbortRef.current === abortController) announcementsAbortRef.current = null;
+      if (mountedRef.current && announcementsRequestSeqRef.current === requestSeq) setLoading(false);
     }
   }, [debouncedKeyword, language, statusFilter, t]);
 
@@ -152,19 +166,41 @@ const AnnouncementManagement: React.FC = () => {
     nextStatus = statusFilter,
     nextKeyword = debouncedKeyword,
   ) => {
+    const requestSeq = summaryRequestSeqRef.current + 1;
+    summaryRequestSeqRef.current = requestSeq;
+    summaryAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    summaryAbortRef.current = abortController;
     try {
       const response = await adminApi.getAnnouncementSummary({
         status: nextStatus,
         keyword: nextKeyword || undefined,
-      });
+      }, { signal: abortController.signal });
+      if (!mountedRef.current || abortController.signal.aborted || summaryRequestSeqRef.current !== requestSeq) return;
       setSummaryLoadError(null);
       setSummary(response.data);
       setSummarySnapshotLoaded(true);
     } catch (error) {
+      if (!mountedRef.current || abortController.signal.aborted || summaryRequestSeqRef.current !== requestSeq) return;
       reportNonBlockingError('AnnouncementManagement.loadSummary', error);
       setSummaryLoadError(getApiErrorMessage(error, t('pages.announcementAdmin.fetchFailed'), language));
+    } finally {
+      if (summaryAbortRef.current === abortController) summaryAbortRef.current = null;
     }
   }, [debouncedKeyword, language, statusFilter, t]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+    mountedRef.current = false;
+    announcementsRequestSeqRef.current += 1;
+    summaryRequestSeqRef.current += 1;
+    announcementsAbortRef.current?.abort();
+    summaryAbortRef.current?.abort();
+    announcementsAbortRef.current = null;
+    summaryAbortRef.current = null;
+    };
+  }, []);
 
   useEffect(() => {
     loadAnnouncements(1, pageSizeRef.current, statusFilter, debouncedKeyword);

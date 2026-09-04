@@ -7,7 +7,7 @@ import ShopBadge from './ShopBadge';
 import ShopDropdown from './ShopDropdown';
 import ShopSelect from './ShopSelect';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { announcementApi, cartApi, couponApi, notificationApi, productApi, userApi, wishlistApi } from '../api';
+import { announcementApi, cartApi, couponApi, createApiAbortController, notificationApi, productApi, userApi, wishlistApi } from '../api';
 import { useAuth } from '../hooks/useAuth';
 import { LANGUAGE_LABELS, type Language, SUPPORTED_LANGUAGES, useLanguage } from '../i18n';
 import type { CartItem, SiteAnnouncementPublic } from '../types';
@@ -155,18 +155,22 @@ const Navbar: React.FC = () => {
 
   useEffect(() => {
     let disposed = false;
-    announcementApi.getActive(4)
+    const abortController = createApiAbortController();
+    announcementApi.getActive(4, { signal: abortController.signal })
       .then((response) => {
-        if (!disposed) setAnnouncements((response.data || []).filter(isCommercialAnnouncement));
+        if (!disposed && !abortController.signal.aborted) {
+          setAnnouncements((response.data || []).filter(isCommercialAnnouncement));
+        }
       })
       .catch((error) => {
-        if (!disposed) {
+        if (!disposed && !abortController.signal.aborted) {
           reportNonBlockingError('Navbar.fetchAnnouncements', error);
           setAnnouncements([]);
         }
       });
     return () => {
       disposed = true;
+      abortController.abort();
     };
   }, []);
 
@@ -365,10 +369,19 @@ const Navbar: React.FC = () => {
       return;
     }
     let disposed = false;
+    let activeAbortController: AbortController | null = null;
     const refreshAdminAccess = () => {
-      userApi.getProfile()
+      activeAbortController?.abort();
+      const abortController = createApiAbortController();
+      activeAbortController = abortController;
+      const isCurrentRefresh = () => (
+        !disposed
+        && activeAbortController === abortController
+        && !abortController.signal.aborted
+      );
+      userApi.getProfile({ signal: abortController.signal })
         .then((profileRes) => {
-          if (disposed) return;
+          if (!isCurrentRefresh()) return;
           const effectiveRole = getEffectiveRole(profileRes.data.role, profileRes.data.roleCode);
           setLocalStorageItem('role', effectiveRole);
           setNavRole(effectiveRole);
@@ -377,10 +390,10 @@ const Navbar: React.FC = () => {
             setAdminPath('/admin');
             return null;
           }
-          return import(/* webpackChunkName: "api-admin" */ '../api/admin').then(({ adminApi }) => adminApi.getMyPermissions());
+          return import(/* webpackChunkName: "api-admin" */ '../api/admin').then(({ adminApi }) => adminApi.getMyPermissions({ signal: abortController.signal }));
         })
         .then((permissionsRes) => {
-          if (disposed || !permissionsRes) return;
+          if (!isCurrentRefresh() || !permissionsRes) return;
           const permissions = permissionsRes.data.permissions || [];
           const effectiveRole = getEffectiveRole(permissionsRes.data.role, permissionsRes.data.roleCode);
           setLocalStorageItem('role', effectiveRole);
@@ -392,17 +405,22 @@ const Navbar: React.FC = () => {
           setAdminPath(nextDefault);
         })
         .catch((error) => {
-          if (disposed) return;
+          if (!isCurrentRefresh()) return;
           reportNonBlockingError('Navbar.refreshAdminAccess', error);
           const localRole = getLocalStorageItem('role') || '';
           setNavRole(localRole);
           setAdminPath(getLocalStorageItem('adminDefaultPath') || '/admin');
+        })
+        .finally(() => {
+          if (activeAbortController === abortController) activeAbortController = null;
         });
     };
     refreshAdminAccess();
     window.addEventListener('shop:admin-permissions-updated', refreshAdminAccess);
     return () => {
       disposed = true;
+      activeAbortController?.abort();
+      activeAbortController = null;
       window.removeEventListener('shop:admin-permissions-updated', refreshAdminAccess);
     };
   }, [token]);
@@ -412,15 +430,27 @@ const Navbar: React.FC = () => {
     let disposed = false;
     const idleTasks: ScheduledIdleTask[] = [];
     const refreshTimers: Record<string, number | undefined> = {};
+    const badgeAbortControllers: Record<string, AbortController | undefined> = {};
     // Debouncing only merges refreshes that are still pending. A refresh already
     // awaiting the network can be overtaken by a newer one for the same badge, and
     // the slower response would otherwise win and show a stale count. Each run
     // claims a monotonic sequence number per badge so only the latest run applies.
     const refreshSeq: Record<string, number> = {};
     const claimBadgeRefresh = (key: string) => {
+      badgeAbortControllers[key]?.abort();
+      const abortController = createApiAbortController();
+      badgeAbortControllers[key] = abortController;
       const requestSeq = (refreshSeq[key] ?? 0) + 1;
       refreshSeq[key] = requestSeq;
-      return () => !disposed && refreshSeq[key] === requestSeq;
+      return {
+        signal: abortController.signal,
+        isCurrentRefresh: () => (
+          !disposed
+          && refreshSeq[key] === requestSeq
+          && badgeAbortControllers[key] === abortController
+          && !abortController.signal.aborted
+        ),
+      };
     };
     const queueIdleRefresh = (callback: () => void | Promise<void>, timeout?: number) => {
       idleTasks.push(scheduleIdleTask(() => {
@@ -438,7 +468,7 @@ const Navbar: React.FC = () => {
       }, NAV_BADGE_REFRESH_DEBOUNCE_MS);
     };
     const refreshAlertCount = async () => {
-      const isCurrentRefresh = claimBadgeRefresh('alerts');
+      const { isCurrentRefresh, signal } = claimBadgeRefresh('alerts');
       if (!token) {
         setAlertCount(0);
         return;
@@ -450,7 +480,7 @@ const Navbar: React.FC = () => {
       }
       const productIds = Array.from(new Set(alerts.map((alert) => alert.productId)));
       try {
-        const response = await productApi.getByIds(productIds);
+        const response = await productApi.getByIds(productIds, { signal });
         if (!isCurrentRefresh()) return;
         const readyCount = response.data.filter((product) => {
           const stock = product.stock;
@@ -458,7 +488,7 @@ const Navbar: React.FC = () => {
         }).length;
         setAlertCount(readyCount);
       } catch (error) {
-        if (isCurrentRefresh()) {
+        if (!signal.aborted && isCurrentRefresh()) {
           setAlertCount(0);
           showBadgeLoadWarning('stock alert', error);
         }
@@ -469,15 +499,15 @@ const Navbar: React.FC = () => {
       setCartCount(count);
     };
     const refreshCartCount = async () => {
-      const isCurrentRefresh = claimBadgeRefresh('cart');
+      const { isCurrentRefresh, signal } = claimBadgeRefresh('cart');
       if (token) {
         try {
-          const res = await cartApi.getItems(0);
+          const res = await cartApi.getItems(0, { signal });
           if (!isCurrentRefresh()) return;
           const count = res.data.reduce((sum: number, item: CartItem) => sum + normalizeBadgeCount(item.quantity), 0);
           setCartCount(count);
         } catch (error) {
-          if (isCurrentRefresh()) {
+          if (!signal.aborted && isCurrentRefresh()) {
             setCartCount(0);
             showBadgeLoadWarning('cart', error);
           }
@@ -487,48 +517,48 @@ const Navbar: React.FC = () => {
       }
     };
     const refreshUnreadCount = async () => {
-      const isCurrentRefresh = claimBadgeRefresh('unread');
+      const { isCurrentRefresh, signal } = claimBadgeRefresh('unread');
       if (!token) {
         setUnreadCount(0);
         return;
       }
       try {
-        const res = await notificationApi.getUnreadCount();
+        const res = await notificationApi.getUnreadCount(0, false, { signal });
         if (isCurrentRefresh()) setUnreadCount(normalizeBadgeCount(res.data.count));
-      } catch (error) {
-        if (isCurrentRefresh()) {
+        } catch (error) {
+          if (!signal.aborted && isCurrentRefresh()) {
           setUnreadCount(0);
           showBadgeLoadWarning('notification', error);
         }
       }
     };
     const refreshWishlistCount = async () => {
-      const isCurrentRefresh = claimBadgeRefresh('wishlist');
+      const { isCurrentRefresh, signal } = claimBadgeRefresh('wishlist');
       if (!token) {
         setWishlistCount(0);
         return;
       }
       try {
-        const res = await wishlistApi.getCount(0);
+        const res = await wishlistApi.getCount(0, { signal });
         if (isCurrentRefresh()) setWishlistCount(normalizeBadgeCount(res.data.count));
-      } catch (error) {
-        if (isCurrentRefresh()) {
+        } catch (error) {
+          if (!signal.aborted && isCurrentRefresh()) {
           setWishlistCount(0);
           showBadgeLoadWarning('wishlist', error);
         }
       }
     };
     const refreshCouponCount = async () => {
-      const isCurrentRefresh = claimBadgeRefresh('coupons');
+      const { isCurrentRefresh, signal } = claimBadgeRefresh('coupons');
       if (!token) {
         setCouponCount(0);
         return;
       }
       try {
-        const res = await couponApi.getAvailableByUser(0);
+        const res = await couponApi.getAvailableByUser(0, { signal });
         if (isCurrentRefresh()) setCouponCount(normalizeBadgeCount(res.data.length));
-      } catch (error) {
-        if (isCurrentRefresh()) {
+        } catch (error) {
+          if (!signal.aborted && isCurrentRefresh()) {
           setCouponCount(0);
           showBadgeLoadWarning('coupon', error);
         }
@@ -577,6 +607,7 @@ const Navbar: React.FC = () => {
     return () => {
       disposed = true;
       idleTasks.forEach(cancelIdleTask);
+      Object.values(badgeAbortControllers).forEach((controller) => controller?.abort());
       Object.values(refreshTimers).forEach((timerId) => {
         if (timerId !== undefined) window.clearTimeout(timerId);
       });

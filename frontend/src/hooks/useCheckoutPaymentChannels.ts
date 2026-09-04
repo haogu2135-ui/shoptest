@@ -1,6 +1,6 @@
 import { useEffect, type Dispatch, type MutableRefObject, type SetStateAction } from 'react';
 import type { FormInstance } from 'antd/es/form';
-import { paymentApi } from '../api';
+import { createApiAbortController, paymentApi } from '../api';
 import type { PaymentChannel } from '../types';
 import { createPaymentMethodDetails } from '../utils/paymentMethods';
 import {
@@ -57,6 +57,7 @@ export const useCheckoutPaymentChannels = ({
       return;
     }
     let disposed = false;
+    const abortController = createApiAbortController();
     const requestSeq = paymentChannelsRequestSeqRef.current + 1;
     paymentChannelsRequestSeqRef.current = requestSeq;
     const isCurrentPaymentChannelsRequest = () => (
@@ -70,7 +71,7 @@ export const useCheckoutPaymentChannels = ({
     };
     setPaymentChannelsLoading(true);
     setPaymentChannelsError(null);
-    paymentApi.getChannels()
+    paymentApi.getChannels({ signal: abortController.signal })
       .then((res) => {
         if (!isCurrentPaymentChannelsRequest()) return;
         const channels = res.data;
@@ -106,6 +107,7 @@ export const useCheckoutPaymentChannels = ({
       });
     return () => {
       disposed = true;
+      abortController.abort();
     };
   }, [currency, form, hasCheckoutItems, paymentChannelsReloadKey]);
 };

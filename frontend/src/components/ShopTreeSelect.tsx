@@ -23,6 +23,7 @@ export type ShopTreeSelectProps = {
   popupMaxHeight?: number;
   disabled?: boolean;
   allowClear?: boolean;
+  clearLabel?: string;
   treeDefaultExpandAll?: boolean;
   id?: string;
   ariaLabel?: string;
@@ -102,6 +103,7 @@ const ShopTreeSelect: React.FC<ShopTreeSelectProps> = ({
   popupMaxHeight = 320,
   disabled = false,
   allowClear = false,
+  clearLabel = 'Clear',
   treeDefaultExpandAll = false,
   id,
   ariaLabel,
@@ -119,6 +121,11 @@ const ShopTreeSelect: React.FC<ShopTreeSelectProps> = ({
       ? new Set(collectExpandableKeys(treeData))
       : new Set(collectAncestorKeys(treeData, value) || [])
   ));
+  const safePopupMaxHeight = Number.isFinite(popupMaxHeight)
+    ? Math.max(120, Math.min(Math.floor(popupMaxHeight), 720))
+    : 320;
+  const safePopupZIndex = Number.isFinite(popupZIndex) ? popupZIndex : 2400;
+  const [activeValue, setActiveValue] = useState<string | undefined>(value == null ? undefined : valueKey(value));
 
   const setOpen = (next: boolean) => {
     if (!isControlled) setUncontrolledOpen(next);
@@ -126,6 +133,28 @@ const ShopTreeSelect: React.FC<ShopTreeSelectProps> = ({
   };
 
   const selected = useMemo(() => findOption(treeData, value), [treeData, value]);
+
+  const visibleOptions = useMemo(() => {
+    const result: ShopTreeSelectOption[] = [];
+    const walk = (nodes: ShopTreeSelectOption[]) => {
+      nodes.forEach((node) => {
+        result.push(node);
+        if (node.children?.length && expandedKeys.has(valueKey(node.value))) walk(node.children);
+      });
+    };
+    walk(treeData);
+    return result;
+  }, [expandedKeys, treeData]);
+
+  useEffect(() => {
+    if (!resolvedOpen) return;
+    const firstEnabled = visibleOptions.find((option) => !option.disabled);
+    setActiveValue((current) => (
+      visibleOptions.some((option) => valueKey(option.value) === current && !option.disabled)
+        ? current
+        : selected && !selected.disabled ? valueKey(selected.value) : (firstEnabled ? valueKey(firstEnabled.value) : undefined)
+    ));
+  }, [resolvedOpen, selected, visibleOptions]);
 
   useEffect(() => {
     if (!treeDefaultExpandAll) return;
@@ -148,13 +177,10 @@ const ShopTreeSelect: React.FC<ShopTreeSelectProps> = ({
     const updatePosition = () => {
       const rect = triggerRef.current?.getBoundingClientRect();
       if (!rect) return;
-      const width = Math.max(rect.width, 160);
-      const estimatedHeight = Math.min(popupMaxHeight, 280);
-      let left = rect.left;
+      const width = Math.min(Math.max(rect.width, 160), Math.max(140, window.innerWidth - 16));
+      const estimatedHeight = Math.min(safePopupMaxHeight, 280);
+      let left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - width - 8));
       let top = rect.bottom + 6;
-      if (left + width > window.innerWidth - 8) {
-        left = Math.max(8, window.innerWidth - width - 8);
-      }
       if (top + estimatedHeight > window.innerHeight - 8) {
         top = Math.max(8, rect.top - 6 - estimatedHeight);
       }
@@ -163,8 +189,8 @@ const ShopTreeSelect: React.FC<ShopTreeSelectProps> = ({
         top,
         left,
         minWidth: width,
-        maxHeight: popupMaxHeight,
-        zIndex: popupZIndex,
+        maxHeight: safePopupMaxHeight,
+        zIndex: safePopupZIndex,
       });
     };
     updatePosition();
@@ -174,7 +200,7 @@ const ShopTreeSelect: React.FC<ShopTreeSelectProps> = ({
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };
-  }, [popupMaxHeight, popupZIndex, resolvedOpen]);
+  }, [safePopupMaxHeight, safePopupZIndex, resolvedOpen]);
 
   useEffect(() => {
     if (!resolvedOpen || typeof document === 'undefined') return;
@@ -200,6 +226,25 @@ const ShopTreeSelect: React.FC<ShopTreeSelectProps> = ({
   const displayLabel = selected ? optionText(selected) : placeholder;
   const triggerLabel = selected ? optionText(selected) : ariaLabel || placeholder || 'Tree select';
   const showClear = allowClear && value !== undefined && value !== null && value !== '' && !disabled;
+
+  const moveActive = (direction: 1 | -1, edge?: 'start' | 'end') => {
+    const enabled = visibleOptions.filter((option) => !option.disabled);
+    if (!enabled.length) return;
+    if (edge) {
+      setActiveValue(valueKey(edge === 'start' ? enabled[0].value : enabled[enabled.length - 1].value));
+      return;
+    }
+    const index = enabled.findIndex((option) => valueKey(option.value) === activeValue);
+    const next = index < 0 ? (direction > 0 ? 0 : enabled.length - 1) : (index + direction + enabled.length) % enabled.length;
+    setActiveValue(valueKey(enabled[next].value));
+  };
+
+  const selectActive = () => {
+    const option = visibleOptions.find((item) => valueKey(item.value) === activeValue && !item.disabled);
+    if (!option || disabled) return;
+    onChange?.(option.value);
+    setOpen(false);
+  };
 
   const toggleExpand = (key: string) => {
     setExpandedKeys((prev) => {
@@ -242,7 +287,8 @@ const ShopTreeSelect: React.FC<ShopTreeSelectProps> = ({
             <button
               type="button"
               role="option"
-              className="shop-tree-select__option"
+              id={`${listId}-option-${visibleOptions.findIndex((item) => valueKey(item.value) === key)}`}
+              className={`shop-tree-select__option${activeValue === key ? ' shop-tree-select__option--active' : ''}`}
               aria-selected={active}
               aria-label={label}
               title={label}
@@ -252,6 +298,7 @@ const ShopTreeSelect: React.FC<ShopTreeSelectProps> = ({
                 onChange?.(option.value);
                 setOpen(false);
               }}
+              onMouseEnter={() => setActiveValue(key)}
             >
               {option.label}
             </button>
@@ -268,7 +315,26 @@ const ShopTreeSelect: React.FC<ShopTreeSelectProps> = ({
           className={`shop-tree-select__popup ${popupClassName}`.trim()}
           role="listbox"
           aria-label={ariaLabel || placeholder || 'Tree select'}
+          aria-activedescendant={activeValue ? `${listId}-option-${visibleOptions.findIndex((option) => valueKey(option.value) === activeValue)}` : undefined}
           style={popupStyle}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowDown') {
+              event.preventDefault();
+              moveActive(1);
+            } else if (event.key === 'ArrowUp') {
+              event.preventDefault();
+              moveActive(-1);
+            } else if (event.key === 'Home') {
+              event.preventDefault();
+              moveActive(1, 'start');
+            } else if (event.key === 'End') {
+              event.preventDefault();
+              moveActive(-1, 'end');
+            } else if (event.key === 'Enter') {
+              event.preventDefault();
+              selectActive();
+            }
+          }}
         >
           {treeData.length === 0 ? (
             <div className="shop-tree-select__empty" role="presentation">
@@ -300,6 +366,13 @@ const ShopTreeSelect: React.FC<ShopTreeSelectProps> = ({
             if (disabled) return;
             setOpen(!resolvedOpen);
           }}
+          onKeyDown={(event) => {
+            if (event.key === 'ArrowDown' || event.key === 'ArrowUp') {
+              event.preventDefault();
+              if (!resolvedOpen) setOpen(true);
+              moveActive(event.key === 'ArrowDown' ? 1 : -1);
+            }
+          }}
         >
           <span className={`shop-tree-select__value${selected ? '' : ' shop-tree-select__value--placeholder'}`}>
             {displayLabel}
@@ -310,8 +383,8 @@ const ShopTreeSelect: React.FC<ShopTreeSelectProps> = ({
           <button
             type="button"
             className="shop-tree-select__clear"
-            aria-label="Clear"
-            title="Clear"
+            aria-label={clearLabel}
+            title={clearLabel}
             onClick={(event) => {
               event.preventDefault();
               event.stopPropagation();

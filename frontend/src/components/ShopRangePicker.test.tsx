@@ -60,4 +60,15 @@ describe('ShopRangePicker', () => {
     expect(container.querySelector('#range-start')).toBeTruthy();
     expect(container.querySelector('#range-end')).toBeTruthy();
   });
+
+  it('supports a custom clear label', () => {
+    render(
+      <ShopRangePicker
+        ariaLabel="Range"
+        value={[dayjs('2020-01-01'), dayjs('2020-01-02')]}
+        clearLabel="Reset range"
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Reset range' })).toBeInTheDocument();
+  });
 });
