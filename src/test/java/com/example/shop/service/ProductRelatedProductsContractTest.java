@@ -49,7 +49,7 @@ class ProductRelatedProductsContractTest {
     @Test
     void productRecommendationsEndpointUsesCurrentBoundedRelatedPath() throws IOException {
         String controller = read("src/main/java/com/example/shop/controller/ProductController.java");
-        String endpoint = methodBlock(controller, "public ResponseEntity<List<ProductPublicResponse>> getRecommendations(@PathVariable Long id)");
+        String endpoint = methodBlock(controller, "public ResponseEntity<List<ProductPublicListItemResponse>> getRecommendations(@PathVariable Long id)");
 
         assertTrue(endpoint.contains("productService.findPublicById(id)"));
         assertTrue(endpoint.contains("productService.findRelatedProducts(id, product.getCategoryId())"));

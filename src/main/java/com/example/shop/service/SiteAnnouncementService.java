@@ -31,6 +31,7 @@ public class SiteAnnouncementService {
     private static final int DEFAULT_ACTIVE_LIMIT = 10;
     private static final int DEFAULT_ADMIN_PAGE_SIZE = 20;
     private static final int DEFAULT_ADMIN_PAGE_MAX_SIZE = 100;
+    private static final int PLACEHOLDER_SCAN_BATCH_SIZE = 100;
     private static final int DEFAULT_TITLE_MAX_CHARS = 120;
     private static final int DEFAULT_CONTENT_MAX_CHARS = 500;
     private static final int DEFAULT_LINK_URL_MAX_CHARS = 500;
@@ -47,16 +48,34 @@ public class SiteAnnouncementService {
     @EventListener(ApplicationReadyEvent.class)
     @Transactional(rollbackFor = Exception.class)
     public void deactivatePlaceholderActiveAnnouncements() {
-        List<SiteAnnouncement> invalidActiveAnnouncements = repository.findByStatusIgnoreCase("ACTIVE").stream()
-                .filter(this::hasPlaceholderOrGibberishCopy)
-                .collect(Collectors.toList());
-        if (invalidActiveAnnouncements.isEmpty()) {
-            return;
+        long lastId = 0L;
+        while (true) {
+            List<SiteAnnouncement> batch = repository
+                    .findByStatusIgnoreCaseAndIdGreaterThanOrderByIdAsc(
+                            "ACTIVE", lastId, PageRequest.of(0, PLACEHOLDER_SCAN_BATCH_SIZE));
+            if (batch == null || batch.isEmpty()) {
+                return;
+            }
+            List<SiteAnnouncement> invalidActiveAnnouncements = batch.stream()
+                    .filter(this::hasPlaceholderOrGibberishCopy)
+                    .collect(Collectors.toList());
+            if (!invalidActiveAnnouncements.isEmpty()) {
+                invalidActiveAnnouncements.forEach(announcement -> announcement.setStatus("INACTIVE"));
+                repository.saveAll(invalidActiveAnnouncements);
+                log.warn("Deactivated {} active site announcement(s) that matched QA/test placeholder content guards",
+                        invalidActiveAnnouncements.size());
+            }
+            long scanAfterId = lastId;
+            Long nextId = batch.stream()
+                    .map(SiteAnnouncement::getId)
+                    .filter(id -> id != null && id > scanAfterId)
+                    .max(Long::compareTo)
+                    .orElse(null);
+            if (nextId == null || batch.size() < PLACEHOLDER_SCAN_BATCH_SIZE) {
+                return;
+            }
+            lastId = nextId;
         }
-        invalidActiveAnnouncements.forEach(announcement -> announcement.setStatus("INACTIVE"));
-        repository.saveAll(invalidActiveAnnouncements);
-        log.warn("Deactivated {} active site announcement(s) that matched QA/test placeholder content guards",
-                invalidActiveAnnouncements.size());
     }
 
     @Transactional(rollbackFor = Exception.class, readOnly = true)
@@ -235,7 +254,10 @@ public class SiteAnnouncementService {
         if (normalized.isEmpty()) {
             return null;
         }
-        return "%" + normalized.substring(0, Math.min(normalized.length(), 120)) + "%";
+        String bounded = normalized.substring(0, Math.min(normalized.length(), 120));
+        return "%" + bounded.replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_") + "%";
     }
 
     private SiteAnnouncementPublicResponse toPublicAnnouncement(SiteAnnouncement announcement) {

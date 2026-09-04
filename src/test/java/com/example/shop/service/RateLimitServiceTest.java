@@ -84,6 +84,22 @@ class RateLimitServiceTest {
     }
 
     @Test
+    void encodedAuthPathSharesTheDedicatedSensitiveLimit() {
+        when(runtimeConfig.getInt("traffic.rate-limit.public-per-minute", 120)).thenReturn(100);
+        when(runtimeConfig.getInt("traffic.rate-limit.auth-sensitive-per-minute", 30)).thenReturn(2);
+
+        assertTrue(service.check(request("POST", "/%61uth/login"), null).isAllowed());
+        assertTrue(service.check(request("POST", "/auth/login"), null).isAllowed());
+
+        RateLimitService.Decision third = service.check(request("POST", "/%61uth/login"), null);
+
+        assertFalse(third.isAllowed());
+        assertEquals(2, third.getLimit());
+        assertEquals(0, third.getRemaining());
+        assertHotBucketPath("auth:sensitive");
+    }
+
+    @Test
     void orderNumbersAndLongTokensAreCollapsedInBucketPath() {
         service.check(request("GET", "/orders/track/SO20260524123456ABCDEF"), null);
         service.check(request("GET", "/orders/track/SO20260524199999ZZZZZZ"), null);
@@ -392,6 +408,13 @@ class RateLimitServiceTest {
         assertTrue(rateLimitSource.contains("return consumeLocal(limitKey, now);"));
         assertTrue(rateLimitSource.contains("return consumed(limitKey.limit, bucket.count, windowStart, limitKey.windowSeconds, now);"));
         assertTrue(rateLimitSource.contains("return consumed(limitKey.limit, count == null ? 0 : count, windowStart, limitKey.windowSeconds, now);"));
+    }
+
+    @Test
+    void localBucketCountIsVisibleToConcurrentStatusReaders() throws Exception {
+        String rateLimitSource = Files.readString(Path.of("src/main/java/com/example/shop/service/RateLimitService.java"));
+
+        assertTrue(rateLimitSource.contains("private volatile long count;"));
     }
 
     @Test

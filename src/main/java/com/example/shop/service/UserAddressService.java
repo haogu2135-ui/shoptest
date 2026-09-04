@@ -20,7 +20,7 @@ public class UserAddressService {
     private final RuntimeConfigService runtimeConfig;
 
     public List<UserAddress> getAddresses(Long userId) {
-        return userAddressMapper.findByUserId(userId);
+        return userAddressMapper.findByUserId(userId, normalizedMaxAddressesPerUser());
     }
 
     public UserAddress getAddress(Long id) {
@@ -87,7 +87,8 @@ public class UserAddressService {
             throw new IllegalStateException("Address delete failed");
         }
         if (Boolean.TRUE.equals(addr.getIsDefault())) {
-            List<UserAddress> remaining = userAddressMapper.findByUserId(addr.getUserId());
+            List<UserAddress> remaining = userAddressMapper.findByUserId(
+                    addr.getUserId(), normalizedMaxAddressesPerUser());
             if (!remaining.isEmpty()) {
                 userAddressMapper.setDefault(remaining.get(0).getId(), addr.getUserId());
             }

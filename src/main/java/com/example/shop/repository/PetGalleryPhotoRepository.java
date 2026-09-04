@@ -19,15 +19,15 @@ public interface PetGalleryPhotoRepository extends JpaRepository<PetGalleryPhoto
     String ADMIN_FILTER_CLAUSE = " where (:status is null or p.status = :status)"
             + " and (:source is null or coalesce(p.source, '') = :source)"
             + " and (:keyword is null"
-            + " or str(p.id) like :keyword"
-            + " or str(p.userId) like :keyword"
-            + " or lower(coalesce(p.username, '')) like :keyword"
-            + " or lower(coalesce(p.ipAddress, '')) like :keyword"
-            + " or lower(coalesce(p.originalFilename, '')) like :keyword"
-            + " or lower(coalesce(p.contentType, '')) like :keyword"
-            + " or lower(coalesce(p.imageUrl, '')) like :keyword"
-            + " or lower(coalesce(p.status, '')) like :keyword"
-            + " or lower(coalesce(p.source, '')) like :keyword)";
+            + " or str(p.id) like :keyword escape '!'"
+            + " or str(p.userId) like :keyword escape '!'"
+            + " or lower(coalesce(p.username, '')) like :keyword escape '!'"
+            + " or lower(coalesce(p.ipAddress, '')) like :keyword escape '!'"
+            + " or lower(coalesce(p.originalFilename, '')) like :keyword escape '!'"
+            + " or lower(coalesce(p.contentType, '')) like :keyword escape '!'"
+            + " or lower(coalesce(p.imageUrl, '')) like :keyword escape '!'"
+            + " or lower(coalesce(p.status, '')) like :keyword escape '!'"
+            + " or lower(coalesce(p.source, '')) like :keyword escape '!')";
 
     @Query("select p from PetGalleryPhoto p where p.status = :status order by p.likeCount desc, p.createdAt desc, p.id desc")
     List<PetGalleryPhoto> findTopPublicPhotos(@Param("status") String status, Pageable pageable);

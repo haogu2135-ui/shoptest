@@ -11,6 +11,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageImpl;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -121,6 +122,19 @@ class CouponServiceTest {
         verify(couponRepository).countAdminActiveExpiringBetween(
                 isNull(), isNull(), isNull(), isNull(), startCaptor.capture(), endCaptor.capture());
         assertEquals(14, java.time.Duration.between(startCaptor.getValue(), endCaptor.getValue()).toDays());
+    }
+
+    @Test
+    void adminCouponSearchEscapesLikeWildcardsBeforeRepositoryQuery() {
+        String escapedKeyword = "100!%!_!!promo";
+        when(couponRepository.searchAdminCoupons(
+                eq(escapedKeyword), isNull(), isNull(), isNull(), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.searchAdminCoupons("100%_!promo", null, null, 0, 20);
+
+        verify(couponRepository).searchAdminCoupons(
+                eq(escapedKeyword), isNull(), isNull(), isNull(), any(Pageable.class));
     }
 
     @Test

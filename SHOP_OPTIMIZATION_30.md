@@ -240,6 +240,117 @@ are kept in addition to the original 130-item record:
 183. Guard CustomerSupportWidget message, order-share, and close-session actions
     after unmount while latching overlapping mutations and cancelling polling and
     read-state requests.
+184. Serialize featured product collections with the lightweight list-item DTO.
+185. Serialize personalized recommendation collections with the lightweight
+     list-item DTO.
+186. Serialize add-on candidate collections with the lightweight list-item DTO.
+187. Serialize pet-finder candidate collections with the lightweight list-item
+     DTO.
+188. Serialize batch product lookups with the lightweight list-item DTO.
+189. Serialize related-product collections with the lightweight list-item DTO.
+190. Serialize the legacy home product collection with the lightweight list-item
+     DTO.
+191. Remove the now-unused full-product collection mapper from ProductController.
+192. Batch-load all seckill items for a campaign collection in one repository
+     query to remove per-campaign item reads.
+193. Hydrate seckill campaign products through the existing bounded product-ID
+     batch path, chunking larger campaigns at 40 IDs instead of reading each
+     product individually.
+194. Compute one timestamp per seckill collection response so campaign states
+     are consistent across the same payload.
+195. Reuse the bounded product-ID batch loader for seckill campaign write
+     validation instead of reading every referenced product independently.
+196. Cache repeated category keyword expansions within one product search so a
+     phrase reused as a token does not issue duplicate category queries or tree
+     walks.
+197. Bound public seckill campaign collection reads with a configurable,
+     hard-capped page before hydrating campaign items and products.
+198. Bound admin seckill campaign collection reads with a separate configurable
+     hard cap while preserving the existing start-time ordering.
+199. Reuse joined order customer-type metadata so registered order list rows do
+     not issue a per-order user lookup while computing guest visibility.
+200. Bound cart-item reads by the configured per-user line cap and apply stable
+     ID ordering before refreshing product snapshots.
+201. Bound user-address list and post-delete default-selection reads by the
+     configured per-user address cap at the Mapper query boundary.
+202. Batch product-search category expansion by depth across all matched roots,
+     preserving de-duplication and the hard tree-depth guard.
+203. Process startup announcement placeholder scans in fixed ID-keyset batches
+     so status updates do not create an unbounded read or offset-pagination gaps.
+204. Batch category-management descendant validation by breadth level while
+     retaining cycle protection and the existing descendant ID order contract.
+205. Batch category-move maximum-child-depth validation by breadth level and
+     stop revisiting category IDs when legacy data contains a cycle.
+206. Refresh moved-category descendants with batched parent queries while
+     propagating paths and levels through each breadth frontier.
+207. Load product-import category lookup data through bounded, stably ordered
+     pages instead of the unbounded category repository `findAll()` query.
+208. Route the legacy category reference-data lookup through the bounded sorted
+     page path and clamp explicit category list sizes to a hard maximum.
+209. Route legacy brand reference-data lookups through bounded pages and clamp
+     explicit brand list sizes to a hard maximum.
+210. Route legacy logistics-carrier reference-data lookups through bounded pages
+     and clamp explicit carrier list sizes to a hard maximum.
+211. Combine admin review status, low-rating, reply-needed, and average-rating
+     signals into one filtered aggregate query instead of multiple count queries.
+212. Remove unused unbounded brand and logistics-carrier repository overloads
+     after routing their legacy service entry points through bounded pages.
+213. Bound the legacy featured-product repository path with the existing
+     configurable product-list limit while preserving its service interface.
+214. Remove unused unbounded user-coupon list methods and XML queries after all
+     coupon flows moved to bounded mapper paths.
+215. Process birthday-coupon grants through ordered `id` keyset batches with a
+     configurable hard-capped scan size, preserving complete daily coverage.
+216. Remove unused unbounded coupon status/scope and claimable finder overloads
+     after all service call sites moved to bounded repository queries.
+217. Add runtime regression coverage for birthday-coupon keyset batching and its
+     ordered, limited MyBatis query contract.
+218. Bound public category parent, level, and top-level lookups with stable
+     database ordering and a 500-row response window.
+219. Remove the unused unbounded admin-role `findAll()` overload after all
+     production callers moved to the bounded controller-driven lookup.
+220. Remove the unused per-campaign seckill-item repository lookup after
+     campaign collections moved to the batched campaign-ID query.
+221. Bound birthday-coupon reissue pet loading by the configured per-user pet
+     limit, hard-capped at 50, directly in the MyBatis query.
+222. Remove the unused unbounded cart-item-by-user mapper method and XML query
+     after all cart reads moved to bounded paths.
+223. Remove the unused unbounded product-by-category mapper method and XML
+     query after related-product and recommendation flows moved to batch paths.
+224. Remove the unused unbounded product repository category lookup after
+     category expansion callers moved to the bounded batch query.
+225. Remove the unused unbounded product name search repository method after
+     recommendation and import duplicate checks moved to bounded query paths.
+226. Remove the unused legacy review-by-product fetch-join method and its
+     dedicated contract coverage after all production callers used paged review
+     queries.
+227. Remove the unused unbounded seckill-campaign status overload after public
+     campaign reads moved to the bounded `Pageable` query.
+228. Remove the unused unbounded product category batch finder after all
+     category-based product flows moved to bounded candidate queries.
+229. Remove unused non-locking cart-item lookup overloads and their MyBatis
+     queries after cart writes standardized on the locking lookup.
+230. Remove unused legacy coupon status, scope, expiry, and inventory counters
+     after admin and claim flows moved to current query paths.
+231. Remove the unused payment status counter and legacy payment transition
+     update after all payment flows use the detailed transition query.
+232. Remove unused legacy pet-gallery viewer existence methods after likes use
+     the unified viewer-key lookup.
+233. Remove the unused product category/status count helper after category
+     counts moved to the current aggregate path.
+234. Remove unused review eligibility and admin metric overloads after bounded
+     order and combined aggregate queries became the only production paths.
+235. Remove unused site-announcement scalar counter queries after the admin
+     summary and active paged query paths became authoritative.
+236. Remove unused case-insensitive and existence helpers from the legacy JPA
+     user repository after user flows standardized on the mapper and direct
+     identity lookups.
+237. Decode percent-encoded request paths before applying rate-limit endpoint
+     buckets so encoded authentication paths cannot bypass dedicated limits.
+238. Publish local rate-limit bucket counts with volatile visibility for
+     concurrent status and cleanup readers.
+239. Schedule expiration cleanup for local access-token and refresh-token
+     revocation fallbacks so low-write instances do not retain stale entries.
 
 ## Verification
 
@@ -269,7 +380,39 @@ The final verification record is maintained here after the post-change checks:
 - Focused SupportManagement and CustomerSupportWidget lifecycle regression: 2
   suites and 25 tests passed.
 - Focused support API signal regression: 1 suite and 1 test passed.
-- Full frontend Jest: 249 suites and 1806/1806 tests passed.
+- Focused public product collection DTO regression: 4 suites and 18 tests passed.
+- Focused seckill response assembly regression: 1 suite and 10 tests passed.
+- Focused product search/category lookup regression: 1 suite and 19 tests passed.
+- Focused cart read/precision and order regression: 3 suites and 30 tests passed.
+- Focused address, category-expansion, and announcement-batching regression: 6
+  suites and 55 tests passed.
+- Focused product-import and bounded reference-data regression: 5 suites and 95
+  tests passed.
+- Focused admin-review aggregate regression: 2 suites and 15 tests passed.
+- Focused legacy featured-product bounded-query regression: 2 suites and 3
+  tests passed.
+- Focused bounded coupon repository and mapper cleanup regression: 4 suites and
+  26 tests passed.
+- Focused birthday-coupon keyset batching regression: 2 suites and 3 tests
+  passed.
+- Focused public category bounded-query regression: 3 suites and 34 tests
+  passed.
+- Focused admin-role bounded API cleanup regression: 2 suites and 5 tests
+  passed.
+- Focused seckill repository cleanup regression: 1 suite and 11 tests passed.
+- Focused birthday-coupon reissue bounded-query regression: 2 suites and 4
+  tests passed.
+- Focused dead-repository-query cleanup regression: 7 suites and 108 tests
+  passed.
+- Focused seckill/review repository cleanup regression: 2 suites and 12 tests
+  passed.
+- Focused product category repository cleanup regression: 5 suites and 20
+  tests passed.
+- Focused legacy repository helper cleanup regression: 9 suites and 56 tests
+  passed.
+- Focused rate-limit path normalization and local token revocation cleanup
+  regression: 2 suites and 36 tests passed.
+- Full frontend Jest: 249 suites and 1811/1811 tests passed.
 - TypeScript: `NODE_OPTIONS=--max-old-space-size=768 npx tsc --noEmit --pretty false --skipLibCheck` passed.
 - Production: bounded production build passed (`npm run build`, exit code 0).
 

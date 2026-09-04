@@ -70,7 +70,7 @@ class ProductSearchServiceTest {
         when(runtimeConfig.getInt("product.discount-list-max-rows", 100)).thenReturn(100);
         when(reviewRepository.summarizeApprovedReviewsByProductIds(anyList())).thenReturn(List.of());
         when(categoryRepository.findIdsByKeyword(any(), any(Pageable.class))).thenReturn(List.of());
-        when(categoryRepository.findByParentId(any())).thenReturn(List.of());
+        when(categoryRepository.findByParentIdIn(anyList())).thenReturn(List.of());
         when(categoryRepository.findAllById(anyList())).thenReturn(List.of());
         stubPublicProductPage(List.of());
     }
@@ -128,7 +128,6 @@ class ProductSearchServiceTest {
         Product product = product(12L, "Legacy Search Bowl", 9L);
         when(runtimeConfig.getInt("product.search-legacy-max-results", 100)).thenReturn(500);
         when(runtimeConfig.getInt("product.public-max-page-size", 100)).thenReturn(80);
-        when(categoryRepository.findByParentId(9L)).thenReturn(List.of());
         when(categoryRepository.findAllById(List.of(product.getCategoryId()))).thenReturn(List.of());
         stubPublicProductPage(List.of(product));
 
@@ -139,8 +138,6 @@ class ProductSearchServiceTest {
         assertEquals(0, pageable.getPageNumber());
         assertEquals(80, pageable.getPageSize());
         verify(productRepository, never()).findAll();
-        verify(productRepository, never()).findByCategoryId(any());
-        verify(productRepository, never()).findByNameContainingIgnoreCase(any());
     }
 
     @Test
@@ -150,16 +147,17 @@ class ProductSearchServiceTest {
         query.setCategoryId(10L);
         query.setPage(0);
         query.setSize(24);
-        when(categoryRepository.findByParentId(10L)).thenReturn(List.of(category(11L, "Puppy Feeding", 10L)));
-        when(categoryRepository.findByParentId(11L)).thenReturn(List.of());
+        when(categoryRepository.findByParentIdIn(List.of(10L)))
+                .thenReturn(List.of(category(11L, "Puppy Feeding", 10L)));
+        when(categoryRepository.findByParentIdIn(List.of(11L))).thenReturn(List.of());
         when(categoryRepository.findAllById(List.of(childCategoryProduct.getCategoryId()))).thenReturn(List.of());
         stubPublicProductPage(List.of(childCategoryProduct));
 
         List<Product> results = service.findPublicProductPage(query).getContent();
 
         assertEquals(List.of(childCategoryProduct), results);
-        verify(categoryRepository).findByParentId(10L);
-        verify(categoryRepository).findByParentId(11L);
+        verify(categoryRepository).findByParentIdIn(List.of(10L));
+        verify(categoryRepository).findByParentIdIn(List.of(11L));
         verify(productRepository, never()).findAll();
     }
 
@@ -177,7 +175,6 @@ class ProductSearchServiceTest {
 
         assertEquals(List.of(), page.getContent());
         assertEquals(0, page.getTotalElements());
-        verify(categoryRepository, never()).findByParentId(10L);
         verify(productRepository, never()).findAll();
     }
 
@@ -236,17 +233,14 @@ class ProductSearchServiceTest {
         stubPublicProductPage(List.of(product));
         when(categoryRepository.findIdsByKeyword(eq("dogs"), any(Pageable.class))).thenReturn(List.of(root.getId()));
         when(categoryRepository.findIdsByKeyword(eq("dog"), any(Pageable.class))).thenReturn(List.of());
-        when(categoryRepository.findByParentId(root.getId())).thenReturn(List.of(child));
-        when(categoryRepository.findByParentId(child.getId())).thenReturn(List.of());
-        when(categoryRepository.findAllById(List.of(child.getId()))).thenReturn(List.of(child));
-        when(categoryRepository.findAllById(List.of(root.getId()))).thenReturn(List.of(root));
+        when(categoryRepository.findByParentIdIn(List.of(root.getId()))).thenReturn(List.of(child));
+        when(categoryRepository.findByParentIdIn(List.of(child.getId()))).thenReturn(List.of());
 
         List<Product> results = service.search("dogs", null);
 
         assertEquals(List.of(product), results);
         verify(categoryRepository).findIdsByKeyword(eq("dogs"), any(Pageable.class));
-        verify(categoryRepository).findAllById(List.of(child.getId()));
-        verify(categoryRepository).findAllById(List.of(root.getId()));
+        verify(categoryRepository, never()).findAllById(anyList());
         verify(categoryRepository, never()).findAll();
         verify(categoryRepository, never()).findById(1L);
         verify(categoryRepository, never()).findById(2L);

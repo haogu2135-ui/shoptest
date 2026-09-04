@@ -15,9 +15,8 @@ class LogisticsCarrierServiceTest {
     void logisticsCarrierServiceKeepsSortedLookupAndBoundedListContract() throws Exception {
         String source = Files.readString(SOURCE, StandardCharsets.UTF_8);
 
-        assertTrue(source.contains("findByStatusOrderBySortOrderAscNameAsc(\"ACTIVE\")"));
-        assertTrue(source.contains("findAllByOrderBySortOrderAscNameAsc()"));
-        assertTrue(source.contains("PageRequest.of(0, Math.max(1, maxRows))"));
+        assertTrue(source.contains("return findAll(activeOnly, DEFAULT_LEGACY_CARRIER_LIST_LIMIT);"));
+        assertTrue(source.contains("Math.min(maxRows, HARD_CARRIER_REFERENCE_LIST_LIMIT)"));
         assertTrue(source.contains("findByStatusOrderBySortOrderAscNameAsc(\"ACTIVE\", page)"));
         assertTrue(source.contains("findAllByOrderBySortOrderAscNameAsc(page)"));
         assertTrue(source.contains("trackingCode == null || trackingCode.isBlank()"));

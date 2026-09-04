@@ -10,9 +10,7 @@ import java.util.Optional;
 
 @Repository
 public interface LogisticsCarrierRepository extends JpaRepository<LogisticsCarrier, Long> {
-    List<LogisticsCarrier> findAllByOrderBySortOrderAscNameAsc();
     List<LogisticsCarrier> findAllByOrderBySortOrderAscNameAsc(Pageable pageable);
-    List<LogisticsCarrier> findByStatusOrderBySortOrderAscNameAsc(String status);
     List<LogisticsCarrier> findByStatusOrderBySortOrderAscNameAsc(String status, Pageable pageable);
     Optional<LogisticsCarrier> findByNameIgnoreCase(String name);
     Optional<LogisticsCarrier> findByTrackingCodeIgnoreCase(String trackingCode);

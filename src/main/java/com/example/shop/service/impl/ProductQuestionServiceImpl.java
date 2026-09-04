@@ -173,7 +173,14 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
         if (normalized.isEmpty()) {
             return null;
         }
-        return normalized.length() > 120 ? normalized.substring(0, 120).trim() : normalized;
+        String bounded = normalized.length() > 120 ? normalized.substring(0, 120).trim() : normalized;
+        return escapeLikeLiteral(bounded);
+    }
+
+    private String escapeLikeLiteral(String value) {
+        return value.replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_");
     }
 
     private void consumeAskRate(Long userId) {

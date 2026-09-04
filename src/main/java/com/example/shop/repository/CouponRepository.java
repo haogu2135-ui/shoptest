@@ -15,19 +15,15 @@ import java.util.Optional;
 
 @Repository
 public interface CouponRepository extends JpaRepository<Coupon, Long> {
-    List<Coupon> findByStatusOrderByIdDesc(String status);
-    List<Coupon> findByScopeAndStatusOrderByIdDesc(String scope, String status);
     Optional<Coupon> findFirstByNameOrderByIdDesc(String name);
-    long countByStatus(String status);
-    long countByScopeAndStatus(String scope, String status);
 
     @Query("select c from Coupon c " +
             "where (:keyword is null " +
-            "or lower(c.name) like lower(concat('%', :keyword, '%')) " +
-            "or lower(coalesce(c.description, '')) like lower(concat('%', :keyword, '%')) " +
-            "or lower(c.couponType) like lower(concat('%', :keyword, '%')) " +
-            "or lower(c.scope) like lower(concat('%', :keyword, '%')) " +
-            "or lower(c.status) like lower(concat('%', :keyword, '%')) " +
+            "or lower(c.name) like lower(concat('%', :keyword, '%')) escape '!' " +
+            "or lower(coalesce(c.description, '')) like lower(concat('%', :keyword, '%')) escape '!' " +
+            "or lower(c.couponType) like lower(concat('%', :keyword, '%')) escape '!' " +
+            "or lower(c.scope) like lower(concat('%', :keyword, '%')) escape '!' " +
+            "or lower(c.status) like lower(concat('%', :keyword, '%')) escape '!' " +
             "or (:keywordId is not null and c.id = :keywordId)) " +
             "and (:status is null or c.status = :status) " +
             "and (:scope is null or c.scope = :scope)")
@@ -39,11 +35,11 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
 
     @Query("select count(c) from Coupon c " +
             "where (:keyword is null " +
-            "or lower(c.name) like lower(concat('%', :keyword, '%')) " +
-            "or lower(coalesce(c.description, '')) like lower(concat('%', :keyword, '%')) " +
-            "or lower(c.couponType) like lower(concat('%', :keyword, '%')) " +
-            "or lower(c.scope) like lower(concat('%', :keyword, '%')) " +
-            "or lower(c.status) like lower(concat('%', :keyword, '%')) " +
+            "or lower(c.name) like lower(concat('%', :keyword, '%')) escape '!' " +
+            "or lower(coalesce(c.description, '')) like lower(concat('%', :keyword, '%')) escape '!' " +
+            "or lower(c.couponType) like lower(concat('%', :keyword, '%')) escape '!' " +
+            "or lower(c.scope) like lower(concat('%', :keyword, '%')) escape '!' " +
+            "or lower(c.status) like lower(concat('%', :keyword, '%')) escape '!' " +
             "or (:keywordId is not null and c.id = :keywordId)) " +
             "and (:status is null or c.status = :status) " +
             "and (:scope is null or c.scope = :scope)")
@@ -55,11 +51,11 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
     @Query("select count(c) from Coupon c " +
             "where c.status = 'ACTIVE' " +
             "and (:keyword is null " +
-            "or lower(c.name) like lower(concat('%', :keyword, '%')) " +
-            "or lower(coalesce(c.description, '')) like lower(concat('%', :keyword, '%')) " +
-            "or lower(c.couponType) like lower(concat('%', :keyword, '%')) " +
-            "or lower(c.scope) like lower(concat('%', :keyword, '%')) " +
-            "or lower(c.status) like lower(concat('%', :keyword, '%')) " +
+            "or lower(c.name) like lower(concat('%', :keyword, '%')) escape '!' " +
+            "or lower(coalesce(c.description, '')) like lower(concat('%', :keyword, '%')) escape '!' " +
+            "or lower(c.couponType) like lower(concat('%', :keyword, '%')) escape '!' " +
+            "or lower(c.scope) like lower(concat('%', :keyword, '%')) escape '!' " +
+            "or lower(c.status) like lower(concat('%', :keyword, '%')) escape '!' " +
             "or (:keywordId is not null and c.id = :keywordId)) " +
             "and (:status is null or c.status = :status) " +
             "and (:scope is null or c.scope = :scope) " +
@@ -76,11 +72,11 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
     @Query("select count(c) from Coupon c " +
             "where c.status = 'ACTIVE' " +
             "and (:keyword is null " +
-            "or lower(c.name) like lower(concat('%', :keyword, '%')) " +
-            "or lower(coalesce(c.description, '')) like lower(concat('%', :keyword, '%')) " +
-            "or lower(c.couponType) like lower(concat('%', :keyword, '%')) " +
-            "or lower(c.scope) like lower(concat('%', :keyword, '%')) " +
-            "or lower(c.status) like lower(concat('%', :keyword, '%')) " +
+            "or lower(c.name) like lower(concat('%', :keyword, '%')) escape '!' " +
+            "or lower(coalesce(c.description, '')) like lower(concat('%', :keyword, '%')) escape '!' " +
+            "or lower(c.couponType) like lower(concat('%', :keyword, '%')) escape '!' " +
+            "or lower(c.scope) like lower(concat('%', :keyword, '%')) escape '!' " +
+            "or lower(c.status) like lower(concat('%', :keyword, '%')) escape '!' " +
             "or (:keywordId is not null and c.id = :keywordId)) " +
             "and (:status is null or c.status = :status) " +
             "and (:scope is null or c.scope = :scope) " +
@@ -101,33 +97,8 @@ public interface CouponRepository extends JpaRepository<Coupon, Long> {
             "order by c.id desc")
     List<Coupon> findClaimableByScopeAndStatus(@Param("scope") String scope,
                                                @Param("status") String status,
-                                               @Param("now") LocalDateTime now);
-
-    @Query("select c from Coupon c " +
-            "where c.scope = :scope and c.status = :status " +
-            "and (c.startAt is null or c.startAt <= :now) " +
-            "and (c.endAt is null or c.endAt >= :now) " +
-            "and (c.totalQuantity is null or coalesce(c.claimedQuantity, 0) < c.totalQuantity) " +
-            "order by c.id desc")
-    List<Coupon> findClaimableByScopeAndStatus(@Param("scope") String scope,
-                                               @Param("status") String status,
                                                @Param("now") LocalDateTime now,
                                                Pageable pageable);
-
-    @Query("select count(c) from Coupon c " +
-            "where c.status = 'ACTIVE' " +
-            "and c.endAt is not null " +
-            "and c.endAt >= :startAt " +
-            "and c.endAt <= :endAt")
-    long countActiveExpiringBetween(@Param("startAt") LocalDateTime startAt,
-                                    @Param("endAt") LocalDateTime endAt);
-
-    @Query("select count(c) from Coupon c " +
-            "where c.status = 'ACTIVE' " +
-            "and c.totalQuantity is not null " +
-            "and c.totalQuantity > coalesce(c.claimedQuantity, 0) " +
-            "and c.totalQuantity <= coalesce(c.claimedQuantity, 0) + :threshold")
-    long countActiveLowRemaining(@Param("threshold") int threshold);
 
     @Modifying
     @Query("update Coupon c set c.claimedQuantity = coalesce(c.claimedQuantity, 0) + 1, " +

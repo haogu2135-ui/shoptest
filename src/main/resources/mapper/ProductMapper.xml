@@ -40,15 +40,6 @@
         FROM products WHERE id = #{id}
     </select>
 
-    <select id="findByCategory" resultMap="productMap">
-        SELECT
-            id, name, description, price, stock, category_id, image_url, is_featured,
-            brand, original_price, discount, limited_time_price, limited_time_start_at,
-            limited_time_end_at, tag, images, specifications, detail_content, variants, warranty,
-            shipping, free_shipping, free_shipping_threshold, best_seller_rank, status, created_at, updated_at
-        FROM products WHERE category_id = #{categoryId}
-    </select>
-
     <insert id="insert" parameterType="com.example.shop.entity.Product" useGeneratedKeys="true" keyProperty="id">
         INSERT INTO products (
             name, description, price, stock, category_id, image_url, is_featured, brand, original_price, discount,

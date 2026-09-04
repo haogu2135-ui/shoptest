@@ -10,6 +10,7 @@ import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.core.Authentication;
 import org.springframework.stereotype.Service;
+import org.springframework.web.util.UriUtils;
 
 import javax.servlet.http.HttpServletRequest;
 import java.nio.charset.StandardCharsets;
@@ -423,7 +424,8 @@ public class RateLimitService {
         if (path == null || path.isBlank()) {
             return "/";
         }
-        String normalized = path.trim().toLowerCase(Locale.ROOT).replaceAll("/{2,}", "/");
+        String decodedPath = decodePath(path.trim());
+        String normalized = decodedPath.toLowerCase(Locale.ROOT).replaceAll("/{2,}", "/");
         if (!normalized.startsWith("/")) {
             normalized = "/" + normalized;
         }
@@ -434,6 +436,16 @@ public class RateLimitService {
                 .filter(segment -> !segment.isEmpty())
                 .map(this::normalizePathSegment)
                 .collect(Collectors.joining("/", "/", ""));
+    }
+
+    private String decodePath(String path) {
+        try {
+            return UriUtils.decode(path, StandardCharsets.UTF_8);
+        } catch (IllegalArgumentException exception) {
+            // Keep malformed request paths rate-limitable without turning the filter into a 5xx.
+            log.debug("Unable to decode request path for rate limiting", exception);
+            return path;
+        }
     }
 
     private String normalizePathSegment(String segment) {
@@ -666,7 +678,7 @@ public class RateLimitService {
         private final long windowStart;
         private final int limit;
         private final int windowSeconds;
-        private long count;
+        private volatile long count;
 
         private Bucket(String scope, String client, String method, String path, long windowStart, long count, int limit, int windowSeconds) {
             this.scope = scope;

@@ -3,10 +3,13 @@ package com.example.shop.controller;
 import com.example.shop.config.ApiErrorResponseFactory;
 import com.example.shop.config.GlobalApiExceptionHandler;
 import com.example.shop.dto.ProductListQuery;
+import com.example.shop.entity.Product;
+import com.example.shop.security.UserDetailsImpl;
 import com.example.shop.service.ProductService;
 import com.example.shop.service.SystemAlertService;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.test.util.ReflectionTestUtils;
 import org.springframework.test.web.servlet.MockMvc;
@@ -14,6 +17,7 @@ import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.mock;
@@ -21,6 +25,10 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -168,7 +176,7 @@ class ProductControllerPaginationTest {
 
     @Test
     void productDetailStillReturnsRichPublicPayload() throws Exception {
-        com.example.shop.entity.Product product = new com.example.shop.entity.Product();
+        Product product = new Product();
         product.setId(9L);
         product.setName("Harness");
         product.setPrice(new java.math.BigDecimal("19.99"));
@@ -185,5 +193,54 @@ class ProductControllerPaginationTest {
                 .andExpect(jsonPath("$.detailContent[0].content").value("Long detail block"))
                 .andExpect(jsonPath("$.warranty").value("Long warranty text"))
                 .andExpect(jsonPath("$.shipping").value("Ships tomorrow"));
+    }
+
+    @Test
+    void productCollectionEndpointsOmitDetailOnlyFields() throws Exception {
+        Product product = productWithDetailOnlyFields();
+        when(productService.findPublicFeaturedProducts(anyInt())).thenReturn(List.of(product));
+        when(productService.findPersonalizedRecommendations(7L)).thenReturn(List.of(product));
+        when(productService.findAddOnCandidates(isNull(), isNull(), eq(3))).thenReturn(List.of(product));
+        when(productService.findFinderCandidates(anyList(), anyInt())).thenReturn(List.of(product));
+        when(productService.findPublicByIds(anyList())).thenReturn(List.of(product));
+        when(productService.findPublicById(9L)).thenReturn(Optional.of(product));
+        when(productService.findRelatedProducts(9L, 3L)).thenReturn(List.of(product));
+
+        assertListPayloadHasNoDetailFields(mockMvc.perform(get("/products/featured")));
+        assertListPayloadHasNoDetailFields(mockMvc.perform(get("/products/personalized-recommendations")
+                .principal(new UsernamePasswordAuthenticationToken(
+                        new UserDetailsImpl(7L, "customer", "customer@example.com", "ACTIVE", "password", List.of()),
+                        null,
+                        List.of()))));
+        assertListPayloadHasNoDetailFields(mockMvc.perform(get("/products/add-on-candidates")));
+        assertListPayloadHasNoDetailFields(mockMvc.perform(get("/products/finder-candidates").param("keywords", "feeder")));
+        assertListPayloadHasNoDetailFields(mockMvc.perform(get("/products/by-ids").param("ids", "9")));
+        assertListPayloadHasNoDetailFields(mockMvc.perform(get("/products/9/recommendations")));
+    }
+
+    private Product productWithDetailOnlyFields() {
+        Product product = new Product();
+        product.setId(9L);
+        product.setName("Harness");
+        product.setDescription("Everyday harness");
+        product.setPrice(new java.math.BigDecimal("19.99"));
+        product.setStock(8);
+        product.setCategoryId(3L);
+        product.setDetailContentList(List.of(Map.of("type", "text", "content", "Long detail block")));
+        product.setWarranty("Long warranty text");
+        product.setShipping("Ships tomorrow");
+        return product;
+    }
+
+    private void assertListPayloadHasNoDetailFields(org.springframework.test.web.servlet.ResultActions result) throws Exception {
+        result.andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(9))
+                .andExpect(jsonPath("$[0].detailContent").doesNotExist())
+                .andExpect(jsonPath("$[0].localizedContent").doesNotExist())
+                .andExpect(jsonPath("$[0].specificationItems").doesNotExist())
+                .andExpect(jsonPath("$[0].i18n").doesNotExist())
+                .andExpect(jsonPath("$[0].warranty").doesNotExist())
+                .andExpect(jsonPath("$[0].shipping").doesNotExist())
+                .andExpect(jsonPath("$[0].status").doesNotExist());
     }
 }

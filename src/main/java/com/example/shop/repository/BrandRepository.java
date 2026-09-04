@@ -10,9 +10,7 @@ import java.util.Optional;
 
 @Repository
 public interface BrandRepository extends JpaRepository<Brand, Long> {
-    List<Brand> findAllByOrderBySortOrderAscNameAsc();
     List<Brand> findAllByOrderBySortOrderAscNameAsc(Pageable pageable);
-    List<Brand> findByStatusOrderBySortOrderAscNameAsc(String status);
     List<Brand> findByStatusOrderBySortOrderAscNameAsc(String status, Pageable pageable);
     Optional<Brand> findByNameIgnoreCase(String name);
 }

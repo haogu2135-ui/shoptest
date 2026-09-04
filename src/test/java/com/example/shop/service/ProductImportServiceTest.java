@@ -9,6 +9,7 @@ import com.example.shop.service.impl.ProductServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.util.ReflectionTestUtils;
@@ -47,10 +48,12 @@ class ProductImportServiceTest {
         ReflectionTestUtils.setField(service, "runtimeConfig", runtimeConfig);
         when(runtimeConfig.getLong("product.import.max-file-size-bytes", 1048576)).thenReturn(1024L);
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(1);
+        when(runtimeConfig.getInt("product.import.category-scan-page-size", 500)).thenReturn(500);
         Category category = new Category();
         category.setId(1L);
         category.setName("Harnesses");
-        when(categoryRepository.findAll()).thenReturn(List.of(category));
+        when(categoryRepository.findAllByOrderByLevelAscParentIdAscNameAscIdAsc(any(Pageable.class)))
+                .thenReturn(List.of(category));
     }
 
     @Test
@@ -360,7 +363,8 @@ class ProductImportServiceTest {
         child.setId(11L);
         child.setName("Harnesses");
         child.setParentId(10L);
-        when(categoryRepository.findAll()).thenReturn(List.of(root, child));
+        when(categoryRepository.findAllByOrderByLevelAscParentIdAscNameAscIdAsc(any(Pageable.class)))
+                .thenReturn(List.of(root, child));
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",
@@ -381,6 +385,43 @@ class ProductImportServiceTest {
     }
 
     @Test
+    void loadsImportCategoryLookupAcrossBoundedPages() {
+        when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
+        when(runtimeConfig.getInt("product.import.category-scan-page-size", 500)).thenReturn(1);
+        Category root = new Category();
+        root.setId(10L);
+        root.setName("Dog");
+        Category child = new Category();
+        child.setId(11L);
+        child.setName("Harnesses");
+        child.setParentId(10L);
+        when(categoryRepository.findAllByOrderByLevelAscParentIdAscNameAscIdAsc(PageRequest.of(0, 1)))
+                .thenReturn(List.of(root));
+        when(categoryRepository.findAllByOrderByLevelAscParentIdAscNameAscIdAsc(PageRequest.of(1, 1)))
+                .thenReturn(List.of(child));
+        when(categoryRepository.findAllByOrderByLevelAscParentIdAscNameAscIdAsc(PageRequest.of(2, 1)))
+                .thenReturn(List.of());
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "products.csv",
+                "text/csv",
+                ("name,description,price,stock,categoryName\n"
+                        + "Harness,Safe fit,19.99,8,Dog > Harnesses\n")
+                        .getBytes(StandardCharsets.UTF_8)
+        );
+
+        ProductImportResult result = service.importCsv(file);
+
+        assertEquals(0, result.getFailed());
+        ArgumentCaptor<Product> captor = ArgumentCaptor.forClass(Product.class);
+        verify(productRepository).save(captor.capture());
+        assertEquals(11L, captor.getValue().getCategoryId());
+        verify(categoryRepository).findAllByOrderByLevelAscParentIdAscNameAscIdAsc(PageRequest.of(0, 1));
+        verify(categoryRepository).findAllByOrderByLevelAscParentIdAscNameAscIdAsc(PageRequest.of(1, 1));
+        verify(categoryRepository).findAllByOrderByLevelAscParentIdAscNameAscIdAsc(PageRequest.of(2, 1));
+    }
+
+    @Test
     void rejectsConflictingCategoryIdAndCategoryNameBeforeSaving() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
         Category dog = new Category();
@@ -389,7 +430,8 @@ class ProductImportServiceTest {
         Category cat = new Category();
         cat.setId(20L);
         cat.setName("Cat");
-        when(categoryRepository.findAll()).thenReturn(List.of(dog, cat));
+        when(categoryRepository.findAllByOrderByLevelAscParentIdAscNameAscIdAsc(any(Pageable.class)))
+                .thenReturn(List.of(dog, cat));
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",
@@ -419,7 +461,8 @@ class ProductImportServiceTest {
         Category catHarnesses = new Category();
         catHarnesses.setId(20L);
         catHarnesses.setName("Harnesses");
-        when(categoryRepository.findAll()).thenReturn(List.of(dogHarnesses, catHarnesses));
+        when(categoryRepository.findAllByOrderByLevelAscParentIdAscNameAscIdAsc(any(Pageable.class)))
+                .thenReturn(List.of(dogHarnesses, catHarnesses));
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",
@@ -448,7 +491,8 @@ class ProductImportServiceTest {
         Category catHarnesses = new Category();
         catHarnesses.setId(20L);
         catHarnesses.setName("Harnesses");
-        when(categoryRepository.findAll()).thenReturn(List.of(dogHarnesses, catHarnesses));
+        when(categoryRepository.findAllByOrderByLevelAscParentIdAscNameAscIdAsc(any(Pageable.class)))
+                .thenReturn(List.of(dogHarnesses, catHarnesses));
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",
@@ -582,7 +626,6 @@ class ProductImportServiceTest {
         assertEquals(ProductImportResult.STATUS_REJECTED, result.getStatus());
         assertFalse(result.isApplied());
         verify(productRepository, never()).save(any());
-        verify(productRepository, never()).findByCategoryId(1L);
     }
 
     @Test
@@ -622,7 +665,6 @@ class ProductImportServiceTest {
         assertEquals(ProductImportResult.STATUS_PREVIEW_BLOCKED, result.getStatus());
         assertFalse(result.isReadyToImport());
         verify(productRepository, never()).save(any());
-        verify(productRepository, never()).findByCategoryId(1L);
     }
 
     @Test
@@ -1101,7 +1143,8 @@ class ProductImportServiceTest {
     @Test
     void rejectsImportedCategoryIdWhenNoCategoriesExist() {
         when(runtimeConfig.getInt("product.import.max-rows", 1000)).thenReturn(5);
-        when(categoryRepository.findAll()).thenReturn(List.of());
+        when(categoryRepository.findAllByOrderByLevelAscParentIdAscNameAscIdAsc(any(Pageable.class)))
+                .thenReturn(List.of());
         MockMultipartFile file = new MockMultipartFile(
                 "file",
                 "products.csv",

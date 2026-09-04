@@ -21,15 +21,17 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class CustomerOwnedMapperLimitContractTest {
 
     @Test
-    void wishlistAndPetProfileFindByUserIdRequireExplicitLimits() throws Exception {
+    void customerOwnedFindByUserIdRequiresExplicitLimits() throws Exception {
         assertFindByUserIdRequiresLimit(WishlistMapper.class);
         assertFindByUserIdRequiresLimit(PetProfileMapper.class);
+        assertFindByUserIdRequiresLimit(UserAddressMapper.class);
     }
 
     @Test
-    void wishlistAndPetProfileFindByUserIdSqlAppliesLimitParameter() throws Exception {
+    void customerOwnedFindByUserIdSqlAppliesLimitParameter() throws Exception {
         assertFindByUserIdSqlAppliesLimit("WishlistMapper.xml");
         assertFindByUserIdSqlAppliesLimit("PetProfileMapper.xml");
+        assertFindByUserIdSqlAppliesLimit("UserAddressMapper.xml");
     }
 
     private void assertFindByUserIdRequiresLimit(Class<?> mapper) throws Exception {

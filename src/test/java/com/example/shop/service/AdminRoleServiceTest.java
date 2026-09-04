@@ -5,7 +5,10 @@ import com.example.shop.repository.UserMapper;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.nio.file.Files;
+import java.nio.file.Path;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -16,6 +19,17 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 class AdminRoleServiceTest {
+    @Test
+    void roleListExposesOnlyBoundedLookup() throws Exception {
+        String source = Files.readString(
+                Path.of("src/main/java/com/example/shop/service/AdminRoleService.java"),
+                StandardCharsets.UTF_8);
+
+        org.junit.jupiter.api.Assertions.assertFalse(source.contains("public List<AdminRole> findAll()"));
+        org.junit.jupiter.api.Assertions.assertTrue(source.contains("public List<AdminRole> findAll(int maxRows)"));
+        org.junit.jupiter.api.Assertions.assertTrue(source.contains("ORDER BY id ASC LIMIT ?"));
+    }
+
     @Test
     void assignRoleAcceptsUserDemotionWithoutAdminRoleRow() {
         JdbcTemplate jdbcTemplate = mock(JdbcTemplate.class);

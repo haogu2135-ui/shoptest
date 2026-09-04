@@ -18,13 +18,11 @@ public interface PaymentRepository {
     Payment findLatestPaidByOrderId(Long orderId);
     Payment findLatestReconcileRequiredByOrderId(Long orderId);
     Payment findLatestRefundedByOrderId(Long orderId);
-    long countByStatus(String status);
     long countActivePendingByOrderId(Long orderId);
     List<Payment> findByOrderId(Long orderId);
     List<Payment> findExpiredPending(@Param("afterId") Long afterId, @Param("limit") int limit);
     int insert(Payment payment);
     int update(Payment payment);
-    int markPaid(@Param("id") Long id, @Param("transactionId") String transactionId);
     int markPaidDetailed(@Param("id") Long id,
                          @Param("transactionId") String transactionId,
                          @Param("providerReference") String providerReference,

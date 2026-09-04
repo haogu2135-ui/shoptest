@@ -1373,8 +1373,12 @@ public class OrderService {
         if (Boolean.TRUE.equals(order.getGuestOrder())) {
             return true;
         }
-        if ("GUEST".equalsIgnoreCase(trimToNull(order.getCustomerType()))) {
+        String customerType = trimToNull(order.getCustomerType());
+        if ("GUEST".equalsIgnoreCase(customerType)) {
             return true;
+        }
+        if ("REGISTERED".equalsIgnoreCase(customerType)) {
+            return false;
         }
         if (isLegacyGuestShippingAddress(order.getShippingAddress())) {
             return true;

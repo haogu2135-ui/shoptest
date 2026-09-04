@@ -21,6 +21,8 @@ import java.util.Set;
 @Slf4j
 public class BrandService {
     private static final Set<String> ALLOWED_STATUSES = Set.of("ACTIVE", "INACTIVE");
+    private static final int DEFAULT_LEGACY_BRAND_LIST_LIMIT = 500;
+    private static final int HARD_BRAND_REFERENCE_LIST_LIMIT = 1_000;
 
     private final BrandRepository brandRepository;
 
@@ -30,15 +32,13 @@ public class BrandService {
 
     @Cacheable(cacheNames = "brandReferenceData", key = "'all:active=' + #activeOnly")
     public List<Brand> findAll(boolean activeOnly) {
-        if (activeOnly) {
-            return brandRepository.findByStatusOrderBySortOrderAscNameAsc("ACTIVE");
-        }
-        return brandRepository.findAllByOrderBySortOrderAscNameAsc();
+        return findAll(activeOnly, DEFAULT_LEGACY_BRAND_LIST_LIMIT);
     }
 
     @Cacheable(cacheNames = "brandReferenceData", key = "'all:active=' + #activeOnly + ':max=' + #maxRows")
     public List<Brand> findAll(boolean activeOnly, int maxRows) {
-        Pageable page = PageRequest.of(0, Math.max(1, maxRows));
+        int boundedMaxRows = Math.max(1, Math.min(maxRows, HARD_BRAND_REFERENCE_LIST_LIMIT));
+        Pageable page = PageRequest.of(0, boundedMaxRows);
         if (activeOnly) {
             return brandRepository.findByStatusOrderBySortOrderAscNameAsc("ACTIVE", page);
         }

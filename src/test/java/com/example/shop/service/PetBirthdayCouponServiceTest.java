@@ -17,12 +17,25 @@ class PetBirthdayCouponServiceTest {
 
         assertTrue(source.contains("@Scheduled(cron = \"${pet.birthday-coupon.cron:0 10 0 * * *}\")"));
         assertTrue(source.contains("grantBirthdayCoupons(LocalDate.now());"));
-        assertTrue(source.contains("petProfileMapper.findBirthdayPets(date.getMonthValue(), date.getDayOfMonth())"));
+        assertTrue(source.contains("petProfileMapper.findBirthdayPetsAfterId("));
+        assertTrue(source.contains("petProfileMapper.findBirthdayPetsByUserId("));
+        assertTrue(source.contains("\"pet.birthday-coupon-scan-batch-size\""));
+        assertTrue(source.contains("HARD_BIRTHDAY_SCAN_BATCH_SIZE = 1_000"));
+        assertTrue(source.contains("HARD_BIRTHDAY_REISSUE_PET_LIMIT = 50"));
+        assertTrue(source.contains("if (nextAfterId == currentAfterId || pets.size() < batchSize)"));
         assertTrue(source.contains("grantMapper.countByUserIdAndBirthdayYear(pet.getUserId(), date.getYear())"));
         assertTrue(source.contains("int reserved = grantMapper.insertIgnore(pet.getId(), pet.getUserId(), coupon.getId(), date.getYear());"));
         assertTrue(source.contains("if (reserved == 0)"));
         assertTrue(source.contains("userCouponMapper.insert(userCoupon);"));
         assertTrue(source.contains("couponRepository.incrementClaimedQuantity(coupon.getId());"));
+
+        String mapper = Files.readString(
+                Path.of("src/main/resources/mapper/PetProfileMapper.xml"), StandardCharsets.UTF_8);
+        assertTrue(mapper.contains("id=\"findBirthdayPetsAfterId\""));
+        assertTrue(mapper.contains("AND id &gt; #{afterId}"));
+        assertTrue(mapper.contains("ORDER BY id ASC"));
+        assertTrue(mapper.contains("LIMIT #{limit}"));
+        assertTrue(mapper.contains("id=\"findBirthdayPetsByUserId\""));
     }
 
     @Test
@@ -40,5 +53,7 @@ class PetBirthdayCouponServiceTest {
         assertTrue(source.contains("userCouponMapper.countUsedByCouponId(coupon.getId()) > 0"));
         assertTrue(source.contains("couponRepository.decrementClaimedQuantity(coupon.getId(), deleted);"));
         assertTrue(source.contains("grantMapper.deleteByPetIdAndBirthdayYear(pet.getId(), date.getYear());"));
+        assertTrue(source.contains("\"pet-profile.max-per-user\", 10"));
+        assertTrue(source.contains("birthdayReissuePetLimit()"));
     }
 }

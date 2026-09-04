@@ -41,6 +41,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 
 class ReviewServiceTest {
     private ReviewRepository reviewRepository;
@@ -174,6 +176,50 @@ class ReviewServiceTest {
     }
 
     @Test
+    void adminReviewSummaryUsesOneAggregateQuery() {
+        when(reviewRepository.summarizeAdminReviewMetrics(null, "needle", null))
+                .thenReturn(List.<Object[]>of(new Object[] {2L, 3L, 1L, 2L, 4L, 4.25D}));
+
+        java.util.Map<String, Number> summary = service.summarizeAdminReviews(null, "needle");
+
+        assertEquals(2L, summary.get("PENDING"));
+        assertEquals(3L, summary.get("APPROVED"));
+        assertEquals(1L, summary.get("HIDDEN"));
+        assertEquals(2L, summary.get("LOW_RATING"));
+        assertEquals(4L, summary.get("NEEDS_REPLY"));
+        assertEquals(4.25D, summary.get("AVERAGE_RATING"));
+        verify(reviewRepository).summarizeAdminReviewMetrics(null, "needle", null);
+        verify(reviewRepository, never()).countAdminReviews(any(), any(), any());
+    }
+
+    @Test
+    void adminReviewSummaryKeepsSingleStatusFilterSemantics() {
+        when(reviewRepository.summarizeAdminReviewMetrics("APPROVED", null, null))
+                .thenReturn(List.<Object[]>of(new Object[] {0L, 3L, 0L, 1L, 2L, 4.5D}));
+
+        java.util.Map<String, Number> summary = service.summarizeAdminReviews("approved", null);
+
+        assertEquals(0L, summary.get("PENDING"));
+        assertEquals(3L, summary.get("APPROVED"));
+        assertEquals(0L, summary.get("HIDDEN"));
+        assertEquals(1L, summary.get("LOW_RATING"));
+        assertEquals(2L, summary.get("NEEDS_REPLY"));
+        assertEquals(4.5D, summary.get("AVERAGE_RATING"));
+        verify(reviewRepository).summarizeAdminReviewMetrics("APPROVED", null, null);
+    }
+
+    @Test
+    void adminReviewSearchEscapesLikeWildcardsBeforeRepositoryQuery() {
+        String escapedSearch = "vip!% review!_!!";
+        when(reviewRepository.searchAdminReviews(eq("APPROVED"), eq(escapedSearch), isNull(), any()))
+                .thenReturn(List.of());
+
+        service.searchAdminReviews("approved", " vip% review_! ", 1, 20);
+
+        verify(reviewRepository).searchAdminReviews(eq("APPROVED"), eq(escapedSearch), isNull(), any());
+    }
+
+    @Test
     void duplicateReviewInsertRaceReturnsAlreadyReviewedError() {
         when(reviewRepository.save(any(Review.class)))
                 .thenThrow(new DataIntegrityViolationException("Duplicate entry for key 'uk_reviews_product_user_order'"));
@@ -233,7 +279,6 @@ class ReviewServiceTest {
         assertEquals(eligibleOrder.getId(), result.get(0).getId());
         verify(orderRepository).findReviewableOrdersByUserAndProduct(any(), any(), any(), any(Integer.class));
         verify(orderItemRepository, never()).findByOrderIds(any());
-        verify(reviewRepository, never()).findByProduct_IdAndUser_IdAndOrderIdIn(any(), any(), any());
         verify(orderItemRepository, never()).findByOrderIdAndProductId(any(), any());
         verify(reviewRepository, never()).existsByProduct_IdAndUser_IdAndOrderId(any(), any(), any());
     }

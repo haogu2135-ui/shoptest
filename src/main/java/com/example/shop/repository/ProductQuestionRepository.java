@@ -36,13 +36,13 @@ public interface ProductQuestionRepository extends JpaRepository<ProductQuestion
             + "or (:answered = true and q.answer is not null and trim(q.answer) <> '') "
             + "or (:answered = false and (q.answer is null or trim(q.answer) = ''))) "
             + "and (:search is null or :search = '' "
-            + "or lower(coalesce(q.question, '')) like concat('%', :search, '%') "
-            + "or lower(coalesce(q.answer, '')) like concat('%', :search, '%') "
-            + "or lower(coalesce(p.name, '')) like concat('%', :search, '%') "
-            + "or lower(coalesce(u.username, '')) like concat('%', :search, '%') "
-            + "or str(q.id) like concat('%', :search, '%') "
-            + "or str(p.id) like concat('%', :search, '%') "
-            + "or str(u.id) like concat('%', :search, '%')) "
+            + "or lower(coalesce(q.question, '')) like concat('%', :search, '%') escape '!' "
+            + "or lower(coalesce(q.answer, '')) like concat('%', :search, '%') escape '!' "
+            + "or lower(coalesce(p.name, '')) like concat('%', :search, '%') escape '!' "
+            + "or lower(coalesce(u.username, '')) like concat('%', :search, '%') escape '!' "
+            + "or str(q.id) like concat('%', :search, '%') escape '!' "
+            + "or str(p.id) like concat('%', :search, '%') escape '!' "
+            + "or str(u.id) like concat('%', :search, '%') escape '!') "
             + "order by case when q.answer is null or trim(q.answer) = '' then 0 else 1 end, q.createdAt desc, q.id desc")
     List<ProductQuestion> findAdminQueue(@Param("answered") Boolean answered,
                                          @Param("search") String search,
@@ -67,13 +67,13 @@ public interface ProductQuestionRepository extends JpaRepository<ProductQuestion
             + "or (:answered = true and q.answer is not null and trim(q.answer) <> '') "
             + "or (:answered = false and (q.answer is null or trim(q.answer) = ''))) "
             + "and (:search is null or :search = '' "
-            + "or lower(coalesce(q.question, '')) like concat('%', :search, '%') "
-            + "or lower(coalesce(q.answer, '')) like concat('%', :search, '%') "
-            + "or lower(coalesce(p.name, '')) like concat('%', :search, '%') "
-            + "or lower(coalesce(u.username, '')) like concat('%', :search, '%') "
-            + "or str(q.id) like concat('%', :search, '%') "
-            + "or str(p.id) like concat('%', :search, '%') "
-            + "or str(u.id) like concat('%', :search, '%'))")
+            + "or lower(coalesce(q.question, '')) like concat('%', :search, '%') escape '!' "
+            + "or lower(coalesce(q.answer, '')) like concat('%', :search, '%') escape '!' "
+            + "or lower(coalesce(p.name, '')) like concat('%', :search, '%') escape '!' "
+            + "or lower(coalesce(u.username, '')) like concat('%', :search, '%') escape '!' "
+            + "or str(q.id) like concat('%', :search, '%') escape '!' "
+            + "or str(p.id) like concat('%', :search, '%') escape '!' "
+            + "or str(u.id) like concat('%', :search, '%') escape '!')")
     long countAdminQuestions(@Param("answered") Boolean answered, @Param("search") String search);
 
     @Query("select count(q) from ProductQuestion q "
@@ -84,13 +84,13 @@ public interface ProductQuestionRepository extends JpaRepository<ProductQuestion
             + "or (:answered = false and (q.answer is null or trim(q.answer) = ''))) "
             + "and (q.answer is null or trim(q.answer) = '') "
             + "and (:search is null or :search = '' "
-            + "or lower(coalesce(q.question, '')) like concat('%', :search, '%') "
-            + "or lower(coalesce(q.answer, '')) like concat('%', :search, '%') "
-            + "or lower(coalesce(p.name, '')) like concat('%', :search, '%') "
-            + "or lower(coalesce(u.username, '')) like concat('%', :search, '%') "
-            + "or str(q.id) like concat('%', :search, '%') "
-            + "or str(p.id) like concat('%', :search, '%') "
-            + "or str(u.id) like concat('%', :search, '%'))")
+            + "or lower(coalesce(q.question, '')) like concat('%', :search, '%') escape '!' "
+            + "or lower(coalesce(q.answer, '')) like concat('%', :search, '%') escape '!' "
+            + "or lower(coalesce(p.name, '')) like concat('%', :search, '%') escape '!' "
+            + "or lower(coalesce(u.username, '')) like concat('%', :search, '%') escape '!' "
+            + "or str(q.id) like concat('%', :search, '%') escape '!' "
+            + "or str(p.id) like concat('%', :search, '%') escape '!' "
+            + "or str(u.id) like concat('%', :search, '%') escape '!')")
     long countAdminUnansweredQuestions(@Param("answered") Boolean answered, @Param("search") String search);
 
     @Query("select count(q) from ProductQuestion q "
@@ -101,13 +101,13 @@ public interface ProductQuestionRepository extends JpaRepository<ProductQuestion
             + "or (:answered = false and (q.answer is null or trim(q.answer) = ''))) "
             + "and q.answer is not null and trim(q.answer) <> '' "
             + "and (:search is null or :search = '' "
-            + "or lower(coalesce(q.question, '')) like concat('%', :search, '%') "
-            + "or lower(coalesce(q.answer, '')) like concat('%', :search, '%') "
-            + "or lower(coalesce(p.name, '')) like concat('%', :search, '%') "
-            + "or lower(coalesce(u.username, '')) like concat('%', :search, '%') "
-            + "or str(q.id) like concat('%', :search, '%') "
-            + "or str(p.id) like concat('%', :search, '%') "
-            + "or str(u.id) like concat('%', :search, '%'))")
+            + "or lower(coalesce(q.question, '')) like concat('%', :search, '%') escape '!' "
+            + "or lower(coalesce(q.answer, '')) like concat('%', :search, '%') escape '!' "
+            + "or lower(coalesce(p.name, '')) like concat('%', :search, '%') escape '!' "
+            + "or lower(coalesce(u.username, '')) like concat('%', :search, '%') escape '!' "
+            + "or str(q.id) like concat('%', :search, '%') escape '!' "
+            + "or str(p.id) like concat('%', :search, '%') escape '!' "
+            + "or str(u.id) like concat('%', :search, '%') escape '!')")
     long countAdminAnsweredQuestions(@Param("answered") Boolean answered, @Param("search") String search);
 
     @Query("select count(q) from ProductQuestion q "
@@ -119,13 +119,13 @@ public interface ProductQuestionRepository extends JpaRepository<ProductQuestion
             + "and (q.answer is null or trim(q.answer) = '') "
             + "and q.createdAt < :staleBefore "
             + "and (:search is null or :search = '' "
-            + "or lower(coalesce(q.question, '')) like concat('%', :search, '%') "
-            + "or lower(coalesce(q.answer, '')) like concat('%', :search, '%') "
-            + "or lower(coalesce(p.name, '')) like concat('%', :search, '%') "
-            + "or lower(coalesce(u.username, '')) like concat('%', :search, '%') "
-            + "or str(q.id) like concat('%', :search, '%') "
-            + "or str(p.id) like concat('%', :search, '%') "
-            + "or str(u.id) like concat('%', :search, '%'))")
+            + "or lower(coalesce(q.question, '')) like concat('%', :search, '%') escape '!' "
+            + "or lower(coalesce(q.answer, '')) like concat('%', :search, '%') escape '!' "
+            + "or lower(coalesce(p.name, '')) like concat('%', :search, '%') escape '!' "
+            + "or lower(coalesce(u.username, '')) like concat('%', :search, '%') escape '!' "
+            + "or str(q.id) like concat('%', :search, '%') escape '!' "
+            + "or str(p.id) like concat('%', :search, '%') escape '!' "
+            + "or str(u.id) like concat('%', :search, '%') escape '!')")
     long countAdminStaleUnansweredQuestions(@Param("answered") Boolean answered,
                                             @Param("search") String search,
                                             @Param("staleBefore") LocalDateTime staleBefore);

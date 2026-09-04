@@ -16,7 +16,10 @@
     </resultMap>
 
     <select id="findByUserId" resultMap="userAddressMap">
-        SELECT * FROM user_addresses WHERE user_id = #{userId} ORDER BY is_default DESC, id DESC
+        SELECT * FROM user_addresses
+        WHERE user_id = #{userId}
+        ORDER BY is_default DESC, id DESC
+        LIMIT #{limit}
     </select>
 
     <select id="countByUserId" resultType="int">

@@ -14,11 +14,14 @@ class ProductMapperContractTest {
     @Test
     void productMapperDoesNotExposeUnboundedFindAll() throws Exception {
         assertThrows(NoSuchMethodException.class, () -> ProductMapper.class.getMethod("findAll"));
+        assertThrows(NoSuchMethodException.class, () -> ProductMapper.class.getMethod("findByCategory", Long.class));
 
         String mapper = Files.readString(
                 Paths.get("src/main/resources/mapper/ProductMapper.xml"),
                 StandardCharsets.UTF_8);
         assertFalse(mapper.contains("id=\"findAll\""),
                 "ProductMapper must not expose a no-arg full-catalog findAll statement");
+        assertFalse(mapper.contains("id=\"findByCategory\""),
+                "ProductMapper must not expose an unbounded category product statement");
     }
 }

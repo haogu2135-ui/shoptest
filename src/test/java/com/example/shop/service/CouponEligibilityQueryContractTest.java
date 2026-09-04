@@ -61,6 +61,17 @@ class CouponEligibilityQueryContractTest {
         assertTrue(limitedQuery.contains("LIMIT #{limit}"));
     }
 
+    @Test
+    void userCouponMapperDoesNotExposeUnboundedUserLists() throws IOException {
+        String mapperInterface = read("src/main/java/com/example/shop/repository/UserCouponMapper.java");
+        String mapperXml = read("src/main/resources/mapper/UserCouponMapper.xml");
+
+        assertFalse(mapperInterface.contains("findByUserId(Long userId)"));
+        assertFalse(mapperInterface.contains("findUnusedByUserId(Long userId)"));
+        assertFalse(mapperXml.contains("id=\"findByUserId\""));
+        assertFalse(mapperXml.contains("id=\"findUnusedByUserId\""));
+    }
+
     private static void collectStaleEligibleCouponCalls(Path path, List<String> offenders) {
         String source;
         try {

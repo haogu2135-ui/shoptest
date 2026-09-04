@@ -24,11 +24,13 @@
         p.free_shipping, p.free_shipping_threshold
     </sql>
 
-    <select id="findByUserId" resultMap="cartItemMap">
+    <select id="findByUserIdLimited" resultMap="cartItemMap">
         SELECT <include refid="cartItemColumns"/>
         FROM cart_items ci
         LEFT JOIN products p ON ci.product_id = p.id
         WHERE ci.user_id = #{userId}
+        ORDER BY ci.id ASC
+        LIMIT #{limit}
     </select>
 
     <select id="countByUserId" resultType="int">
@@ -50,28 +52,6 @@
         LEFT JOIN products p ON ci.product_id = p.id
         WHERE ci.id = #{id}
         FOR UPDATE
-    </select>
-
-    <select id="findByUserIdAndProductId" resultMap="cartItemMap">
-        SELECT <include refid="cartItemColumns"/>
-        FROM cart_items ci
-        LEFT JOIN products p ON ci.product_id = p.id
-        WHERE ci.user_id = #{userId}
-          AND ci.product_id = #{productId}
-        LIMIT 1
-    </select>
-
-    <select id="findByUserIdAndProductIdAndSelectedSpecs" resultMap="cartItemMap">
-        SELECT <include refid="cartItemColumns"/>
-        FROM cart_items ci
-        LEFT JOIN products p ON ci.product_id = p.id
-        WHERE ci.user_id = #{userId}
-          AND ci.product_id = #{productId}
-          AND (
-            (#{selectedSpecs} IS NULL AND ci.selected_specs IS NULL)
-            OR ci.selected_specs = #{selectedSpecs}
-        )
-        LIMIT 1
     </select>
 
     <select id="findByUserIdAndProductIdAndSelectedSpecsForUpdate" resultMap="cartItemMap">

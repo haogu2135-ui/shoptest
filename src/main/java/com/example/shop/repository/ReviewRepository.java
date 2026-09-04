@@ -14,12 +14,6 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @Query("SELECT r FROM Review r " +
             "JOIN FETCH r.product p " +
             "JOIN FETCH r.user u " +
-            "WHERE p.id = :productId")
-    List<Review> findByProduct_Id(@Param("productId") Long productId);
-
-    @Query("SELECT r FROM Review r " +
-            "JOIN FETCH r.product p " +
-            "JOIN FETCH r.user u " +
             "WHERE p.id = :productId AND r.status = 'APPROVED' " +
             "ORDER BY r.createdAt DESC, r.id DESC")
     List<Review> findApprovedPublicByProductId(@Param("productId") Long productId, Pageable pageable);
@@ -37,7 +31,6 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             "AND (r.status = 'APPROVED' OR (r.status = 'PENDING' AND r.user.id = :userId))")
     long countPublicByProductIdIncludingUserPending(@Param("productId") Long productId, @Param("userId") Long userId);
     boolean existsByProduct_IdAndUser_IdAndOrderId(Long productId, Long userId, Long orderId);
-    List<Review> findByProduct_IdAndUser_IdAndOrderIdIn(Long productId, Long userId, List<Long> orderIds);
 
     @Query("SELECT COALESCE(AVG(r.rating), 0) FROM Review r WHERE r.product.id = :productId AND r.status = 'APPROVED'")
     double findAverageRatingByProductId(@Param("productId") Long productId);
@@ -51,10 +44,10 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
             "JOIN FETCH r.user u " +
             "WHERE (:status IS NULL OR r.status = :status) " +
             "AND (:search IS NULL " +
-            "OR LOWER(r.comment) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR LOWER(COALESCE(r.adminReply, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "OR LOWER(r.comment) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!' " +
+            "OR LOWER(COALESCE(r.adminReply, '')) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!' " +
+            "OR LOWER(u.username) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!' " +
+            "OR LOWER(p.name) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!' " +
             "OR (:searchId IS NOT NULL AND (r.id = :searchId OR p.id = :searchId))) " +
             "ORDER BY r.createdAt DESC, r.id DESC")
     List<Review> searchAdminReviews(@Param("status") String status, @Param("search") String search, @Param("searchId") Long searchId, Pageable pageable);
@@ -62,46 +55,30 @@ public interface ReviewRepository extends JpaRepository<Review, Long> {
     @Query("SELECT COUNT(r) FROM Review r " +
             "WHERE (:status IS NULL OR r.status = :status) " +
             "AND (:search IS NULL " +
-            "OR LOWER(r.comment) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR LOWER(COALESCE(r.adminReply, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR LOWER(r.user.username) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR LOWER(r.product.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
+            "OR LOWER(r.comment) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!' " +
+            "OR LOWER(COALESCE(r.adminReply, '')) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!' " +
+            "OR LOWER(r.user.username) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!' " +
+            "OR LOWER(r.product.name) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!' " +
             "OR (:searchId IS NOT NULL AND (r.id = :searchId OR r.product.id = :searchId)))")
     long countAdminReviews(@Param("status") String status, @Param("search") String search, @Param("searchId") Long searchId);
 
-    @Query("SELECT COUNT(r) FROM Review r " +
-            "WHERE r.rating <= :maxRating " +
-            "AND (:status IS NULL OR r.status = :status) " +
-            "AND (:search IS NULL " +
-            "OR LOWER(r.comment) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR LOWER(COALESCE(r.adminReply, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR LOWER(r.user.username) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR LOWER(r.product.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR (:searchId IS NOT NULL AND (r.id = :searchId OR r.product.id = :searchId)))")
-    long countAdminLowRatingReviews(@Param("status") String status, @Param("search") String search, @Param("searchId") Long searchId, @Param("maxRating") int maxRating);
-
-    @Query("SELECT COUNT(r) FROM Review r " +
-            "WHERE TRIM(COALESCE(r.adminReply, '')) = '' " +
-            "AND (:status IS NULL OR r.status = :status) " +
-            "AND (:search IS NULL " +
-            "OR LOWER(r.comment) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR LOWER(COALESCE(r.adminReply, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR LOWER(r.user.username) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR LOWER(r.product.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR (:searchId IS NOT NULL AND (r.id = :searchId OR r.product.id = :searchId)))")
-    long countAdminNeedsReplyReviews(@Param("status") String status, @Param("search") String search, @Param("searchId") Long searchId);
-
-    @Query("SELECT COALESCE(AVG(r.rating), 0) FROM Review r " +
-            "WHERE (:status IS NULL OR r.status = :status) " +
-            "AND (:search IS NULL " +
-            "OR LOWER(r.comment) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR LOWER(COALESCE(r.adminReply, '')) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR LOWER(r.user.username) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR LOWER(r.product.name) LIKE LOWER(CONCAT('%', :search, '%')) " +
-            "OR (:searchId IS NOT NULL AND (r.id = :searchId OR r.product.id = :searchId)))")
-    double averageAdminReviewRating(@Param("status") String status, @Param("search") String search, @Param("searchId") Long searchId);
+    @Query("SELECT COALESCE(SUM(CASE WHEN r.status = 'PENDING' THEN 1 ELSE 0 END), 0),"
+            + " COALESCE(SUM(CASE WHEN r.status = 'APPROVED' THEN 1 ELSE 0 END), 0),"
+            + " COALESCE(SUM(CASE WHEN r.status = 'HIDDEN' THEN 1 ELSE 0 END), 0),"
+            + " COALESCE(SUM(CASE WHEN r.rating <= 3 THEN 1 ELSE 0 END), 0),"
+            + " COALESCE(SUM(CASE WHEN TRIM(COALESCE(r.adminReply, '')) = '' THEN 1 ELSE 0 END), 0),"
+            + " COALESCE(AVG(r.rating), 0)"
+            + " FROM Review r"
+            + " WHERE (:status IS NULL OR r.status = :status)"
+            + " AND (:search IS NULL"
+            + " OR LOWER(r.comment) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!'"
+            + " OR LOWER(COALESCE(r.adminReply, '')) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!'"
+            + " OR LOWER(r.user.username) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!'"
+            + " OR LOWER(r.product.name) LIKE LOWER(CONCAT('%', :search, '%')) ESCAPE '!'"
+            + " OR (:searchId IS NOT NULL AND (r.id = :searchId OR r.product.id = :searchId)))")
+    List<Object[]> summarizeAdminReviewMetrics(@Param("status") String status,
+                                               @Param("search") String search,
+                                               @Param("searchId") Long searchId);
 
     long countByProduct_IdAndStatus(Long productId, String status);
-
-    long countByProduct_IdAndStatusAndRatingGreaterThanEqual(Long productId, String status, int rating);
 }

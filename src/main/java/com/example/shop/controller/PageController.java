@@ -1,6 +1,7 @@
 package com.example.shop.controller;
 
 import com.example.shop.dto.ProductListQuery;
+import com.example.shop.dto.ProductPublicListItemResponse;
 import com.example.shop.dto.ProductPublicResponse;
 import com.example.shop.service.ProductService;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -17,12 +18,12 @@ public class PageController {
     private ProductService productService;
 
     @GetMapping("/home/products")
-    public ResponseEntity<List<ProductPublicResponse>> getHomeProducts() {
+    public ResponseEntity<List<ProductPublicListItemResponse>> getHomeProducts() {
         ProductListQuery query = new ProductListQuery();
         query.setPage(0);
         query.setSize(24);
         return ResponseEntity.ok(productService.findPublicProducts(query).stream()
-                .map(ProductPublicResponse::from)
+                .map(ProductPublicListItemResponse::from)
                 .collect(Collectors.toList()));
     }
 

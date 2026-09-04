@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.PageImpl;
 
 import java.time.LocalDateTime;
 import java.util.Collections;
@@ -82,6 +83,18 @@ class SiteAnnouncementServiceTest {
     }
 
     @Test
+    void adminAnnouncementSearchEscapesLikeWildcardsBeforeRepositoryQuery() {
+        String escapedKeyword = "%100!%!_!!promo%";
+        when(repository.searchAdmin(
+                isNull(), eq(escapedKeyword), any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.findAdminPage(1, 20, null, "100%_!promo");
+
+        verify(repository).searchAdmin(isNull(), eq(escapedKeyword), any(Pageable.class));
+    }
+
+    @Test
     void findActiveReturnsPublicCopiesAndDropsUnsafeLinks() {
         SiteAnnouncement safe = new SiteAnnouncement();
         safe.setId(1L);
@@ -103,6 +116,24 @@ class SiteAnnouncementServiceTest {
         assertEquals("/coupons", active.get(0).getLinkUrl());
         assertNull(active.get(1).getLinkUrl());
         assertEquals("javascript:alert(1)", unsafe.getLinkUrl());
+    }
+
+    @Test
+    void placeholderScanUsesKeysetBatchQuery() {
+        SiteAnnouncement invalid = new SiteAnnouncement();
+        invalid.setId(2L);
+        invalid.setTitle("Test banner");
+        invalid.setContent("Placeholder content");
+        invalid.setStatus("ACTIVE");
+        when(repository.findByStatusIgnoreCaseAndIdGreaterThanOrderByIdAsc(
+                eq("ACTIVE"), eq(0L), any(Pageable.class))).thenReturn(List.of(invalid));
+
+        service.deactivatePlaceholderActiveAnnouncements();
+
+        assertEquals("INACTIVE", invalid.getStatus());
+        verify(repository).findByStatusIgnoreCaseAndIdGreaterThanOrderByIdAsc(
+                eq("ACTIVE"), eq(0L), any(Pageable.class));
+        verify(repository).saveAll(List.of(invalid));
     }
 
     @Test

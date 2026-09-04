@@ -34,6 +34,10 @@ class ProductImportNameDuplicateQueryContractTest {
                 "ProductRepository should expose the create-time exists query");
         assertTrue(repository.contains("boolean existsByCategoryIdAndNameIgnoreCaseAndIdNot(Long categoryId, String name, Long id)"),
                 "ProductRepository should expose the update-time exists query");
+        assertFalse(repository.contains("List<Product> findByCategoryId(Long categoryId)"),
+                "ProductRepository must not retain the unused unbounded category lookup");
+        assertFalse(repository.contains("List<Product> findByNameContainingIgnoreCase(String keyword)"),
+                "ProductRepository must not retain the unused unbounded name lookup");
     }
 
     private String methodBlock(String source, String signature) {

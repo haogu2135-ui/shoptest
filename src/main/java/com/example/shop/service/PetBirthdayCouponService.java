@@ -29,6 +29,9 @@ import java.util.Locale;
 @Slf4j
 public class PetBirthdayCouponService {
     private static final long DEFAULT_CONFIG_ID = 1L;
+    private static final int DEFAULT_BIRTHDAY_SCAN_BATCH_SIZE = 500;
+    private static final int HARD_BIRTHDAY_SCAN_BATCH_SIZE = 1_000;
+    private static final int HARD_BIRTHDAY_REISSUE_PET_LIMIT = 50;
     private static final String FULL_REDUCTION = "FULL_REDUCTION";
     private static final String DISCOUNT = "DISCOUNT";
 
@@ -37,6 +40,7 @@ public class PetBirthdayCouponService {
     private final PetBirthdayCouponConfigRepository configRepository;
     private final UserCouponMapper userCouponMapper;
     private final PetBirthdayCouponGrantMapper grantMapper;
+    private final RuntimeConfigService runtimeConfig;
 
     @Scheduled(cron = "${pet.birthday-coupon.cron:0 10 0 * * *}")
     @Transactional(rollbackFor = Exception.class)
@@ -87,32 +91,55 @@ public class PetBirthdayCouponService {
             return 0;
         }
         validateConfig(config);
-        List<PetProfile> pets = petProfileMapper.findBirthdayPets(date.getMonthValue(), date.getDayOfMonth());
         int granted = 0;
-        for (PetProfile pet : pets) {
-            if (pet.getId() == null || pet.getUserId() == null) {
-                continue;
+        long afterId = 0L;
+        int batchSize = birthdayScanBatchSize();
+        while (true) {
+            List<PetProfile> pets = petProfileMapper.findBirthdayPetsAfterId(
+                    date.getMonthValue(), date.getDayOfMonth(), afterId, batchSize);
+            if (pets == null || pets.isEmpty()) {
+                break;
             }
-            if (config.getMaxBenefitsPerUser() != null
-                    && config.getMaxBenefitsPerUser() > 0
-                    && grantMapper.countByUserIdAndBirthdayYear(pet.getUserId(), date.getYear()) >= config.getMaxBenefitsPerUser()) {
-                continue;
+            for (PetProfile pet : pets) {
+                granted += grantBirthdayCouponForPet(date, pet, config);
             }
-            Coupon coupon = getOrCreateBirthdayCoupon(date, pet, config);
-            int reserved = grantMapper.insertIgnore(pet.getId(), pet.getUserId(), coupon.getId(), date.getYear());
-            if (reserved == 0) {
-                continue;
+            long currentAfterId = afterId;
+            long nextAfterId = pets.stream()
+                    .map(PetProfile::getId)
+                    .filter(id -> id != null && id > currentAfterId)
+                    .mapToLong(Long::longValue)
+                    .max()
+                    .orElse(currentAfterId);
+            if (nextAfterId == currentAfterId || pets.size() < batchSize) {
+                break;
             }
-            UserCoupon userCoupon = new UserCoupon();
-            userCoupon.setUserId(pet.getUserId());
-            userCoupon.setCouponId(coupon.getId());
-            userCoupon.setStatus("UNUSED");
-            userCoupon.setClaimedAt(LocalDateTime.now());
-            userCouponMapper.insert(userCoupon);
-            couponRepository.incrementClaimedQuantity(coupon.getId());
-            granted++;
+            afterId = nextAfterId;
         }
         return granted;
+    }
+
+    private int grantBirthdayCouponForPet(LocalDate date, PetProfile pet, PetBirthdayCouponConfig config) {
+        if (pet.getId() == null || pet.getUserId() == null) {
+            return 0;
+        }
+        if (config.getMaxBenefitsPerUser() != null
+                && config.getMaxBenefitsPerUser() > 0
+                && grantMapper.countByUserIdAndBirthdayYear(pet.getUserId(), date.getYear()) >= config.getMaxBenefitsPerUser()) {
+            return 0;
+        }
+        Coupon coupon = getOrCreateBirthdayCoupon(date, pet, config);
+        int reserved = grantMapper.insertIgnore(pet.getId(), pet.getUserId(), coupon.getId(), date.getYear());
+        if (reserved == 0) {
+            return 0;
+        }
+        UserCoupon userCoupon = new UserCoupon();
+        userCoupon.setUserId(pet.getUserId());
+        userCoupon.setCouponId(coupon.getId());
+        userCoupon.setStatus("UNUSED");
+        userCoupon.setClaimedAt(LocalDateTime.now());
+        userCouponMapper.insert(userCoupon);
+        couponRepository.incrementClaimedQuantity(coupon.getId());
+        return 1;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -125,7 +152,8 @@ public class PetBirthdayCouponService {
             throw new IllegalStateException("Pet birthday coupon automation is disabled");
         }
         validateConfig(config);
-        List<PetProfile> pets = petProfileMapper.findBirthdayPetsByUserId(userId, date.getMonthValue(), date.getDayOfMonth());
+        List<PetProfile> pets = petProfileMapper.findBirthdayPetsByUserId(
+                userId, date.getMonthValue(), date.getDayOfMonth(), birthdayReissuePetLimit());
         int granted = 0;
         for (PetProfile pet : pets) {
             granted += reissueBirthdayCouponForPet(date, pet, config);
@@ -279,5 +307,16 @@ public class PetBirthdayCouponService {
         }
         String name = pet.getName().trim();
         return name.length() > 32 ? name.substring(0, 32) : name;
+    }
+
+    private int birthdayScanBatchSize() {
+        int configured = runtimeConfig.getInt(
+                "pet.birthday-coupon-scan-batch-size", DEFAULT_BIRTHDAY_SCAN_BATCH_SIZE);
+        return Math.max(1, Math.min(configured, HARD_BIRTHDAY_SCAN_BATCH_SIZE));
+    }
+
+    private int birthdayReissuePetLimit() {
+        int configured = runtimeConfig.getInt("pet-profile.max-per-user", 10);
+        return Math.max(1, Math.min(configured, HARD_BIRTHDAY_REISSUE_PET_LIMIT));
     }
 }

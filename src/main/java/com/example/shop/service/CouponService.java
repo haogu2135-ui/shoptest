@@ -71,7 +71,7 @@ public class CouponService {
         int maxSize = resolveLimit("admin.coupons.search-max-rows", 500, HARD_MAX_COUPON_ROWS);
         int safeSize = Math.max(1, Math.min(size <= 0 ? 20 : size, maxSize));
         int safePage = Math.max(0, page);
-        String safeKeyword = normalizeOptionalText(keyword, 120);
+        String safeKeyword = searchLikeTerm(keyword);
         String safeStatus = normalizeAdminStatusFilter(status);
         String safeScope = normalizeAdminScopeFilter(scope);
         return couponRepository.searchAdminCoupons(
@@ -101,7 +101,7 @@ public class CouponService {
         LocalDateTime now = LocalDateTime.now();
         int expiringSoonDays = resolveLimit("admin.coupons.expiring-soon-days", 7, HARD_MAX_SUMMARY_DAYS);
         int lowRemainingThreshold = resolveLimit("admin.coupons.low-remaining-threshold", 10, HARD_MAX_LOW_REMAINING);
-        String safeKeyword = normalizeOptionalText(keyword, 120);
+        String safeKeyword = searchLikeTerm(keyword);
         Long keywordId = parseKeywordId(safeKeyword);
         String safeStatus = normalizeAdminStatusFilter(status);
         String safeScope = normalizeAdminScopeFilter(scope);
@@ -609,6 +609,13 @@ public class CouponService {
 
     private int resolveLimit(String key, int defaultValue, int hardMax) {
         return Math.max(1, Math.min(runtimeConfig.getInt(key, defaultValue), hardMax));
+    }
+
+    private String searchLikeTerm(String value) {
+        String normalized = normalizeOptionalText(value, 120);
+        return normalized == null ? null : normalized.replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_");
     }
 
     private BigDecimal defaultMoney(BigDecimal value) {

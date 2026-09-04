@@ -2,6 +2,7 @@ package com.example.shop.service;
 
 import com.example.shop.repository.PaymentRepository;
 import com.example.shop.repository.OrderRepository;
+import com.example.shop.repository.UserRepository;
 import com.example.shop.entity.Order;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -285,6 +286,23 @@ class OrderStatsServiceTest {
 
         verify(orderRepository).findByUserIdPage(7L, 40, 20);
         verifyNoMoreInteractions(orderRepository);
+    }
+
+    @Test
+    void joinedRegisteredCustomerMetadataAvoidsPerOrderUserLookup() {
+        UserRepository userRepository = mock(UserRepository.class);
+        ReflectionTestUtils.setField(service, "userRepository", userRepository);
+        Order order = new Order();
+        order.setUserId(7L);
+        order.setStatus("PENDING_SHIPMENT");
+        order.setCustomerType("REGISTERED");
+        order.setGuestOrder(false);
+        when(runtimeConfig.getInt("order.customer-page-max-size", 100)).thenReturn(100);
+        when(runtimeConfig.getLong("order.return-window-days", 7)).thenReturn(7L);
+        when(orderRepository.findByUserIdPage(7L, 0, 20)).thenReturn(List.of(order));
+
+        assertEquals(1, service.getOrdersByUserId(7L, 0, 20).size());
+        verify(userRepository, never()).findById(7L);
     }
 
     @Test

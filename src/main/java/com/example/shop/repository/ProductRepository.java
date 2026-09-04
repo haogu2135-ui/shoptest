@@ -16,7 +16,7 @@ import java.util.List;
 
 @Repository
 public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpecificationExecutor<Product> {
-    List<Product> findByIsFeaturedTrueOrderByIdAsc();
+    List<Product> findByIsFeaturedTrueOrderByIdAsc(Pageable pageable);
     @Query("select p from Product p where p.isFeatured = true"
             + " and (p.status is null or upper(p.status) = 'ACTIVE')"
             + " and p.name is not null and p.name <> ''"
@@ -25,7 +25,6 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
             + " and (p.stock is null or p.stock > 0)"
             + " order by p.id asc")
     List<Product> findPublicFeaturedProducts(Pageable pageable);
-    List<Product> findByCategoryId(Long categoryId);
     boolean existsByCategoryId(Long categoryId);
     boolean existsByCategoryIdAndNameIgnoreCase(Long categoryId, String name);
     boolean existsByCategoryIdAndNameIgnoreCaseAndIdNot(Long categoryId, String name, Long id);
@@ -66,8 +65,6 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
             + " or lower(coalesce(p.tag, '')) like concat('%', :keyword, '%') escape '!')"
             + " order by case when p.isFeatured = true then 0 else 1 end, p.id asc")
     List<Product> findPublicKeywordCandidateWindow(@Param("keyword") String keyword, Pageable pageable);
-    List<Product> findByCategoryIdIn(List<Long> categoryIds);
-    List<Product> findByNameContainingIgnoreCase(String keyword);
     Page<Product> findAll(Pageable pageable);
     @Query("select count(p) as totalProducts,"
             + " sum(case when upper(coalesce(p.status, '')) = 'ACTIVE' then 1 else 0 end) as activeProducts,"
@@ -93,7 +90,6 @@ public interface ProductRepository extends JpaRepository<Product, Long>, JpaSpec
             + " and p.categoryId is not null and p.categoryId > 0"
             + " group by p.categoryId")
     List<Object[]> countPublicProductsByCategoryIds(@Param("categoryIds") List<Long> categoryIds);
-    long countByCategoryIdInAndStatusIgnoreCase(List<Long> categoryIds, String status);
     @Query("select count(p) from Product p where upper(coalesce(p.status, '')) = 'PENDING_REVIEW'")
     long countPendingReviewProducts();
     @Query("select count(p) from Product p where p.stock is not null and p.stock < 10")

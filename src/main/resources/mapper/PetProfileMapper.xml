@@ -26,13 +26,15 @@
         SELECT * FROM pet_profiles WHERE id = #{id}
     </select>
 
-    <select id="findBirthdayPets" resultMap="petProfileMap">
+    <select id="findBirthdayPetsAfterId" resultMap="petProfileMap">
         SELECT *
         FROM pet_profiles
         WHERE birthday IS NOT NULL
           AND MONTH(birthday) = #{month}
           AND DAYOFMONTH(birthday) = #{day}
-        ORDER BY user_id ASC, id ASC
+          AND id &gt; #{afterId}
+        ORDER BY id ASC
+        LIMIT #{limit}
     </select>
 
     <select id="findBirthdayPetsByUserId" resultMap="petProfileMap">
@@ -43,6 +45,7 @@
           AND MONTH(birthday) = #{month}
           AND DAYOFMONTH(birthday) = #{day}
         ORDER BY id ASC
+        LIMIT #{limit}
     </select>
 
     <insert id="insert" parameterType="com.example.shop.entity.PetProfile" useGeneratedKeys="true" keyProperty="id">

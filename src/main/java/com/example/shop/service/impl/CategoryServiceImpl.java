@@ -28,6 +28,9 @@ import java.util.stream.Collectors;
 @Slf4j
 public class CategoryServiceImpl implements CategoryService {
     private static final int MAX_CATEGORY_COUNT_DEPTH = 3;
+    private static final int DEFAULT_PUBLIC_CATEGORY_LIST_LIMIT = 500;
+    private static final int DEFAULT_LEGACY_CATEGORY_LIST_LIMIT = 500;
+    private static final int HARD_CATEGORY_REFERENCE_LIST_LIMIT = 1_000;
 
     @Autowired
     private CategoryRepository categoryRepository;
@@ -38,23 +41,25 @@ public class CategoryServiceImpl implements CategoryService {
     @Override
     @Cacheable(cacheNames = "categoryReferenceData", key = "'all'")
     public List<Category> findAll() {
-        return withProductCounts(categoryRepository.findAll());
+        return findAll(DEFAULT_LEGACY_CATEGORY_LIST_LIMIT);
     }
 
     @Override
     @Cacheable(cacheNames = "categoryReferenceData", key = "'all:max=' + #maxRows")
     public List<Category> findAll(int maxRows) {
+        int boundedMaxRows = Math.max(1, Math.min(maxRows, HARD_CATEGORY_REFERENCE_LIST_LIMIT));
         return withProductCounts(categoryRepository.findAllByOrderByLevelAscParentIdAscNameAscIdAsc(
-                PageRequest.of(0, Math.max(1, maxRows))));
+                PageRequest.of(0, boundedMaxRows)));
     }
 
     @Override
     @Cacheable(cacheNames = "categoryReferenceData", key = "'parent=' + (#parentId == null ? 'root' : #parentId)")
     public List<Category> findByParentId(Long parentId) {
+        PageRequest page = PageRequest.of(0, DEFAULT_PUBLIC_CATEGORY_LIST_LIMIT);
         if (parentId == null) {
-            return withProductCounts(categoryRepository.findByParentIdIsNull());
+            return withProductCounts(categoryRepository.findByParentIdIsNullOrderByNameAscIdAsc(page));
         }
-        return withProductCounts(categoryRepository.findByParentId(parentId));
+        return withProductCounts(categoryRepository.findByParentIdOrderByNameAscIdAsc(parentId, page));
     }
 
     @Override
@@ -66,13 +71,16 @@ public class CategoryServiceImpl implements CategoryService {
         if (level == 1) {
             return findTopLevel();
         }
-        return withProductCounts(categoryRepository.findByLevel(level));
+        return withProductCounts(categoryRepository.findByLevelOrderByNameAscIdAsc(
+                level,
+                PageRequest.of(0, DEFAULT_PUBLIC_CATEGORY_LIST_LIMIT)));
     }
 
     @Override
     @Cacheable(cacheNames = "categoryReferenceData", key = "'top'")
     public List<Category> findTopLevel() {
-        return withProductCounts(categoryRepository.findByParentIdIsNull());
+        return withProductCounts(categoryRepository.findByParentIdIsNullOrderByNameAscIdAsc(
+                PageRequest.of(0, DEFAULT_PUBLIC_CATEGORY_LIST_LIMIT)));
     }
 
     @Override
@@ -156,24 +164,86 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     private void collectDescendantIds(Long id, List<Long> ids) {
+        if (id == null) {
+            return;
+        }
+        Set<Long> visited = new LinkedHashSet<>();
+        visited.add(id);
         ids.add(id);
-        categoryRepository.findByParentId(id).forEach(child -> collectDescendantIds(child.getId(), ids));
+        Set<Long> frontier = new LinkedHashSet<>(List.of(id));
+        while (!frontier.isEmpty()) {
+            List<Category> children = categoryRepository.findByParentIdIn(new ArrayList<>(frontier));
+            Set<Long> nextFrontier = new LinkedHashSet<>();
+            for (Category child : children) {
+                if (child == null || child.getId() == null || !visited.add(child.getId())) {
+                    continue;
+                }
+                ids.add(child.getId());
+                nextFrontier.add(child.getId());
+            }
+            frontier = nextFrontier;
+        }
     }
 
     private int maxChildDepth(Long id) {
-        return categoryRepository.findByParentId(id).stream()
-                .mapToInt(child -> 1 + maxChildDepth(child.getId()))
-                .max()
-                .orElse(0);
+        if (id == null) {
+            return 0;
+        }
+        Set<Long> visited = new LinkedHashSet<>(List.of(id));
+        Set<Long> frontier = new LinkedHashSet<>(List.of(id));
+        int depth = 0;
+        while (!frontier.isEmpty()) {
+            List<Category> children = categoryRepository.findByParentIdIn(new ArrayList<>(frontier));
+            Set<Long> nextFrontier = new LinkedHashSet<>();
+            for (Category child : children) {
+                if (child == null || child.getId() == null || !visited.add(child.getId())) {
+                    continue;
+                }
+                nextFrontier.add(child.getId());
+            }
+            if (nextFrontier.isEmpty()) {
+                break;
+            }
+            depth++;
+            frontier = nextFrontier;
+        }
+        return depth;
     }
 
     private void refreshChildHierarchy(Long parentId, Integer parentLevel, String parentPath) {
-        categoryRepository.findByParentId(parentId).forEach(child -> {
-            child.setLevel(parentLevel + 1);
-            child.setPath(appendPath(parentPath, child.getId()));
-            categoryRepository.save(child);
-            refreshChildHierarchy(child.getId(), child.getLevel(), child.getPath());
-        });
+        if (parentId == null || parentLevel == null) {
+            return;
+        }
+        Set<Long> visited = new LinkedHashSet<>(List.of(parentId));
+        Set<Long> frontier = new LinkedHashSet<>(List.of(parentId));
+        Map<Long, Integer> parentLevels = new LinkedHashMap<>();
+        Map<Long, String> parentPaths = new LinkedHashMap<>();
+        parentLevels.put(parentId, parentLevel);
+        parentPaths.put(parentId, parentPath);
+        while (!frontier.isEmpty()) {
+            List<Category> children = categoryRepository.findByParentIdIn(new ArrayList<>(frontier));
+            Set<Long> nextFrontier = new LinkedHashSet<>();
+            Map<Long, Integer> nextParentLevels = new LinkedHashMap<>();
+            Map<Long, String> nextParentPaths = new LinkedHashMap<>();
+            for (Category child : children) {
+                if (child == null || child.getId() == null || child.getParentId() == null
+                        || !parentLevels.containsKey(child.getParentId())
+                        || !visited.add(child.getId())) {
+                    continue;
+                }
+                int childLevel = parentLevels.get(child.getParentId()) + 1;
+                String childPath = appendPath(parentPaths.get(child.getParentId()), child.getId());
+                child.setLevel(childLevel);
+                child.setPath(childPath);
+                categoryRepository.save(child);
+                nextFrontier.add(child.getId());
+                nextParentLevels.put(child.getId(), childLevel);
+                nextParentPaths.put(child.getId(), childPath);
+            }
+            frontier = nextFrontier;
+            parentLevels = nextParentLevels;
+            parentPaths = nextParentPaths;
+        }
     }
 
     private String buildCategoryPath(Long parentId, Long categoryId) {

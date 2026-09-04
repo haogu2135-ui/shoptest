@@ -18,6 +18,8 @@ import java.util.Set;
 @Slf4j
 public class LogisticsCarrierService {
     private static final Set<String> ALLOWED_STATUSES = Set.of("ACTIVE", "INACTIVE");
+    private static final int DEFAULT_LEGACY_CARRIER_LIST_LIMIT = 500;
+    private static final int HARD_CARRIER_REFERENCE_LIST_LIMIT = 1_000;
 
     private final LogisticsCarrierRepository logisticsCarrierRepository;
 
@@ -26,14 +28,12 @@ public class LogisticsCarrierService {
     }
 
     public List<LogisticsCarrier> findAll(boolean activeOnly) {
-        if (activeOnly) {
-            return logisticsCarrierRepository.findByStatusOrderBySortOrderAscNameAsc("ACTIVE");
-        }
-        return logisticsCarrierRepository.findAllByOrderBySortOrderAscNameAsc();
+        return findAll(activeOnly, DEFAULT_LEGACY_CARRIER_LIST_LIMIT);
     }
 
     public List<LogisticsCarrier> findAll(boolean activeOnly, int maxRows) {
-        Pageable page = PageRequest.of(0, Math.max(1, maxRows));
+        int boundedMaxRows = Math.max(1, Math.min(maxRows, HARD_CARRIER_REFERENCE_LIST_LIMIT));
+        Pageable page = PageRequest.of(0, boundedMaxRows);
         if (activeOnly) {
             return logisticsCarrierRepository.findByStatusOrderBySortOrderAscNameAsc("ACTIVE", page);
         }

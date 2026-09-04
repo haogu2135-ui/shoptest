@@ -16,9 +16,15 @@ import com.example.shop.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 
 import java.math.BigDecimal;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -26,6 +32,7 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
@@ -71,6 +78,18 @@ class SeckillServiceTest {
         ReflectionTestUtils.setField(service, "userRepository", userRepository);
         when(runtimeConfig.getBigDecimal(anyString(), any(BigDecimal.class)))
                 .thenAnswer(invocation -> invocation.getArgument(1));
+        when(runtimeConfig.getInt("seckill.public-campaign-max-rows", 20)).thenReturn(20);
+        when(runtimeConfig.getInt("seckill.admin-campaign-max-rows", 100)).thenReturn(100);
+    }
+
+    @Test
+    void campaignItemRepositoryExposesOnlyCollectionBatchLookup() throws Exception {
+        String source = Files.readString(
+                Path.of("src/main/java/com/example/shop/repository/SeckillItemRepository.java"),
+                StandardCharsets.UTF_8);
+
+        org.junit.jupiter.api.Assertions.assertFalse(source.contains("findByCampaignIdOrderByIdAsc"));
+        org.junit.jupiter.api.Assertions.assertTrue(source.contains("findByCampaignIdInOrderByCampaignIdAscIdAsc"));
     }
 
     @Test
@@ -169,7 +188,7 @@ class SeckillServiceTest {
 
         com.example.shop.dto.SeckillCampaignWriteRequest invalidQuota = campaignWriteRequest();
         invalidQuota.getItems().get(0).setQuota(0);
-        when(productService.findById(12L)).thenReturn(Optional.of(product()));
+        when(productService.findByIds(List.of(12L))).thenReturn(List.of(product()));
 
         assertThrows(IllegalArgumentException.class, () -> service.createCampaign(invalidQuota));
     }
@@ -179,6 +198,66 @@ class SeckillServiceTest {
         assertThrows(IllegalArgumentException.class, () -> service.purchase(7L, 4L, request(9L, 1), "bad key"));
 
         verify(campaignRepository, never()).findByIdForUpdate(4L);
+    }
+
+    @Test
+    void publicCampaignsBatchLoadItemsAndProducts() {
+        SeckillCampaign first = campaign();
+        SeckillCampaign second = campaign();
+        second.setId(5L);
+        SeckillItem firstItem = item();
+        SeckillItem secondItem = item();
+        secondItem.setId(10L);
+        secondItem.setCampaignId(5L);
+        secondItem.setProductId(13L);
+        Product firstProduct = product();
+        Product secondProduct = product();
+        secondProduct.setId(13L);
+        secondProduct.setName("Second flash product");
+        when(campaignRepository.findByStatus(eq("PUBLISHED"), any(Pageable.class)))
+                .thenReturn(List.of(first, second));
+        when(itemRepository.findByCampaignIdInOrderByCampaignIdAscIdAsc(List.of(4L, 5L)))
+                .thenReturn(List.of(firstItem, secondItem));
+        when(productService.findPublicByIds(List.of(12L, 13L)))
+                .thenReturn(List.of(firstProduct, secondProduct));
+
+        List<com.example.shop.dto.SeckillCampaignResponse> responses = service.findPublicCampaigns();
+
+        assertEquals(2, responses.size());
+        assertEquals("Flash product", responses.get(0).getItems().get(0).getProductName());
+        assertEquals("Second flash product", responses.get(1).getItems().get(0).getProductName());
+        verify(itemRepository).findByCampaignIdInOrderByCampaignIdAscIdAsc(List.of(4L, 5L));
+        verify(productService).findPublicByIds(List.of(12L, 13L));
+        verify(productService, never()).findPublicById(any());
+    }
+
+    @Test
+    void publicCampaignsUseBoundedRepositoryPage() {
+        when(campaignRepository.findByStatus(eq("PUBLISHED"), any(Pageable.class))).thenReturn(List.of());
+
+        service.findPublicCampaigns();
+
+        org.mockito.ArgumentCaptor<Pageable> pageable = org.mockito.ArgumentCaptor.forClass(Pageable.class);
+        verify(campaignRepository).findByStatus(eq("PUBLISHED"), pageable.capture());
+        assertEquals(20, pageable.getValue().getPageSize());
+        assertEquals(Sort.Direction.ASC, pageable.getValue().getSort().getOrderFor("startAt").getDirection());
+    }
+
+    @Test
+    void campaignValidationBatchLoadsReferencedProducts() {
+        com.example.shop.dto.SeckillCampaignWriteRequest request = campaignWriteRequest();
+        com.example.shop.dto.SeckillItemWriteRequest secondItem = new com.example.shop.dto.SeckillItemWriteRequest();
+        secondItem.setProductId(13L);
+        secondItem.setSeckillPrice(new BigDecimal("5.00"));
+        secondItem.setQuota(10);
+        secondItem.setLimitPerUser(1);
+        request.setItems(List.of(request.getItems().get(0), secondItem));
+        when(productService.findByIds(List.of(12L, 13L))).thenReturn(List.of(product()));
+
+        assertThrows(IllegalArgumentException.class, () -> service.createCampaign(request));
+
+        verify(productService).findByIds(List.of(12L, 13L));
+        verify(productService, never()).findById(any());
     }
 
     private SeckillCampaign campaign() {

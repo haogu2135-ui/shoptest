@@ -8,7 +8,7 @@ import java.util.List;
 @Mapper
 public interface UserAddressMapper {
 
-    List<UserAddress> findByUserId(Long userId);
+    List<UserAddress> findByUserId(@Param("userId") Long userId, @Param("limit") int limit);
 
     int countByUserId(Long userId);
 

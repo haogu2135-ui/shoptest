@@ -34,7 +34,7 @@ class SiteAnnouncementRepositoryTest {
     private SiteAnnouncementRepository repository;
 
     @Test
-    void aggregateQueriesCountAnnouncementOperationalSignals() {
+    void activeQueryReturnsCurrentAnnouncementsInSortOrder() {
         LocalDateTime now = LocalDateTime.of(2026, 5, 24, 12, 0);
         repository.save(announcement("Active linked", "ACTIVE", now.minusHours(2), now.plusHours(2), "/coupons", 2));
         repository.save(announcement("Active long running", "active", null, null, "", 1));
@@ -42,16 +42,26 @@ class SiteAnnouncementRepositoryTest {
         repository.save(announcement("Expired", "ACTIVE", now.minusDays(3), now.minusHours(1), null, 4));
         repository.save(announcement("Inactive", "inactive", null, null, "https://example.com", 5));
 
-        assertEquals(2L, repository.countCurrentlyActive(now));
-        assertEquals(1L, repository.countScheduled(now));
-        assertEquals(1L, repository.countExpired(now));
-        assertEquals(1L, repository.countByStatusIgnoreCase("INACTIVE"));
-        assertEquals(3L, repository.countLinked());
-
         List<SiteAnnouncement> active = repository.findActive(now, PageRequest.of(0, 10));
 
         assertEquals(List.of("Active long running", "Active linked"),
                 active.stream().map(SiteAnnouncement::getTitle).collect(java.util.stream.Collectors.toList()));
+    }
+
+    @Test
+    void keysetQueryReturnsOnlyActiveRowsAfterCursorInIdOrder() {
+        SiteAnnouncement first = repository.saveAndFlush(announcement(
+                "First", "ACTIVE", null, null, null, 1));
+        SiteAnnouncement second = repository.saveAndFlush(announcement(
+                "Second", "ACTIVE", null, null, null, 2));
+        repository.saveAndFlush(announcement("Inactive", "INACTIVE", null, null, null, 3));
+
+        List<SiteAnnouncement> rows = repository
+                .findByStatusIgnoreCaseAndIdGreaterThanOrderByIdAsc(
+                        "active", first.getId(), PageRequest.of(0, 10));
+
+        assertEquals(List.of(second.getId()),
+                rows.stream().map(SiteAnnouncement::getId).collect(java.util.stream.Collectors.toList()));
     }
 
     private SiteAnnouncement announcement(String title,

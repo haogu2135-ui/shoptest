@@ -52,6 +52,9 @@ class CouponRepositoryBoundedQueryContractTest {
         assertTrue(repository.contains("List<Coupon> findClaimableByScopeAndStatus(@Param(\"scope\") String scope"));
         assertTrue(repository.contains("@Param(\"status\") String status"));
         assertTrue(repository.contains("@Param(\"now\") LocalDateTime now"));
+        assertFalse(repository.contains("findByStatusOrderByIdDesc"));
+        assertFalse(repository.contains("findByScopeAndStatusOrderByIdDesc"));
+        assertFalse(repository.contains("LocalDateTime now);"));
     }
 
     @Test

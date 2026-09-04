@@ -202,7 +202,7 @@ public class GuestAccessRateLimitService {
 
     private static final class Bucket {
         private final long windowStart;
-        private long count;
+        private volatile long count;
 
         private Bucket(long windowStart, long count) {
             this.windowStart = windowStart;

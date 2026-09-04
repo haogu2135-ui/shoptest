@@ -329,16 +329,16 @@ public class PetGalleryService {
         if (!StringUtils.hasText(keyword)) {
             return null;
         }
-        String normalized = keyword.trim().toLowerCase(Locale.ROOT)
-                .replace("%", "")
-                .replace("_", "");
+        String normalized = keyword.trim().toLowerCase(Locale.ROOT);
         if (normalized.isBlank()) {
             return null;
         }
         if (normalized.length() > 120) {
             normalized = normalized.substring(0, 120);
         }
-        return "%" + normalized + "%";
+        return "%" + normalized.replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_") + "%";
     }
 
     private String uploadDir() {

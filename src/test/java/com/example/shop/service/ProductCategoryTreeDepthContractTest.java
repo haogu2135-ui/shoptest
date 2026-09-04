@@ -22,35 +22,35 @@ class ProductCategoryTreeDepthContractTest {
         assertTrue(source.contains("import java.util.LinkedHashSet;"),
                 "Category collection should preserve order while tracking visited category ids");
         assertTrue(source.contains("import java.util.Set;"),
-                "Recursive category collection should accept a visited/output set");
+                "Category collection should retain set-based category scopes");
 
         String listCollector = sliceBetween(
                 source,
                 "private List<Long> collectCategoryIds(Long id)",
                 "\n    private int scoreForPets");
-        assertTrue(listCollector.contains("LinkedHashSet<Long> ids = new LinkedHashSet<>();"),
+        assertTrue(listCollector.contains("LinkedHashSet<Long> ids = rootIds == null ? new LinkedHashSet<>() : rootIds.stream()"),
                 "Category collection should track visited ids in insertion order");
-        assertTrue(listCollector.contains("collectCategoryIds(id, ids, 1);"),
-                "Category collection should start recursion at level 1");
+        assertTrue(listCollector.contains("return id == null ? List.of() : collectCategoryIds(List.of(id));"),
+                "Category collection should delegate single roots to the batched traversal");
         assertTrue(listCollector.contains("return new ArrayList<>(ids);"),
                 "Category collection should return a list view of the de-duplicated traversal");
         assertFalse(listCollector.contains("collectCategoryIds(id, ids);"),
                 "The public collector should not call an unbounded recursive overload");
 
-        String recursiveCollector = sliceBetween(
+        String batchedCollector = sliceBetween(
                 source,
-                "private void collectCategoryIds(Long id, Set<Long> ids, int depth)",
+                "private List<Long> collectCategoryIds(List<Long> rootIds)",
                 "\n    private boolean matchesNormalizedKeyword");
-        assertTrue(recursiveCollector.contains("if (id == null || depth > MAX_CATEGORY_TREE_DEPTH || !ids.add(id))"),
-                "Recursive category collection should stop for null ids, excessive depth, or previously visited ids");
-        assertTrue(recursiveCollector.contains("if (depth == MAX_CATEGORY_TREE_DEPTH)"),
-                "Recursive category collection should stop querying children at the max depth");
-        assertTrue(recursiveCollector.contains("categoryRepository.findByParentId(id).forEach(child -> collectCategoryIds(child.getId(), ids, depth + 1));"),
-                "Recursive category collection should increment depth for child traversal");
-        assertFalse(recursiveCollector.contains("ids.add(id);"),
-                "Recursive category collection should add ids only through the visited guard");
-        assertFalse(recursiveCollector.contains("collectCategoryIds(child.getId(), ids));"),
-                "Recursive category collection should not use the old unbounded child traversal");
+        assertTrue(batchedCollector.contains("LinkedHashSet<Long> frontier = new LinkedHashSet<>(ids);"),
+                "Category collection should track each breadth-first frontier");
+        assertTrue(batchedCollector.contains("for (int depth = 1; depth < MAX_CATEGORY_TREE_DEPTH && !frontier.isEmpty(); depth++)"),
+                "Batched category collection should stop at the hard depth limit");
+        assertTrue(batchedCollector.contains("categoryRepository.findByParentIdIn(new ArrayList<>(frontier))"),
+                "Category collection should load each depth with one batched parent query");
+        assertTrue(batchedCollector.contains("if (ids.add(child.getId()))"),
+                "Batched category collection should avoid duplicate and cyclic category ids");
+        assertFalse(batchedCollector.contains("categoryRepository.findByParentId("),
+                "Search category collection should not issue one child query per parent");
     }
 
     private static String sliceBetween(String source, String startMarker, String endMarker) {

@@ -40,7 +40,7 @@ public class CartService {
     private final RuntimeConfigService runtimeConfig;
 
     public List<CartItem> getCartItems(Long userId) {
-        List<CartItem> items = cartItemMapper.findByUserId(userId);
+        List<CartItem> items = cartItemMapper.findByUserIdLimited(userId, maxLinesPerUser());
         refreshCartItemSnapshots(items);
         return items;
     }

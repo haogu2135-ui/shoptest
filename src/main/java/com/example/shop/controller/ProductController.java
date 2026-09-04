@@ -119,47 +119,47 @@ public class ProductController {
     }
 
     @GetMapping("/featured")
-    public ResponseEntity<List<ProductPublicResponse>> getFeaturedProducts(
+    public ResponseEntity<List<ProductPublicListItemResponse>> getFeaturedProducts(
             @RequestParam(required = false, defaultValue = "12") Integer limit) {
-        return ResponseEntity.ok(toPublicProducts(productService.findPublicFeaturedProducts(limit)));
+        return ResponseEntity.ok(toPublicListItems(productService.findPublicFeaturedProducts(limit)));
     }
 
     @GetMapping("/personalized-recommendations")
-    public ResponseEntity<List<ProductPublicResponse>> getPersonalizedRecommendations(Authentication authentication) {
+    public ResponseEntity<List<ProductPublicListItemResponse>> getPersonalizedRecommendations(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof UserDetailsImpl)) {
             return ResponseEntity.ok(List.of());
         }
         UserDetailsImpl userDetails = (UserDetailsImpl) authentication.getPrincipal();
-        return ResponseEntity.ok(toPublicProducts(productService.findPersonalizedRecommendations(userDetails.getId())));
+        return ResponseEntity.ok(toPublicListItems(productService.findPersonalizedRecommendations(userDetails.getId())));
     }
 
     @GetMapping("/add-on-candidates")
-    public ResponseEntity<List<ProductPublicResponse>> getAddOnCandidates(
+    public ResponseEntity<List<ProductPublicListItemResponse>> getAddOnCandidates(
             @RequestParam(required = false) BigDecimal targetAmount,
             @RequestParam(required = false) List<Long> excludedIds,
             @RequestParam(required = false, defaultValue = "3") Integer limit) {
-        return ResponseEntity.ok(toPublicProducts(productService.findAddOnCandidates(targetAmount, excludedIds, limit == null ? 3 : limit)));
+        return ResponseEntity.ok(toPublicListItems(productService.findAddOnCandidates(targetAmount, excludedIds, limit == null ? 3 : limit)));
     }
 
     @GetMapping("/finder-candidates")
-    public ResponseEntity<List<ProductPublicResponse>> getFinderCandidates(
+    public ResponseEntity<List<ProductPublicListItemResponse>> getFinderCandidates(
             @RequestParam(required = false) List<String> keywords,
             @RequestParam(required = false, defaultValue = "36") Integer limit) {
-        return ResponseEntity.ok(toPublicProducts(productService.findFinderCandidates(keywords, limit == null ? 36 : limit)));
+        return ResponseEntity.ok(toPublicListItems(productService.findFinderCandidates(keywords, limit == null ? 36 : limit)));
     }
 
     @GetMapping("/by-ids")
-    public ResponseEntity<List<ProductPublicResponse>> getProductsByIds(@RequestParam(required = false) List<Long> ids) {
-        return ResponseEntity.ok(toPublicProducts(productService.findPublicByIds(ids)));
+    public ResponseEntity<List<ProductPublicListItemResponse>> getProductsByIds(@RequestParam(required = false) List<Long> ids) {
+        return ResponseEntity.ok(toPublicListItems(productService.findPublicByIds(ids)));
     }
 
     @GetMapping("/{id}/recommendations")
-    public ResponseEntity<List<ProductPublicResponse>> getRecommendations(@PathVariable Long id) {
+    public ResponseEntity<List<ProductPublicListItemResponse>> getRecommendations(@PathVariable Long id) {
         Product product = productService.findPublicById(id).orElse(null);
         if (product == null) {
             return ResponseEntity.ok(List.of());
         }
-        return ResponseEntity.ok(toPublicProducts(productService.findRelatedProducts(id, product.getCategoryId())));
+        return ResponseEntity.ok(toPublicListItems(productService.findRelatedProducts(id, product.getCategoryId())));
     }
 
     @GetMapping("/{id}")
@@ -168,12 +168,6 @@ public class ProductController {
                 .map(ProductPublicResponse::from)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
-    }
-
-    private List<ProductPublicResponse> toPublicProducts(List<Product> products) {
-        return products == null ? List.of() : products.stream()
-                .map(ProductPublicResponse::from)
-                .collect(Collectors.toList());
     }
 
     private List<ProductPublicListItemResponse> toPublicListItems(List<Product> products) {

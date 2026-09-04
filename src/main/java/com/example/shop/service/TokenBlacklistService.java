@@ -7,6 +7,7 @@ import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.data.redis.core.script.RedisScript;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import lombok.extern.slf4j.Slf4j;
 
@@ -294,6 +295,13 @@ public class TokenBlacklistService {
         return parseCounter(count) >= maxLoginAttemptsPerAccount();
     }
 
+    @Scheduled(fixedDelayString = "${security.token-blacklist.cleanup-interval-ms:300000}")
+    public void cleanupLocalRevocations() {
+        long now = System.currentTimeMillis();
+        pruneExpiredEntries(localAccessTokenBlacklist, now);
+        pruneExpiredEntries(localRefreshTokenRevocations, now);
+    }
+
     public long getLoginAttemptsRemaining(String clientIp) {
         int maxAttempts = maxLoginAttemptsPerIp();
         if (isTrustedClientIp(clientIp)) {
@@ -383,7 +391,10 @@ public class TokenBlacklistService {
         if (entries.size() <= MAX_LOCAL_REVOCATION_ENTRIES) {
             return;
         }
-        long now = System.currentTimeMillis();
+        pruneExpiredEntries(entries, System.currentTimeMillis());
+    }
+
+    private void pruneExpiredEntries(ConcurrentMap<String, Long> entries, long now) {
         for (Map.Entry<String, Long> entry : entries.entrySet()) {
             if (entry.getValue() == null || entry.getValue() <= now) {
                 entries.remove(entry.getKey(), entry.getValue());

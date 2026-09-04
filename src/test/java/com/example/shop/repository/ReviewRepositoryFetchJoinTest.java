@@ -13,12 +13,10 @@ import org.springframework.data.jpa.repository.config.EnableJpaRepositories;
 import org.springframework.test.context.TestPropertySource;
 
 import javax.persistence.EntityManager;
-import javax.persistence.PersistenceUnitUtil;
 import java.math.BigDecimal;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @DataJpaTest(showSql = false)
 @Import(ReviewRepositoryFetchJoinTest.TestApplication.class)
@@ -41,25 +39,43 @@ class ReviewRepositoryFetchJoinTest {
     private EntityManager entityManager;
 
     @Test
-    void findByProductIdFetchesProductAndUserAssociations() {
+    void aggregateAdminReviewMetricsCombinesStatusAndOperationalSignals() {
         Product product = persistProduct();
         User user = persistUser();
+        persistReview(product, user, "PENDING", 2, null);
+        persistReview(product, user, "APPROVED", 5, "Thanks");
+        persistReview(product, user, "HIDDEN", 1, "");
+        entityManager.flush();
+
+        List<Object[]> metricRows = reviewRepository.summarizeAdminReviewMetrics(null, null, null);
+        Object[] metrics = metricRows.get(0);
+
+        assertEquals(1L, ((Number) metrics[0]).longValue());
+        assertEquals(1L, ((Number) metrics[1]).longValue());
+        assertEquals(1L, ((Number) metrics[2]).longValue());
+        assertEquals(2L, ((Number) metrics[3]).longValue());
+        assertEquals(2L, ((Number) metrics[4]).longValue());
+        assertEquals(8D / 3D, ((Number) metrics[5]).doubleValue(), 0.0001D);
+
+        Object[] approvedMetrics = reviewRepository
+                .summarizeAdminReviewMetrics("APPROVED", null, null).get(0);
+        assertEquals(0L, ((Number) approvedMetrics[0]).longValue());
+        assertEquals(1L, ((Number) approvedMetrics[1]).longValue());
+        assertEquals(0L, ((Number) approvedMetrics[2]).longValue());
+        assertEquals(0L, ((Number) approvedMetrics[3]).longValue());
+        assertEquals(0L, ((Number) approvedMetrics[4]).longValue());
+        assertEquals(5D, ((Number) approvedMetrics[5]).doubleValue(), 0.0001D);
+    }
+
+    private void persistReview(Product product, User user, String status, int rating, String adminReply) {
         Review review = new Review();
         review.setProduct(product);
         review.setUser(user);
-        review.setRating(5);
-        review.setComment("Solid carrier");
-        review.setStatus("APPROVED");
+        review.setRating(rating);
+        review.setComment(status + " review");
+        review.setStatus(status);
+        review.setAdminReply(adminReply);
         entityManager.persist(review);
-        entityManager.flush();
-        entityManager.clear();
-
-        List<Review> reviews = reviewRepository.findByProduct_Id(product.getId());
-
-        PersistenceUnitUtil persistenceUnitUtil = entityManager.getEntityManagerFactory().getPersistenceUnitUtil();
-        assertEquals(1, reviews.size());
-        assertTrue(persistenceUnitUtil.isLoaded(reviews.get(0).getProduct()));
-        assertTrue(persistenceUnitUtil.isLoaded(reviews.get(0).getUser()));
     }
 
     private Product persistProduct() {

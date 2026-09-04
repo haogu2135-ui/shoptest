@@ -12,6 +12,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Clock;
 import java.time.Instant;
+import java.lang.reflect.Modifier;
 import java.time.ZoneOffset;
 import java.util.Map;
 import java.util.List;
@@ -104,6 +105,14 @@ class GuestAccessRateLimitServiceTest {
         }
 
         assertEquals(0, service.activeBucketCount());
+    }
+
+    @Test
+    void localBucketCountIsVolatileForConcurrentReaders() throws Exception {
+        Class<?> bucketType = Class.forName(
+                "com.example.shop.service.GuestAccessRateLimitService$Bucket");
+
+        assertTrue(Modifier.isVolatile(bucketType.getDeclaredField("count").getModifiers()));
     }
 
     @Test

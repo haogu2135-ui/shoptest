@@ -118,6 +118,16 @@ class UserAddressServiceTest {
     }
 
     @Test
+    void getAddressesUsesConfiguredBoundedMapperQuery() {
+        List<UserAddress> addresses = List.of(address(7L, "Mia Chen", "5550101", "1 Main Street"));
+        when(userAddressMapper.findByUserId(7L, 2)).thenReturn(addresses);
+
+        assertEquals(addresses, service.getAddresses(7L));
+
+        verify(userAddressMapper).findByUserId(7L, 2);
+    }
+
+    @Test
     void setDefaultLocksUserBeforeClearingDefaults() {
         UserAddress existing = address(7L, "Mia Chen", "5550101", "1 Main Street");
         existing.setId(12L);

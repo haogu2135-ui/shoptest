@@ -85,6 +85,7 @@ public class ProductServiceImpl implements ProductService {
     private static final int HARD_PUBLIC_PRODUCT_PAGE_SIZE_LIMIT = 100;
     private static final int HARD_ADMIN_PRODUCT_PAGE_SIZE_LIMIT = 500;
     private static final int HARD_LEGACY_PRODUCT_LIST_LIMIT = 500;
+    private static final int HARD_PRODUCT_IMPORT_CATEGORY_PAGE_SIZE = 1_000;
     private static final int MAX_CATEGORY_TREE_DEPTH = 10;
     private static final int HARD_PRODUCT_IMPORT_VARIANT_SCAN_ROWS = 5_000;
     private static final String SMART_DEVICES_COLLECTION = "smart-devices";
@@ -542,17 +543,23 @@ public class ProductServiceImpl implements ProductService {
                 .collect(Collectors.toList());
         List<String> requiredTokens = intentTokens.isEmpty() ? tokens : intentTokens;
         Map<String, Set<Long>> categoryIdsByToken = new LinkedHashMap<>();
+        Map<String, Set<Long>> categoryIdsByTerm = new LinkedHashMap<>();
         requiredTokens.forEach(token -> categoryIdsByToken.put(token,
-                findKeywordCategoryIdsForTerms(expandSearchToken(token))));
+                findKeywordCategoryIdsForTerms(expandSearchToken(token), categoryIdsByTerm)));
         return new KeywordSearchScope(
                 normalizedKeyword,
                 !intentTokens.isEmpty(),
                 requiredTokens,
-                findKeywordCategoryIdsForTerms(List.of(normalizedKeyword)),
+                findKeywordCategoryIdsForTerms(List.of(normalizedKeyword), categoryIdsByTerm),
                 categoryIdsByToken);
     }
 
     private Set<Long> findKeywordCategoryIdsForTerms(List<String> searchTerms) {
+        return findKeywordCategoryIdsForTerms(searchTerms, new LinkedHashMap<>());
+    }
+
+    private Set<Long> findKeywordCategoryIdsForTerms(List<String> searchTerms,
+                                                      Map<String, Set<Long>> categoryIdsByTerm) {
         Set<Long> ids = new LinkedHashSet<>();
         if (searchTerms == null || searchTerms.isEmpty()) {
             return ids;
@@ -562,13 +569,21 @@ public class ProductServiceImpl implements ProductService {
                 .filter(term -> !term.isEmpty())
                 .distinct()
                 .limit(12)
-                .forEach(term -> categoryRepository.findIdsByKeyword(escapeLikeTerm(term), PageRequest.of(0, 40))
-                        .forEach(id -> {
-                            if (id == null || id <= 0 || ids.size() >= 120) {
-                                return;
-                            }
-                            ids.addAll(collectCategoryIds(id));
-                        }));
+                .forEach(term -> ids.addAll(categoryIdsByTerm.computeIfAbsent(term, this::loadKeywordCategoryIds)));
+        return ids;
+    }
+
+    private Set<Long> loadKeywordCategoryIds(String term) {
+        Set<Long> ids = new LinkedHashSet<>();
+        List<Long> matchedCategoryIds = categoryRepository.findIdsByKeyword(
+                        escapeLikeTerm(term), PageRequest.of(0, 40)).stream()
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .collect(Collectors.toList());
+        ids.addAll(collectCategoryIds(matchedCategoryIds));
+        if (ids.size() > 120) {
+            return ids.stream().limit(120).collect(Collectors.toCollection(LinkedHashSet::new));
+        }
         return ids;
     }
 
@@ -935,7 +950,8 @@ public class ProductServiceImpl implements ProductService {
 
     @Override
     public List<Product> findByIsFeaturedTrueOrderByIdAsc() {
-        return enrichReviewStats(productRepository.findByIsFeaturedTrueOrderByIdAsc());
+        int limit = legacyProductListLimit("product.legacy-list-max-rows", 500, HARD_LEGACY_PRODUCT_LIST_LIMIT);
+        return enrichReviewStats(productRepository.findByIsFeaturedTrueOrderByIdAsc(PageRequest.of(0, limit)));
     }
 
     @Override
@@ -1995,7 +2011,7 @@ public class ProductServiceImpl implements ProductService {
         if (categoryRepository == null) {
             return ImportCategoryLookup.empty();
         }
-        List<Category> categories = categoryRepository.findAll();
+        List<Category> categories = loadImportCategories();
         Set<Long> ids = categories.stream()
                 .map(Category::getId)
                 .filter(id -> id != null && id > 0)
@@ -2014,6 +2030,26 @@ public class ProductServiceImpl implements ProductService {
             registerImportCategoryName(names, ambiguousNames, namesById, importCategoryPath(category, byId), category.getId());
         }
         return new ImportCategoryLookup(ids, names, namesById, ambiguousNames, true);
+    }
+
+    private List<Category> loadImportCategories() {
+        int pageSize = legacyProductListLimit(
+                "product.import.category-scan-page-size",
+                500,
+                HARD_PRODUCT_IMPORT_CATEGORY_PAGE_SIZE);
+        List<Category> categories = new ArrayList<>();
+        for (int page = 0; ; page++) {
+            List<Category> batch = categoryRepository.findAllByOrderByLevelAscParentIdAscNameAscIdAsc(
+                    PageRequest.of(page, pageSize));
+            if (batch == null || batch.isEmpty()) {
+                break;
+            }
+            categories.addAll(batch);
+            if (batch.size() < pageSize) {
+                break;
+            }
+        }
+        return categories;
     }
 
     private void registerImportCategoryName(Map<String, Long> names, Set<String> ambiguousNames, Map<Long, Set<String>> namesById, String value, Long id) {
@@ -2946,8 +2982,27 @@ public class ProductServiceImpl implements ProductService {
     }
 
     private List<Long> collectCategoryIds(Long id) {
-        LinkedHashSet<Long> ids = new LinkedHashSet<>();
-        collectCategoryIds(id, ids, 1);
+        return id == null ? List.of() : collectCategoryIds(List.of(id));
+    }
+
+    private List<Long> collectCategoryIds(List<Long> rootIds) {
+        LinkedHashSet<Long> ids = rootIds == null ? new LinkedHashSet<>() : rootIds.stream()
+                .filter(id -> id != null && id > 0)
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+        LinkedHashSet<Long> frontier = new LinkedHashSet<>(ids);
+        for (int depth = 1; depth < MAX_CATEGORY_TREE_DEPTH && !frontier.isEmpty(); depth++) {
+            List<Category> children = categoryRepository.findByParentIdIn(new ArrayList<>(frontier));
+            LinkedHashSet<Long> nextFrontier = new LinkedHashSet<>();
+            for (Category child : children) {
+                if (child == null || child.getId() == null || child.getId() <= 0) {
+                    continue;
+                }
+                if (ids.add(child.getId())) {
+                    nextFrontier.add(child.getId());
+                }
+            }
+            frontier = nextFrontier;
+        }
         return new ArrayList<>(ids);
     }
 
@@ -3288,16 +3343,6 @@ public class ProductServiceImpl implements ProductService {
                     || "lowstock".equals(field)
                     || "personalized".equals(field);
         }
-    }
-
-    private void collectCategoryIds(Long id, Set<Long> ids, int depth) {
-        if (id == null || depth > MAX_CATEGORY_TREE_DEPTH || !ids.add(id)) {
-            return;
-        }
-        if (depth == MAX_CATEGORY_TREE_DEPTH) {
-            return;
-        }
-        categoryRepository.findByParentId(id).forEach(child -> collectCategoryIds(child.getId(), ids, depth + 1));
     }
 
     private boolean matchesNormalizedKeyword(Product product, String normalizedKeyword, Map<Long, Category> categoryLookup) {

@@ -9,10 +9,6 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface PetGalleryPhotoLikeRepository extends JpaRepository<PetGalleryPhotoLike, Long> {
-    boolean existsByPhotoIdAndUserId(Long photoId, Long userId);
-
-    boolean existsByPhotoIdAndIpAddressAndUserIdIsNull(Long photoId, String ipAddress);
-
     boolean existsByPhotoIdAndViewerKey(Long photoId, String viewerKey);
 
     /**

@@ -77,10 +77,6 @@
         LIMIT 1
     </select>
 
-    <select id="countByStatus" resultType="long">
-        SELECT COUNT(*) FROM payments WHERE status = #{status}
-    </select>
-
     <select id="countActivePendingByOrderId" resultType="long">
         SELECT COUNT(*) FROM payments
         WHERE order_id = #{orderId}
@@ -126,15 +122,6 @@
             callback_at = #{callbackAt},
             updated_at = #{updatedAt}
         WHERE id = #{id}
-    </update>
-
-    <update id="markPaid">
-        UPDATE payments
-        SET status = 'PAID',
-            transaction_id = #{transactionId},
-            paid_at = NOW(),
-            updated_at = NOW()
-        WHERE id = #{id} AND status = 'PENDING'
     </update>
 
     <update id="markPaidDetailed">

@@ -28,12 +28,13 @@ class CartMoneyPrecisionContractTest {
         ProductRepository productRepository = mock(ProductRepository.class);
         ProductVariantService productVariantService = mock(ProductVariantService.class);
         RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
+        when(runtimeConfig.getInt("cart.max-lines-per-user", 200)).thenReturn(200);
         service = new CartService(cartItemMapper, productRepository, productVariantService, runtimeConfig);
     }
 
     @Test
     void calculateTotalAmountUsesDecimalMoneyInsteadOfDoubleAccumulation() {
-        when(cartItemMapper.findByUserId(7L)).thenReturn(List.of(
+        when(cartItemMapper.findByUserIdLimited(7L, 200)).thenReturn(List.of(
                 cartItem("33.33", 1),
                 cartItem("33.33", 1),
                 cartItem("33.33", 1)));
@@ -44,7 +45,7 @@ class CartMoneyPrecisionContractTest {
 
     @Test
     void calculateTotalAmountRoundsEachCartLineToCentsBeforeSumming() {
-        when(cartItemMapper.findByUserId(9L)).thenReturn(List.of(
+        when(cartItemMapper.findByUserIdLimited(9L, 200)).thenReturn(List.of(
                 cartItem("10.005", 1),
                 cartItem("10.005", 1)));
 

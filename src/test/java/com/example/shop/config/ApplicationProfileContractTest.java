@@ -184,12 +184,14 @@ class ApplicationProfileContractTest {
         assertEquals("${PRODUCT_PUBLIC_LEGACY_LIST_MAX_ROWS:100}", base.getProperty("product.public-legacy-list-max-rows"));
         assertEquals("${PRODUCT_LEGACY_LIST_MAX_ROWS:500}", base.getProperty("product.legacy-list-max-rows"));
         assertEquals("${PRODUCT_DISCOUNT_LIST_MAX_ROWS:100}", base.getProperty("product.discount-list-max-rows"));
+        assertEquals("${PRODUCT_IMPORT_CATEGORY_SCAN_PAGE_SIZE:500}", base.getProperty("product.import.category-scan-page-size"));
         assertEquals("${PRODUCT_IMPORT_VARIANT_SKU_SCAN_PAGE_SIZE:500}", base.getProperty("product.import.variant-sku-scan-page-size"));
         assertEquals("${PRODUCT_IMPORT_VARIANT_SKU_SCAN_MAX_ROWS:5000}", base.getProperty("product.import.variant-sku-scan-max-rows"));
 
         assertContains(configCenterDefaults, "product.public-legacy-list-max-rows=100");
         assertContains(configCenterDefaults, "product.legacy-list-max-rows=500");
         assertContains(configCenterDefaults, "product.discount-list-max-rows=100");
+        assertContains(configCenterDefaults, "product.import.category-scan-page-size=500");
         assertContains(configCenterDefaults, "product.import.variant-sku-scan-page-size=500");
         assertContains(configCenterDefaults, "product.import.variant-sku-scan-max-rows=5000");
     }

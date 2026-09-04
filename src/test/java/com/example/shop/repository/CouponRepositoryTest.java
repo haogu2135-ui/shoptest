@@ -35,7 +35,7 @@ class CouponRepositoryTest {
     private CouponRepository couponRepository;
 
     @Test
-    void aggregateQueriesCountStatusAndAvailabilitySignals() {
+    void claimableQueryReturnsAvailablePublicCouponsInIdOrder() {
         LocalDateTime now = LocalDateTime.of(2026, 5, 24, 12, 0);
         couponRepository.save(coupon("Public low inventory", "PUBLIC", "ACTIVE", now.minusDays(1), now.plusDays(3), 10, 8));
         couponRepository.save(coupon("Assigned low inventory", "ASSIGNED", "ACTIVE", now.minusDays(1), now.plusDays(2), 5, 4));
@@ -44,11 +44,6 @@ class CouponRepositoryTest {
         couponRepository.save(coupon("Sold out coupon", "PUBLIC", "ACTIVE", now.minusDays(1), now.plusDays(2), 10, 10));
         couponRepository.save(coupon("Future coupon", "PUBLIC", "ACTIVE", now.plusDays(1), now.plusDays(4), 10, 1));
         couponRepository.save(coupon("Unlimited public coupon", "PUBLIC", "ACTIVE", now.minusDays(1), null, null, 0));
-
-        assertEquals(6L, couponRepository.countByStatus("ACTIVE"));
-        assertEquals(5L, couponRepository.countByScopeAndStatus("PUBLIC", "ACTIVE"));
-        assertEquals(4L, couponRepository.countActiveExpiringBetween(now, now.plusDays(7)));
-        assertEquals(2L, couponRepository.countActiveLowRemaining(3));
 
         List<Coupon> claimable = couponRepository.findClaimableByScopeAndStatus(
                 "PUBLIC",

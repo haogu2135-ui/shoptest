@@ -7,21 +7,13 @@ import java.util.List;
 
 @Mapper
 public interface CartItemMapper {
-    
-    List<CartItem> findByUserId(Long userId);
+    List<CartItem> findByUserIdLimited(@Param("userId") Long userId, @Param("limit") int limit);
 
     int countByUserId(Long userId);
     
     CartItem findById(Long id);
 
     CartItem findByIdForUpdate(Long id);
-
-    CartItem findByUserIdAndProductId(@Param("userId") Long userId, @Param("productId") Long productId);
-
-    CartItem findByUserIdAndProductIdAndSelectedSpecs(
-            @Param("userId") Long userId,
-            @Param("productId") Long productId,
-            @Param("selectedSpecs") String selectedSpecs);
 
     CartItem findByUserIdAndProductIdAndSelectedSpecsForUpdate(
             @Param("userId") Long userId,

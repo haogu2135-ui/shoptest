@@ -34,7 +34,7 @@ class ProductRecommendationQueryContractTest {
     void personalizedRecommendationEndpointDelegatesToCurrentProductServicePath() throws IOException {
         String controller = read("src/main/java/com/example/shop/controller/ProductController.java");
         String endpoint = methodBlock(controller,
-                "public ResponseEntity<List<ProductPublicResponse>> getPersonalizedRecommendations(Authentication authentication)");
+                "public ResponseEntity<List<ProductPublicListItemResponse>> getPersonalizedRecommendations(Authentication authentication)");
 
         assertTrue(endpoint.contains("productService.findPersonalizedRecommendations(userDetails.getId())"));
         assertFalse(endpoint.contains("RecommendationService"));

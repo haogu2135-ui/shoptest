@@ -10,10 +10,14 @@ import java.util.List;
 public interface PetProfileMapper {
     List<PetProfile> findByUserId(@Param("userId") Long userId, @Param("limit") int limit);
     int countByUserId(Long userId);
-    List<PetProfile> findBirthdayPets(@Param("month") int month, @Param("day") int day);
+    List<PetProfile> findBirthdayPetsAfterId(@Param("month") int month,
+                                             @Param("day") int day,
+                                             @Param("afterId") long afterId,
+                                             @Param("limit") int limit);
     List<PetProfile> findBirthdayPetsByUserId(@Param("userId") Long userId,
                                                @Param("month") int month,
-                                               @Param("day") int day);
+                                               @Param("day") int day,
+                                               @Param("limit") int limit);
     PetProfile findById(Long id);
     int insert(PetProfile petProfile);
     int update(PetProfile petProfile);

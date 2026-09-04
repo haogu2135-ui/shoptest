@@ -115,6 +115,17 @@ class ProductQuestionServiceTest {
     }
 
     @Test
+    void adminQueueEscapesSearchWildcardsBeforeRepositoryQuery() {
+        String escapedSearch = "vip!% pet!_!!";
+        when(questionRepository.findAdminQueue(eq(false), eq(escapedSearch), any(Pageable.class)))
+                .thenReturn(List.of());
+
+        service.getAdminQueue("unanswered", " vip%  pet_! ", 20);
+
+        verify(questionRepository).findAdminQueue(eq(false), eq(escapedSearch), any(Pageable.class));
+    }
+
+    @Test
     void adminSummaryCalculatesResponseScoreAndRuntimeLimits() {
         when(runtimeConfig.getInt("product-question.admin.stale-hours", 24)).thenReturn(0);
         when(runtimeConfig.getInt("product-question.admin.max-rows", 200)).thenReturn(5000);

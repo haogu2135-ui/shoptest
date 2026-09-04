@@ -33,12 +33,13 @@ class CartServiceTest {
         productVariantService = mock(ProductVariantService.class);
         RuntimeConfigService runtimeConfig = mock(RuntimeConfigService.class);
         when(runtimeConfig.getInt("cart.max-quantity-per-line", 99)).thenReturn(99);
+        when(runtimeConfig.getInt("cart.max-lines-per-user", 200)).thenReturn(200);
         service = new CartService(cartItemMapper, productRepository, productVariantService, runtimeConfig);
     }
 
     @Test
     void calculateTotalAmountKeepsMonetaryScale() {
-        when(cartItemMapper.findByUserId(7L)).thenReturn(List.of(
+        when(cartItemMapper.findByUserIdLimited(7L, 200)).thenReturn(List.of(
                 cartItem("33.33", 1),
                 cartItem("33.33", 1),
                 cartItem("33.33", 1)));
@@ -49,14 +50,14 @@ class CartServiceTest {
 
     @Test
     void calculateTotalAmountRoundsHalfUpToCents() {
-        when(cartItemMapper.findByUserId(9L)).thenReturn(List.of(cartItem("10.005", 1)));
+        when(cartItemMapper.findByUserIdLimited(9L, 200)).thenReturn(List.of(cartItem("10.005", 1)));
 
         assertEquals(new BigDecimal("10.01"), service.calculateTotalAmount(9L));
     }
 
     @Test
     void calculateTotalAmountRoundsEachLineBeforeSumming() {
-        when(cartItemMapper.findByUserId(9L)).thenReturn(List.of(
+        when(cartItemMapper.findByUserIdLimited(9L, 200)).thenReturn(List.of(
                 cartItem("10.005", 1),
                 cartItem("10.005", 1)));
 
@@ -127,6 +128,20 @@ class CartServiceTest {
                 + "                .collect(Collectors.toList());"));
         assertTrue(cartService.contains("productRepository.findAllById(productIds)"));
         assertTrue(cartService.contains("items.forEach(item -> refreshCartItemSnapshot(item, productById.get(item.getProductId())))"));
+    }
+
+    @Test
+    void getCartItemsUsesConfiguredBoundedMapperQuery() throws Exception {
+        String cartService = Files.readString(Path.of("src/main/java/com/example/shop/service/CartService.java"));
+        String mapperInterface = Files.readString(Path.of("src/main/java/com/example/shop/repository/CartItemMapper.java"));
+        String mapperXml = Files.readString(Path.of("src/main/resources/mapper/CartItemMapper.xml"));
+
+        assertTrue(cartService.contains("cartItemMapper.findByUserIdLimited(userId, maxLinesPerUser())"));
+        assertTrue(mapperInterface.contains("findByUserIdLimited(@Param(\"userId\") Long userId, @Param(\"limit\") int limit)"));
+        assertFalse(mapperInterface.contains("findByUserId(Long userId)"));
+        assertTrue(mapperXml.contains("<select id=\"findByUserIdLimited\""));
+        assertFalse(mapperXml.contains("<select id=\"findByUserId\""));
+        assertTrue(mapperXml.contains("ORDER BY ci.id ASC\n        LIMIT #{limit}"));
     }
 
     private CartItem cartItem(String price, Integer quantity) {

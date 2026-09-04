@@ -143,6 +143,19 @@ class PetGalleryServiceTest {
     }
 
     @Test
+    void findForAdminTreatsSearchWildcardsAsLiteralCharacters() {
+        String escapedKeyword = "%100!%!_!!promo%";
+        when(photoRepository.searchAdminPhotos(
+                eq("DELETED"), eq("SEED"), eq(escapedKeyword), org.mockito.ArgumentMatchers.any(Pageable.class)))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        service.findForAdmin("deleted", "seed", "100%_!promo", 0, 20);
+
+        verify(photoRepository).searchAdminPhotos(
+                eq("DELETED"), eq("SEED"), eq(escapedKeyword), org.mockito.ArgumentMatchers.any(Pageable.class));
+    }
+
+    @Test
     void summarizeForAdminUsesBoundedFilteredCountQueries() {
         when(photoRepository.countAdminPhotos(eq("ACTIVE"), eq("USER_UPLOAD"), eq("%203.0.113.10%"))).thenReturn(9L);
         when(photoRepository.countAdminPhotosByUserUploadSource(eq("ACTIVE"), eq("USER_UPLOAD"), eq("%203.0.113.10%"), eq("USER_UPLOAD"))).thenReturn(8L);

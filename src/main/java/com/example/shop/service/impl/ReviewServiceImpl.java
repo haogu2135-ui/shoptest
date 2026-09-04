@@ -114,7 +114,7 @@ public class ReviewServiceImpl implements ReviewService {
         int safePage = Math.max(1, page);
         return reviewRepository.searchAdminReviews(
                 normalizeAdminStatus(status),
-                blankToNull(search),
+                searchLikeTerm(search),
                 parseSearchId(search),
                 PageRequest.of(safePage - 1, safeSize));
     }
@@ -130,25 +130,25 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     @Transactional(rollbackFor = Exception.class, readOnly = true)
     public long countAdminReviews(String status, String search) {
-        return reviewRepository.countAdminReviews(normalizeAdminStatus(status), blankToNull(search), parseSearchId(search));
+        return reviewRepository.countAdminReviews(normalizeAdminStatus(status), searchLikeTerm(search), parseSearchId(search));
     }
 
     @Override
     @Transactional(rollbackFor = Exception.class, readOnly = true)
     public Map<String, Number> summarizeAdminReviews(String status, String search) {
         String normalizedStatus = normalizeAdminStatus(status);
-        String normalizedSearch = blankToNull(search);
+        String normalizedSearch = searchLikeTerm(search);
         Long searchId = parseSearchId(search);
+        List<Object[]> metricRows = reviewRepository.summarizeAdminReviewMetrics(
+                normalizedStatus, normalizedSearch, searchId);
+        Object[] metrics = metricRows == null || metricRows.isEmpty() ? null : metricRows.get(0);
         Map<String, Number> summary = new LinkedHashMap<>();
-        for (String candidateStatus : List.of("PENDING", "APPROVED", "HIDDEN")) {
-            summary.put(candidateStatus,
-                    normalizedStatus == null || candidateStatus.equals(normalizedStatus)
-                            ? countAdminReviews(candidateStatus, search)
-                            : 0);
-        }
-        summary.put("LOW_RATING", reviewRepository.countAdminLowRatingReviews(normalizedStatus, normalizedSearch, searchId, 3));
-        summary.put("NEEDS_REPLY", reviewRepository.countAdminNeedsReplyReviews(normalizedStatus, normalizedSearch, searchId));
-        summary.put("AVERAGE_RATING", reviewRepository.averageAdminReviewRating(normalizedStatus, normalizedSearch, searchId));
+        summary.put("PENDING", metricCount(metrics, 0));
+        summary.put("APPROVED", metricCount(metrics, 1));
+        summary.put("HIDDEN", metricCount(metrics, 2));
+        summary.put("LOW_RATING", metricCount(metrics, 3));
+        summary.put("NEEDS_REPLY", metricCount(metrics, 4));
+        summary.put("AVERAGE_RATING", metricAverage(metrics, 5));
         return summary;
     }
 
@@ -379,9 +379,30 @@ public class ReviewServiceImpl implements ReviewService {
         return null;
     }
 
+    private long metricCount(Object[] metrics, int index) {
+        if (metrics == null || metrics.length <= index || !(metrics[index] instanceof Number)) {
+            return 0L;
+        }
+        return ((Number) metrics[index]).longValue();
+    }
+
+    private double metricAverage(Object[] metrics, int index) {
+        if (metrics == null || metrics.length <= index || !(metrics[index] instanceof Number)) {
+            return 0D;
+        }
+        return ((Number) metrics[index]).doubleValue();
+    }
+
     private String blankToNull(String value) {
         String normalized = value == null ? "" : value.trim();
         return normalized.isEmpty() ? null : normalized;
+    }
+
+    private String searchLikeTerm(String value) {
+        String normalized = blankToNull(value);
+        return normalized == null ? null : normalized.replace("!", "!!")
+                .replace("%", "!%")
+                .replace("_", "!_");
     }
 
     private Long parseSearchId(String search) {

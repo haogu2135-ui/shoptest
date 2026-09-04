@@ -7,9 +7,11 @@ import com.example.shop.service.impl.CategoryServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
+import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -112,6 +114,47 @@ class CategoryServiceImplTest {
     }
 
     @Test
+    void legacyCategoryLookupUsesBoundedSortedQuery() {
+        when(categoryRepository.findAllByOrderByLevelAscParentIdAscNameAscIdAsc(PageRequest.of(0, 500)))
+                .thenReturn(List.of());
+
+        assertEquals(List.of(), categoryService.findAll());
+
+        verify(categoryRepository).findAllByOrderByLevelAscParentIdAscNameAscIdAsc(PageRequest.of(0, 500));
+        verify(categoryRepository, never()).findAll();
+    }
+
+    @Test
+    void publicParentLookupUsesBoundedStableQuery() {
+        when(categoryRepository.findByParentIdOrderByNameAscIdAsc(7L, PageRequest.of(0, 500)))
+                .thenReturn(List.of());
+
+        assertEquals(List.of(), categoryService.findByParentId(7L));
+
+        verify(categoryRepository).findByParentIdOrderByNameAscIdAsc(7L, PageRequest.of(0, 500));
+    }
+
+    @Test
+    void publicLevelLookupUsesBoundedStableQuery() {
+        when(categoryRepository.findByLevelOrderByNameAscIdAsc(2, PageRequest.of(0, 500)))
+                .thenReturn(List.of());
+
+        assertEquals(List.of(), categoryService.findByLevel(2));
+
+        verify(categoryRepository).findByLevelOrderByNameAscIdAsc(2, PageRequest.of(0, 500));
+    }
+
+    @Test
+    void publicTopLevelLookupUsesBoundedStableQuery() {
+        when(categoryRepository.findByParentIdIsNullOrderByNameAscIdAsc(PageRequest.of(0, 500)))
+                .thenReturn(List.of());
+
+        assertEquals(List.of(), categoryService.findTopLevel());
+
+        verify(categoryRepository).findByParentIdIsNullOrderByNameAscIdAsc(PageRequest.of(0, 500));
+    }
+
+    @Test
     void savePreservesHierarchyValidationForSafeChildImage() {
         Category parent = validRootCategory();
         parent.setId(7L);
@@ -125,6 +168,61 @@ class CategoryServiceImplTest {
 
         assertEquals(2, saved.getLevel());
         assertEquals("/uploads/categories/kittens.png", saved.getImageUrl());
+    }
+
+    @Test
+    void descendantLookupUsesBatchedParentQueries() {
+        Category child = validRootCategory();
+        child.setId(8L);
+        child.setParentId(7L);
+        when(categoryRepository.findByParentIdIn(List.of(7L))).thenReturn(List.of(child));
+        when(categoryRepository.findByParentIdIn(List.of(8L))).thenReturn(List.of());
+
+        assertEquals(List.of(7L, 8L), categoryService.findSelfAndDescendantIds(7L));
+
+        verify(categoryRepository).findByParentIdIn(List.of(7L));
+        verify(categoryRepository).findByParentIdIn(List.of(8L));
+    }
+
+    @Test
+    void maxChildDepthUsesBatchedParentQueriesAndCycleProtection() {
+        Category child = validRootCategory();
+        child.setId(8L);
+        child.setParentId(7L);
+        Category cycle = validRootCategory();
+        cycle.setId(7L);
+        cycle.setParentId(8L);
+        when(categoryRepository.findByParentIdIn(List.of(7L))).thenReturn(List.of(child));
+        when(categoryRepository.findByParentIdIn(List.of(8L))).thenReturn(List.of(cycle));
+
+        Integer maxDepth = ReflectionTestUtils.invokeMethod(categoryService, "maxChildDepth", 7L);
+        assertEquals(Integer.valueOf(1), maxDepth);
+
+        verify(categoryRepository).findByParentIdIn(List.of(7L));
+        verify(categoryRepository).findByParentIdIn(List.of(8L));
+    }
+
+    @Test
+    void childHierarchyRefreshUsesBatchedParentQueries() {
+        Category child = validRootCategory();
+        child.setId(8L);
+        child.setParentId(7L);
+        Category grandchild = validRootCategory();
+        grandchild.setId(9L);
+        grandchild.setParentId(8L);
+        when(categoryRepository.findByParentIdIn(List.of(7L))).thenReturn(List.of(child));
+        when(categoryRepository.findByParentIdIn(List.of(8L))).thenReturn(List.of(grandchild));
+        when(categoryRepository.findByParentIdIn(List.of(9L))).thenReturn(List.of());
+
+        ReflectionTestUtils.invokeMethod(categoryService, "refreshChildHierarchy", 7L, 1, "/7/");
+
+        assertEquals(2, child.getLevel());
+        assertEquals("/7/8/", child.getPath());
+        assertEquals(3, grandchild.getLevel());
+        assertEquals("/7/8/9/", grandchild.getPath());
+        verify(categoryRepository).findByParentIdIn(List.of(7L));
+        verify(categoryRepository).findByParentIdIn(List.of(8L));
+        verify(categoryRepository).findByParentIdIn(List.of(9L));
     }
 
     private Category validRootCategory() {

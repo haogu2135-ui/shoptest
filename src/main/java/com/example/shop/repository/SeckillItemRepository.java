@@ -13,7 +13,7 @@ import java.util.List;
 
 @Repository
 public interface SeckillItemRepository extends JpaRepository<SeckillItem, Long> {
-    List<SeckillItem> findByCampaignIdOrderByIdAsc(Long campaignId);
+    List<SeckillItem> findByCampaignIdInOrderByCampaignIdAscIdAsc(List<Long> campaignIds);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select i from SeckillItem i where i.id = :id and i.campaignId = :campaignId")

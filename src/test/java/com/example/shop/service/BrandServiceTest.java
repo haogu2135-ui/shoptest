@@ -5,6 +5,7 @@ import com.example.shop.repository.BrandRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.springframework.data.domain.PageRequest;
 
 import java.util.Optional;
 
@@ -91,6 +92,16 @@ class BrandServiceTest {
             assertThrows(IllegalArgumentException.class, () -> brandService.save(brand), logoUrl);
         }
         verify(brandRepository, never()).save(any());
+    }
+
+    @Test
+    void legacyBrandLookupUsesBoundedPageQuery() {
+        when(brandRepository.findAllByOrderBySortOrderAscNameAsc(PageRequest.of(0, 500)))
+                .thenReturn(java.util.List.of());
+
+        assertEquals(java.util.List.of(), brandService.findAll(false));
+
+        verify(brandRepository).findAllByOrderBySortOrderAscNameAsc(PageRequest.of(0, 500));
     }
 
     private Brand validBrand() {

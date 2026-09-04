@@ -114,6 +114,7 @@ public class ConfigCenterService {
             "product.admin-default-page-size=50",
             "product.admin-max-page-size=500",
             "product.featured-max-limit=36",
+            "product.import.category-scan-page-size=500",
             "product.import.variant-sku-scan-page-size=500",
             "product.import.variant-sku-scan-max-rows=5000",
             "brand.public-list-max-rows=120",

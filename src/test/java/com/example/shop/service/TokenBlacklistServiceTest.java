@@ -10,11 +10,13 @@ import org.springframework.data.redis.core.ScanOptions;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.data.redis.core.script.RedisScript;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
+import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -123,6 +125,38 @@ class TokenBlacklistServiceTest {
         assertNull(service.consumeRefreshToken("refresh-token"));
 
         verify(redis, never()).opsForValue();
+    }
+
+    @Test
+    @SuppressWarnings("unchecked")
+    void scheduledCleanupRemovesExpiredLocalRevocationsAndKeepsActiveOnes() throws Exception {
+        TokenBlacklistService service = new TokenBlacklistService(
+                redisProvider(null), mock(RuntimeConfigService.class), mock(ClientIpResolver.class));
+        long now = System.currentTimeMillis();
+        ConcurrentMap<String, Long> accessEntries =
+                (ConcurrentMap<String, Long>) ReflectionTestUtils.getField(service, "localAccessTokenBlacklist");
+        ConcurrentMap<String, Long> refreshEntries =
+                (ConcurrentMap<String, Long>) ReflectionTestUtils.getField(service, "localRefreshTokenRevocations");
+        accessEntries.put("expired-access", now - 1);
+        accessEntries.put("active-access", now + 60_000);
+        refreshEntries.put("expired-refresh", now - 1);
+        refreshEntries.put("active-refresh", now + 60_000);
+
+        service.cleanupLocalRevocations();
+
+        assertFalse(accessEntries.containsKey("expired-access"));
+        assertTrue(accessEntries.containsKey("active-access"));
+        assertFalse(refreshEntries.containsKey("expired-refresh"));
+        assertTrue(refreshEntries.containsKey("active-refresh"));
+    }
+
+    @Test
+    void localRevocationCleanupIsScheduled() throws Exception {
+        String source = Files.readString(Path.of("src/main/java/com/example/shop/service/TokenBlacklistService.java"));
+
+        assertTrue(source.contains("@Scheduled(fixedDelayString = \"${security.token-blacklist.cleanup-interval-ms:300000}\")"));
+        assertTrue(source.contains("pruneExpiredEntries(localAccessTokenBlacklist, now);"));
+        assertTrue(source.contains("pruneExpiredEntries(localRefreshTokenRevocations, now);"));
     }
 
     @Test

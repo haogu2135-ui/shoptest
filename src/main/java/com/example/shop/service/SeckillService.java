@@ -22,6 +22,7 @@ import com.example.shop.repository.UserRepository;
 import com.example.shop.service.ProductService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -33,8 +34,10 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -44,6 +47,11 @@ import java.util.stream.Collectors;
 public class SeckillService {
     private static final DateTimeFormatter ORDER_NO_TIME = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
     private static final Set<String> CAMPAIGN_STATUSES = Set.of("DRAFT", "PUBLISHED", "PAUSED");
+    private static final int PRODUCT_BATCH_SIZE = 40;
+    private static final int DEFAULT_PUBLIC_CAMPAIGN_LIMIT = 20;
+    private static final int HARD_PUBLIC_CAMPAIGN_LIMIT = 100;
+    private static final int DEFAULT_ADMIN_CAMPAIGN_LIMIT = 100;
+    private static final int HARD_ADMIN_CAMPAIGN_LIMIT = 500;
 
     @Autowired
     private SeckillCampaignRepository campaignRepository;
@@ -99,9 +107,9 @@ public class SeckillService {
     @Transactional(readOnly = true)
     public List<SeckillCampaignResponse> findPublicCampaigns() {
         LocalDateTime now = LocalDateTime.now();
-        return campaignRepository.findByStatus("PUBLISHED", Sort.by(Sort.Direction.ASC, "startAt", "id"))
+        return toResponses(campaignRepository.findByStatus("PUBLISHED", PageRequest.of(0, publicCampaignLimit(),
+                        Sort.by(Sort.Direction.ASC, "startAt", "id"))), true, now)
                 .stream()
-                .map(campaign -> toResponse(campaign, true, now))
                 .filter(response -> response != null && response.getItems() != null && !response.getItems().isEmpty())
                 .collect(Collectors.toList());
     }
@@ -117,10 +125,9 @@ public class SeckillService {
 
     @Transactional(readOnly = true)
     public List<SeckillCampaignResponse> findAdminCampaigns() {
-        return campaignRepository.findAll(Sort.by(Sort.Direction.DESC, "startAt", "id"))
-                .stream()
-                .map(campaign -> toResponse(campaign, false, LocalDateTime.now()))
-                .collect(Collectors.toList());
+        LocalDateTime now = LocalDateTime.now();
+        return toResponses(campaignRepository.findAll(PageRequest.of(0, adminCampaignLimit(),
+                Sort.by(Sort.Direction.DESC, "startAt", "id"))).getContent(), false, now);
     }
 
     @Transactional
@@ -306,7 +313,10 @@ public class SeckillService {
             if (item == null || item.getProductId() == null || !productIds.add(item.getProductId())) {
                 throw new IllegalArgumentException("Seckill products must be unique");
             }
-            Product product = productService.findById(item.getProductId()).orElse(null);
+        }
+        Map<Long, Product> productsById = loadProductsByIds(new ArrayList<>(productIds), false);
+        for (SeckillItemWriteRequest item : request.getItems()) {
+            Product product = productsById.get(item.getProductId());
             if (product == null || (product.getStatus() != null && !"ACTIVE".equalsIgnoreCase(product.getStatus()))) {
                 throw new IllegalArgumentException("Product is unavailable: " + item.getProductId());
             }
@@ -384,6 +394,82 @@ public class SeckillService {
     }
 
     private SeckillCampaignResponse toResponse(SeckillCampaign campaign, boolean publicOnly, LocalDateTime now) {
+        List<SeckillCampaignResponse> responses = toResponses(List.of(campaign), publicOnly, now);
+        return responses.isEmpty() ? null : responses.get(0);
+    }
+
+    private int publicCampaignLimit() {
+        int configured = runtimeConfig == null
+                ? DEFAULT_PUBLIC_CAMPAIGN_LIMIT
+                : runtimeConfig.getInt("seckill.public-campaign-max-rows", DEFAULT_PUBLIC_CAMPAIGN_LIMIT);
+        return Math.max(1, Math.min(configured, HARD_PUBLIC_CAMPAIGN_LIMIT));
+    }
+
+    private int adminCampaignLimit() {
+        int configured = runtimeConfig == null
+                ? DEFAULT_ADMIN_CAMPAIGN_LIMIT
+                : runtimeConfig.getInt("seckill.admin-campaign-max-rows", DEFAULT_ADMIN_CAMPAIGN_LIMIT);
+        return Math.max(1, Math.min(configured, HARD_ADMIN_CAMPAIGN_LIMIT));
+    }
+
+    private List<SeckillCampaignResponse> toResponses(List<SeckillCampaign> campaigns,
+                                                       boolean publicOnly,
+                                                       LocalDateTime now) {
+        if (campaigns == null || campaigns.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> campaignIds = campaigns.stream()
+                .map(SeckillCampaign::getId)
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .collect(Collectors.toList());
+        if (campaignIds.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, List<SeckillItem>> itemsByCampaign = itemRepository
+                .findByCampaignIdInOrderByCampaignIdAscIdAsc(campaignIds)
+                .stream()
+                .collect(Collectors.groupingBy(SeckillItem::getCampaignId,
+                        LinkedHashMap::new,
+                        Collectors.toList()));
+        List<Long> productIds = itemsByCampaign.values().stream()
+                .flatMap(List::stream)
+                .map(SeckillItem::getProductId)
+                .filter(id -> id != null && id > 0)
+                .distinct()
+                .collect(Collectors.toList());
+        Map<Long, Product> productsById = loadProductsByIds(productIds, publicOnly);
+        return campaigns.stream()
+                .filter(campaign -> campaign != null && campaign.getId() != null)
+                .map(campaign -> toResponse(campaign, itemsByCampaign.get(campaign.getId()), productsById, now))
+                .collect(Collectors.toList());
+    }
+
+    private Map<Long, Product> loadProductsByIds(List<Long> productIds, boolean publicOnly) {
+        Map<Long, Product> productsById = new LinkedHashMap<>();
+        if (productIds == null || productIds.isEmpty()) {
+            return productsById;
+        }
+        for (int offset = 0; offset < productIds.size(); offset += PRODUCT_BATCH_SIZE) {
+            List<Long> batch = productIds.subList(offset, Math.min(offset + PRODUCT_BATCH_SIZE, productIds.size()));
+            List<Product> products = publicOnly
+                    ? productService.findPublicByIds(batch)
+                    : productService.findByIds(batch);
+            if (products != null) {
+                products.stream()
+                        .filter(product -> product != null && product.getId() != null)
+                        .forEach(product -> productsById.putIfAbsent(product.getId(), product));
+            }
+        }
+        return productsById;
+    }
+
+    private SeckillCampaignResponse toResponse(SeckillCampaign campaign,
+                                                List<SeckillItem> items,
+                                                Map<Long, Product> productsById,
+                                                LocalDateTime now) {
         SeckillCampaignResponse response = new SeckillCampaignResponse();
         response.setId(campaign.getId());
         response.setTitle(campaign.getTitle());
@@ -393,16 +479,14 @@ public class SeckillService {
         response.setState(campaignState(campaign, now));
         response.setStartAt(campaign.getStartAt());
         response.setEndAt(campaign.getEndAt());
-        List<SeckillItemResponse> items = itemRepository.findByCampaignIdOrderByIdAsc(campaign.getId()).stream()
+        List<SeckillItemResponse> itemResponses = (items == null ? List.<SeckillItem>of() : items).stream()
                 .map(item -> {
-                    Product product = publicOnly
-                            ? productService.findPublicById(item.getProductId()).orElse(null)
-                            : productService.findById(item.getProductId()).orElse(null);
+                    Product product = productsById.get(item.getProductId());
                     return product == null ? null : SeckillItemResponse.from(item, product);
                 })
                 .filter(item -> item != null)
                 .collect(Collectors.toList());
-        response.setItems(items);
+        response.setItems(itemResponses);
         return response;
     }
 

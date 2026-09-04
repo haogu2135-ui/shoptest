@@ -250,10 +250,6 @@ public class AdminRoleService {
                         SUPER_ADMIN));
     }
 
-    public List<AdminRole> findAll() {
-        return jdbcTemplate.query("SELECT * FROM admin_roles ORDER BY id ASC", (rs, rowNum) -> mapRole(rs));
-    }
-
     public List<AdminRole> findAll(int maxRows) {
         return jdbcTemplate.query("SELECT * FROM admin_roles ORDER BY id ASC LIMIT ?",
                 (rs, rowNum) -> mapRole(rs),

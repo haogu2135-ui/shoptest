@@ -51,14 +51,6 @@
         LIMIT 1
     </select>
 
-    <select id="findByUserId" resultMap="userCouponMap">
-        SELECT <include refid="userCouponColumns"/>
-        FROM user_coupons uc
-        JOIN coupons c ON c.id = uc.coupon_id
-        WHERE uc.user_id = #{userId}
-        ORDER BY uc.status ASC, c.end_at ASC, uc.id DESC
-    </select>
-
     <select id="findByUserIdLimited" resultMap="userCouponMap">
         SELECT <include refid="userCouponColumns"/>
         FROM user_coupons uc
@@ -66,18 +58,6 @@
         WHERE uc.user_id = #{userId}
         ORDER BY uc.status ASC, c.end_at ASC, uc.id DESC
         LIMIT #{limit}
-    </select>
-
-    <select id="findUnusedByUserId" resultMap="userCouponMap">
-        SELECT <include refid="userCouponColumns"/>
-        FROM user_coupons uc
-        JOIN coupons c ON c.id = uc.coupon_id
-        WHERE uc.user_id = #{userId}
-          AND uc.status = 'UNUSED'
-          AND c.status = 'ACTIVE'
-          AND (c.start_at IS NULL OR c.start_at &lt;= NOW())
-          AND (c.end_at IS NULL OR c.end_at &gt;= NOW())
-        ORDER BY c.end_at ASC, uc.id DESC
     </select>
 
     <select id="findUnusedByUserIdLimited" resultMap="userCouponMap">
