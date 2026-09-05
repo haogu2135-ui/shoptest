@@ -59,6 +59,15 @@ describe('ShopInput', () => {
     rerender(<ShopInput aria-label="Search" value="" allowClear onChange={onChange} />);
     expect(screen.queryByRole('button', { name: 'Clear' })).not.toBeInTheDocument();
   });
+
+  it('omits malformed length attributes instead of rendering invalid constraints', () => {
+    const { container } = render(<ShopInput aria-label="Search" maxLength={-1} minLength={Number.NaN} showCount />);
+    const input = screen.getByLabelText('Search');
+
+    expect(input).not.toHaveAttribute('maxlength');
+    expect(input).not.toHaveAttribute('minlength');
+    expect(container.querySelector('.shop-input__count')).toBeNull();
+  });
 });
 
 describe('ShopPasswordInput', () => {

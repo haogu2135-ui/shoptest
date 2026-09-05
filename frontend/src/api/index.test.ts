@@ -232,6 +232,81 @@ describe('api parameter normalization', () => {
     expect(mockPut).not.toHaveBeenCalled();
   });
 
+  it('normalizes malformed numeric limits, text lengths, and reversed price ranges', () => {
+    const {
+      normalizePositiveIntList,
+      normalizeNonNegativeIntParam,
+      normalizeNonNegativeNumberParam,
+      normalizeBoundedPositiveInt,
+      normalizeTextParam,
+      normalizePriceRange,
+    } = require('./index');
+
+    expect(normalizePositiveIntList(null as unknown as unknown[], -1)).toEqual([]);
+    expect(normalizePositiveIntList([1, 2, 3], Number.NaN)).toEqual([1, 2, 3]);
+    expect(normalizeNonNegativeIntParam(Number.NaN, -4, -2)).toBe(0);
+    expect(normalizeNonNegativeNumberParam(Number.NaN, -4, -2)).toBe(0);
+    expect(normalizeBoundedPositiveInt(Number.NaN, -4, -2)).toBe(1);
+    expect(normalizeTextParam('safe value', Number.NaN)).toBe('safe value');
+    expect(normalizePriceRange(90, 10)).toEqual({ minPrice: 10, maxPrice: 90 });
+  });
+
+  it('keeps question and tracking bypass reads out of their caches', async () => {
+    jest.resetModules();
+    mockGet.mockResolvedValueOnce({ data: [{ id: 1 }] }).mockResolvedValueOnce({ data: [{ id: 2 }] });
+    mockPost.mockResolvedValue({ data: { status: 'IN_TRANSIT' } });
+    const { questionApi, orderApi } = require('./index');
+
+    await questionApi.getByProduct(901);
+    await questionApi.getByProduct(901, { bypassCache: true });
+    await questionApi.getByProduct(901);
+    await orderApi.track('SO-CACHE-901', 'cache901@example.com');
+    await orderApi.track('SO-CACHE-901', 'cache901@example.com', { bypassCache: true });
+    await orderApi.track('SO-CACHE-901', 'cache901@example.com');
+
+    expect(mockGet).toHaveBeenCalledTimes(2);
+    expect(mockPost).toHaveBeenCalledTimes(2);
+  });
+
+  it('passes category, brand, and question lifecycle signals to requests', async () => {
+    jest.resetModules();
+    const controller = new AbortController();
+    mockGet.mockResolvedValue({ data: [] });
+    mockPost.mockResolvedValue({ data: {} });
+    const { categoryApi, brandApi, questionApi } = require('./index');
+
+    await categoryApi.getChildren(42, { signal: controller.signal });
+    await categoryApi.getById(42, { signal: controller.signal });
+    await brandApi.getAll({ activeOnly: false }, { signal: controller.signal });
+    await questionApi.ask(42, 'Can it be washed?', { signal: controller.signal });
+
+    expect(mockGet.mock.calls[0][1].signal).toBeUndefined();
+    expect(mockGet.mock.calls[1][1].signal).toBe(controller.signal);
+    expect(mockGet.mock.calls[2][1]).toEqual(expect.objectContaining({
+      params: { activeOnly: false },
+    }));
+    expect(mockGet.mock.calls[2][1].signal).toBeUndefined();
+    expect(mockPost.mock.calls[0][2].signal).toBe(controller.signal);
+  });
+
+  it('normalizes admin list envelopes and preserves explicit false filters', async () => {
+    jest.resetModules();
+    mockGet
+      .mockResolvedValueOnce({ data: { items: [{ id: 1 }] } })
+      .mockResolvedValueOnce({ data: { data: [{ id: 2 }] } })
+      .mockResolvedValueOnce({ data: { records: [{ id: 3 }] } });
+    const { adminApi } = require('./admin');
+
+    await expect(adminApi.getBrands({ activeOnly: false })).resolves.toMatchObject({ data: [{ id: 1 }] });
+    await expect(adminApi.getAlerts({ status: ' open ', limit: 9999 })).resolves.toMatchObject({ data: [{ id: 2 }] });
+    await expect(adminApi.getIpBlacklist({ status: ' blocked ' })).resolves.toMatchObject({ data: [{ id: 3 }] });
+
+    expect(mockGet.mock.calls[0][1].params).toEqual({ activeOnly: false, limit: 500 });
+    expect(mockGet.mock.calls[1][1].params).toEqual({
+      status: 'OPEN', severity: undefined, category: undefined, limit: 500,
+    });
+  });
+
   it('keeps module-level API caches bounded and TTL-based', () => {
     const source = readApiSource();
     const cacheSource = readApiSource('cache.ts');
@@ -2430,12 +2505,12 @@ const { adminApi } = require('./admin');
   it('keeps role-code cache invalidation on the dedicated role-code endpoint', () => {
     const source = readApiSource();
     const updateUserSource = source.slice(
-      source.indexOf('updateUser: (id: number, user: AdminUserUpdatePayload)'),
-      source.indexOf('assignUserRole: (id: number, roleCode: string)'),
+      source.indexOf('updateUser: (id: number, user: AdminUserUpdatePayload, options?: ApiRequestOptions)'),
+      source.indexOf('assignUserRole: (id: number, roleCode: string, options?: ApiRequestOptions)'),
     );
     const assignUserRoleSource = source.slice(
-      source.indexOf('assignUserRole: (id: number, roleCode: string)'),
-      source.indexOf('getMyPermissions:', source.indexOf('assignUserRole: (id: number, roleCode: string)')),
+      source.indexOf('assignUserRole: (id: number, roleCode: string, options?: ApiRequestOptions)'),
+      source.indexOf('getMyPermissions:', source.indexOf('assignUserRole: (id: number, roleCode: string, options?: ApiRequestOptions)')),
     );
 
     expect(updateUserSource).not.toContain('user.roleCode');
@@ -2713,6 +2788,26 @@ const { adminApi } = require('./admin');
     expect(mockPost.mock.calls.some((call) => call[0] === '/pet-gallery/8/like' && call[2].signal === controller.signal)).toBe(true);
     expect(mockDelete.mock.calls.some((call) => call[0] === '/cart/remove/8' && call[1].signal === controller.signal)).toBe(true);
     expect(mockDelete.mock.calls.some((call) => call[0] === '/addresses/8' && call[1].signal === controller.signal)).toBe(true);
+  });
+
+  it('passes abort signals through product and carrier mutations', async () => {
+    jest.resetModules();
+    const controller = new AbortController();
+    const { productApi, logisticsCarrierApi } = require('./index');
+
+    await productApi.create({ name: 'Harness' }, { signal: controller.signal });
+    await productApi.update(8, { name: 'Updated harness' }, { signal: controller.signal });
+    await productApi.delete(8, { signal: controller.signal });
+    await logisticsCarrierApi.create({ code: 'DHL' }, { signal: controller.signal });
+    await logisticsCarrierApi.update(9, { code: 'UPS' }, { signal: controller.signal });
+    await logisticsCarrierApi.delete(9, { signal: controller.signal });
+
+    expect(mockPost.mock.calls.some((call) => call[0] === '/products' && call[2].signal === controller.signal)).toBe(true);
+    expect(mockPut.mock.calls.some((call) => call[0] === '/products/8' && call[2].signal === controller.signal)).toBe(true);
+    expect(mockDelete.mock.calls.some((call) => call[0] === '/products/8' && call[1].signal === controller.signal)).toBe(true);
+    expect(mockPost.mock.calls.some((call) => call[0] === '/admin/logistics-carriers' && call[2].signal === controller.signal)).toBe(true);
+    expect(mockPut.mock.calls.some((call) => call[0] === '/admin/logistics-carriers/9' && call[2].signal === controller.signal)).toBe(true);
+    expect(mockDelete.mock.calls.some((call) => call[0] === '/admin/logistics-carriers/9' && call[1].signal === controller.signal)).toBe(true);
   });
 
   it('keeps the shared admin role request alive when one caller aborts', async () => {

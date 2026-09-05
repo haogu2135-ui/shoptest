@@ -7,6 +7,7 @@ import type { RegionOption } from '../regionData';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
+import { useCountdownTicker } from '../hooks/useCountdownTicker';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
 import { createPaymentMethodDetails, createPaymentMethodOptions } from '../utils/paymentMethods';
 import { useAppConfig } from '../hooks/useAppConfig';
@@ -53,6 +54,7 @@ import { useProfileAccountActions } from '../hooks/useProfileAccountActions';
 import { useProfileOrderActions } from '../hooks/useProfileOrderActions';
 import { useProfileSessionData } from '../hooks/useProfileSessionData';
 import { useProfilePaymentReturn } from '../hooks/useProfilePaymentReturn';
+import { useVisiblePolling } from '../hooks/useVisiblePolling';
 import {
   ProfileAuthGateShell,
   ProfileLoadingShell,
@@ -219,13 +221,7 @@ const Profile: React.FC = () => {
     }
   }, [isPaymentReturnIncomplete, isPaymentReturnSuccess, requestedProfileTab]);
 
-  useEffect(() => {
-    if (profileEmailCodeCountdown <= 0) return;
-    const timer = window.setInterval(() => {
-      setProfileEmailCodeCountdown((value) => Math.max(value - 1, 0));
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [profileEmailCodeCountdown]);
+  useCountdownTicker(profileEmailCodeCountdown, setProfileEmailCodeCountdown);
 
   const {
     handleContinuePayment,
@@ -393,33 +389,22 @@ const Profile: React.FC = () => {
     setSelectedPaymentMethod,
   });
 
-  useEffect(() => {
-    const orderId = selectedOrder?.id;
-    if (!paymentModalVisible || !orderId) return;
-    let polling = false;
-    let disposed = false;
-    const isActive = () => !disposed && mountedRef.current;
-    const syncPaymentState = async () => {
-      if (polling || !isActive()) return;
-      polling = true;
-      try {
-        await refreshPaymentState(orderId, isActive);
-      } catch (error) {
-        if (isActive()) {
-          reportNonBlockingError('Profile.pollPaymentState', error);
-        }
-      } finally {
-        polling = false;
-      }
-    };
-    syncPaymentState();
-    const timer = window.setInterval(syncPaymentState, 5000);
-    return () => {
-      disposed = true;
-      polling = false;
-      window.clearInterval(timer);
-    };
-  }, [paymentModalVisible, refreshPaymentState, selectedOrder?.id]);
+  const selectedPaymentOrderId = selectedOrder?.id;
+  const pollPaymentState = useCallback(async () => {
+    if (!selectedPaymentOrderId || !mountedRef.current) return;
+    const isActive = () => mountedRef.current;
+    try {
+      await refreshPaymentState(selectedPaymentOrderId, isActive);
+    } catch (error) {
+      if (isActive()) reportNonBlockingError('Profile.pollPaymentState', error);
+    }
+  }, [refreshPaymentState, selectedPaymentOrderId]);
+
+  useVisiblePolling({
+    enabled: process.env.NODE_ENV !== 'test' && paymentModalVisible && Boolean(selectedPaymentOrderId),
+    intervalMs: 5000,
+    run: pollPaymentState,
+  });
 
   useEffect(() => {
     let disposed = false;

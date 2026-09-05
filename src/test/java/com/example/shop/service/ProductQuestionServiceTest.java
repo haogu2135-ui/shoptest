@@ -30,13 +30,14 @@ import static org.mockito.Mockito.when;
 
 class ProductQuestionServiceTest {
     private ProductQuestionRepository questionRepository;
+    private ProductRepository productRepository;
     private RuntimeConfigService runtimeConfig;
     private ProductQuestionServiceImpl service;
 
     @BeforeEach
     void setUp() {
         questionRepository = mock(ProductQuestionRepository.class);
-        ProductRepository productRepository = mock(ProductRepository.class);
+        productRepository = mock(ProductRepository.class);
         UserRepository userRepository = mock(UserRepository.class);
         runtimeConfig = mock(RuntimeConfigService.class);
         when(runtimeConfig.getInt("product-question.max-question-chars", 500)).thenReturn(80);
@@ -63,6 +64,22 @@ class ProductQuestionServiceTest {
 
         assertEquals("Is this safe for puppies?", saved.getQuestion());
         verify(questionRepository).save(any(ProductQuestion.class));
+    }
+
+    @Test
+    void publicQuestionsUseTheSingleActiveProductQuery() {
+        ProductQuestion question = new ProductQuestion();
+        question.setId(11L);
+        question.setQuestion("Is this washable?");
+        question.setAnswer("Yes.");
+        when(questionRepository.findAnsweredByProductId(eq(7L), any(Pageable.class)))
+                .thenReturn(List.of(question));
+
+        List<?> result = service.getPublicByProductId(7L);
+
+        assertEquals(1, result.size());
+        verify(questionRepository).findAnsweredByProductId(eq(7L), any(Pageable.class));
+        verify(productRepository, never()).findById(7L);
     }
 
     @Test

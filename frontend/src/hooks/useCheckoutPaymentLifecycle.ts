@@ -128,6 +128,7 @@ export const useCheckoutPaymentLifecycle = ({
     let disposed = false;
     let polling = false;
     let pollAbortController: AbortController | null = null;
+    let pollTimer: number | null = null;
     let ownsLock = false;
     let webLockUnavailable = false;
     let webLockSession: CheckoutPaymentPollWebLockSession | null = null;
@@ -182,12 +183,22 @@ export const useCheckoutPaymentLifecycle = ({
     };
     window.addEventListener('storage', handlePaymentPollStorage);
 
-    const timer = window.setInterval(async () => {
-      if (disposed) return;
+    let runPoll: () => Promise<void>;
+    const scheduleNextPoll = () => {
+      if (disposed || document.visibilityState === 'hidden' || pollTimer !== null) return;
+      pollTimer = window.setTimeout(() => {
+        pollTimer = null;
+        void runPoll();
+      }, 5000);
+    };
+    runPoll = async () => {
+      if (disposed || document.visibilityState === 'hidden') {
+        scheduleNextPoll();
+        return;
+      }
       if (Date.now() - pollStartedAt >= CHECKOUT_PAYMENT_POLL_MAX_MS) {
         disposed = true;
         polling = false;
-        window.clearInterval(timer);
         if (ownsLock) {
           releaseCheckoutPaymentPollLock(createdOrderId, ownerId);
           ownsLock = false;
@@ -196,7 +207,10 @@ export const useCheckoutPaymentLifecycle = ({
         showCheckoutMessage('warning', t('pages.checkout.paymentPollingTimeout'));
         return;
       }
-      if (disposed || polling) return;
+      if (polling) {
+        scheduleNextPoll();
+        return;
+      }
       const sharedResult = readCheckoutPaymentPollResult(createdOrderId);
       if (applySharedPollResult(sharedResult) && isCheckoutPaymentPollTerminal(sharedResult?.payment)) {
         return;
@@ -254,15 +268,26 @@ export const useCheckoutPaymentLifecycle = ({
         }
         if (disposed) {
           releaseWebLockSession();
+        } else {
+          scheduleNextPoll();
         }
       }
-    }, 5000);
+    };
+    const handlePaymentPollVisibility = () => {
+      if (document.visibilityState === 'visible') scheduleNextPoll();
+    };
+    document.addEventListener('visibilitychange', handlePaymentPollVisibility);
+    scheduleNextPoll();
 
     return () => {
       const shouldReleaseLock = ownsLock && !polling;
       const shouldReleaseWebLock = !polling;
       disposed = true;
-      window.clearInterval(timer);
+      if (pollTimer !== null) {
+        window.clearTimeout(pollTimer);
+        pollTimer = null;
+      }
+      document.removeEventListener('visibilitychange', handlePaymentPollVisibility);
       window.removeEventListener('storage', handlePaymentPollStorage);
       abortActivePollRequest();
       if (shouldReleaseLock) {

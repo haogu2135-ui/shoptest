@@ -14,7 +14,7 @@ import { resolveApiBaseUrl, resolveSupportWebSocketUrl } from '../utils/runtimeC
 import { getEffectiveRole } from '../utils/roles';
 import { getLocalStorageItem, removeLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import { loadGuestSupportContext } from '../utils/guestSupportContext';
-import { cachedGet, cachedTypedGet, setBoundedMapEntry, setTimedCacheEntry } from './cache';
+import { cachedGet, cachedTypedGet, clearTimedCacheMap, deleteTimedCacheEntry, setBoundedMapEntry, setTimedCacheEntry } from './cache';
 
 export const api = axios.create({
     baseURL: resolveApiBaseUrl(),
@@ -50,8 +50,12 @@ export const toPathId = (value: unknown) => {
     return normalized;
 };
 
-export const normalizePositiveIntList = (values: unknown[], limit = 40) =>
-    Array.from(new Set(values.map(normalizePositiveInt).filter((id): id is number => id !== null))).slice(0, limit);
+export const normalizePositiveIntList = (values: unknown[], limit = 40) => {
+    const normalizedLimit = Number.isSafeInteger(limit) && limit >= 0 ? limit : 40;
+    return Array.isArray(values)
+        ? Array.from(new Set(values.map(normalizePositiveInt).filter((id): id is number => id !== null))).slice(0, normalizedLimit)
+        : [];
+};
 
 export const normalizeQuantityParam = (value: unknown) => {
     const numeric = Number(value);
@@ -60,18 +64,41 @@ export const normalizeQuantityParam = (value: unknown) => {
 
 export const normalizeNonNegativeIntParam = (value: unknown, fallback = 0, max = 1_000_000) => {
     const numeric = Number(value);
-    return Number.isFinite(numeric) ? Math.max(0, Math.min(Math.floor(numeric), max)) : fallback;
+    const normalizedMax = Number.isFinite(max) ? Math.max(0, Math.floor(max)) : 1_000_000;
+    const normalizedFallback = Number.isFinite(fallback)
+        ? Math.max(0, Math.min(Math.floor(fallback), normalizedMax))
+        : 0;
+    return Number.isFinite(numeric) ? Math.max(0, Math.min(Math.floor(numeric), normalizedMax)) : normalizedFallback;
 };
 
 export const normalizeNonNegativeNumberParam = (value: unknown, fallback = 0, max = 1_000_000) => {
     const numeric = Number(value);
-    return Number.isFinite(numeric) ? Math.max(0, Math.min(numeric, max)) : fallback;
+    const normalizedMax = Number.isFinite(max) ? Math.max(0, max) : 1_000_000;
+    const normalizedFallback = Number.isFinite(fallback) ? Math.max(0, Math.min(fallback, normalizedMax)) : 0;
+    return Number.isFinite(numeric) ? Math.max(0, Math.min(numeric, normalizedMax)) : normalizedFallback;
+};
+
+export const normalizePriceRange = (minPrice?: unknown, maxPrice?: unknown) => {
+    const normalizedMin = minPrice == null ? undefined : normalizeNonNegativeNumberParam(minPrice);
+    const normalizedMax = maxPrice == null ? undefined : normalizeNonNegativeNumberParam(maxPrice);
+    if (normalizedMin !== undefined && normalizedMax !== undefined && normalizedMin > normalizedMax) {
+        return { minPrice: normalizedMax, maxPrice: normalizedMin };
+    }
+    return { minPrice: normalizedMin, maxPrice: normalizedMax };
 };
 
 export const normalizeBoundedPositiveInt = (value: unknown, fallback: number, max: number) => {
     const normalized = normalizePositiveInt(value);
-    return normalized ? Math.min(normalized, max) : fallback;
+    const normalizedMax = Number.isSafeInteger(max) && max > 0 ? max : Number.MAX_SAFE_INTEGER;
+    const normalizedFallback = Number.isSafeInteger(fallback) && fallback > 0
+        ? Math.min(fallback, normalizedMax)
+        : Math.min(1, normalizedMax);
+    return normalized ? Math.min(normalized, normalizedMax) : normalizedFallback;
 };
+
+const normalizeTextLength = (maxLength: number) => (
+    Number.isSafeInteger(maxLength) && maxLength >= 0 ? maxLength : 120
+);
 
 const stripControlChars = (value: string) =>
     Array.from(value, (char) => {
@@ -80,9 +107,10 @@ const stripControlChars = (value: string) =>
     }).join('');
 
 export const normalizeTextParam = (value: unknown, maxLength = 120) =>
-    stripControlChars(String(value || '')).trim().replace(/\s+/g, ' ').slice(0, maxLength);
+    stripControlChars(String(value || '')).trim().replace(/\s+/g, ' ').slice(0, normalizeTextLength(maxLength));
 
 const normalizeMultilineTextParam = (value: unknown, maxLength = 120) => {
+    const normalizedMaxLength = normalizeTextLength(maxLength);
     const normalized = String(value || '').replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     return Array.from(normalized, (char) => {
         const code = char.charCodeAt(0);
@@ -95,7 +123,7 @@ const normalizeMultilineTextParam = (value: unknown, maxLength = 120) => {
         .join('\n')
         .replace(/\n{3,}/g, '\n\n')
         .trim()
-        .slice(0, maxLength);
+        .slice(0, normalizedMaxLength);
 };
 
 export const normalizeSupportMessageContent = (value: unknown) =>
@@ -154,9 +182,10 @@ const normalizeLoginParam = (value: unknown, maxLength = 120) => {
 };
 
 const normalizePhoneParam = (value: unknown, maxLength = 20) => {
-    const raw = normalizeTextParam(value, Math.max(maxLength * 2, maxLength));
+    const normalizedMaxLength = normalizeTextLength(maxLength);
+    const raw = normalizeTextParam(value, normalizedMaxLength * 2);
     const normalized = raw.startsWith('+') ? `+${raw.slice(1).replace(/\D+/g, '')}` : raw.replace(/\D+/g, '');
-    return normalized.slice(0, maxLength);
+    return normalized.slice(0, normalizedMaxLength);
 };
 
 const normalizeEmailCodeParam = (value: unknown) =>
@@ -177,7 +206,7 @@ const normalizeIdempotencyKeyParam = (value: unknown) =>
     normalizeTextParam(value, 120).replace(/[^a-z0-9._:-]/gi, '').slice(0, 120);
 
 export const normalizeGuestCheckoutItems = (items: Array<{ productId: number; quantity: number; selectedSpecs?: string }> = []) =>
-    items
+    (Array.isArray(items) ? items : [])
         .map((item) => ({
             productId: normalizePositiveInt(item?.productId) || 0,
             quantity: normalizeQuantityParam(item?.quantity),
@@ -187,66 +216,66 @@ export const normalizeGuestCheckoutItems = (items: Array<{ productId: number; qu
         .slice(0, MAX_GUEST_CHECKOUT_ITEMS);
 
 export const normalizeAddressPayload = (address: Partial<UserAddress>) => ({
-    recipientName: normalizeTextParam(address.recipientName, 80),
-    phone: normalizeTextParam(address.phone, 30),
-    region: Array.isArray(address.region)
+    recipientName: normalizeTextParam(address?.recipientName, 80),
+    phone: normalizeTextParam(address?.phone, 30),
+    region: Array.isArray(address?.region)
         ? address.region.map((item) => normalizeTextParam(item, 120)).filter(Boolean).slice(0, 8)
         : undefined,
-    postalCode: address.postalCode === undefined ? undefined : normalizeTextParam(address.postalCode, 20).toUpperCase(),
-    detailAddress: address.detailAddress === undefined ? undefined : normalizeTextParam(address.detailAddress, 260),
-    address: normalizeTextParam(address.address, 500),
-    isDefault: address.isDefault === undefined ? undefined : Boolean(address.isDefault),
+    postalCode: address?.postalCode === undefined ? undefined : normalizeTextParam(address.postalCode, 20).toUpperCase(),
+    detailAddress: address?.detailAddress === undefined ? undefined : normalizeTextParam(address.detailAddress, 260),
+    address: normalizeTextParam(address?.address, 500),
+    isDefault: address?.isDefault === undefined ? undefined : Boolean(address.isDefault),
 });
 
 export const normalizeCategoryPayload = (category: Partial<Category>) => ({
-    name: normalizeTextParam(category.name, 255),
-    parentId: category.parentId === undefined || category.parentId === null ? null : normalizePositiveInt(category.parentId) || null,
-    imageUrl: category.imageUrl === undefined || category.imageUrl === null ? null : normalizeImageUrlParam(category.imageUrl, 2048) || null,
-    description: category.description === undefined || category.description === null ? null : normalizeTextParam(category.description, 1000),
-    localizedContent: category.localizedContent ?? null,
+    name: normalizeTextParam(category?.name, 255),
+    parentId: category?.parentId === undefined || category?.parentId === null ? null : normalizePositiveInt(category.parentId) || null,
+    imageUrl: category?.imageUrl === undefined || category?.imageUrl === null ? null : normalizeImageUrlParam(category.imageUrl, 2048) || null,
+    description: category?.description === undefined || category?.description === null ? null : normalizeTextParam(category.description, 1000),
+    localizedContent: category?.localizedContent ?? null,
 });
 
 export const normalizeBrandPayload = (brand: Partial<Brand>) => ({
-    name: normalizeTextParam(brand.name, 100),
-    description: brand.description === undefined || brand.description === null ? null : normalizeTextParam(brand.description, 1000),
-    logoUrl: brand.logoUrl === undefined || brand.logoUrl === null ? null : normalizeImageUrlParam(brand.logoUrl, 1000) || null,
-    websiteUrl: brand.websiteUrl === undefined || brand.websiteUrl === null ? null : normalizeTextParam(brand.websiteUrl, 1000),
-    status: normalizeTextParam(brand.status, 20).toUpperCase() || 'ACTIVE',
-    sortOrder: normalizeSafeInt(brand.sortOrder) ?? 0,
+    name: normalizeTextParam(brand?.name, 100),
+    description: brand?.description === undefined || brand?.description === null ? null : normalizeTextParam(brand.description, 1000),
+    logoUrl: brand?.logoUrl === undefined || brand?.logoUrl === null ? null : normalizeImageUrlParam(brand.logoUrl, 1000) || null,
+    websiteUrl: brand?.websiteUrl === undefined || brand?.websiteUrl === null ? null : normalizeTextParam(brand.websiteUrl, 1000),
+    status: normalizeTextParam(brand?.status, 20).toUpperCase() || 'ACTIVE',
+    sortOrder: normalizeSafeInt(brand?.sortOrder) ?? 0,
 });
 
 export const normalizeAnnouncementPayload = (announcement: Partial<SiteAnnouncement>) => ({
-    title: normalizeTextParam(announcement.title, 120),
-    content: normalizeTextParam(announcement.content, 2000),
-    linkUrl: announcement.linkUrl === undefined || announcement.linkUrl === null ? null : normalizeTextParam(announcement.linkUrl, 500),
-    status: normalizeTextParam(announcement.status, 20).toUpperCase() || 'ACTIVE',
-    sortOrder: normalizeSafeInt(announcement.sortOrder) ?? 0,
-    startsAt: announcement.startsAt || undefined,
-    endsAt: announcement.endsAt || undefined,
+    title: normalizeTextParam(announcement?.title, 120),
+    content: normalizeTextParam(announcement?.content, 2000),
+    linkUrl: announcement?.linkUrl === undefined || announcement?.linkUrl === null ? null : normalizeTextParam(announcement.linkUrl, 500),
+    status: normalizeTextParam(announcement?.status, 20).toUpperCase() || 'ACTIVE',
+    sortOrder: normalizeSafeInt(announcement?.sortOrder) ?? 0,
+    startsAt: announcement?.startsAt || undefined,
+    endsAt: announcement?.endsAt || undefined,
 });
 
 export const normalizeBugReportPayload = (bug: Partial<AdminBugReport>) => ({
-    title: normalizeTextParam(bug.title, 160),
-    description: normalizeMultilineTextParam(bug.description, 4000),
-    module: normalizeTextParam(bug.module, 40).toUpperCase() || 'GENERAL',
-    severity: normalizeTextParam(bug.severity, 20).toUpperCase() || 'MEDIUM',
-    priority: normalizeTextParam(bug.priority, 20).toUpperCase() || 'P2',
-    pageUrl: bug.pageUrl === undefined || bug.pageUrl === null ? null : normalizeTextParam(bug.pageUrl, 500),
-    environment: bug.environment === undefined || bug.environment === null ? null : normalizeTextParam(bug.environment, 120),
-    reproductionSteps: bug.reproductionSteps === undefined || bug.reproductionSteps === null ? null : normalizeMultilineTextParam(bug.reproductionSteps, 4000),
-    expectedResult: bug.expectedResult === undefined || bug.expectedResult === null ? null : normalizeMultilineTextParam(bug.expectedResult, 4000),
-    actualResult: bug.actualResult === undefined || bug.actualResult === null ? null : normalizeMultilineTextParam(bug.actualResult, 4000),
-    attachmentUrls: bug.attachmentUrls === undefined || bug.attachmentUrls === null ? null : normalizeMultilineTextParam(bug.attachmentUrls, 2000),
-    assignedTo: bug.assignedTo === undefined || bug.assignedTo === null ? null : normalizeTextParam(bug.assignedTo, 120),
+    title: normalizeTextParam(bug?.title, 160),
+    description: normalizeMultilineTextParam(bug?.description, 4000),
+    module: normalizeTextParam(bug?.module, 40).toUpperCase() || 'GENERAL',
+    severity: normalizeTextParam(bug?.severity, 20).toUpperCase() || 'MEDIUM',
+    priority: normalizeTextParam(bug?.priority, 20).toUpperCase() || 'P2',
+    pageUrl: bug?.pageUrl === undefined || bug?.pageUrl === null ? null : normalizeTextParam(bug.pageUrl, 500),
+    environment: bug?.environment === undefined || bug?.environment === null ? null : normalizeTextParam(bug.environment, 120),
+    reproductionSteps: bug?.reproductionSteps === undefined || bug?.reproductionSteps === null ? null : normalizeMultilineTextParam(bug.reproductionSteps, 4000),
+    expectedResult: bug?.expectedResult === undefined || bug?.expectedResult === null ? null : normalizeMultilineTextParam(bug.expectedResult, 4000),
+    actualResult: bug?.actualResult === undefined || bug?.actualResult === null ? null : normalizeMultilineTextParam(bug.actualResult, 4000),
+    attachmentUrls: bug?.attachmentUrls === undefined || bug?.attachmentUrls === null ? null : normalizeMultilineTextParam(bug.attachmentUrls, 2000),
+    assignedTo: bug?.assignedTo === undefined || bug?.assignedTo === null ? null : normalizeTextParam(bug.assignedTo, 120),
 });
 
 export const normalizeBugStatusPayload = (payload: Partial<AdminBugReport> & { note?: string }) => ({
-    status: normalizeTextParam(payload.status, 40).toUpperCase(),
-    note: normalizeMultilineTextParam(payload.note, 2000) || undefined,
-    assignedTo: payload.assignedTo === undefined || payload.assignedTo === null ? undefined : normalizeTextParam(payload.assignedTo, 120),
-    scanNote: payload.scanNote === undefined || payload.scanNote === null ? undefined : normalizeMultilineTextParam(payload.scanNote, 2000),
-    fixSummary: payload.fixSummary === undefined || payload.fixSummary === null ? undefined : normalizeMultilineTextParam(payload.fixSummary, 2000),
-    regressionNote: payload.regressionNote === undefined || payload.regressionNote === null ? undefined : normalizeMultilineTextParam(payload.regressionNote, 2000),
+    status: normalizeTextParam(payload?.status, 40).toUpperCase(),
+    note: normalizeMultilineTextParam(payload?.note, 2000) || undefined,
+    assignedTo: payload?.assignedTo === undefined || payload?.assignedTo === null ? undefined : normalizeTextParam(payload.assignedTo, 120),
+    scanNote: payload?.scanNote === undefined || payload?.scanNote === null ? undefined : normalizeMultilineTextParam(payload.scanNote, 2000),
+    fixSummary: payload?.fixSummary === undefined || payload?.fixSummary === null ? undefined : normalizeMultilineTextParam(payload.fixSummary, 2000),
+    regressionNote: payload?.regressionNote === undefined || payload?.regressionNote === null ? undefined : normalizeMultilineTextParam(payload.regressionNote, 2000),
 });
 
 export const normalizeBugAttachmentApiPath = (value: unknown) => {
@@ -274,11 +303,11 @@ export const normalizeBugAttachmentApiPath = (value: unknown) => {
 };
 
 export const normalizeAdminRolePayload = (role: Partial<AdminRole>) => ({
-    code: normalizeTextParam(role.code, 50).toUpperCase(),
-    name: normalizeTextParam(role.name, 100),
-    description: role.description === undefined || role.description === null ? null : normalizeTextParam(role.description, 255),
-    status: normalizeTextParam(role.status, 20).toUpperCase() || 'ACTIVE',
-    permissions: normalizeStringListParam(role.permissions, 100, 80),
+    code: normalizeTextParam(role?.code, 50).toUpperCase(),
+    name: normalizeTextParam(role?.name, 100),
+    description: role?.description === undefined || role?.description === null ? null : normalizeTextParam(role.description, 255),
+    status: normalizeTextParam(role?.status, 20).toUpperCase() || 'ACTIVE',
+    permissions: normalizeStringListParam(role?.permissions, 100, 80),
 });
 
 export interface AdminUserUpdatePayload {
@@ -289,26 +318,26 @@ export interface AdminUserUpdatePayload {
 export type LogisticsCarrierWritePayload = Partial<LogisticsCarrier> & { code?: unknown };
 
 export const normalizeLogisticsCarrierPayload = (carrier: LogisticsCarrierWritePayload) => ({
-    name: normalizeTextParam(carrier.name, 100),
-    trackingCode: normalizeTextParam(carrier.trackingCode ?? carrier.code, 80),
-    status: normalizeTextParam(carrier.status, 20).toUpperCase() || 'ACTIVE',
-    sortOrder: normalizeSafeInt(carrier.sortOrder) ?? 0,
+    name: normalizeTextParam(carrier?.name, 100),
+    trackingCode: normalizeTextParam(carrier?.trackingCode ?? carrier?.code, 80),
+    status: normalizeTextParam(carrier?.status, 20).toUpperCase() || 'ACTIVE',
+    sortOrder: normalizeSafeInt(carrier?.sortOrder) ?? 0,
 });
 
 export const normalizeAdminUserUpdatePayload = (user: AdminUserUpdatePayload) => ({
-    address: user.address === undefined ? undefined : normalizeTextParam(user.address, 260),
-    status: user.status === undefined ? undefined : normalizeTextParam(user.status, 40).toUpperCase(),
+    address: user?.address === undefined ? undefined : normalizeTextParam(user.address, 260),
+    status: user?.status === undefined ? undefined : normalizeTextParam(user.status, 40).toUpperCase(),
 });
 
 export const normalizePetProfilePayload = (pet: Partial<PetProfile>) => {
-    const petType = normalizeTextParam(pet.petType, 20).toUpperCase();
-    const size = normalizeTextParam(pet.size, 20).toUpperCase();
-    const weight = Number(pet.weight);
+    const petType = normalizeTextParam(pet?.petType, 20).toUpperCase();
+    const size = normalizeTextParam(pet?.size, 20).toUpperCase();
+    const weight = Number(pet?.weight);
     return {
-        name: normalizeTextParam(pet.name, 120),
+        name: normalizeTextParam(pet?.name, 120),
         petType: ['DOG', 'CAT', 'SMALL_PET'].includes(petType) ? petType : undefined,
-        breed: pet.breed === undefined ? undefined : normalizeTextParam(pet.breed, 160),
-        birthday: pet.birthday ? normalizeTextParam(pet.birthday, 32) : undefined,
+        breed: pet?.breed === undefined ? undefined : normalizeTextParam(pet.breed, 160),
+        birthday: pet?.birthday ? normalizeTextParam(pet.birthday, 32) : undefined,
         weight: Number.isFinite(weight) && weight > 0 ? Math.min(weight, 1000) : undefined,
         size: ['SMALL', 'MEDIUM', 'LARGE'].includes(size) ? size : undefined,
     };
@@ -324,12 +353,14 @@ const normalizeNullableProductValue = <T,>(value: unknown, normalize: (raw: unkn
 
 export const normalizeStringListParam = (values: unknown, limit = 30, maxLength = 500) =>
     Array.isArray(values)
-        ? Array.from(new Set(values.map((value) => normalizeTextParam(value, maxLength)).filter(Boolean))).slice(0, limit)
+        ? Array.from(new Set(values.map((value) => normalizeTextParam(value, normalizeTextLength(maxLength))).filter(Boolean)))
+            .slice(0, Number.isSafeInteger(limit) && limit >= 0 ? limit : 30)
         : [];
 
 export const normalizeImageListParam = (values: unknown, limit = 30, maxLength = 2048) =>
     Array.isArray(values)
-        ? Array.from(new Set(values.map((value) => normalizeImageUrlParam(value, maxLength)).filter(Boolean))).slice(0, limit)
+        ? Array.from(new Set(values.map((value) => normalizeImageUrlParam(value, normalizeTextLength(maxLength))).filter(Boolean)))
+            .slice(0, Number.isSafeInteger(limit) && limit >= 0 ? limit : 30)
         : [];
 
 const normalizeProductSpecifications = (value: unknown) => {
@@ -381,6 +412,7 @@ const PRODUCT_NAME_MAX_LENGTH = 200;
 const PRODUCT_DESCRIPTION_MAX_LENGTH = 1000;
 
 export const normalizeProductPayload = (product: ProductMutationPayload) => {
+    product = (product || {}) as ProductMutationPayload;
     const payload: Partial<Product> = {};
     if (hasOwn(product, 'name')) payload.name = normalizeNullableProductValue(product.name, (value) => normalizeTextParam(value, PRODUCT_NAME_MAX_LENGTH)) as Product['name'];
     if (hasOwn(product, 'description')) payload.description = normalizeNullableProductValue(product.description, (value) => normalizeTextParam(value, PRODUCT_DESCRIPTION_MAX_LENGTH)) as Product['description'];
@@ -1211,29 +1243,29 @@ export const announcementApi = {
 };
 
 const clearProductListCache = () => {
-    productListCache.clear();
+    clearTimedCacheMap(productListCache);
     productListRequests.clear();
 };
 
 export const clearProductCache = (id?: number) => {
     clearProductListCache();
-    personalizedRecommendationCache.clear();
+    clearTimedCacheMap(personalizedRecommendationCache);
     personalizedRecommendationRequests.clear();
-    productAddOnCache.clear();
+    clearTimedCacheMap(productAddOnCache);
     productAddOnRequests.clear();
-    productRecommendationsCache.clear();
+    clearTimedCacheMap(productRecommendationsCache);
     productRecommendationsRequests.clear();
     if (id === undefined) {
-        productDetailCache.clear();
+        clearTimedCacheMap(productDetailCache);
         productDetailRequests.clear();
-        productByIdsCache.clear();
+        clearTimedCacheMap(productByIdsCache);
         productByIdsRequests.clear();
         return;
     }
-    productDetailCache.delete(id);
+    deleteTimedCacheEntry(productDetailCache, id);
     productDetailRequests.delete(id);
     productByIdsCache.forEach((cached, cacheKey) => {
-        if (cacheKey.split(',').includes(String(id))) productByIdsCache.delete(cacheKey);
+        if (cacheKey.split(',').includes(String(id))) deleteTimedCacheEntry(productByIdsCache, cacheKey);
     });
     productByIdsRequests.forEach((_request, cacheKey) => {
         if (cacheKey.split(',').includes(String(id))) productByIdsRequests.delete(cacheKey);
@@ -1241,53 +1273,53 @@ export const clearProductCache = (id?: number) => {
 };
 
 export const clearPetGalleryCache = () => {
-    petGalleryCache.clear();
+    clearTimedCacheMap(petGalleryCache);
     petGalleryRequests.clear();
 };
 
 export const clearPetProfileCache = () => {
-    petProfileCache.clear();
+    clearTimedCacheMap(petProfileCache);
     petProfileRequests.clear();
 };
 
 export const clearPersonalizedRecommendationCache = () => {
-    personalizedRecommendationCache.clear();
+    clearTimedCacheMap(personalizedRecommendationCache);
     personalizedRecommendationRequests.clear();
 };
 
 export const clearNotificationCache = (userId?: number) => {
     if (userId === undefined) {
-        notificationCache.clear();
+        clearTimedCacheMap(notificationCache);
         notificationRequests.clear();
         return;
     }
     [`list:user:${userId}`, `unread:user:${userId}`, `list:${userId}`, `unread:${userId}`].forEach((key) => {
-        notificationCache.delete(key);
+        deleteTimedCacheEntry(notificationCache, key);
         notificationRequests.delete(key);
     });
 };
 
 export const clearCouponCache = () => {
-    publicCouponCache.clear();
+    clearTimedCacheMap(publicCouponCache);
     publicCouponRequests.clear();
-    userCouponCache.clear();
+    clearTimedCacheMap(userCouponCache);
     userCouponRequests.clear();
 };
 
 export const clearAddressCache = () => {
-    addressCache.clear();
+    clearTimedCacheMap(addressCache);
     addressRequests.clear();
 };
 
 const clearOrderItemsCache = (orderId?: number) => {
     if (orderId === undefined) {
-        orderItemsCache.clear();
+        clearTimedCacheMap(orderItemsCache);
         orderItemsRequests.clear();
         return;
     }
     const prefix = `${orderId}:`;
     Array.from(orderItemsCache.keys()).forEach((key) => {
-        if (key.startsWith(prefix)) orderItemsCache.delete(key);
+        if (key.startsWith(prefix)) deleteTimedCacheEntry(orderItemsCache, key);
     });
     Array.from(orderItemsRequests.keys()).forEach((key) => {
         if (key.startsWith(prefix)) orderItemsRequests.delete(key);
@@ -1295,57 +1327,57 @@ const clearOrderItemsCache = (orderId?: number) => {
 };
 
 export const clearOrderTrackCache = () => {
-    orderTrackCache.clear();
+    clearTimedCacheMap(orderTrackCache);
     orderTrackRequests.clear();
 };
 
 export const clearReviewCache = (productId?: number) => {
     if (productId === undefined) {
-        reviewCache.clear();
+        clearTimedCacheMap(reviewCache);
         reviewRequests.clear();
         return;
     }
-    reviewCache.delete(productId);
+    deleteTimedCacheEntry(reviewCache, productId);
     reviewRequests.delete(productId);
 };
 
 export const clearQuestionCache = (productId?: number) => {
     if (productId === undefined) {
-        questionCache.clear();
+        clearTimedCacheMap(questionCache);
         questionRequests.clear();
         return;
     }
-    questionCache.delete(productId);
+    deleteTimedCacheEntry(questionCache, productId);
     questionRequests.delete(productId);
 };
 
 export const clearLogisticsCarrierCache = () => {
-    logisticsCarrierCache.clear();
+    clearTimedCacheMap(logisticsCarrierCache);
     logisticsCarrierRequests.clear();
 };
 
 export const clearCategoryCache = () => {
-    categoryCache.clear();
+    clearTimedCacheMap(categoryCache);
     categoryRequests.clear();
 };
 
 export const clearBrandCache = () => {
-    brandCache.clear();
+    clearTimedCacheMap(brandCache);
     brandRequests.clear();
 };
 
 export const clearAnnouncementCache = () => {
-    announcementCache.clear();
+    clearTimedCacheMap(announcementCache);
     announcementRequests.clear();
 };
 
 export const clearAdminRoleCache = () => {
-    adminRoleCache.clear();
+    clearTimedCacheMap(adminRoleCache);
     adminRoleRequests.clear();
 };
 
 export const clearAdminUserCache = () => {
-    adminUserCache.clear();
+    clearTimedCacheMap(adminUserCache);
     adminUserRequests.clear();
 };
 
@@ -1355,13 +1387,13 @@ const clearAdminDashboardCache = () => {
 };
 
 export const clearAdminOrderCache = () => {
-    adminOrderCache.clear();
+    clearTimedCacheMap(adminOrderCache);
     adminOrderRequests.clear();
     clearAdminDashboardCache();
 };
 
 export const clearAdminReviewCache = () => {
-    adminReviewCache.clear();
+    clearTimedCacheMap(adminReviewCache);
     adminReviewRequests.clear();
     clearAdminDashboardCache();
 };
@@ -1547,7 +1579,7 @@ const normalizeAdminSupportSession = (
 };
 
 export const clearAdminQuestionCache = () => {
-    adminQuestionCache.clear();
+    clearTimedCacheMap(adminQuestionCache);
     adminQuestionRequests.clear();
     clearAdminDashboardCache();
 };
@@ -1569,7 +1601,7 @@ const clearUserScopedCaches = () => {
     clearPetGalleryCache();
     clearReviewCache();
     clearOrderTrackCache();
-    logisticsTrackCache.clear();
+    clearTimedCacheMap(logisticsTrackCache);
     logisticsTrackRequests.clear();
 };
 

@@ -71,22 +71,25 @@ const LogisticsCarrierManagement: React.FC = () => {
   }, [t]);
 
   const carrierHealth = useMemo(() => {
-    const active = carriers.filter((carrier) => carrier.status === 'ACTIVE').length;
-    const inactive = carriers.length - active;
-    const missingCodes = carriers.filter((carrier) => !carrier.trackingCode?.trim()).length;
-    const duplicateCodeKeys = carriers.reduce<Record<string, number>>((acc, carrier) => {
+    const metrics = carriers.reduce((acc, carrier) => {
+      if (carrier.status === 'ACTIVE') acc.active += 1;
+      if (!carrier.trackingCode?.trim()) acc.missingCodes += 1;
       const key = carrier.trackingCode?.trim().toLowerCase();
-      if (!key) return acc;
-      acc[key] = (acc[key] || 0) + 1;
+      if (key) acc.duplicateCodeKeys[key] = (acc.duplicateCodeKeys[key] || 0) + 1;
+      const sortKey = String(carrier.sortOrder ?? 0);
+      acc.duplicateSortKeys[sortKey] = (acc.duplicateSortKeys[sortKey] || 0) + 1;
       return acc;
-    }, {});
-    const duplicateCodes = Object.values(duplicateCodeKeys).filter((count) => count > 1).length;
-    const duplicateSortKeys = carriers.reduce<Record<string, number>>((acc, carrier) => {
-      const key = String(carrier.sortOrder ?? 0);
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
-    const duplicateSortOrders = Object.values(duplicateSortKeys).filter((count) => count > 1).length;
+    }, {
+      active: 0,
+      missingCodes: 0,
+      duplicateCodeKeys: {} as Record<string, number>,
+      duplicateSortKeys: {} as Record<string, number>,
+    });
+    const active = metrics.active;
+    const inactive = carriers.length - active;
+    const missingCodes = metrics.missingCodes;
+    const duplicateCodes = Object.values(metrics.duplicateCodeKeys).filter((count) => count > 1).length;
+    const duplicateSortOrders = Object.values(metrics.duplicateSortKeys).filter((count) => count > 1).length;
     const ready = active > 0 && missingCodes === 0 && duplicateCodes === 0;
     const score = Math.max(0, 100 - inactive * 8 - missingCodes * 25 - duplicateCodes * 20 - duplicateSortOrders * 6);
 

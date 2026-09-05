@@ -347,21 +347,30 @@ const OrderTracking: React.FC = () => {
   useEffect(() => {
     if (!autoRefreshEnabled) return;
 
-    const runAutoRefresh = () => {
+    const runAutoRefresh = async () => {
       if (typeof document !== 'undefined' && document.hidden) return;
-      void refreshTrackedOrder(true);
+      await refreshTrackedOrder(true);
     };
 
-    const intervalId = window.setInterval(runAutoRefresh, ORDER_TRACKING_AUTO_REFRESH_MS);
+    let refreshTimer: number | null = null;
+    const scheduleAutoRefresh = () => {
+      if (refreshTimer !== null || document.hidden) return;
+      refreshTimer = window.setTimeout(async () => {
+        refreshTimer = null;
+        await runAutoRefresh();
+        scheduleAutoRefresh();
+      }, ORDER_TRACKING_AUTO_REFRESH_MS);
+    };
     const handleVisibilityChange = () => {
       if (typeof document === 'undefined' || !document.hidden) {
-        runAutoRefresh();
+        scheduleAutoRefresh();
       }
     };
 
+    scheduleAutoRefresh();
     document.addEventListener('visibilitychange', handleVisibilityChange);
     return () => {
-      window.clearInterval(intervalId);
+      if (refreshTimer !== null) window.clearTimeout(refreshTimer);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [autoRefreshEnabled, refreshTrackedOrder]);

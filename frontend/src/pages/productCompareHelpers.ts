@@ -93,25 +93,45 @@ export type CompareDecision = {
 
 export const buildCompareDecision = (products: Product[]): CompareDecision => {
   const readyProducts = products.filter((product) => product.stock === undefined || product.stock > 0);
-  const bestValue = readyProducts
-    .slice()
-    .sort((left, right) => getPrice(left) - getPrice(right))[0];
-  const topRated = readyProducts
-    .slice()
-    .sort((left, right) => Number(right.averageRating || 0) - Number(left.averageRating || 0))[0];
-  const lowStock = readyProducts.filter((product) => product.stock !== undefined && product.stock > 0 && product.stock <= 5).length;
-  const needsSelection = readyProducts.filter(needsOptionSelection).length;
-  const priceSpread = readyProducts.length > 1
-    ? Math.max(...readyProducts.map(getPrice)) - Math.min(...readyProducts.map(getPrice))
-    : 0;
-  const recommended = readyProducts
-    .slice()
-    .sort((left, right) => {
-      const ratingDelta = Number(right.averageRating || 0) - Number(left.averageRating || 0);
-      const priceDelta = getPrice(left) - getPrice(right);
-      const stockDelta = (right.stock ?? 999) - (left.stock ?? 999);
-      return ratingDelta * 8 + priceDelta * 0.08 + stockDelta * 0.01;
-    })[0];
+  const metrics = readyProducts.reduce((acc, product) => {
+    const price = getPrice(product);
+    const rating = Number(product.averageRating || 0);
+    const recommendationScore = rating * 8 - price * 0.08 - (product.stock ?? 999) * 0.01;
+    if (!acc.bestValue || price < acc.bestValuePrice) {
+      acc.bestValue = product;
+      acc.bestValuePrice = price;
+    }
+    if (!acc.topRated || rating > acc.topRatedRating) {
+      acc.topRated = product;
+      acc.topRatedRating = rating;
+    }
+    if (product.stock !== undefined && product.stock > 0 && product.stock <= 5) acc.lowStock += 1;
+    if (needsOptionSelection(product)) acc.needsSelection += 1;
+    acc.minPrice = Math.min(acc.minPrice, price);
+    acc.maxPrice = Math.max(acc.maxPrice, price);
+    if (!acc.recommended || recommendationScore > acc.recommendedScore) {
+      acc.recommended = product;
+      acc.recommendedScore = recommendationScore;
+    }
+    return acc;
+  }, {
+    bestValue: undefined as Product | undefined,
+    bestValuePrice: Number.POSITIVE_INFINITY,
+    topRated: undefined as Product | undefined,
+    topRatedRating: Number.NEGATIVE_INFINITY,
+    lowStock: 0,
+    needsSelection: 0,
+    minPrice: Number.POSITIVE_INFINITY,
+    maxPrice: Number.NEGATIVE_INFINITY,
+    recommended: undefined as Product | undefined,
+    recommendedScore: Number.NEGATIVE_INFINITY,
+  });
+  const bestValue = metrics.bestValue;
+  const topRated = metrics.topRated;
+  const lowStock = metrics.lowStock;
+  const needsSelection = metrics.needsSelection;
+  const priceSpread = readyProducts.length > 1 ? metrics.maxPrice - metrics.minPrice : 0;
+  const recommended = metrics.recommended;
   const recommendedNeedsSelection = recommended ? needsOptionSelection(recommended) : false;
   const recommendedLowStock = recommended?.stock !== undefined && recommended.stock > 0 && recommended.stock <= 5;
   return {

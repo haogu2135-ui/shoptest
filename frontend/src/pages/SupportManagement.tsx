@@ -21,6 +21,7 @@ import { decodeSupportOrderMessage, type SupportOrderContext } from '../utils/su
 import { formatSafeDateTime, formatSafeTime, getSafeTime } from '../utils/dateFormat';
 import { getLocalStorageItem } from '../utils/safeStorage';
 import { useReconnectingWebSocket } from '../hooks/useReconnectingWebSocket';
+import { useVisiblePolling } from '../hooks/useVisiblePolling';
 import { buildPaginationItemRender } from '../utils/paginationLabels';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import {
@@ -569,6 +570,7 @@ const SupportManagement: React.FC = () => {
 
   const socketRef = useReconnectingWebSocket({
     enabled: Boolean(adminSupportToken) && process.env.NODE_ENV !== 'test',
+    pauseWhenHidden: true,
     connectionKey: adminSupportToken,
     createSocket: async () => {
       const ticketResponse = await supportApi.createWebSocketTicket();
@@ -613,47 +615,38 @@ const SupportManagement: React.FC = () => {
     },
   });
 
-  useEffect(() => {
-    if (process.env.NODE_ENV === 'test') return;
-    let disposed = false;
-    let polling = false;
-
-    const timer = window.setInterval(async () => {
-
-      if (disposed || polling) return;
-      polling = true;
-      const abortController = new AbortController();
-      pollAbortRef.current = abortController;
-      try {
-        await loadSessions({ isActive: () => !disposed });
-        if (disposed || abortController.signal.aborted) return;
-        const activeSession = selectedSessionRef.current;
-        if (activeSession) {
-          const afterId = newestSupportMessageId(messagesRef.current);
-          const res = await adminSupportApi.getMessages(activeSession.id, { afterId, limit: SUPPORT_MESSAGE_WINDOW }, { signal: abortController.signal });
-          if (disposed || abortController.signal.aborted || selectedSessionRef.current?.id !== activeSession.id) return;
-          setMessages((items) => mergeSupportMessages(items, res.data));
-          if (canUpdateSupportReadState) {
-            await adminSupportApi.markRead(activeSession.id, { signal: abortController.signal }).catch(() => undefined);
-          }
-        }
-      } catch (error) {
-        if (!disposed) {
-          reportNonBlockingError('SupportManagement.pollMessages', error);
-        }
-      } finally {
-        if (pollAbortRef.current === abortController) pollAbortRef.current = null;
-        polling = false;
+  const pollSupportMessages = useCallback(async () => {
+    if (!mountedRef.current) return;
+    pollAbortRef.current?.abort();
+    const abortController = new AbortController();
+    pollAbortRef.current = abortController;
+    try {
+      await loadSessions({ isActive: () => mountedRef.current });
+      if (!mountedRef.current || abortController.signal.aborted) return;
+      const activeSession = selectedSessionRef.current;
+      if (!activeSession) return;
+      const afterId = newestSupportMessageId(messagesRef.current);
+      const res = await adminSupportApi.getMessages(activeSession.id, { afterId, limit: SUPPORT_MESSAGE_WINDOW }, { signal: abortController.signal });
+      if (!mountedRef.current || abortController.signal.aborted || selectedSessionRef.current?.id !== activeSession.id) return;
+      setMessages((items) => mergeSupportMessages(items, res.data));
+      if (canUpdateSupportReadState) {
+        await adminSupportApi.markRead(activeSession.id, { signal: abortController.signal }).catch(() => undefined);
       }
-    }, SUPPORT_POLL_INTERVAL_MS);
-    return () => {
-      disposed = true;
-      polling = false;
-      window.clearInterval(timer);
-      pollAbortRef.current?.abort();
-      pollAbortRef.current = null;
-    };
-  }, [canUpdateSupportReadState, loadSessions, markSessionRead]);
+    } catch (error) {
+      if (mountedRef.current && !abortController.signal.aborted) {
+        reportNonBlockingError('SupportManagement.pollMessages', error);
+      }
+    } finally {
+      if (pollAbortRef.current === abortController) pollAbortRef.current = null;
+    }
+  }, [canUpdateSupportReadState, loadSessions]);
+
+  useVisiblePolling({
+    enabled: process.env.NODE_ENV !== 'test',
+    intervalMs: SUPPORT_POLL_INTERVAL_MS,
+    run: pollSupportMessages,
+    runImmediately: false,
+  });
 
   useEffect(() => {
 
@@ -810,18 +803,31 @@ const SupportManagement: React.FC = () => {
 
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
 
-  const localOpenSessionCount = sessions.filter((item) => item.status === 'OPEN').length;
-  const localClosedSessionCount = sessions.filter((item) => item.status === 'CLOSED').length;
-  const localUnreadSessionCount = sessions.filter((item) => Number(item.unreadByAdmin || 0) > 0).length;
-  const localUnreadMessageCount = sessions.reduce((sum, item) => sum + Number(item.unreadByAdmin || 0), 0);
-  const localMySessionCount = sessions.filter((item) => currentAdminId && Number(item.assignedAdminId) === currentAdminId && item.status === 'OPEN').length;
+  const localSessionMetrics = useMemo(() => sessions.reduce((metrics, item) => {
+    if (item.status === 'OPEN') {
+      metrics.open += 1;
+      if (currentAdminId && Number(item.assignedAdminId) === currentAdminId) metrics.myOpen += 1;
+      if (!item.assignedAdminId) metrics.unassignedOpen += 1;
+    } else if (item.status === 'CLOSED') {
+      metrics.closed += 1;
+    }
+    const unread = Number(item.unreadByAdmin || 0);
+    metrics.unreadMessages += unread;
+    if (unread > 0) metrics.unreadSessions += 1;
+    return metrics;
+  }, { open: 0, closed: 0, unreadSessions: 0, unreadMessages: 0, myOpen: 0, unassignedOpen: 0 }), [currentAdminId, sessions]);
+  const localOpenSessionCount = localSessionMetrics.open;
+  const localClosedSessionCount = localSessionMetrics.closed;
+  const localUnreadSessionCount = localSessionMetrics.unreadSessions;
+  const localUnreadMessageCount = localSessionMetrics.unreadMessages;
+  const localMySessionCount = localSessionMetrics.myOpen;
   const openSessionCount = summary?.openSessions ?? localOpenSessionCount;
   const closedSessionCount = summary?.closedSessions ?? localClosedSessionCount;
   const unreadSessionCount = summary?.unreadSessions ?? localUnreadSessionCount;
   const unreadMessageCount = summary?.unreadMessages ?? localUnreadMessageCount;
   const mySessionCount = summary?.myOpenSessions ?? localMySessionCount;
   const totalSessionCount = summary?.totalSessions ?? sessions.length;
-  const unassignedOpenSessionCount = summary?.unassignedOpenSessions ?? sessions.filter((item) => item.status === 'OPEN' && !item.assignedAdminId).length;
+  const unassignedOpenSessionCount = summary?.unassignedOpenSessions ?? localSessionMetrics.unassignedOpen;
   const staleOpenSessionCount = summary?.staleOpenSessions ?? 0;
   const staleMinutes = summary?.staleMinutes ?? 30;
   const responseScore = summary?.responseScore ?? null;

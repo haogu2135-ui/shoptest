@@ -1347,7 +1347,10 @@ const ProductManagement: React.FC = () => {
     try {
       setBatchStatusUpdating(status);
       const res = await adminApi.batchUpdateProductStatus(selectedVisibleProductIds, status);
-      message.success(t('pages.productAdmin.batchUpdateResult', res.data));
+      message.success(t('pages.productAdmin.batchUpdateResult', {
+        success: res.data.success,
+        failed: res.data.failed,
+      }));
       setSelectedProductIds([]);
       fetchProducts();
     } catch (err: unknown) {

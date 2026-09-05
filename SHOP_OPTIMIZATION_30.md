@@ -427,6 +427,155 @@ are kept in addition to the original 130-item record:
      avoiding a redundant post-insert lookup in the Controller.
 273. Return the normalized pet profile entity after insert/update, relying on
      generated-key backfill and avoiding a redundant post-write lookup.
+274. Keep abort handling at the caller Promise boundary for shared cached reads,
+     so one component can cancel its own wait without aborting a deduplicated
+     network request used by other callers.
+275. Make generic cached reads skip cached responses and in-flight coalescing
+     when `bypassCache` is explicitly requested.
+276. Make typed cached reads follow the same bypass contract and avoid retaining
+     forced-refresh promises in the shared request map.
+277. Prevent forced-refresh responses from repopulating generic or typed caches
+     after the caller opted out of caching.
+278. Remove only the request currently owned by a cache key during completion,
+     preserving a newer replacement request that may have taken its place.
+279. Add cache generations so an older response cannot repopulate a map after a
+     catalog, order, profile, or user-scoped cache has been invalidated.
+280. Sanitize cache expiration values and enforce bounded cache/request map sizes,
+     with periodic removal of expired timed entries in browser sessions.
+281. Guard positive-integer list normalization against non-array inputs and
+     malformed or negative limits before constructing batch request payloads.
+282. Normalize non-negative numeric maxima and fallbacks so invalid boundary
+     arguments cannot produce negative or non-finite query values.
+283. Normalize bounded positive-integer fallbacks and maxima before applying
+     pagination, retention, quota, or batch-size limits.
+284. Normalize product price ranges through one helper and swap reversed bounds
+     before sending public or admin product queries.
+285. Validate text length arguments for single-line and multiline normalization,
+     keeping phone-number preprocessing within a safe configured bound.
+286. Ignore malformed non-array guest checkout item payloads instead of throwing
+     while mapping product IDs, quantities, and selected specifications.
+287. Make address, category, brand, announcement, and other write payload
+     normalizers null-safe when optional form data is absent.
+288. Make bug, role, carrier, user, and pet payload normalization tolerate nullish
+     fields while preserving existing defaults and enum filtering.
+289. Sanitize string-list and image-list limits and element lengths before
+     de-duplicating user-provided product metadata.
+290. Tolerate a missing product mutation object by normalizing it to an empty
+     payload before reading product fields.
+291. Reuse the shared price-range normalizer in storefront and admin product
+     filters so equivalent requests receive equivalent bounds.
+292. Keep order-tracking forced refreshes out of the tracking cache and prevent
+     stale completion handlers from deleting a newer tracking request.
+293. Avoid review cache sharing for authenticated or explicitly bypassed reads,
+     preventing personalized data from entering the public review cache.
+294. Route product-question reads through the bounded shared cache helper so
+     expiry, request cleanup, bypass behavior, and response-array normalization
+     remain consistent.
+295. Propagate request options through question writes and clear question cache
+     state after the mutation completes.
+296. Add cancellation-aware category child/detail reads and request options to
+     category lifecycle mutations.
+297. Include the explicit `activeOnly` value in public brand request parameters
+     and cache keys, while preserving caller-level cancellation behavior.
+298. Normalize admin list responses from array, `items`, `records`, and nested
+     `data` envelopes before returning data to table consumers.
+299. Bound admin category, brand, alert, and IP-blacklist list requests and
+     normalize status/source filters, including explicit `false` flags.
+300. Thread optional request options through admin mutations, exports, uploads,
+     downloads, and operational actions for lifecycle cancellation.
+301. Keep forced admin-permission refreshes from overwriting the shared
+     permissions cache while allowing ordinary reads to retain their TTL.
+302. Bound avatar dimensions, declare intrinsic image size, and use lazy async
+     decoding to reduce layout shifts and unnecessary image work.
+303. Clamp shared input rows, numeric bounds, and steps and ignore invalid native
+     length attributes so malformed form props cannot create unstable controls.
+
+## Optimization Round 304-333
+
+304. Add abort-aware options to storefront product creation requests.
+305. Add abort-aware options to storefront product update requests.
+306. Add abort-aware options to storefront product deletion requests.
+307. Add abort-aware options to logistics-carrier creation requests.
+308. Add abort-aware options to logistics-carrier update requests.
+309. Add abort-aware options to logistics-carrier deletion requests.
+310. Remove the separate public product existence read from product-question
+     loading and use the fetch-joined question query as the single read path.
+311. Push active-product visibility into the public answered-question query so
+     inactive products cannot be serialized by the optimized path.
+312. Avoid rereading an address after the owner row is locked during updates;
+     retain the owner-scoped update row-count check for concurrent deletion.
+313. Avoid rereading an address after the owner row is locked during deletion and
+     make an already-removed address an idempotent delete result.
+314. Avoid rereading an address after the owner row is locked during default
+     selection and use the owner-scoped update result for disappearance checks.
+315. Make notification list request cleanup identity-aware so a settled request
+     cannot delete a newer request for the same cache key.
+316. Centralize short countdown ticks in a one-shot timeout hook with invalid and
+     expired-value guards.
+317. Route login email-code countdown updates through the bounded timeout hook.
+318. Route login verification-retry countdown updates through the bounded timeout
+     hook.
+319. Route forgot-password code countdown updates through the bounded timeout
+     hook.
+320. Route registration code countdown updates through the bounded timeout hook.
+321. Route profile email-code countdown updates through the bounded timeout hook.
+322. Add a shared document-visibility hook for lifecycle-aware browser work.
+323. Pause social-proof rotation while the document is hidden.
+324. Pause product-detail limited-time ticker work while the document is hidden.
+325. Pause seckill countdown work while the document is hidden or has no campaigns.
+326. Pause payment-instructions status polling while the document is hidden.
+327. Skip customer-support polling ticks while the document is hidden.
+328. Skip checkout payment polling ticks while the document is hidden.
+329. Abort superseded and disposed admin support-unread requests in addition to
+     sequence-checking their responses.
+330. Clear pending product-gallery resume timers when the document becomes hidden.
+331. Replace order-tracking background intervals with visible-page timeout
+     scheduling that waits for each refresh to settle.
+332. Replace social-proof rotation intervals with one-shot lifecycle-bound
+     timeouts.
+333. Replace product-detail and seckill countdown intervals with one-shot
+     timeouts, reducing persistent timer wakeups and stale hidden-page work.
+
+## Optimization Round 334-363
+
+334. Add a shared visible-page polling hook that serializes async runs and
+     schedules one timeout after each request completes.
+335. Route profile payment-state refreshes through visible-page polling.
+336. Route payment-instructions status refreshes through visible-page polling.
+337. Route admin support-message fallback refreshes through visible-page polling.
+338. Route bug-management refreshes through visible-page polling.
+339. Route admin support-unread refreshes through visible-page polling.
+340. Route customer-support fallback refreshes through visible-page polling.
+341. Route product-detail gallery stock-alert refreshes through visible-page
+     polling.
+342. Replace checkout payment polling intervals with lifecycle-bound visible
+     timeout scheduling while retaining cross-tab and Web Lock coordination.
+343. Pause reconnecting WebSocket activity when its owning document is hidden.
+344. Schedule API cache cleanup at the next expiry instead of waking on a fixed
+     cleanup interval.
+345. Add a shared animation-frame scheduler that coalesces same-frame callbacks.
+346. Coalesce ShopSelect popup positioning work to one animation frame.
+347. Coalesce ShopMultiSelect popup positioning work to one animation frame.
+348. Coalesce ShopTreeSelect popup positioning work to one animation frame.
+349. Coalesce ShopCascader popup positioning work to one animation frame.
+350. Coalesce ShopDropdown popup positioning work to one animation frame.
+351. Combine pet-gallery user and IP quota reads into one filtered aggregate.
+352. Collapse security-audit summary array scans into one reduction.
+353. Collapse support summary array scans into one reduction.
+354. Collapse brand summary array scans into one reduction.
+355. Collapse logistics-carrier summary array scans into one reduction.
+356. Collapse IP-blacklist summary array scans into one reduction.
+357. Collapse pet-finder summary array scans into one reduction.
+358. Collapse product-compare summary array scans into one reduction.
+359. Collapse admin-dashboard summary array scans into one reduction.
+360. Clear the product-detail gallery fallback refresh timeout after observer
+     or scroll preheating has taken over.
+361. Consolidate product-list session storage refresh handling into one event
+     listener path.
+362. Consolidate cart saved-item and guest-cart storage/custom-event refreshes
+     into one state handler, including same-tab guest-cart updates.
+363. Avoid rewriting the guest checkout draft when its serialized contents are
+     unchanged.
 
 ## Verification
 
@@ -546,6 +695,18 @@ The final verification record is maintained here after the post-change checks:
 - Full frontend Jest: 249 suites and 1811/1811 tests passed.
 - TypeScript: `NODE_OPTIONS=--max-old-space-size=768 npx tsc --noEmit --pretty false --skipLibCheck` passed.
 - Production: bounded production build passed (`npm run build`, exit code 0).
+- Focused frontend cache, API, and shared-input regression: 5 suites and 141
+  tests passed after the 274-303 changes.
+- TypeScript: bounded `tsc --project frontend/tsconfig.json --noEmit
+  --pretty false --skipLibCheck` passed with the build's 768 MB Node heap mode.
+- Production: bounded final production build passed (`npm run build`, exit code
+  0) after the type-safety fixes.
+- Final focused frontend lifecycle regression: 5 suites and 75 tests passed for
+  Checkout, AdminLayout, SocialProofToast, countdown, and document visibility.
+- TypeScript: bounded frontend `npx tsc --noEmit --pretty false --skipLibCheck`
+  passed with `NODE_OPTIONS=--max-old-space-size=768`.
+- Production: bounded frontend `npm run build` passed (exit code 0) after the
+  final Checkout contract assertion update.
 
 All tests and builds are run through `scripts/run-bounded-task.sh` in
 accordance with the repository resource-safety instructions.

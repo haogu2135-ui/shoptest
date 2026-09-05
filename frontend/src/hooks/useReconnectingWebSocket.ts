@@ -1,8 +1,10 @@
 import { useEffect, useRef } from 'react';
 import { getReconnectDelayMs, MAX_RECONNECT_ATTEMPTS } from '../utils/reconnectBackoff';
+import { useDocumentVisibility } from './useDocumentVisibility';
 
 type ReconnectingWebSocketOptions = {
   enabled: boolean;
+  pauseWhenHidden?: boolean;
   connectionKey?: string | number | boolean | null;
   createSocket: () => WebSocket | Promise<WebSocket>;
   maxAttempts?: number;
@@ -22,6 +24,7 @@ const useLatestRef = <T,>(value: T) => {
 
 export const useReconnectingWebSocket = ({
   enabled,
+  pauseWhenHidden = false,
   connectionKey = null,
   createSocket,
   maxAttempts = MAX_RECONNECT_ATTEMPTS,
@@ -32,6 +35,7 @@ export const useReconnectingWebSocket = ({
   onConnectError,
   onReconnectExhausted,
 }: ReconnectingWebSocketOptions) => {
+  const documentVisible = useDocumentVisibility();
   const socketRef = useRef<WebSocket | null>(null);
   const reconnectTimerRef = useRef<number | null>(null);
   const reconnectAttemptRef = useRef(0);
@@ -46,7 +50,7 @@ export const useReconnectingWebSocket = ({
   const onReconnectExhaustedRef = useLatestRef(onReconnectExhausted);
 
   useEffect(() => {
-    if (!enabled) return;
+    if (!enabled || (pauseWhenHidden && !documentVisible)) return;
 
     let shouldReconnect = true;
     let cancelled = false;
@@ -142,6 +146,8 @@ export const useReconnectingWebSocket = ({
     };
   }, [
     enabled,
+    documentVisible,
+    pauseWhenHidden,
     connectionKey,
     createSocketRef,
     maxAttemptsRef,

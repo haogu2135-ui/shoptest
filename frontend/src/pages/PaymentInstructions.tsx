@@ -5,6 +5,7 @@ import { createApiAbortController, orderApi, paymentApi } from '../api';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
+import { useVisiblePolling } from '../hooks/useVisiblePolling';
 import type { OrderCustomer, PaymentChannel, PaymentCustomer } from '../types';
 import { dispatchDomEvent } from '../utils/domEvents';
 import { loadGuestSupportContext, normalizeGuestSupportContext, saveGuestSupportContext } from '../utils/guestSupportContext';
@@ -363,14 +364,21 @@ const PaymentInstructions: React.FC = () => {
     return parsed.toLocaleString(dateLocale);
   }, [dateLocale, expiresAt, t]);
 
-  useEffect(() => {
-    if (!canVerify || !order?.id || isPaid || isRefunded || isRefunding || isReconcileRequired || isFailed || recovery.isExpired || verifying) return;
-    if (process.env.NODE_ENV === 'test') return;
-    const timer = window.setInterval(() => {
-      void refreshPaymentStatus();
-    }, PAYMENT_STATUS_POLL_MS);
-    return () => window.clearInterval(timer);
-  }, [canVerify, isFailed, isPaid, isRefunded, isRefunding, isReconcileRequired, order?.id, recovery.isExpired, refreshPaymentStatus, verifying]);
+  useVisiblePolling({
+    enabled: process.env.NODE_ENV !== 'test'
+      && canVerify
+      && Boolean(order?.id)
+      && !isPaid
+      && !isRefunded
+      && !isRefunding
+      && !isReconcileRequired
+      && !isFailed
+      && !recovery.isExpired
+      && !verifying,
+    intervalMs: PAYMENT_STATUS_POLL_MS,
+    run: refreshPaymentStatus,
+    runImmediately: false,
+  });
 
   const refundedAtLabel = payment?.refundedAt
     ? new Date(payment.refundedAt).toLocaleString(dateLocale)

@@ -656,7 +656,11 @@ describe('Checkout payment availability', () => {
     expect(pollingEffect).toContain('let pollAbortController: AbortController | null = null;');
     expect(pollingEffect).toContain('const abortActivePollRequest = () => {');
     expect(pollingEffect).toContain('pollAbortController?.abort();');
-    expect(pollingEffect).toContain('const timer = window.setInterval(async () => {');
+    expect(pollingEffect).toContain('let pollTimer: number | null = null;');
+    expect(pollingEffect).toContain('const scheduleNextPoll = () => {');
+    expect(pollingEffect).toContain('pollTimer = window.setTimeout(() => {');
+    expect(pollingEffect).toContain('const handlePaymentPollVisibility = () => {');
+    expect(pollingEffect).toContain("document.addEventListener('visibilitychange', handlePaymentPollVisibility);");
     expect(pollingEffect).toContain('if (disposed) {');
     expect(pollingEffect).toContain('if (disposed || !ownsThisPoll) return;');
     expect(pollingEffect).toContain('const abortController = createApiAbortController();');
@@ -665,10 +669,12 @@ describe('Checkout payment availability', () => {
     expect(pollingEffect).toContain('orderApi.getById(createdOrderId, undefined, undefined, { signal: abortController.signal })');
     expect(pollingEffect).toContain('orderApi.getById(createdOrderId, guestPaymentEmail, guestOrderNo, { signal: abortController.signal })');
     expect(pollingEffect).toContain('if (disposed || abortController.signal.aborted) return;');
-    expect(pollingEffect).toContain('if (disposed) return;');
-    expect(pollingEffect).toContain('window.clearInterval(timer);');
+    expect(pollingEffect).toContain("if (disposed || document.visibilityState === 'hidden') {");
+    expect(pollingEffect).toContain('window.clearTimeout(pollTimer);');
     expect(pollingEffect).toContain("window.removeEventListener('storage', handlePaymentPollStorage);");
     expect(pollingEffect).toContain('abortActivePollRequest();');
+    expect(pollingEffect).not.toContain('window.setInterval');
+    expect(pollingEffect).not.toContain('window.clearInterval');
     expect(source).toContain('const paymentStatus = payment?.status;');
     expect(lifecycle).toContain('showCheckoutMessage,');
     expect(lifecycle).toContain('paymentStatus,');
@@ -996,7 +1002,9 @@ describe('Checkout payment availability', () => {
     expect(guestDraft).toContain('CHECKOUT_GUEST_DRAFT_SAVE_DELAY_MS');
     expect(effectStart).toBeGreaterThan(-1);
     expect(effectSource).toContain('const timer = window.setTimeout(() => {');
-    expect(effectSource).toContain('setSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY, JSON.stringify(draft));');
+    expect(effectSource).toContain('const serializedDraft = JSON.stringify(draft);');
+    expect(effectSource).toContain('getSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY) !== serializedDraft');
+    expect(effectSource).toContain('setSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY, serializedDraft);');
     expect(effectSource).toContain('removeSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY);');
     expect(effectSource).toContain('}, CHECKOUT_GUEST_DRAFT_SAVE_DELAY_MS);');
     expect(effectSource).toContain('window.clearTimeout(timer);');

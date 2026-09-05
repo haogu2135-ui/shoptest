@@ -104,6 +104,7 @@ import {
   normalizeLogisticsCarrierPayload,
   normalizeNonNegativeIntParam,
   normalizeNonNegativeNumberParam,
+  normalizePriceRange,
   normalizeOrderTrackingNumber,
   normalizePetProfilePayload,
   normalizePositiveInt,
@@ -176,8 +177,7 @@ export const productApi = {
         const normalizedColors = normalizeStringListParam(filters?.colors, 12, 40);
         const normalizedCollection = normalizeTextParam(filters?.collection, 40);
         const normalizedIncludeChildren = typeof filters?.includeChildren === 'boolean' ? filters.includeChildren : undefined;
-        const normalizedMinPrice = filters?.minPrice == null ? undefined : normalizeNonNegativeNumberParam(filters.minPrice);
-        const normalizedMaxPrice = filters?.maxPrice == null ? undefined : normalizeNonNegativeNumberParam(filters.maxPrice);
+        const { minPrice: normalizedMinPrice, maxPrice: normalizedMaxPrice } = normalizePriceRange(filters?.minPrice, filters?.maxPrice);
         const normalizedSort = normalizeTextParam(filters?.sort, 80);
         const normalizedPage = filters?.page == null ? undefined : normalizeNonNegativeIntParam(filters.page, 0, 1_000_000);
         const normalizedSize = filters?.size == null ? undefined : normalizeBoundedPositiveInt(filters.size, 50, 500);
@@ -215,8 +215,7 @@ export const productApi = {
         const normalizedColors = normalizeStringListParam(filters?.colors, 12, 40);
         const normalizedCollection = normalizeTextParam(filters?.collection, 40);
         const normalizedIncludeChildren = typeof filters?.includeChildren === 'boolean' ? filters.includeChildren : undefined;
-        const normalizedMinPrice = filters?.minPrice == null ? undefined : normalizeNonNegativeNumberParam(filters.minPrice);
-        const normalizedMaxPrice = filters?.maxPrice == null ? undefined : normalizeNonNegativeNumberParam(filters.maxPrice);
+        const { minPrice: normalizedMinPrice, maxPrice: normalizedMaxPrice } = normalizePriceRange(filters?.minPrice, filters?.maxPrice);
         const normalizedSort = normalizeTextParam(filters?.sort, 80);
         const normalizedPage = filters?.page == null ? 0 : normalizeNonNegativeIntParam(filters.page, 0, 1_000_000);
         const normalizedSize = filters?.size == null ? 12 : normalizeBoundedPositiveInt(filters.size, 12, 500);
@@ -368,9 +367,9 @@ export const productApi = {
                     return normalized;
                 }), options);
     },
-    create: (product: Partial<Product>) => api.post<Product>('/products', normalizeProductPayload(product)).finally(() => clearProductCache()),
-    update: (id: number, product: Partial<Product>) => api.put<Product>(`/products/${toPathId(id)}`, normalizeProductPayload(product)).finally(() => clearProductCache(toPathId(id))),
-    delete: (id: number) => api.delete(`/products/${toPathId(id)}`).finally(() => clearProductCache(toPathId(id))),
+    create: (product: Partial<Product>, options?: ApiRequestOptions) => api.post<Product>('/products', normalizeProductPayload(product), withRequestOptions({}, options)).finally(() => clearProductCache()),
+    update: (id: number, product: Partial<Product>, options?: ApiRequestOptions) => api.put<Product>(`/products/${toPathId(id)}`, normalizeProductPayload(product), withRequestOptions({}, options)).finally(() => clearProductCache(toPathId(id))),
+    delete: (id: number, options?: ApiRequestOptions) => api.delete(`/products/${toPathId(id)}`, withRequestOptions({}, options)).finally(() => clearProductCache(toPathId(id))),
     getRecommendations: (id: number, options?: ApiRequestOptions) => {
         const productId = normalizePositiveInt(id);
         if (!productId) return Promise.resolve({ data: [] } as unknown as AxiosResponse<ProductPublic[]>);
@@ -506,13 +505,17 @@ export const orderApi = {
         }
         const request = api.post<OrderTrackResult>('/orders/track', trackCredentials, anonymousRequestConfig(undefined, options))
             .then((response) => {
-                setTimedCacheEntry(orderTrackCache, cacheKey, {
-                    response,
-                    expiresAt: Date.now() + ORDER_TRACK_CACHE_MS,
-                });
+                if (!options?.bypassCache) {
+                    setTimedCacheEntry(orderTrackCache, cacheKey, {
+                        response,
+                        expiresAt: Date.now() + ORDER_TRACK_CACHE_MS,
+                    });
+                }
                 return response;
             })
-            .finally(() => orderTrackRequests.delete(cacheKey));
+            .finally(() => {
+                if (orderTrackRequests.get(cacheKey) === request) orderTrackRequests.delete(cacheKey);
+            });
         if (!options?.bypassCache && !options?.signal) {
             setBoundedMapEntry(orderTrackRequests, cacheKey, request);
         }
@@ -693,23 +696,30 @@ export const reviewApi = {
         const normalizedProductId = normalizePositiveInt(productId);
         if (!normalizedProductId) return withAbortSignal(Promise.resolve({ data: { reviews: [], averageRating: 0 } } as unknown as AxiosResponse<ProductReviewSummary>), options?.signal);
         const hasToken = Boolean(getStoredItem('token'));
+        const canCache = !hasToken && !options?.bypassCache;
         if (hasToken) {
             return api.get<ProductReviewSummary>(`/reviews/product/${normalizedProductId}`, optionalAnonymousGetConfig(undefined, options));
         }
-        const cached = reviewCache.get(normalizedProductId);
-        if (cached && cached.expiresAt > Date.now()) return withAbortSignal(Promise.resolve(cached.response), options?.signal);
-        const pending = reviewRequests.get(normalizedProductId);
-        if (pending) return withAbortSignal(pending, options?.signal);
+        if (canCache) {
+            const cached = reviewCache.get(normalizedProductId);
+            if (cached && cached.expiresAt > Date.now()) return withAbortSignal(Promise.resolve(cached.response), options?.signal);
+            const pending = reviewRequests.get(normalizedProductId);
+            if (pending) return withAbortSignal(pending, options?.signal);
+        }
         const request = api.get<ProductReviewSummary>(
             `/reviews/product/${normalizedProductId}`,
             anonymousGetConfig(undefined, cacheLoaderOptions(options)),
         )
             .then((response) => {
-                setTimedCacheEntry(reviewCache, normalizedProductId, { response, expiresAt: Date.now() + REVIEW_CACHE_MS });
+                if (canCache) {
+                    setTimedCacheEntry(reviewCache, normalizedProductId, { response, expiresAt: Date.now() + REVIEW_CACHE_MS });
+                }
                 return response;
             })
-            .finally(() => reviewRequests.delete(normalizedProductId));
-        setBoundedMapEntry(reviewRequests, normalizedProductId, request);
+            .finally(() => {
+                if (reviewRequests.get(normalizedProductId) === request) reviewRequests.delete(normalizedProductId);
+            });
+        if (canCache) setBoundedMapEntry(reviewRequests, normalizedProductId, request);
         return withAbortSignal(request, options?.signal);
     },
     getReviewableOrders: (productId: number, options?: ApiRequestOptions) => api.get<ReviewableOrder[]>(
@@ -742,25 +752,13 @@ export const questionApi = {
     getByProduct: (productId: number, options?: ApiRequestOptions) => {
         const normalizedProductId = normalizePositiveInt(productId);
         if (!normalizedProductId) return withAbortSignal(Promise.resolve({ data: [] } as unknown as AxiosResponse<ProductQuestionPublic[]>), options?.signal);
-        const cached = questionCache.get(normalizedProductId);
-        if (cached && cached.expiresAt > Date.now()) return withAbortSignal(Promise.resolve(cached.response), options?.signal);
-        const pending = questionRequests.get(normalizedProductId);
-        if (pending) return withAbortSignal(pending, options?.signal);
-        const request = api.get<ProductQuestionPublic[]>(
+        return cachedGet(questionCache, questionRequests, normalizedProductId, QUESTION_CACHE_MS, () => api.get<ProductQuestionPublic[]>(
             `/product-questions/product/${normalizedProductId}`,
             anonymousGetConfig(undefined, cacheLoaderOptions(options)),
-        )
-            .then((response) => {
-                const normalized = withArrayData(response);
-                setTimedCacheEntry(questionCache, normalizedProductId, { response: normalized, expiresAt: Date.now() + QUESTION_CACHE_MS });
-                return normalized;
-            })
-            .finally(() => questionRequests.delete(normalizedProductId));
-        setBoundedMapEntry(questionRequests, normalizedProductId, request);
-        return withAbortSignal(request, options?.signal);
+        ).then(withArrayData), options);
     },
-    ask: (productId: number, question: string) =>
-        api.post<ProductQuestionPublic>(`/product-questions/product/${toPathId(productId)}`, { question: normalizeTextParam(question, MAX_PRODUCT_QUESTION_LENGTH) })
+    ask: (productId: number, question: string, options?: ApiRequestOptions) =>
+        api.post<ProductQuestionPublic>(`/product-questions/product/${toPathId(productId)}`, { question: normalizeTextParam(question, MAX_PRODUCT_QUESTION_LENGTH) }, withRequestOptions({}, options))
             .finally(() => clearQuestionCache(toPathId(productId))),
 };
 
@@ -774,42 +772,45 @@ export const categoryApi = {
         return cachedGet(categoryCache, categoryRequests, cacheKey, CATEGORY_CACHE_MS, () => api.get<CategoryPublic[]>('/categories', anonymousGetConfig({ params: normalizedParams }, cacheLoaderOptions(options))).then(withArrayData), options);
     },
     getTopLevel: (options?: ApiRequestOptions) => cachedGet(categoryCache, categoryRequests, 'top', CATEGORY_CACHE_MS, () => api.get<CategoryPublic[]>('/categories', anonymousGetConfig({ params: { level: 1 } }, cacheLoaderOptions(options))).then(withArrayData), options),
-    getChildren: (parentId: number) => {
+    getChildren: (parentId: number, options?: ApiRequestOptions) => {
         const normalizedParentId = normalizePositiveInt(parentId);
-        if (!normalizedParentId) return Promise.resolve({ data: [] } as unknown as AxiosResponse<CategoryPublic[]>);
+        if (!normalizedParentId) return withAbortSignal(Promise.resolve({ data: [] } as unknown as AxiosResponse<CategoryPublic[]>), options?.signal);
         return cachedGet(categoryCache, categoryRequests, `children:${normalizedParentId}`, CATEGORY_CACHE_MS, () =>
-            api.get<CategoryPublic[]>('/categories', anonymousGetConfig({ params: { parentId: normalizedParentId } })).then(withArrayData));
+            api.get<CategoryPublic[]>('/categories', anonymousGetConfig({ params: { parentId: normalizedParentId } }, cacheLoaderOptions(options))).then(withArrayData), options);
     },
-    getById: (id: number) => api.get<CategoryPublic>(`/categories/${toPathId(id)}`, anonymousGetConfig()),
-    create: (category: Partial<Category>) => api.post<Category>('/categories', normalizeCategoryPayload(category)).finally(() => {
+    getById: (id: number, options?: ApiRequestOptions) => api.get<CategoryPublic>(`/categories/${toPathId(id)}`, anonymousGetConfig(undefined, options)),
+    create: (category: Partial<Category>, options?: ApiRequestOptions) => api.post<Category>('/categories', normalizeCategoryPayload(category), withRequestOptions({}, options)).finally(() => {
         clearCategoryCache();
         clearProductCache();
     }),
-    update: (id: number, category: Partial<Category>) => api.put<Category>(`/categories/${toPathId(id)}`, normalizeCategoryPayload(category)).finally(() => {
+    update: (id: number, category: Partial<Category>, options?: ApiRequestOptions) => api.put<Category>(`/categories/${toPathId(id)}`, normalizeCategoryPayload(category), withRequestOptions({}, options)).finally(() => {
         clearCategoryCache();
         clearProductCache();
     }),
-    delete: (id: number) => api.delete(`/categories/${toPathId(id)}`).finally(() => {
+    delete: (id: number, options?: ApiRequestOptions) => api.delete(`/categories/${toPathId(id)}`, withRequestOptions({}, options)).finally(() => {
         clearCategoryCache();
         clearProductCache();
     })
 };
 
 export const brandApi = {
-    getAll: (_params?: { activeOnly?: boolean }) => {
-        const cacheKey = 'public-active';
+    getAll: (params?: { activeOnly?: boolean }, options?: ApiRequestOptions) => {
+        const activeOnly = params?.activeOnly;
+        const cacheKey = `public:${activeOnly === undefined ? 'default' : String(Boolean(activeOnly))}`;
         return cachedGet(brandCache, brandRequests, cacheKey, BRAND_CACHE_MS, () =>
-            api.get<BrandPublic[]>('/brands', anonymousGetConfig()).then(withArrayData));
+            api.get<BrandPublic[]>('/brands', anonymousGetConfig({
+                params: activeOnly === undefined ? undefined : { activeOnly: Boolean(activeOnly) },
+            }, cacheLoaderOptions(options))).then(withArrayData), options);
     },
-    create: (brand: Partial<Brand>) => api.post<Brand>('/brands', normalizeBrandPayload(brand)).finally(() => {
+    create: (brand: Partial<Brand>, options?: ApiRequestOptions) => api.post<Brand>('/brands', normalizeBrandPayload(brand), withRequestOptions({}, options)).finally(() => {
         clearBrandCache();
         clearProductCache();
     }),
-    update: (id: number, brand: Partial<Brand>) => api.put<Brand>(`/brands/${toPathId(id)}`, normalizeBrandPayload(brand)).finally(() => {
+    update: (id: number, brand: Partial<Brand>, options?: ApiRequestOptions) => api.put<Brand>(`/brands/${toPathId(id)}`, normalizeBrandPayload(brand), withRequestOptions({}, options)).finally(() => {
         clearBrandCache();
         clearProductCache();
     }),
-    delete: (id: number) => api.delete(`/brands/${toPathId(id)}`).finally(() => {
+    delete: (id: number, options?: ApiRequestOptions) => api.delete(`/brands/${toPathId(id)}`, withRequestOptions({}, options)).finally(() => {
         clearBrandCache();
         clearProductCache();
     }),
@@ -821,9 +822,9 @@ export const logisticsCarrierApi = {
         return cachedGet(logisticsCarrierCache, logisticsCarrierRequests, cacheKey, LOGISTICS_CARRIER_CACHE_MS, () =>
             api.get<LogisticsCarrier[]>('/admin/logistics-carriers', anonymousGetConfig({ params: activeOnly ? { activeOnly: true } : undefined }, cacheLoaderOptions(options))).then(withArrayData), options);
     },
-    create: (carrier: LogisticsCarrierWritePayload) => api.post<LogisticsCarrier>('/admin/logistics-carriers', normalizeLogisticsCarrierPayload(carrier)).finally(clearLogisticsCarrierCache),
-    update: (id: number, carrier: LogisticsCarrierWritePayload) => api.put<LogisticsCarrier>(`/admin/logistics-carriers/${toPathId(id)}`, normalizeLogisticsCarrierPayload(carrier)).finally(clearLogisticsCarrierCache),
-    delete: (id: number) => api.delete(`/admin/logistics-carriers/${toPathId(id)}`).finally(clearLogisticsCarrierCache),
+    create: (carrier: LogisticsCarrierWritePayload, options?: ApiRequestOptions) => api.post<LogisticsCarrier>('/admin/logistics-carriers', normalizeLogisticsCarrierPayload(carrier), withRequestOptions({}, options)).finally(clearLogisticsCarrierCache),
+    update: (id: number, carrier: LogisticsCarrierWritePayload, options?: ApiRequestOptions) => api.put<LogisticsCarrier>(`/admin/logistics-carriers/${toPathId(id)}`, normalizeLogisticsCarrierPayload(carrier), withRequestOptions({}, options)).finally(clearLogisticsCarrierCache),
+    delete: (id: number, options?: ApiRequestOptions) => api.delete(`/admin/logistics-carriers/${toPathId(id)}`, withRequestOptions({}, options)).finally(clearLogisticsCarrierCache),
 };
 
 export const addressApi = {
@@ -881,7 +882,7 @@ export const notificationApi = {
                 return normalized;
             })
             .finally(() => {
-                if (useSharedRequest) notificationRequests.delete(cacheKey);
+                if (useSharedRequest && notificationRequests.get(cacheKey) === request) notificationRequests.delete(cacheKey);
             });
         if (useSharedRequest) setBoundedMapEntry(notificationRequests, cacheKey, request);
         return request;

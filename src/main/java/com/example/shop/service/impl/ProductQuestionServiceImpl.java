@@ -47,10 +47,6 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
     @Override
     @Transactional(rollbackFor = Exception.class, readOnly = true)
     public List<ProductQuestionPublicResponse> getPublicByProductId(Long productId) {
-        Product product = productRepository.findById(productId).orElse(null);
-        if (product == null || (product.getStatus() != null && !"ACTIVE".equalsIgnoreCase(product.getStatus()))) {
-            return List.of();
-        }
         int limit = Math.max(1, Math.min(runtimeConfig.getInt("product-question.public-max-rows", 20), 100));
         return questionRepository.findAnsweredByProductId(productId, PageRequest.of(0, limit)).stream()
                 .map(question -> ProductQuestionPublicResponse.from(question, productId))

@@ -140,7 +140,6 @@ class UserAddressServiceTest {
         InOrder inOrder = inOrder(userAddressMapper, userMapper);
         inOrder.verify(userAddressMapper).findById(12L);
         inOrder.verify(userMapper).findByIdForUpdate(7L);
-        inOrder.verify(userAddressMapper).findById(12L);
         inOrder.verify(userAddressMapper).clearDefault(7L);
         inOrder.verify(userAddressMapper).setDefault(12L, 7L);
     }
@@ -190,23 +189,23 @@ class UserAddressServiceTest {
         InOrder inOrder = inOrder(userAddressMapper, userMapper);
         inOrder.verify(userAddressMapper).findById(12L);
         inOrder.verify(userMapper).findByIdForUpdate(7L);
-        inOrder.verify(userAddressMapper).findById(12L);
         inOrder.verify(userAddressMapper).clearDefault(7L);
         inOrder.verify(userAddressMapper).update(any(UserAddress.class));
     }
 
     @Test
-    void updateAddressRejectsAddressDeletedAfterUserLock() {
+    void updateAddressRejectsAddressDeletedBeforeTheUpdate() {
         UserAddress address = address(7L, "Mia Chen", "5550101", "2 Main Street");
         address.setId(12L);
         UserAddress existing = address(7L, "Mia Chen", "5550101", "1 Main Street");
         existing.setId(12L);
-        when(userAddressMapper.findById(12L)).thenReturn(existing, null);
+        when(userAddressMapper.findById(12L)).thenReturn(existing);
+        when(userAddressMapper.update(any(UserAddress.class))).thenReturn(0);
 
-        assertThrows(IllegalArgumentException.class, () -> service.updateAddress(address));
+        assertThrows(IllegalStateException.class, () -> service.updateAddress(address));
 
         verify(userMapper).findByIdForUpdate(7L);
-        verify(userAddressMapper, never()).update(any(UserAddress.class));
+        verify(userAddressMapper).update(any(UserAddress.class));
     }
 
     @Test

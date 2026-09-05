@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import './ShopDropdown.css';
+import { cancelScheduledAnimationFrame, scheduleAnimationFrame } from '../utils/animationFrame';
 
 export type ShopDropdownItem = {
   key: string;
@@ -76,33 +77,39 @@ const ShopDropdown: React.FC<ShopDropdownProps> = ({
 
   useEffect(() => {
     if (!resolvedOpen || typeof window === 'undefined') return;
+    let frameId: number | null = null;
     const updatePosition = () => {
-      const rect = (triggerRef.current || wrapRef.current)?.getBoundingClientRect();
-      if (!rect) return;
-      const width = Math.max(rect.width, 196);
-      const estimatedHeight = Math.min(window.innerHeight - 24, 360);
-      let left = rect.left;
-      let top = rect.bottom + 6;
-      if (left + width > window.innerWidth - 8) {
-        left = Math.max(8, window.innerWidth - width - 8);
-      }
-      if (top + estimatedHeight > window.innerHeight - 8) {
-        top = Math.max(8, rect.top - 6 - Math.min(estimatedHeight, 280));
-      }
-      setPopupStyle({
-        position: 'fixed',
-        top,
-        left,
-        minWidth: Math.min(width, window.innerWidth - 16),
-        maxWidth: 'calc(100vw - 16px)',
-        maxHeight: estimatedHeight,
-        zIndex: safePopupZIndex,
+      if (frameId !== null) return;
+      frameId = scheduleAnimationFrame(() => {
+        frameId = null;
+        const rect = (triggerRef.current || wrapRef.current)?.getBoundingClientRect();
+        if (!rect) return;
+        const width = Math.max(rect.width, 196);
+        const estimatedHeight = Math.min(window.innerHeight - 24, 360);
+        let left = rect.left;
+        let top = rect.bottom + 6;
+        if (left + width > window.innerWidth - 8) {
+          left = Math.max(8, window.innerWidth - width - 8);
+        }
+        if (top + estimatedHeight > window.innerHeight - 8) {
+          top = Math.max(8, rect.top - 6 - Math.min(estimatedHeight, 280));
+        }
+        setPopupStyle({
+          position: 'fixed',
+          top,
+          left,
+          minWidth: Math.min(width, window.innerWidth - 16),
+          maxWidth: 'calc(100vw - 16px)',
+          maxHeight: estimatedHeight,
+          zIndex: safePopupZIndex,
+        });
       });
     };
     updatePosition();
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition, true);
     return () => {
+      if (frameId !== null) cancelScheduledAnimationFrame(frameId);
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };

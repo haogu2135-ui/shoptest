@@ -121,21 +121,27 @@ export const useProductListSessionData = ({
   }, [authSessionVersion, isAuthenticated, setWishlistedProductIds]);
 
   useEffect(() => {
-    const refreshStockAlerts = () => {
-      setAlertedStockProductIds(new Set(readStockAlerts().map((alert) => alert.productId)));
+    const refreshLocalSessionState = (event?: Event) => {
+      const isStorageEvent = event instanceof StorageEvent;
+      const storageKey = isStorageEvent ? event.key : null;
+      const refreshAlerts = !event || event.type === 'shop:stock-alerts-updated'
+        || (isStorageEvent && (!storageKey || storageKey === 'shop-stock-alerts'));
+      const refreshPreferences = !event || event.type === 'shop:product-view-preferences-updated'
+        || (isStorageEvent && (!storageKey || storageKey === 'shop-product-view-preferences'));
+      if (refreshAlerts) {
+        setAlertedStockProductIds(new Set(readStockAlerts().map((alert) => alert.productId)));
+      }
+      if (refreshPreferences) {
+        setViewPreferences(loadProductViewPreferences());
+      }
     };
-    const refreshPreferences = () => {
-      setViewPreferences(loadProductViewPreferences());
-    };
-    window.addEventListener('shop:stock-alerts-updated', refreshStockAlerts);
-    window.addEventListener('shop:product-view-preferences-updated', refreshPreferences);
-    window.addEventListener('storage', refreshStockAlerts);
-    window.addEventListener('storage', refreshPreferences);
+    window.addEventListener('shop:stock-alerts-updated', refreshLocalSessionState);
+    window.addEventListener('shop:product-view-preferences-updated', refreshLocalSessionState);
+    window.addEventListener('storage', refreshLocalSessionState);
     return () => {
-      window.removeEventListener('shop:stock-alerts-updated', refreshStockAlerts);
-      window.removeEventListener('shop:product-view-preferences-updated', refreshPreferences);
-      window.removeEventListener('storage', refreshStockAlerts);
-      window.removeEventListener('storage', refreshPreferences);
+      window.removeEventListener('shop:stock-alerts-updated', refreshLocalSessionState);
+      window.removeEventListener('shop:product-view-preferences-updated', refreshLocalSessionState);
+      window.removeEventListener('storage', refreshLocalSessionState);
     };
   }, [setAlertedStockProductIds, setViewPreferences]);
 

@@ -6,6 +6,7 @@ import {
   type GalleryTouchPoint,
 } from '../pages/productDetailHelpers';
 import type { ProductPublic as Product } from '../types';
+import { useVisiblePolling } from './useVisiblePolling';
 
 type PinchZoomState = {
   active: boolean;
@@ -35,7 +36,6 @@ export const useProductDetailGallery = ({
   setActiveMobileImageIndex,
   setSelectedImage,
 }: UseProductDetailGalleryParams) => {
-  const [documentHidden, setDocumentHidden] = useState(typeof document !== 'undefined' ? document.hidden : false);
   const [imagePaused, setImagePaused] = useState(false);
   const [pinchZoom, setPinchZoom] = useState<PinchZoomState>({ active: false, scale: 1, originX: 50, originY: 50 });
   const mobileGalleryRef = useRef<HTMLDivElement | null>(null);
@@ -68,35 +68,15 @@ export const useProductDetailGallery = ({
     }, delay);
   }, [clearImageResumeTimer]);
 
-  useEffect(() => clearImageResumeTimer, [clearImageResumeTimer]);
-
-  useEffect(() => {
-    if (typeof document === 'undefined') {
-      return;
-    }
-    const handleVisibilityChange = () => {
-      setDocumentHidden(document.hidden);
-    };
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => {
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-    };
-  }, []);
-
-  useEffect(() => () => {
-    if (galleryScrollRafRef.current !== null) {
-      window.cancelAnimationFrame(galleryScrollRafRef.current);
-      galleryScrollRafRef.current = null;
-    }
-  }, []);
-
-  useEffect(() => {
-    if (loading || !product || imagePaused || galleryImages.length <= 1 || isModalVisible) return;
-    // Avoid background carousel timers in tests and when the tab is hidden.
-    if (process.env.NODE_ENV === 'test') return;
-    if (documentHidden) return;
-    const timer = window.setInterval(() => {
-      if (documentHidden) return;
+  const documentVisible = useVisiblePolling({
+    enabled: process.env.NODE_ENV !== 'test'
+      && !loading
+      && Boolean(product)
+      && !imagePaused
+      && galleryImages.length > 1
+      && !isModalVisible,
+    intervalMs: 3200,
+    run: () => {
       setActiveMobileImageIndex((currentIndex) => {
         const nextIndex = (currentIndex + 1) % galleryImages.length;
         const nextImage = galleryImages[nextIndex] || galleryImages[0];
@@ -107,9 +87,21 @@ export const useProductDetailGallery = ({
         }
         return nextIndex;
       });
-    }, 3200);
-    return () => window.clearInterval(timer);
-  }, [documentHidden, galleryImages, imagePaused, isModalVisible, loading, product, setActiveMobileImageIndex, setSelectedImage]);
+    },
+  });
+
+  useEffect(() => clearImageResumeTimer, [clearImageResumeTimer]);
+
+  useEffect(() => {
+    if (!documentVisible) clearImageResumeTimer();
+  }, [clearImageResumeTimer, documentVisible]);
+
+  useEffect(() => () => {
+    if (galleryScrollRafRef.current !== null) {
+      window.cancelAnimationFrame(galleryScrollRafRef.current);
+      galleryScrollRafRef.current = null;
+    }
+  }, []);
 
   const getPinchOrigin = useCallback((first: GalleryTouchPoint, second: GalleryTouchPoint) => {
     const gallery = mobileGalleryRef.current;

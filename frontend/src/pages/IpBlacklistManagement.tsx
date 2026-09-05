@@ -143,12 +143,13 @@ const IpBlacklistManagement: React.FC = () => {
   const blacklistEntryDisplayLabel = useCallback((entry: Pick<IpBlacklistEntry, 'id' | 'ipAddress'>) => (
     String(entry.ipAddress || '').trim() || `#${entry.id}`
   ), []);
-  const entryStatusCounts = useMemo(() => ({
-    blocked: entries.filter((entry) => entry.status === 'BLOCKED').length,
-    monitoring: entries.filter((entry) => entry.status === 'MONITORING').length,
-    released: entries.filter((entry) => entry.status === 'RELEASED').length,
-    total: entries.length,
-  }), [entries]);
+  const entryStatusCounts = useMemo(() => entries.reduce((counts, entry) => {
+    if (entry.status === 'BLOCKED') counts.blocked += 1;
+    if (entry.status === 'MONITORING') counts.monitoring += 1;
+    if (entry.status === 'RELEASED') counts.released += 1;
+    counts.total += 1;
+    return counts;
+  }, { blocked: 0, monitoring: 0, released: 0, total: 0 }), [entries]);
   const blockedCount = Math.max(statusInfo?.blockedCount ?? 0, entryStatusCounts.blocked);
   const monitoringCount = Math.max(statusInfo?.monitoringCount ?? 0, entryStatusCounts.monitoring);
   const releasedCount = Math.max(statusInfo?.releasedCount ?? 0, entryStatusCounts.released);

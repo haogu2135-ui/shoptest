@@ -171,28 +171,32 @@ describe('CustomerSupportWidget reconnect cleanup source contracts', () => {
   it('keeps HTTP polling as a fallback after websocket reconnect exhaustion', () => {
     const source = readWidgetSource();
     const socketStart = source.indexOf('const socketRef = useReconnectingWebSocket({');
-    const pollingEffectStart = source.indexOf('const timer = window.setInterval(async () => {', socketStart);
-    const pollingEffectEnd = source.indexOf('}, [activeGuestContext, connected, open, activeSessionId, sortSupportSessions]);', pollingEffectStart);
+    const pollingEffectStart = source.indexOf('const pollSupportMessages = useCallback(async () => {', socketStart);
+    const pollingEffectEnd = source.indexOf('useVisiblePolling({', pollingEffectStart);
     const pollingEffect = source.slice(pollingEffectStart, pollingEffectEnd);
 
     expect(socketStart).toBeGreaterThan(-1);
     expect(pollingEffectStart).toBeGreaterThan(socketStart);
     expect(pollingEffectEnd).toBeGreaterThan(pollingEffectStart);
-    expect(source).toContain('if (!activeGuestContext && connected) return;');
     expect(source).toContain("if (process.env.NODE_ENV === 'test') return;");
-    expect(source).toContain('}, [activeGuestContext, connected, open, activeSessionId, sortSupportSessions]);');
+    expect(source).toContain('useVisiblePolling({');
+    expect(source).toContain('intervalMs: 10000');
+    expect(source).toContain('run: pollSupportMessages');
+    expect(source).toContain('runImmediately: false');
     expect(pollingEffect).toContain('const pollSessionId = sessionRef.current?.id;');
     expect(pollingEffect).toContain('const abortController = createApiAbortController();');
     expect(pollingEffect).toContain('supportApi.getMessages(pollSessionId, { afterId, limit: SUPPORT_MESSAGE_WINDOW, signal: abortController.signal })');
     expect(pollingEffect).toContain('supportApi.getGuestMessages(pollSessionId, guestContextForPoll.orderNo, guestContextForPoll.email');
     expect(pollingEffect).toContain("reportNonBlockingError('CustomerSupportWidget.pollMessages', error);");
-    expect(pollingEffect).toContain('pollAbortController?.abort();');
+    expect(pollingEffect).toContain('pollAbortRef.current?.abort();');
+    expect(source).not.toContain('window.setInterval');
+    expect(source).not.toContain('window.clearInterval');
   });
 
   it('keeps guest message polling bound to the latest guest context', () => {
     const source = readWidgetSource();
-    const pollingEffectStart = source.indexOf('const timer = window.setInterval(async () => {');
-    const pollingEffectEnd = source.indexOf('}, [activeGuestContext, connected, open, activeSessionId, sortSupportSessions]);', pollingEffectStart);
+    const pollingEffectStart = source.indexOf('const pollSupportMessages = useCallback(async () => {');
+    const pollingEffectEnd = source.indexOf('useVisiblePolling({', pollingEffectStart);
     const pollingEffect = source.slice(pollingEffectStart, pollingEffectEnd);
 
     expect(source).toContain('const activeGuestContextRef = useRef<GuestSupportContext | null>(null);');

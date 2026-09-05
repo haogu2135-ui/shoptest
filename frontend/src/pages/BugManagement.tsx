@@ -14,6 +14,7 @@ import { createApiAbortController } from '../api';
 import type { AdminBugReport, AdminBugReportPriority, AdminBugReportSeverity, AdminBugReportStatus, AdminBugReportSummary } from '../types';
 import { useLanguage } from '../i18n';
 import { useDebounce } from '../hooks/useDebounce';
+import { useVisiblePolling } from '../hooks/useVisiblePolling';
 import { getApiErrorMessage } from '../utils/apiError';
 import {
   BUGS_ACCESS_PERMISSIONS,
@@ -588,13 +589,16 @@ const BugManagement: React.FC = () => {
     };
   }, [loadPermissions]);
 
-  useEffect(() => {
-    if (!permissionsLoaded || !canReadBugs || bugModalOpen || loading) return;
-    const timer = window.setInterval(() => {
-      void reload(true);
-    }, scanRefreshMs);
-    return () => window.clearInterval(timer);
-  }, [bugModalOpen, canReadBugs, loading, permissionsLoaded, reload, scanRefreshMs]);
+  useVisiblePolling({
+    enabled: process.env.NODE_ENV !== 'test'
+      && permissionsLoaded
+      && canReadBugs
+      && !bugModalOpen
+      && !loading,
+    intervalMs: scanRefreshMs,
+    run: () => reload(true),
+    runImmediately: false,
+  });
 
   const openEditor = useCallback((bug?: AdminBugReport) => {
     if (!canWriteBugs) {

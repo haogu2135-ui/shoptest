@@ -77,8 +77,13 @@ const TrendChartComponent: React.FC<TrendChartProps> = ({ data, formatMoney, lab
   const padding = { top: 20, right: 26, bottom: 42, left: 54 };
   const chartWidth = width - padding.left - padding.right;
   const chartHeight = height - padding.top - padding.bottom;
-  const maxRevenue = Math.max(...data.map((item) => Number(item.revenue || 0)), 1);
-  const maxOrders = Math.max(...data.map((item) => Number(item.orders || 0)), 1);
+  const maxima = data.reduce((current, item) => {
+    current.revenue = Math.max(current.revenue, Number(item.revenue || 0));
+    current.orders = Math.max(current.orders, Number(item.orders || 0));
+    return current;
+  }, { revenue: 0, orders: 0 });
+  const maxRevenue = Math.max(maxima.revenue, 1);
+  const maxOrders = Math.max(maxima.orders, 1);
   const step = data.length > 1 ? chartWidth / (data.length - 1) : chartWidth;
   const barWidth = Math.max(12, Math.min(28, chartWidth / data.length * 0.42));
   const revenuePoints = data.map((item, index) => {

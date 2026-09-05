@@ -63,11 +63,6 @@ public class UserAddressService {
         }
         address.setUserId(existing.getUserId());
         lockAddressOwner(existing.getUserId());
-        existing = userAddressMapper.findById(address.getId());
-        if (existing == null) {
-            throw new IllegalArgumentException("Address not found");
-        }
-        address.setUserId(existing.getUserId());
         address.setUpdatedAt(LocalDateTime.now());
         if (Boolean.TRUE.equals(address.getIsDefault())) {
             userAddressMapper.clearDefault(existing.getUserId());
@@ -82,10 +77,8 @@ public class UserAddressService {
         UserAddress addr = userAddressMapper.findById(id);
         if (addr == null) return;
         lockAddressOwner(addr.getUserId());
-        addr = userAddressMapper.findById(id);
-        if (addr == null) return;
         if (userAddressMapper.deleteByIdAndUserId(id, addr.getUserId()) == 0) {
-            throw new IllegalStateException("Address delete failed");
+            return;
         }
         if (Boolean.TRUE.equals(addr.getIsDefault())) {
             List<UserAddress> remaining = userAddressMapper.findByUserId(
@@ -104,14 +97,10 @@ public class UserAddressService {
         }
         Long userId = address.getUserId();
         lockAddressOwner(userId);
-        address = userAddressMapper.findById(id);
-        if (address == null || !userId.equals(address.getUserId())) {
-            throw new IllegalArgumentException("Address not found");
-        }
         userAddressMapper.clearDefault(userId);
         int updated = userAddressMapper.setDefault(id, userId);
         if (updated == 0) {
-            throw new IllegalStateException("Default address update failed");
+            throw new IllegalArgumentException("Address not found");
         }
     }
 

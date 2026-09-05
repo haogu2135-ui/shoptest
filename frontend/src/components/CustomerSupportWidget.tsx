@@ -20,6 +20,7 @@ import { formatSafeDate, formatSafeDateTime, formatSafeTime, getSafeTime } from 
 import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 import { clearGuestSupportContext, loadGuestSupportContext, normalizeGuestSupportContext, saveGuestSupportContext, type GuestSupportContext } from '../utils/guestSupportContext';
 import { useReconnectingWebSocket } from '../hooks/useReconnectingWebSocket';
+import { useVisiblePolling } from '../hooks/useVisiblePolling';
 import { useNativeBackHandler } from '../utils/nativeBack';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import ShopButton from './ShopButton';
@@ -590,6 +591,7 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
 
   const socketRef = useReconnectingWebSocket({
     enabled: Boolean(open && token) && process.env.NODE_ENV !== 'test',
+    pauseWhenHidden: true,
     connectionKey: token || '',
     createSocket: async () => {
       const ticketResponse = await supportApi.createWebSocketTicket();
@@ -693,79 +695,71 @@ const CustomerSupportWidget: React.FC<CustomerSupportWidgetProps> = ({ initialOp
     };
   }, [activeGuestContext, language, open, t]);
 
-  useEffect(() => {
-    if (!open || !activeSessionId) return;
-    if (!activeGuestContext && connected) return;
-    if (process.env.NODE_ENV === 'test') return;
-    let disposed = false;
-    let polling = false;
-    let pollAbortController: AbortController | null = null;
-    const timer = window.setInterval(async () => {
-      if (disposed || polling) return;
-      polling = true;
-      const abortController = createApiAbortController();
-      pollAbortController = abortController;
-      pollAbortRef.current = abortController;
-      try {
-        const pollSessionId = sessionRef.current?.id;
-        if (!pollSessionId) return;
-        const afterId = newestSupportMessageId(messagesRef.current);
-        const guestContextForPoll = activeGuestContextRef.current;
-        const [messagesRes, sessionsRes] = guestContextForPoll
-          ? await Promise.all([
-            supportApi.getGuestMessages(pollSessionId, guestContextForPoll.orderNo, guestContextForPoll.email, { afterId, limit: SUPPORT_MESSAGE_WINDOW, signal: abortController.signal }),
-            Promise.resolve({ data: sessionRef.current ? [sessionRef.current] : [] }),
-          ])
-          : await Promise.all([
-            supportApi.getMessages(pollSessionId, { afterId, limit: SUPPORT_MESSAGE_WINDOW, signal: abortController.signal }),
-            supportApi.getSessions({ limit: SUPPORT_SESSION_HISTORY_WINDOW, signal: abortController.signal }),
-          ]);
-        if (
-          guestContextForPoll
-          && (
-            activeGuestContextRef.current?.orderNo !== guestContextForPoll.orderNo
-            || activeGuestContextRef.current?.email !== guestContextForPoll.email
-          )
-        ) return;
-        if (disposed || abortController.signal.aborted || sessionRef.current?.id !== pollSessionId) return;
-        const sortedSessions = sortSupportSessions(sessionsRes.data || []);
-        const selectedSession = sortedSessions.find((item) => item.id === pollSessionId);
-        if (selectedSession) {
-          setSession(selectedSession);
-          sessionRef.current = selectedSession;
-        }
-        setSessionHistory(sortedSessions);
-        setMessages((items) => mergeSupportMessages(items, messagesRes.data));
-        setUnread(0);
-        if (guestContextForPoll) {
-          supportApi.markGuestRead(pollSessionId, guestContextForPoll.orderNo, guestContextForPoll.email, { signal: abortController.signal })
-            .catch((error) => {
-              if (!abortController.signal.aborted) reportNonBlockingError('CustomerSupportWidget.markGuestReadAfterPoll', error);
-            });
-        } else {
-          supportApi.markRead(pollSessionId, { signal: abortController.signal })
-            .catch((error) => {
-              if (!abortController.signal.aborted) reportNonBlockingError('CustomerSupportWidget.markReadAfterPoll', error);
-            });
-        }
-      } catch (error) {
-        if (!disposed && !abortController.signal.aborted) {
-          reportNonBlockingError('CustomerSupportWidget.pollMessages', error);
-        }
-      } finally {
-        if (pollAbortController === abortController) pollAbortController = null;
-        if (pollAbortRef.current === abortController) pollAbortRef.current = null;
-        polling = false;
+  const pollSupportMessages = useCallback(async () => {
+    if (!mountedRef.current) return;
+    pollAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    pollAbortRef.current = abortController;
+    try {
+      const pollSessionId = sessionRef.current?.id;
+      if (!pollSessionId) return;
+      const afterId = newestSupportMessageId(messagesRef.current);
+      const guestContextForPoll = activeGuestContextRef.current;
+      const [messagesRes, sessionsRes] = guestContextForPoll
+        ? await Promise.all([
+          supportApi.getGuestMessages(pollSessionId, guestContextForPoll.orderNo, guestContextForPoll.email, { afterId, limit: SUPPORT_MESSAGE_WINDOW, signal: abortController.signal }),
+          Promise.resolve({ data: sessionRef.current ? [sessionRef.current] : [] }),
+        ])
+        : await Promise.all([
+          supportApi.getMessages(pollSessionId, { afterId, limit: SUPPORT_MESSAGE_WINDOW, signal: abortController.signal }),
+          supportApi.getSessions({ limit: SUPPORT_SESSION_HISTORY_WINDOW, signal: abortController.signal }),
+        ]);
+      if (
+        guestContextForPoll
+        && (
+          activeGuestContextRef.current?.orderNo !== guestContextForPoll.orderNo
+          || activeGuestContextRef.current?.email !== guestContextForPoll.email
+        )
+      ) return;
+      if (!mountedRef.current || abortController.signal.aborted || sessionRef.current?.id !== pollSessionId) return;
+      const sortedSessions = sortSupportSessions(sessionsRes.data || []);
+      const selectedSession = sortedSessions.find((item) => item.id === pollSessionId);
+      if (selectedSession) {
+        setSession(selectedSession);
+        sessionRef.current = selectedSession;
       }
-    }, 10000);
-    return () => {
-      disposed = true;
-      window.clearInterval(timer);
-      pollAbortController?.abort();
-      pollAbortRef.current?.abort();
-      pollAbortRef.current = null;
-    };
-  }, [activeGuestContext, connected, open, activeSessionId, sortSupportSessions]);
+      setSessionHistory(sortedSessions);
+      setMessages((items) => mergeSupportMessages(items, messagesRes.data));
+      setUnread(0);
+      if (guestContextForPoll) {
+        supportApi.markGuestRead(pollSessionId, guestContextForPoll.orderNo, guestContextForPoll.email, { signal: abortController.signal })
+          .catch((error) => {
+            if (!abortController.signal.aborted) reportNonBlockingError('CustomerSupportWidget.markGuestReadAfterPoll', error);
+          });
+      } else {
+        supportApi.markRead(pollSessionId, { signal: abortController.signal })
+          .catch((error) => {
+            if (!abortController.signal.aborted) reportNonBlockingError('CustomerSupportWidget.markReadAfterPoll', error);
+          });
+      }
+    } catch (error) {
+      if (mountedRef.current && !abortController.signal.aborted) {
+        reportNonBlockingError('CustomerSupportWidget.pollMessages', error);
+      }
+    } finally {
+      if (pollAbortRef.current === abortController) pollAbortRef.current = null;
+    }
+  }, [sortSupportSessions]);
+
+  useVisiblePolling({
+    enabled: process.env.NODE_ENV !== 'test'
+      && open
+      && Boolean(activeSessionId)
+      && (Boolean(activeGuestContext) || !connected),
+    intervalMs: 10000,
+    run: pollSupportMessages,
+    runImmediately: false,
+  });
 
   useEffect(() => {
     if (!open) return;

@@ -2,20 +2,22 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { ShopIcon, SI } from './ShopIcon';
 import { useLanguage } from '../i18n';
 import { conversionConfig, type SocialProofEvent } from '../utils/conversionConfig';
+import { useDocumentVisibility } from '../hooks/useDocumentVisibility';
 import './SocialProofToast.css';
 
 const SocialProofToast: React.FC = () => {
   const { t } = useLanguage();
   const [activeIndex, setActiveIndex] = useState(0);
   const events = useMemo<SocialProofEvent[]>(() => conversionConfig.socialProof.events.filter((event) => event.verified === true), []);
+  const documentVisible = useDocumentVisibility();
 
   useEffect(() => {
-    if (!conversionConfig.socialProof.enabled || events.length <= 1) return;
-    const timer = window.setInterval(() => {
+    if (!conversionConfig.socialProof.enabled || events.length <= 1 || !documentVisible) return;
+    const timer = window.setTimeout(() => {
       setActiveIndex((current) => (current + 1) % events.length);
     }, conversionConfig.socialProof.rotateMs);
-    return () => window.clearInterval(timer);
-  }, [events.length]);
+    return () => window.clearTimeout(timer);
+  }, [documentVisible, events.length]);
 
   if (!conversionConfig.socialProof.enabled || events.length === 0) return null;
 

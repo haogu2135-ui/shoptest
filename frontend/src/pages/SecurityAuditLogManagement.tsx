@@ -352,46 +352,56 @@ const SecurityAuditLogManagement: React.FC = () => {
   }, [action, actorUsername, range, resourceType, result]);
 
   const auditInsights = useMemo(() => {
-    const total = logs.length;
-    const failures = logs.filter((log) => log.result === 'FAILURE').length;
-    const failureRate = total ? Math.round((failures / total) * 100) : 0;
-    const sensitiveActions = logs.filter((log) => highRiskActions.has(log.action)).length;
-    const exports = logs.filter((log) => log.action.includes('EXPORT')).length;
-    const paymentFailures = logs.filter((log) => (
-      log.result === 'FAILURE' && (log.action.startsWith('PAYMENT') || log.action.includes('STRIPE'))
-    )).length;
-    const refundEvents = logs.filter((log) => log.action === 'REFUND_COMPLETE').length;
-    const callbackEvents = logs.filter((log) => log.action === 'PAYMENT_CALLBACK' || log.action === 'STRIPE_WEBHOOK').length;
-    const paymentOpsEvents = logs.filter((log) => paymentOpsActions.has(log.action)).length;
-    const accountFailures = logs.filter((log) => log.result === 'FAILURE' && accountSecurityActions.has(log.action)).length;
-    const passwordChanges = logs.filter((log) => log.action === 'USER_PASSWORD_UPDATE').length;
-    const emailCodeEvents = logs.filter((log) => log.action === 'USER_PROFILE_EMAIL_CODE').length;
-    const accountSecurityEvents = logs.filter((log) => accountSecurityActions.has(log.action)).length;
-
-    const failedActorCounts = logs.reduce<Record<string, number>>((acc, log) => {
-      if (log.result !== 'FAILURE') return acc;
-      const key = log.actorUsername || log.ipAddress || (log.actorUserId ? String(log.actorUserId) : '');
-      if (!key) return acc;
-      acc[key] = (acc[key] || 0) + 1;
+    const metrics = logs.reduce((acc, log) => {
+      if (log.result === 'FAILURE') {
+        acc.failures += 1;
+        if (log.action.startsWith('PAYMENT') || log.action.includes('STRIPE')) acc.paymentFailures += 1;
+        if (accountSecurityActions.has(log.action)) acc.accountFailures += 1;
+        const key = log.actorUsername || log.ipAddress || (log.actorUserId ? String(log.actorUserId) : '');
+        if (key) acc.failedActorCounts[key] = (acc.failedActorCounts[key] || 0) + 1;
+      }
+      if (highRiskActions.has(log.action)) acc.sensitiveActions += 1;
+      if (log.action.includes('EXPORT')) acc.exports += 1;
+      if (log.action === 'REFUND_COMPLETE') acc.refundEvents += 1;
+      if (log.action === 'PAYMENT_CALLBACK' || log.action === 'STRIPE_WEBHOOK') acc.callbackEvents += 1;
+      if (paymentOpsActions.has(log.action)) acc.paymentOpsEvents += 1;
+      if (log.action === 'USER_PASSWORD_UPDATE') acc.passwordChanges += 1;
+      if (log.action === 'USER_PROFILE_EMAIL_CODE') acc.emailCodeEvents += 1;
+      if (accountSecurityActions.has(log.action)) acc.accountSecurityEvents += 1;
       return acc;
-    }, {});
-    const repeatedFailures = Object.values(failedActorCounts).filter((count) => count >= 3).length;
-    const healthScore = Math.max(0, 100 - failureRate - repeatedFailures * 12 - paymentFailures * 8 - Math.max(0, exports - 2) * 5);
+    }, {
+      failures: 0,
+      sensitiveActions: 0,
+      exports: 0,
+      paymentFailures: 0,
+      refundEvents: 0,
+      callbackEvents: 0,
+      paymentOpsEvents: 0,
+      accountFailures: 0,
+      passwordChanges: 0,
+      emailCodeEvents: 0,
+      accountSecurityEvents: 0,
+      failedActorCounts: {} as Record<string, number>,
+    });
+    const total = logs.length;
+    const failureRate = total ? Math.round((metrics.failures / total) * 100) : 0;
+    const repeatedFailures = Object.values(metrics.failedActorCounts).filter((count) => count >= 3).length;
+    const healthScore = Math.max(0, 100 - failureRate - repeatedFailures * 12 - metrics.paymentFailures * 8 - Math.max(0, metrics.exports - 2) * 5);
 
     return {
       total,
-      failures,
+      failures: metrics.failures,
       failureRate,
-      sensitiveActions,
-      exports,
-      paymentFailures,
-      refundEvents,
-      callbackEvents,
-      paymentOpsEvents,
-      accountFailures,
-      passwordChanges,
-      emailCodeEvents,
-      accountSecurityEvents,
+      sensitiveActions: metrics.sensitiveActions,
+      exports: metrics.exports,
+      paymentFailures: metrics.paymentFailures,
+      refundEvents: metrics.refundEvents,
+      callbackEvents: metrics.callbackEvents,
+      paymentOpsEvents: metrics.paymentOpsEvents,
+      accountFailures: metrics.accountFailures,
+      passwordChanges: metrics.passwordChanges,
+      emailCodeEvents: metrics.emailCodeEvents,
+      accountSecurityEvents: metrics.accountSecurityEvents,
       repeatedFailures,
       healthScore,
     };

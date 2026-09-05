@@ -21,5 +21,6 @@ class ProductQuestionRepositoryContractTest {
         assertTrue(normalized.contains("join fetch q.product"));
         assertTrue(normalized.contains("join fetch q.user"));
         assertTrue(normalized.contains("where p.id = :productid"));
+        assertTrue(normalized.contains("p.status is null or upper(p.status) = 'active'"));
     }
 }

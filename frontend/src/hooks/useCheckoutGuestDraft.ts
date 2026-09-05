@@ -94,10 +94,15 @@ export const useCheckoutGuestDraft = ({
       );
       const hasDraft = Object.values(draft).some(hasHydratableCheckoutValue);
       if (hasDraft) {
-        setSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY, JSON.stringify(draft));
+        const serializedDraft = JSON.stringify(draft);
+        if (getSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY) !== serializedDraft) {
+          setSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY, serializedDraft);
+        }
         mergeCheckoutFormSnapshot(draft, true);
       } else {
-        removeSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY);
+        if (getSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY) !== null) {
+          removeSessionStorageItem(CHECKOUT_GUEST_DRAFT_KEY);
+        }
       }
     }, CHECKOUT_GUEST_DRAFT_SAVE_DELAY_MS);
     return () => {

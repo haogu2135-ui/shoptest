@@ -25,6 +25,7 @@ import { AUTH_SESSION_CHANGED_EVENT } from '../utils/authEvents';
 import { reportNonBlockingError } from '../utils/nonBlockingError';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
+import { useDocumentVisibility } from '../hooks/useDocumentVisibility';
 import {
   buildSelectedSpecsPayload,
   clearProductDetailSessionCaches,
@@ -304,14 +305,15 @@ const ProductDetail: React.FC = () => {
 
   const limitedTimeEnd = useMemo(() => getLimitedTimeEndMs(product?.limitedTimeEndAt), [product?.limitedTimeEndAt]);
   const limitedTimeTickerActive = shouldRunLimitedTimeTicker(product, now);
+  const documentVisible = useDocumentVisibility();
 
   useEffect(() => {
-    if (!limitedTimeTickerActive) return;
+    if (!limitedTimeTickerActive || !documentVisible) return;
     // Keep Jest free of perpetual 1s timers that retain the page and open handles.
     if (process.env.NODE_ENV === 'test') return;
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
-    return () => window.clearInterval(timer);
-  }, [limitedTimeTickerActive, limitedTimeEnd]);
+    const timer = window.setTimeout(() => setNow(Date.now()), 1000);
+    return () => window.clearTimeout(timer);
+  }, [documentVisible, limitedTimeEnd, limitedTimeTickerActive]);
 
   const productImages = useMemo(() => product ? normalizeProductImages(product) : [], [product]);
   const galleryImages = useMemo(() => productImages.slice(0, -1), [productImages]);
@@ -492,15 +494,23 @@ const ProductDetail: React.FC = () => {
     setIsAlerted(hasStockAlert(Number(id)));
     setIsCompared(isProductCompared(Number(id)));
 
-    const fallbackTimer = process.env.NODE_ENV === 'test'
-      ? null
-      : window.setTimeout(() => warmNonCriticalContent(nonCriticalRequestSeq), 1800);
+    let fallbackTimer: number | null = null;
+    const warmNonCritical = () => {
+      if (fallbackTimer !== null) {
+        window.clearTimeout(fallbackTimer);
+        fallbackTimer = null;
+      }
+      warmNonCriticalContent(nonCriticalRequestSeq);
+    };
+    if (process.env.NODE_ENV !== 'test') {
+      fallbackTimer = window.setTimeout(warmNonCritical, 1800);
+    }
     const target = detailContentRef.current;
     let observer: IntersectionObserver | null = null;
     if (target && 'IntersectionObserver' in window) {
       observer = new IntersectionObserver((entries) => {
         if (entries.some((entry) => entry.isIntersecting)) {
-          warmNonCriticalContent(nonCriticalRequestSeq);
+          warmNonCritical();
           observer?.disconnect();
         }
       }, { rootMargin: '520px 0px' });
@@ -515,7 +525,7 @@ const ProductDetail: React.FC = () => {
         const nextTarget = detailContentRef.current;
         if (!nextTarget) return;
         if (nextTarget.getBoundingClientRect().top < window.innerHeight + 520) {
-          warmNonCriticalContent(nonCriticalRequestSeq);
+          warmNonCritical();
           detachScrollWarmup();
         }
       };

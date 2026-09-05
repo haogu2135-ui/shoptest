@@ -6,6 +6,7 @@ import { ShopIcon, SI } from '../components/ShopIcon';
 import ShopInput from '../components/ShopInput';
 import { useAuth } from '../hooks/useAuth';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
+import { useDocumentVisibility } from '../hooks/useDocumentVisibility';
 import { useLanguage } from '../i18n';
 import { useMarket } from '../hooks/useMarket';
 import { usePageTitle } from '../hooks/usePageTitle';
@@ -68,6 +69,7 @@ const Seckill: React.FC = () => {
   const [selected, setSelected] = useState<{ campaign: SeckillCampaign; item: SeckillItem } | null>(null);
   const [selectedOptions, setSelectedOptions] = useState<Record<string, string>>({});
   const [form, setForm] = useState<PurchaseForm>(initialForm);
+  const documentVisible = useDocumentVisibility();
   const [submitLoading, setSubmitLoading] = useState(false);
   const submitLoadingRef = useRef(false);
   const mountedRef = useRef(true);
@@ -91,15 +93,19 @@ const Seckill: React.FC = () => {
 
   useEffect(() => {
     mountedRef.current = true;
-    const timer = window.setInterval(() => setNow(Date.now()), 1000);
     return () => {
       mountedRef.current = false;
-      window.clearInterval(timer);
       campaignsAbortRef.current?.abort();
       paymentChannelsAbortRef.current?.abort();
       purchaseAbortRef.current?.abort();
     };
   }, []);
+
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'test' || campaigns.length === 0 || !documentVisible) return;
+    const timer = window.setTimeout(() => setNow(Date.now()), 1000);
+    return () => window.clearTimeout(timer);
+  }, [campaigns.length, documentVisible, now]);
 
   useEffect(() => {
     let disposed = false;

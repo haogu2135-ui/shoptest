@@ -342,7 +342,8 @@ class PetGalleryServiceTest {
 
         assertThrows(ResponseStatusException.class, () -> service.upload(7L, "mia", "203.0.113.10", file));
 
-        verify(photoRepository, never()).countUploadsByUserIdAndStatus(org.mockito.ArgumentMatchers.any(), anyString(), anyString());
+        verify(photoRepository, never()).countUploadsByUserIdAndIpAddressAndStatus(
+                org.mockito.ArgumentMatchers.any(), anyString(), anyString(), anyString());
         verify(photoRepository, never()).saveAndFlush(org.mockito.ArgumentMatchers.any(PetGalleryPhoto.class));
         verify(photoRepository, never()).releaseUploadQuotaLock(anyString());
     }

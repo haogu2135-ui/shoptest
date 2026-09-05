@@ -35,4 +35,14 @@ describe('ShopInputNumber', () => {
     render(<ShopInputNumber aria-label="Quantity" value={Number.NaN} precision={99} />);
     expect(screen.getByLabelText('Quantity')).toHaveValue(null);
   });
+
+  it('normalizes reversed bounds and invalid steps before rendering', () => {
+    const { container } = render(<ShopInputNumber aria-label="Quantity" min={10} max={2} step={0} />);
+    const input = screen.getByLabelText('Quantity');
+
+    expect(input).toHaveAttribute('min', '2');
+    expect(input).toHaveAttribute('max', '10');
+    expect(input).toHaveAttribute('step', 'any');
+    expect(container.querySelector('input')).toBe(input);
+  });
 });

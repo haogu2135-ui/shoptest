@@ -1,6 +1,12 @@
 import React, { forwardRef, useId, useState } from 'react';
 import { useLanguage } from '../i18n';
 
+const normalizeRows = (value: number | undefined, fallback: number) => (
+  typeof value === 'number' && Number.isSafeInteger(value) && value > 0
+    ? Math.min(value, 100)
+    : fallback
+);
+
 export type ShopInputProps = {
   value?: string;
   defaultValue?: string;
@@ -81,6 +87,8 @@ const ShopInput = forwardRef<HTMLInputElement, ShopInputProps>((props, ref) => {
   } = props;
   const generatedId = useId();
   const inputId = id || generatedId;
+  const normalizedMaxLength = typeof maxLength === 'number' && Number.isSafeInteger(maxLength) && maxLength >= 0 ? maxLength : undefined;
+  const normalizedMinLength = typeof minLength === 'number' && Number.isSafeInteger(minLength) && minLength >= 0 ? minLength : undefined;
   // Form.Item initially supplies `value: undefined`; preserve that controlled
   // contract so the native input never flips modes when form data arrives.
   const isControlled = Object.prototype.hasOwnProperty.call(props, 'value');
@@ -118,8 +126,8 @@ const ShopInput = forwardRef<HTMLInputElement, ShopInputProps>((props, ref) => {
           autoComplete={autoComplete}
           inputMode={inputMode}
           pattern={pattern}
-          maxLength={maxLength}
-          minLength={minLength}
+          maxLength={normalizedMaxLength}
+          minLength={normalizedMinLength}
           min={min}
           max={max}
           step={step}
@@ -157,9 +165,9 @@ const ShopInput = forwardRef<HTMLInputElement, ShopInputProps>((props, ref) => {
         {suffix ? <span className="shop-input__suffix">{suffix}</span> : null}
       </div>
       {addonAfter ? <div className="shop-input__addon">{addonAfter}</div> : null}
-      {showCount && typeof maxLength === 'number' ? (
+      {showCount && normalizedMaxLength !== undefined ? (
         <div className="shop-input__count" aria-hidden="true">
-          {currentLength}/{maxLength}
+          {currentLength}/{normalizedMaxLength}
         </div>
       ) : null}
     </div>
@@ -302,10 +310,14 @@ export const ShopTextArea = forwardRef<HTMLTextAreaElement, ShopTextAreaProps>((
   } = props;
   const generatedId = useId();
   const inputId = id || generatedId;
+  const normalizedMaxLength = typeof maxLength === 'number' && Number.isSafeInteger(maxLength) && maxLength >= 0 ? maxLength : undefined;
+  const normalizedMinLength = typeof minLength === 'number' && Number.isSafeInteger(minLength) && minLength >= 0 ? minLength : undefined;
   const isControlled = Object.prototype.hasOwnProperty.call(props, 'value');
-  const minRows = typeof autoSize === 'object' && autoSize?.minRows ? autoSize.minRows : (typeof autoSize === 'boolean' && autoSize ? 2 : rows);
-  const maxRows = typeof autoSize === 'object' && autoSize?.maxRows ? autoSize.maxRows : undefined;
-  const resolvedRows = minRows || rows;
+  const baseRows = normalizeRows(rows, 3);
+  const minRows = typeof autoSize === 'object' ? normalizeRows(autoSize.minRows, baseRows) : (typeof autoSize === 'boolean' && autoSize ? 2 : baseRows);
+  const requestedMaxRows = typeof autoSize === 'object' ? normalizeRows(autoSize.maxRows, minRows) : undefined;
+  const maxRows = requestedMaxRows !== undefined ? Math.max(minRows, requestedMaxRows) : undefined;
+  const resolvedRows = minRows;
   const [uncontrolled, setUncontrolled] = useState(defaultValue ?? '');
   const resolved = isControlled ? String(value ?? '') : uncontrolled;
   const currentLength = resolved.length;
@@ -334,8 +346,8 @@ export const ShopTextArea = forwardRef<HTMLTextAreaElement, ShopTextAreaProps>((
           autoComplete={autoComplete}
           spellCheck={spellCheck}
           rows={resolvedRows}
-          maxLength={maxLength}
-          minLength={minLength}
+          maxLength={normalizedMaxLength}
+          minLength={normalizedMinLength}
           aria-label={ariaLabel}
           aria-describedby={ariaDescribedBy}
           aria-invalid={ariaInvalid}
@@ -373,9 +385,9 @@ export const ShopTextArea = forwardRef<HTMLTextAreaElement, ShopTextAreaProps>((
           </button>
         ) : null}
       </div>
-      {showCount && typeof maxLength === 'number' ? (
+      {showCount && normalizedMaxLength !== undefined ? (
         <div className="shop-input__count" aria-hidden="true">
-          {currentLength}/{maxLength}
+          {currentLength}/{normalizedMaxLength}
         </div>
       ) : null}
     </div>

@@ -63,17 +63,14 @@ public interface PetGalleryPhotoRepository extends JpaRepository<PetGalleryPhoto
 
     boolean existsByImageUrl(String imageUrl);
 
-    @Query("select count(p) from PetGalleryPhoto p where p.userId = :userId"
-            + " and p.status = :status and (p.source is null or p.source = '' or p.source = :source)")
-    long countUploadsByUserIdAndStatus(@Param("userId") Long userId,
-                                       @Param("status") String status,
-                                       @Param("source") String source);
-
-    @Query("select count(p) from PetGalleryPhoto p where p.ipAddress = :ipAddress"
-            + " and p.status = :status and (p.source is null or p.source = '' or p.source = :source)")
-    long countUploadsByIpAddressAndStatus(@Param("ipAddress") String ipAddress,
-                                          @Param("status") String status,
-                                          @Param("source") String source);
+    @Query("select coalesce(sum(case when p.userId = :userId then 1 else 0 end), 0),"
+            + " coalesce(sum(case when p.ipAddress = :ipAddress then 1 else 0 end), 0)"
+            + " from PetGalleryPhoto p where p.status = :status"
+            + " and (p.source is null or p.source = '' or p.source = :source)")
+    Object[] countUploadsByUserIdAndIpAddressAndStatus(@Param("userId") Long userId,
+                                                       @Param("ipAddress") String ipAddress,
+                                                       @Param("status") String status,
+                                                       @Param("source") String source);
 
     @Query(value = "SELECT GET_LOCK(:lockName, 10)", nativeQuery = true)
     Long acquireUploadQuotaLock(@Param("lockName") String lockName);

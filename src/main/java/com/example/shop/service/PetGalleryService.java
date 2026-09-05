@@ -93,8 +93,9 @@ public class PetGalleryService {
     }
 
     public PetGalleryQuota getQuota(Long userId, String ipAddress) {
-        long userUploads = photoRepository.countUploadsByUserIdAndStatus(userId, ACTIVE_STATUS, USER_UPLOAD_SOURCE);
-        long ipUploads = photoRepository.countUploadsByIpAddressAndStatus(ipAddress, ACTIVE_STATUS, USER_UPLOAD_SOURCE);
+        long[] uploadCounts = countUploadQuotas(userId, ipAddress);
+        long userUploads = uploadCounts[0];
+        long ipUploads = uploadCounts[1];
         int maxPhotosPerUser = maxPhotosPerUser();
         int maxPhotosPerIp = maxPhotosPerIp();
         long userRemaining = Math.max(0, maxPhotosPerUser - userUploads);
@@ -249,12 +250,26 @@ public class PetGalleryService {
     }
 
     private void validateQuota(Long userId, String ipAddress) {
-        if (photoRepository.countUploadsByUserIdAndStatus(userId, ACTIVE_STATUS, USER_UPLOAD_SOURCE) >= maxPhotosPerUser()) {
+        long[] uploadCounts = countUploadQuotas(userId, ipAddress);
+        if (uploadCounts[0] >= maxPhotosPerUser()) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "This account has reached the 3 photo upload limit");
         }
-        if (photoRepository.countUploadsByIpAddressAndStatus(ipAddress, ACTIVE_STATUS, USER_UPLOAD_SOURCE) >= maxPhotosPerIp()) {
+        if (uploadCounts[1] >= maxPhotosPerIp()) {
             throw new ResponseStatusException(HttpStatus.TOO_MANY_REQUESTS, "This IP address has reached the 3 photo upload limit");
         }
+    }
+
+    private long[] countUploadQuotas(Long userId, String ipAddress) {
+        Object[] counts = photoRepository.countUploadsByUserIdAndIpAddressAndStatus(
+                userId, ipAddress, ACTIVE_STATUS, USER_UPLOAD_SOURCE);
+        return new long[]{metricCount(counts, 0), metricCount(counts, 1)};
+    }
+
+    private long metricCount(Object[] metrics, int index) {
+        if (metrics == null || metrics.length <= index || !(metrics[index] instanceof Number)) {
+            return 0L;
+        }
+        return Math.max(0L, ((Number) metrics[index]).longValue());
     }
 
     private PetGalleryPhoto decorateViewerState(PetGalleryPhoto photo, Long viewerId, String ipAddress) {

@@ -67,6 +67,27 @@ class ProductQuestionRepositoryFetchJoinTest {
     }
 
     @Test
+    void findAnsweredByProductIdDoesNotExposeInactiveProducts() {
+        Product product = persistProduct();
+        product.setStatus("INACTIVE");
+        User user = persistUser();
+        ProductQuestion question = new ProductQuestion();
+        question.setProduct(product);
+        question.setUser(user);
+        question.setQuestion("Is this washable?");
+        question.setAnswer("Yes, use cold water.");
+        entityManager.persist(question);
+        entityManager.flush();
+        entityManager.clear();
+
+        List<ProductQuestion> questions = productQuestionRepository.findAnsweredByProductId(
+                product.getId(),
+                PageRequest.of(0, 10));
+
+        assertTrue(questions.isEmpty());
+    }
+
+    @Test
     void summarizeAdminQuestionMetricsUsesOneFilteredAggregate() {
         Product product = persistProduct();
         User user = persistUser();

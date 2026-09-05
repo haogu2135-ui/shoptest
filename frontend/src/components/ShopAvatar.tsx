@@ -13,7 +13,7 @@ export type ShopAvatarProps = {
 };
 
 const resolveSize = (size: ShopAvatarProps['size']): number => {
-  if (typeof size === 'number' && Number.isFinite(size) && size > 0) return size;
+  if (typeof size === 'number' && Number.isFinite(size) && size > 0) return Math.min(256, Math.max(1, Math.floor(size)));
   if (size === 'large') return 40;
   if (size === 'small') return 24;
   return 32;
@@ -52,6 +52,10 @@ const ShopAvatar: React.FC<ShopAvatarProps> = ({
           className="shop-avatar__img"
           src={src}
           alt={alt || ''}
+          width={px}
+          height={px}
+          loading="lazy"
+          decoding="async"
           onError={() => setImgFailed(true)}
         />
       ) : icon != null && icon !== false ? (

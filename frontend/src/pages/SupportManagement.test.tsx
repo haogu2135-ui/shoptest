@@ -170,21 +170,23 @@ describe('SupportManagement', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'SupportManagement.tsx'), 'utf8');
 
     expect(source).toContain("if (process.env.NODE_ENV === 'test') return;");
-    expect(source).toContain('let disposed = false;');
     expect(source).toContain('const SUPPORT_POLL_INTERVAL_MS = 10 * 1000;');
-    expect(source).toContain('if (disposed || polling) return;');
-    expect(source).toContain('await loadSessions({ isActive: () => !disposed });');
-    expect(source).toContain('if (disposed || abortController.signal.aborted || selectedSessionRef.current?.id !== activeSession.id) return;');
-    expect(source).toContain('}, SUPPORT_POLL_INTERVAL_MS);');
-    expect(source).toContain('disposed = true;');
-    expect(source).toContain('window.clearInterval(timer);');
+    expect(source).toContain('const pollSupportMessages = useCallback(async () => {');
+    expect(source).toContain('await loadSessions({ isActive: () => mountedRef.current });');
+    expect(source).toContain('if (!mountedRef.current || abortController.signal.aborted || selectedSessionRef.current?.id !== activeSession.id) return;');
+    expect(source).toContain('useVisiblePolling({');
+    expect(source).toContain('intervalMs: SUPPORT_POLL_INTERVAL_MS');
+    expect(source).toContain('run: pollSupportMessages');
+    expect(source).toContain('runImmediately: false');
+    expect(source).not.toContain('window.setInterval');
+    expect(source).not.toContain('window.clearInterval');
   });
 
   it('keeps reconnect exhaustion visible while HTTP polling continues', () => {
     const source = fs.readFileSync(path.resolve(__dirname, 'SupportManagement.tsx'), 'utf8');
     const socketStart = source.indexOf('const socketRef = useReconnectingWebSocket({');
-    const pollingEffectStart = source.indexOf('const timer = window.setInterval(async () => {', socketStart);
-    const pollingEffectEnd = source.indexOf('}, [canUpdateSupportReadState, loadSessions]);', pollingEffectStart);
+    const pollingEffectStart = source.indexOf('const pollSupportMessages = useCallback(async () => {', socketStart);
+    const pollingEffectEnd = source.indexOf('useVisiblePolling({', pollingEffectStart);
     const pollingEffect = source.slice(pollingEffectStart, pollingEffectEnd);
 
     expect(socketStart).toBeGreaterThan(-1);
@@ -192,7 +194,7 @@ describe('SupportManagement', () => {
     expect(source).toContain("message.warning(t('pages.support.connectFailed'));");
     expect(source).toContain("reportNonBlockingError('SupportManagement.websocketReconnectExhausted', { attempts });");
     expect(pollingEffectStart).toBeGreaterThan(socketStart);
-    expect(pollingEffect).toContain('await loadSessions({ isActive: () => !disposed });');
+    expect(pollingEffect).toContain('await loadSessions({ isActive: () => mountedRef.current });');
     expect(pollingEffect).toContain('adminSupportApi.getMessages(activeSession.id, { afterId, limit: SUPPORT_MESSAGE_WINDOW }, { signal: abortController.signal })');
     expect(pollingEffect).toContain("reportNonBlockingError('SupportManagement.pollMessages', error);");
   });

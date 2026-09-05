@@ -87,7 +87,7 @@ describe('AdminLayout visibility-aware polling', () => {
   it('does not rerun admin permission checks on every route change', () => {
     const source = readAdminLayoutSource();
     const initialCheckEffectStart = source.indexOf('useEffect(() => {\n    const initial = !hasStartedAdminCheckRef.current;');
-    const initialCheckEffect = source.slice(initialCheckEffectStart, source.indexOf('useEffect(() => () => {', initialCheckEffectStart));
+    const initialCheckEffect = source.slice(initialCheckEffectStart, source.indexOf('useEffect(() => {\n    layoutMountedRef.current = true;', initialCheckEffectStart));
     const refreshEffectStart = source.indexOf('const refreshPermissions = () => {');
     const refreshEffect = source.slice(refreshEffectStart, source.indexOf('useEffect(() => {\n    setMobileNavOpen(false);', refreshEffectStart));
 
@@ -147,35 +147,48 @@ describe('AdminLayout visibility-aware polling', () => {
     const source = readAdminLayoutSource();
 
     expect(source).toContain("const adminDocumentIsVisible = () => document.visibilityState !== 'hidden';");
-    expect(source).toContain('if (!adminDocumentIsVisible()) return;');
+    expect(source).toContain('!adminDocumentIsVisible()');
     expect(source).toContain('const refreshUnreadWhenVisible = () => {');
     expect(source).toContain("document.addEventListener('visibilitychange', refreshUnreadWhenVisible);");
     expect(source).toContain("document.removeEventListener('visibilitychange', refreshUnreadWhenVisible);");
-    expect(source).toContain('const timer = window.setInterval(loadUnread, 15000);');
     expect(source).toContain("const supportRouteActive = isAdminMenuRouteMatch(location.pathname, '/admin/support');");
-    expect(source).toContain('if (!supportRouteActive) {\n      return () => {\n        disposed = true;\n      };\n    }\n    const timer = window.setInterval(loadUnread, 15000);');
-    expect(source).toContain('}, [checking, canSeeSupport, supportRouteActive]);');
+    expect(source).toContain('useVisiblePolling({');
+    expect(source).toContain('intervalMs: 15000');
+    expect(source).toContain('run: loadSupportUnread');
+    expect(source).toContain('&& supportRouteActive');
+    expect(source).not.toContain('window.setInterval');
   });
 
   it('guards in-flight support unread responses after cleanup', () => {
     const source = readAdminLayoutSource();
-    const unreadEffectStart = source.indexOf('if (checking || !canSeeSupport) {');
+    const unreadEffectStart = source.indexOf('const loadSupportUnread = useCallback(async () => {');
     const logoutStart = source.indexOf('const handleLogout = () => {');
     const unreadEffectSource = source.slice(unreadEffectStart, logoutStart);
 
     expect(unreadEffectStart).toBeGreaterThan(-1);
     expect(logoutStart).toBeGreaterThan(unreadEffectStart);
-    expect(unreadEffectSource).toContain('let disposed = false;');
-    // The loader runs from mount, the interval, and visibilitychange, so cleanup alone
-    // cannot separate two in-flight requests; each run also claims a sequence number.
-    expect(unreadEffectSource).toContain('let unreadRequestSeq = 0;');
-    expect(unreadEffectSource).toContain('const requestSeq = unreadRequestSeq + 1;');
-    expect(unreadEffectSource).toContain('const isCurrentRequest = () => !disposed && unreadRequestSeq === requestSeq;');
+    expect(unreadEffectSource).toContain('const requestSeq = supportUnreadRequestSeqRef.current + 1;');
+    expect(unreadEffectSource).toContain('supportUnreadRequestSeqRef.current = requestSeq;');
+    expect(unreadEffectSource).toContain('const isCurrentRequest = () => layoutMountedRef.current');
     expect(unreadEffectSource).toContain('if (isCurrentRequest()) setSupportUnread(res.data.count);');
-    expect(unreadEffectSource).toContain('if (isCurrentRequest()) setSupportUnread(0);');
-    expect(unreadEffectSource).not.toContain('if (!disposed) setSupportUnread(res.data.count);');
-    expect(unreadEffectSource).toContain('disposed = true;');
-    expect(unreadEffectSource).toContain('window.clearInterval(timer);');
+    expect(unreadEffectSource).toContain('if (isCurrentRequest()) {\n        setSupportUnread(0);');
+    expect(unreadEffectSource).toContain('adminSupportApi.getUnreadCount({ signal: abortController.signal })');
+    expect(source).toContain('supportUnreadAbortRef.current?.abort();');
+    expect(unreadEffectSource).toContain('supportUnreadAbortRef.current === abortController');
+    expect(unreadEffectSource).not.toContain('window.setInterval');
+    expect(unreadEffectSource).not.toContain('window.clearInterval');
+  });
+
+  it('clears support unread state when access or verification is unavailable', () => {
+    const source = readAdminLayoutSource();
+    const unreadEffectStart = source.indexOf('useEffect(() => {\n    if (checking || verifyUnavailable || !canSeeSupport) {');
+    const pollingStart = source.indexOf('useVisiblePolling({', unreadEffectStart);
+    const unreadEffectSource = source.slice(unreadEffectStart, pollingStart);
+
+    expect(unreadEffectStart).toBeGreaterThan(-1);
+    expect(unreadEffectSource).toContain('setSupportUnread(0);');
+    expect(unreadEffectSource).toContain('if (supportRouteActive) return;');
+    expect(source).toContain('&& !verifyUnavailable');
   });
   it('uses ShopDrawer for mobile admin navigation without residual ant Drawer', () => {
     const source = readAdminLayoutSource();

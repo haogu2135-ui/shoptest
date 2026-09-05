@@ -220,9 +220,12 @@ const PetFinder: React.FC = () => {
   }, [budget, need, petType, priority, products]);
 
   const finderInsights = useMemo(() => {
-    const readyMatches = matches.filter(({ product }) => isInStock(product)).length;
-    const dealMatches = matches.filter(({ product }) => (product.effectiveDiscountPercent || product.discount || 0) > 0).length;
-    const topRatedMatches = matches.filter(({ product }) => Number(product.averageRating || 0) >= 4.5).length;
+    const metrics = matches.reduce((acc, match) => {
+      if (isInStock(match.product)) acc.readyMatches += 1;
+      if ((match.product.effectiveDiscountPercent || match.product.discount || 0) > 0) acc.dealMatches += 1;
+      if (Number(match.product.averageRating || 0) >= 4.5) acc.topRatedMatches += 1;
+      return acc;
+    }, { readyMatches: 0, dealMatches: 0, topRatedMatches: 0 });
     const bestMatch = matches[0]?.product;
     const bestMatchPrice = bestMatch ? productPrice(bestMatch) : 0;
     const nextAction = bestMatch
@@ -231,9 +234,9 @@ const PetFinder: React.FC = () => {
         : 'search'
       : 'search';
     return {
-      readyMatches,
-      dealMatches,
-      topRatedMatches,
+      readyMatches: metrics.readyMatches,
+      dealMatches: metrics.dealMatches,
+      topRatedMatches: metrics.topRatedMatches,
       bestMatch,
       bestMatchPrice,
       nextAction,

@@ -7,6 +7,7 @@ import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
+import { useCountdownTicker } from '../hooks/useCountdownTicker';
 import { getPostLoginRedirectTarget } from '../utils/authRedirect';
 import { getGuestCartItems, replaceGuestCartItems } from '../utils/guestCart';
 import { getSessionStorageItem, removeSessionStorageItem } from '../utils/safeStorage';
@@ -139,21 +140,8 @@ const Login: React.FC = () => {
     removeSessionStorageItem('loginPrefill');
   }, [passwordForm]);
 
-  useEffect(() => {
-    if (sendCodeCountdown <= 0) return;
-    const timer = window.setInterval(() => {
-      setSendCodeCountdown((value) => Math.max(value - 1, 0));
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [sendCodeCountdown]);
-
-  useEffect(() => {
-    if (verifyRetryCountdown <= 0) return;
-    const timer = window.setInterval(() => {
-      setVerifyRetryCountdown((value) => Math.max(value - 1, 0));
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [verifyRetryCountdown]);
+  useCountdownTicker(sendCodeCountdown, setSendCodeCountdown);
+  useCountdownTicker(verifyRetryCountdown, setVerifyRetryCountdown);
 
   const getRetryAfterSeconds = (error: unknown, fallback = 0) => {
     const data = apiErrorData(error);

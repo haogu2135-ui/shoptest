@@ -9,7 +9,7 @@ import {
   BugOutlined, MenuOutlined,
 } from '@ant-design/icons';
 import { Outlet, useNavigate, useLocation, Link } from 'react-router-dom';
-import { clearStoredAuthSession, userApi } from '../api';
+import { clearStoredAuthSession, createApiAbortController, userApi } from '../api';
 import { adminApi, adminSupportApi } from '../api/admin';
 import { ensureAdminSpanishPack, useLanguage } from '../i18n';
 import { buildLoginUrlFromWindow } from '../utils/authRedirect';
@@ -33,6 +33,7 @@ import ShopTooltip from './ShopTooltip';
 import ShopAlert from './ShopAlert';
 import ShopSpace from './ShopSpace';
 import ShopTypography from './ShopTypography';
+import { useVisiblePolling } from '../hooks/useVisiblePolling';
 import message from './ShopMessage';
 import './AdminLayout.css';
 import '../styles/admin-table-selection.css';
@@ -67,6 +68,9 @@ const AdminLayout: React.FC = () => {
   const adminCheckRequestRef = useRef(0);
   const adminCheckAbortRef = useRef<AbortController | null>(null);
   const hasStartedAdminCheckRef = useRef(false);
+  const layoutMountedRef = useRef(true);
+  const supportUnreadRequestSeqRef = useRef(0);
+  const supportUnreadAbortRef = useRef<AbortController | null>(null);
   const { t } = useLanguage();
 
   const isSuperAdmin = isSuperAdminRole(currentRole);
@@ -206,10 +210,17 @@ const AdminLayout: React.FC = () => {
     void checkAdmin(initial);
   }, [checkAdmin]);
 
-  useEffect(() => () => {
-    adminCheckRequestRef.current += 1;
-    adminCheckAbortRef.current?.abort();
-    adminCheckAbortRef.current = null;
+  useEffect(() => {
+    layoutMountedRef.current = true;
+    return () => {
+      layoutMountedRef.current = false;
+      adminCheckRequestRef.current += 1;
+      adminCheckAbortRef.current?.abort();
+      adminCheckAbortRef.current = null;
+      supportUnreadRequestSeqRef.current += 1;
+      supportUnreadAbortRef.current?.abort();
+      supportUnreadAbortRef.current = null;
+    };
   }, []);
 
   useEffect(() => {
@@ -247,50 +258,54 @@ const AdminLayout: React.FC = () => {
     }
   }, [checking, currentAdminRouteAllowed, defaultAdminPath, location.pathname, navigate, t, verifyUnavailable]);
 
+  const loadSupportUnread = useCallback(async () => {
+    if (!layoutMountedRef.current || checking || verifyUnavailable || !canSeeSupport || !adminDocumentIsVisible()) return;
+    const requestSeq = supportUnreadRequestSeqRef.current + 1;
+    supportUnreadRequestSeqRef.current = requestSeq;
+    supportUnreadAbortRef.current?.abort();
+    const abortController = createApiAbortController();
+    supportUnreadAbortRef.current = abortController;
+    const isCurrentRequest = () => layoutMountedRef.current
+      && supportUnreadRequestSeqRef.current === requestSeq
+      && supportUnreadAbortRef.current === abortController
+      && !abortController.signal.aborted;
+    try {
+      const res = await adminSupportApi.getUnreadCount({ signal: abortController.signal });
+      if (isCurrentRequest()) setSupportUnread(res.data.count);
+    } catch (error) {
+      if (isCurrentRequest()) {
+        setSupportUnread(0);
+        reportNonBlockingError('AdminLayout.loadSupportUnread', error);
+      }
+    } finally {
+      if (supportUnreadAbortRef.current === abortController) supportUnreadAbortRef.current = null;
+    }
+  }, [canSeeSupport, checking, verifyUnavailable]);
+
   useEffect(() => {
-    if (checking || !canSeeSupport) {
+    if (checking || verifyUnavailable || !canSeeSupport) {
       setSupportUnread(0);
       return;
     }
-    let disposed = false;
-    // This loader runs on mount, on the 15s interval, and on every visibilitychange,
-    // so several requests can be in flight together and `disposed` cannot tell them
-    // apart. Each run claims a sequence number so a slow earlier response cannot
-    // repaint the badge with a stale count.
-    let unreadRequestSeq = 0;
-    const loadUnread = () => {
-      if (!adminDocumentIsVisible()) return;
-      const requestSeq = unreadRequestSeq + 1;
-      unreadRequestSeq = requestSeq;
-      const isCurrentRequest = () => !disposed && unreadRequestSeq === requestSeq;
-      adminSupportApi.getUnreadCount()
-        .then((res) => {
-          if (isCurrentRequest()) setSupportUnread(res.data.count);
-        })
-        .catch((error) => {
-          if (isCurrentRequest()) setSupportUnread(0);
-          if (isCurrentRequest()) reportNonBlockingError('AdminLayout.loadSupportUnread', error);
-        });
-    };
+    // The visible polling hook owns the immediate request on the support route.
+    if (supportRouteActive) return;
+    void loadSupportUnread();
     const refreshUnreadWhenVisible = () => {
-      if (adminDocumentIsVisible()) {
-        loadUnread();
-      }
+      if (adminDocumentIsVisible()) void loadSupportUnread();
     };
-    loadUnread();
-    if (!supportRouteActive) {
-      return () => {
-        disposed = true;
-      };
-    }
-    const timer = window.setInterval(loadUnread, 15000);
     document.addEventListener('visibilitychange', refreshUnreadWhenVisible);
-    return () => {
-      disposed = true;
-      document.removeEventListener('visibilitychange', refreshUnreadWhenVisible);
-      window.clearInterval(timer);
-    };
-  }, [checking, canSeeSupport, supportRouteActive]);
+    return () => document.removeEventListener('visibilitychange', refreshUnreadWhenVisible);
+  }, [canSeeSupport, checking, loadSupportUnread, supportRouteActive, verifyUnavailable]);
+
+  useVisiblePolling({
+    enabled: process.env.NODE_ENV !== 'test'
+      && !checking
+      && !verifyUnavailable
+      && canSeeSupport
+      && supportRouteActive,
+    intervalMs: 15000,
+    run: loadSupportUnread,
+  });
 
   const handleLogout = () => {
     const refreshToken = getLocalStorageItem('refreshToken');

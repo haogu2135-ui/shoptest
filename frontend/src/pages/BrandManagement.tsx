@@ -79,23 +79,29 @@ const BrandManagement: React.FC = () => {
   }, [t]);
 
   const brandHealth = useMemo(() => {
-    const active = brands.filter((brand) => (brand.status || 'ACTIVE') === 'ACTIVE').length;
-    const missingLogo = brands.filter((brand) => !brand.logoUrl?.trim()).length;
-    const missingWebsite = brands.filter((brand) => !brand.websiteUrl?.trim()).length;
-    const weakDescription = brands.filter((brand) => (brand.description?.trim().length || 0) < 24).length;
-    const duplicateSortKeys = brands.reduce<Record<string, number>>((acc, brand) => {
+    const metrics = brands.reduce((acc, brand) => {
+      if ((brand.status || 'ACTIVE') === 'ACTIVE') acc.active += 1;
+      if (!brand.logoUrl?.trim()) acc.missingLogo += 1;
+      if (!brand.websiteUrl?.trim()) acc.missingWebsite += 1;
+      if ((brand.description?.trim().length || 0) < 24) acc.weakDescription += 1;
       const key = String(brand.sortOrder ?? 0);
-      acc[key] = (acc[key] || 0) + 1;
+      acc.duplicateSortKeys[key] = (acc.duplicateSortKeys[key] || 0) + 1;
       return acc;
-    }, {});
-    const sortConflicts = Object.values(duplicateSortKeys).filter((count) => count > 1).length;
-    const score = Math.max(0, 100 - missingLogo * 18 - missingWebsite * 12 - weakDescription * 10 - sortConflicts * 8);
+    }, {
+      active: 0,
+      missingLogo: 0,
+      missingWebsite: 0,
+      weakDescription: 0,
+      duplicateSortKeys: {} as Record<string, number>,
+    });
+    const sortConflicts = Object.values(metrics.duplicateSortKeys).filter((count) => count > 1).length;
+    const score = Math.max(0, 100 - metrics.missingLogo * 18 - metrics.missingWebsite * 12 - metrics.weakDescription * 10 - sortConflicts * 8);
 
     return {
-      active,
-      missingLogo,
-      missingWebsite,
-      weakDescription,
+      active: metrics.active,
+      missingLogo: metrics.missingLogo,
+      missingWebsite: metrics.missingWebsite,
+      weakDescription: metrics.weakDescription,
       score,
     };
   }, [brands]);

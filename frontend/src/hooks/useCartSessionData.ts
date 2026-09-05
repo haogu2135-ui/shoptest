@@ -282,13 +282,18 @@ export const useCartSessionData = ({
   }, [language, setRecentProducts]);
 
   useEffect(() => {
-    const refreshSavedItems = () => setSavedItems(getSavedForLaterItemsSnapshot());
-    const refreshCartStorage = (event: StorageEvent) => {
-      const allStorageCleared = event.key === null;
-      if (allStorageCleared || event.key === SAVE_FOR_LATER_STORAGE_KEY) {
-        refreshSavedItems();
+    const refreshStoredState = (event: Event) => {
+      const isStorageEvent = event.type === 'storage';
+      const storageEvent = isStorageEvent ? event as StorageEvent : null;
+      const allStorageCleared = storageEvent?.key === null;
+      const savedItemsChanged = event.type === 'shop:save-for-later-updated'
+        || (isStorageEvent && (allStorageCleared || storageEvent?.key === SAVE_FOR_LATER_STORAGE_KEY));
+      if (savedItemsChanged) {
+        setSavedItems(getSavedForLaterItemsSnapshot());
       }
-      if ((!allStorageCleared && event.key !== 'shop-guest-cart') || getLocalStorageItem('token')) return;
+      const guestCartChanged = event.type === 'shop:cart-updated'
+        || (isStorageEvent && (allStorageCleared || storageEvent?.key === 'shop-guest-cart'));
+      if (!guestCartChanged || getLocalStorageItem('token')) return;
       const guestItems = normalizeCartItems(getGuestCartItems());
       if (guestItems.length === 0) {
         resetCheckoutStateAfterCartMutation();
@@ -297,11 +302,13 @@ export const useCartSessionData = ({
       setSelectedIds(guestItems.filter(canCheckout).map((item) => item.id));
       if (mountedRef.current) setLoading(false);
     };
-    window.addEventListener('shop:save-for-later-updated', refreshSavedItems);
-    window.addEventListener('storage', refreshCartStorage);
+    window.addEventListener('shop:save-for-later-updated', refreshStoredState);
+    window.addEventListener('shop:cart-updated', refreshStoredState);
+    window.addEventListener('storage', refreshStoredState);
     return () => {
-      window.removeEventListener('shop:save-for-later-updated', refreshSavedItems);
-      window.removeEventListener('storage', refreshCartStorage);
+      window.removeEventListener('shop:save-for-later-updated', refreshStoredState);
+      window.removeEventListener('shop:cart-updated', refreshStoredState);
+      window.removeEventListener('storage', refreshStoredState);
     };
   }, [resetCheckoutStateAfterCartMutation, setCartItems, setLoading, setSavedItems, setSelectedIds]);
 

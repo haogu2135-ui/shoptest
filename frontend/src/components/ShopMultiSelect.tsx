@@ -1,5 +1,6 @@
 import React, { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
+import { cancelScheduledAnimationFrame, scheduleAnimationFrame } from '../utils/animationFrame';
 import './ShopMultiSelect.css';
 
 export type ShopMultiSelectOption = {
@@ -139,32 +140,38 @@ const ShopMultiSelect: React.FC<ShopMultiSelectProps> = ({
 
   useEffect(() => {
     if (!resolvedOpen || typeof window === 'undefined') return;
+    let frameId: number | null = null;
     const updatePosition = () => {
-      const rect = triggerRef.current?.getBoundingClientRect();
-      if (!rect) return;
-      const width = Math.min(Math.max(rect.width, 180), Math.max(140, window.innerWidth - 16));
-      const searchOffset = showSearch ? 52 : 0;
-      const estimatedHeight = (filteredOptions.length > 0
-        ? Math.min(safePopupMaxHeight, filteredOptions.length * 44 + 16)
-        : Math.min(safePopupMaxHeight, 180)) + searchOffset;
-      let left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - width - 8));
-      let top = rect.bottom + 6;
-      if (top + estimatedHeight > window.innerHeight - 8) {
-        top = Math.max(8, rect.top - 6 - estimatedHeight);
-      }
-      setPopupStyle({
-        position: 'fixed',
-        top,
-        left,
-        minWidth: width,
-        maxHeight: safePopupMaxHeight + searchOffset,
-        zIndex: safePopupZIndex,
+      if (frameId !== null) return;
+      frameId = scheduleAnimationFrame(() => {
+        frameId = null;
+        const rect = triggerRef.current?.getBoundingClientRect();
+        if (!rect) return;
+        const width = Math.min(Math.max(rect.width, 180), Math.max(140, window.innerWidth - 16));
+        const searchOffset = showSearch ? 52 : 0;
+        const estimatedHeight = (filteredOptions.length > 0
+          ? Math.min(safePopupMaxHeight, filteredOptions.length * 44 + 16)
+          : Math.min(safePopupMaxHeight, 180)) + searchOffset;
+        let left = Math.min(Math.max(8, rect.left), Math.max(8, window.innerWidth - width - 8));
+        let top = rect.bottom + 6;
+        if (top + estimatedHeight > window.innerHeight - 8) {
+          top = Math.max(8, rect.top - 6 - estimatedHeight);
+        }
+        setPopupStyle({
+          position: 'fixed',
+          top,
+          left,
+          minWidth: width,
+          maxHeight: safePopupMaxHeight + searchOffset,
+          zIndex: safePopupZIndex,
+        });
       });
     };
     updatePosition();
     window.addEventListener('resize', updatePosition);
     window.addEventListener('scroll', updatePosition, true);
     return () => {
+      if (frameId !== null) cancelScheduledAnimationFrame(frameId);
       window.removeEventListener('resize', updatePosition);
       window.removeEventListener('scroll', updatePosition, true);
     };

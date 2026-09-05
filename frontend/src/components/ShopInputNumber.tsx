@@ -35,6 +35,8 @@ const clamp = (value: number, min?: number, max?: number) => {
   return next;
 };
 
+const normalizeBound = (value?: number) => (typeof value === 'number' && Number.isFinite(value) ? value : undefined);
+
 const roundPrecision = (value: number, precision?: number) => {
   if (typeof precision !== 'number' || !Number.isFinite(precision) || precision < 0) return value;
   const factor = 10 ** Math.min(Math.floor(precision), 10);
@@ -70,6 +72,14 @@ const ShopInputNumber = forwardRef<HTMLInputElement, ShopInputNumberProps>(({
 }, ref) => {
   const generatedId = useId();
   const inputId = id || generatedId;
+  const normalizedMin = normalizeBound(min);
+  const normalizedMax = normalizeBound(max);
+  const safeMin = normalizedMin !== undefined && normalizedMax !== undefined && normalizedMin > normalizedMax ? normalizedMax : normalizedMin;
+  const safeMax = normalizedMin !== undefined && normalizedMax !== undefined && normalizedMin > normalizedMax ? normalizedMin : normalizedMax;
+  const numericStep = Number(step);
+  const normalizedStep = step === 'any' || !Number.isFinite(numericStep) || numericStep <= 0
+    ? 'any'
+    : numericStep;
   const isControlled = value !== undefined;
   const resolvedValue = isControlled
     ? (value == null || !Number.isFinite(value) ? '' : String(value))
@@ -85,7 +95,7 @@ const ShopInputNumber = forwardRef<HTMLInputElement, ShopInputNumberProps>(({
     }
     const parsed = Number(raw);
     if (!Number.isFinite(parsed)) return null;
-    const next = roundPrecision(clamp(parsed, min, max), precision);
+    const next = roundPrecision(clamp(parsed, safeMin, safeMax), precision);
     onChange?.(next);
     return next;
   };
@@ -113,9 +123,9 @@ const ShopInputNumber = forwardRef<HTMLInputElement, ShopInputNumberProps>(({
           className="shop-input__control"
           type="number"
           inputMode="decimal"
-          min={min}
-          max={max}
-          step={step}
+          min={safeMin}
+          max={safeMax}
+          step={normalizedStep}
           value={resolvedValue}
           defaultValue={resolvedDefault}
           placeholder={placeholder}

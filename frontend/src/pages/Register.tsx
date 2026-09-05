@@ -7,6 +7,7 @@ import { useAppConfig } from '../hooks/useAppConfig';
 import { useLanguage } from '../i18n';
 import { usePageTitle } from '../hooks/usePageTitle';
 import { useDocumentMeta } from '../hooks/useDocumentMeta';
+import { useCountdownTicker } from '../hooks/useCountdownTicker';
 import { setSessionStorageItem } from '../utils/safeStorage';
 import { getApiErrorDiagnosticText, getApiErrorMessage } from '../utils/apiError';
 import { buildLoginUrl, getPostLoginRedirectTarget } from '../utils/authRedirect';
@@ -91,13 +92,7 @@ const Register: React.FC = () => {
     };
   }, []);
 
-  useEffect(() => {
-    if (sendCodeCountdown <= 0) return;
-    const timer = window.setInterval(() => {
-      setSendCodeCountdown((value) => Math.max(value - 1, 0));
-    }, 1000);
-    return () => window.clearInterval(timer);
-  }, [sendCodeCountdown]);
+  useCountdownTicker(sendCodeCountdown, setSendCodeCountdown);
 
   const sendRegisterCode = async () => {
     if (!mountedRef.current) return;
