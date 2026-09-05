@@ -75,21 +75,29 @@ const LogisticsCarrierManagement: React.FC = () => {
       if (carrier.status === 'ACTIVE') acc.active += 1;
       if (!carrier.trackingCode?.trim()) acc.missingCodes += 1;
       const key = carrier.trackingCode?.trim().toLowerCase();
-      if (key) acc.duplicateCodeKeys[key] = (acc.duplicateCodeKeys[key] || 0) + 1;
+      if (key) {
+        const nextCount = (acc.duplicateCodeKeys[key] || 0) + 1;
+        acc.duplicateCodeKeys[key] = nextCount;
+        if (nextCount === 2) acc.duplicateCodes += 1;
+      }
       const sortKey = String(carrier.sortOrder ?? 0);
-      acc.duplicateSortKeys[sortKey] = (acc.duplicateSortKeys[sortKey] || 0) + 1;
+      const nextSortCount = (acc.duplicateSortKeys[sortKey] || 0) + 1;
+      acc.duplicateSortKeys[sortKey] = nextSortCount;
+      if (nextSortCount === 2) acc.duplicateSortOrders += 1;
       return acc;
     }, {
       active: 0,
       missingCodes: 0,
+      duplicateCodes: 0,
+      duplicateSortOrders: 0,
       duplicateCodeKeys: {} as Record<string, number>,
       duplicateSortKeys: {} as Record<string, number>,
     });
     const active = metrics.active;
     const inactive = carriers.length - active;
     const missingCodes = metrics.missingCodes;
-    const duplicateCodes = Object.values(metrics.duplicateCodeKeys).filter((count) => count > 1).length;
-    const duplicateSortOrders = Object.values(metrics.duplicateSortKeys).filter((count) => count > 1).length;
+    const duplicateCodes = metrics.duplicateCodes;
+    const duplicateSortOrders = metrics.duplicateSortOrders;
     const ready = active > 0 && missingCodes === 0 && duplicateCodes === 0;
     const score = Math.max(0, 100 - inactive * 8 - missingCodes * 25 - duplicateCodes * 20 - duplicateSortOrders * 6);
 

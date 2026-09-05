@@ -49,26 +49,33 @@ export const deriveHistoryInsights = (
   viewedAtById: Map<number, number>,
 ): HistoryInsights => {
   const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
-  const viewedToday = historyProducts.filter((product) => Number(viewedAtById.get(product.id) || 0) >= oneDayAgo).length;
-  const deals = historyProducts.filter(isDealProduct).length;
-  const lowStock = historyProducts.filter((product) => getLowStockCount(product.stock, 1) !== null).length;
-  const readyToCart = historyProducts.filter((product) => isPurchasable(product) && !needsOptionSelection(product)).length;
-  const brandCounts = historyProducts.reduce<Record<string, number>>((result, product) => {
-    if (product.brand) result[product.brand] = (result[product.brand] || 0) + 1;
-    return result;
-  }, {});
-  const topBrand = Object.entries(brandCounts).sort((a, b) => b[1] - a[1])[0]?.[0];
-  const bestRecovery = [...historyProducts]
-    .sort((a, b) => {
-      const score = (product: Product) => {
-        const viewedAt = Number(viewedAtById.get(product.id) || 0);
-        const recencyBoost = viewedAt >= oneDayAgo ? 28 : 0;
-        const dealBoost = isDealProduct(product) ? 24 : 0;
-        const stockBoost = getLowStockCount(product.stock, 1) !== null ? 18 : 0;
-        return recencyBoost + dealBoost + stockBoost + Math.min(Number(product.averageRating || 0), 5) * 5;
-      };
-      return score(b) - score(a);
-    })[0];
+  let viewedToday = 0;
+  let deals = 0;
+  let lowStock = 0;
+  let readyToCart = 0;
+  let bestRecovery: Product | undefined;
+  let bestRecoveryScore = Number.NEGATIVE_INFINITY;
+  const brandCounts = new Map<string, number>();
+  historyProducts.forEach((product) => {
+    const viewedAt = Number(viewedAtById.get(product.id) || 0);
+    const viewedRecently = viewedAt >= oneDayAgo;
+    const deal = isDealProduct(product);
+    const hasLowStock = getLowStockCount(product.stock, 1) !== null;
+    if (viewedRecently) viewedToday += 1;
+    if (deal) deals += 1;
+    if (hasLowStock) lowStock += 1;
+    if (isPurchasable(product) && !needsOptionSelection(product)) readyToCart += 1;
+    if (product.brand) brandCounts.set(product.brand, (brandCounts.get(product.brand) || 0) + 1);
+    const score = (viewedRecently ? 28 : 0)
+      + (deal ? 24 : 0)
+      + (hasLowStock ? 18 : 0)
+      + Math.min(Number(product.averageRating || 0), 5) * 5;
+    if (score > bestRecoveryScore) {
+      bestRecovery = product;
+      bestRecoveryScore = score;
+    }
+  });
+  const topBrand = Array.from(brandCounts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0];
   return { viewedToday, deals, lowStock, readyToCart, topBrand, bestRecovery };
 };
 

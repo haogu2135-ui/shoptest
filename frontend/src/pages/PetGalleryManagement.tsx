@@ -212,14 +212,17 @@ const PetGalleryManagement: React.FC = () => {
 
   const galleryStats = useMemo(() => {
     const summaryNumber = (key: string) => Number(gallerySummary[key] ?? 0);
-    const pageRecentUploads = photos.filter((photo) => isRecent(photo.createdAt)).length;
-    const pageLargeFiles = photos.filter((photo) => Number(photo.fileSize || 0) > 5 * 1024 * 1024).length;
+    const pageStats = photos.reduce((stats, photo) => {
+      if (isRecent(photo.createdAt)) stats.recentUploads += 1;
+      if (Number(photo.fileSize || 0) > 5 * 1024 * 1024) stats.largeFiles += 1;
+      return stats;
+    }, { recentUploads: 0, largeFiles: 0 });
     return {
       visiblePhotos: summaryNumber('visiblePhotos') || pageState.total,
       userUploads: summaryNumber('userUploads'),
       seedPhotos: summaryNumber('seedPhotos'),
-      recentUploads: summaryNumber('recentUploads') || pageRecentUploads,
-      largeFiles: summaryNumber('largeFiles') || pageLargeFiles,
+      recentUploads: summaryNumber('recentUploads') || pageStats.recentUploads,
+      largeFiles: summaryNumber('largeFiles') || pageStats.largeFiles,
     };
   }, [gallerySummary, pageState.total, photos]);
 

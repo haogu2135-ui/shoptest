@@ -418,41 +418,55 @@ export const sortProductList = (
   if (usingServerPagination) {
     return [...products];
   }
-  return [...products].sort((a, b) => {
+  const decorated = products.map((product, index) => ({
+    product,
+    index,
+    quickAddReady: isQuickAddReady(product),
+    bestValue: isBestValueProduct(product),
+    soldOut: isProductSoldOut(product),
+    lowStock: getLowStockCount(product.stock),
+    price: getPrice(product),
+    savings: getSavingsAmount(product),
+    discountPercent: getDiscountPercent(product),
+    positiveRate: getPositiveRate(product),
+    reviewCount: product.reviewCount || 0,
+    personalizedScore: getPersonalizedSortScore(product, context),
+    conversionScore: getConversionSortScore(product, context),
+  }));
+  decorated.sort((a, b) => {
     if (sortBy === 'quick-add-desc') {
-      const readyDiff = Number(isQuickAddReady(b)) - Number(isQuickAddReady(a));
+      const readyDiff = Number(b.quickAddReady) - Number(a.quickAddReady);
       if (readyDiff !== 0) return readyDiff;
-      return getConversionSortScore(b, context) - getConversionSortScore(a, context);
+      return b.conversionScore - a.conversionScore;
     }
     if (sortBy === 'best-value-desc') {
-      const valueDiff = Number(isBestValueProduct(b)) - Number(isBestValueProduct(a));
+      const valueDiff = Number(b.bestValue) - Number(a.bestValue);
       if (valueDiff !== 0) return valueDiff;
-      const savingsDiff = getSavingsAmount(b) - getSavingsAmount(a);
+      const savingsDiff = b.savings - a.savings;
       if (savingsDiff !== 0) return savingsDiff;
-      return getConversionSortScore(b, context) - getConversionSortScore(a, context);
+      return b.conversionScore - a.conversionScore;
     }
     if (sortBy === 'low-stock-desc') {
-      const aStock = getLowStockCount(a.stock);
-      const bStock = getLowStockCount(b.stock);
-      const urgencyDiff = Number(bStock !== null && !isProductSoldOut(b)) - Number(aStock !== null && !isProductSoldOut(a));
+      const urgencyDiff = Number(b.lowStock !== null && !b.soldOut) - Number(a.lowStock !== null && !a.soldOut);
       if (urgencyDiff !== 0) return urgencyDiff;
-      if (aStock !== null && bStock !== null && aStock !== bStock) return aStock - bStock;
-      return getConversionSortScore(b, context) - getConversionSortScore(a, context);
+      if (a.lowStock !== null && b.lowStock !== null && a.lowStock !== b.lowStock) return a.lowStock - b.lowStock;
+      return b.conversionScore - a.conversionScore;
     }
     if (sortBy === 'personalized-desc') {
-      return getPersonalizedSortScore(b, context) - getPersonalizedSortScore(a, context);
+      return b.personalizedScore - a.personalizedScore;
     }
-    if (sortBy === 'price-asc') return getPrice(a) - getPrice(b);
-    if (sortBy === 'price-desc') return getPrice(b) - getPrice(a);
-    if (sortBy === 'discount-desc') return getDiscountPercent(b) - getDiscountPercent(a);
+    if (sortBy === 'price-asc') return a.price - b.price || a.index - b.index;
+    if (sortBy === 'price-desc') return b.price - a.price || a.index - b.index;
+    if (sortBy === 'discount-desc') return b.discountPercent - a.discountPercent || a.index - b.index;
     if (sortBy === 'positive-rate-desc') {
-      const rateDiff = getPositiveRate(b) - getPositiveRate(a);
+      const rateDiff = b.positiveRate - a.positiveRate;
       if (rateDiff !== 0) return rateDiff;
-      return (b.reviewCount || 0) - (a.reviewCount || 0);
+      return b.reviewCount - a.reviewCount || a.index - b.index;
     }
-    if (sortBy === 'name') return a.name.localeCompare(b.name);
-    return getConversionSortScore(b, context) - getConversionSortScore(a, context);
+    if (sortBy === 'name') return a.product.name.localeCompare(b.product.name) || a.index - b.index;
+    return b.conversionScore - a.conversionScore;
   });
+  return decorated.map((entry) => entry.product);
 };
 
 export const deriveProductListInsightTotals = (products: Product[]): ProductListInsightTotals =>

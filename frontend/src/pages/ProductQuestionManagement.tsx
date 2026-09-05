@@ -149,8 +149,13 @@ const ProductQuestionManagement: React.FC = () => {
   const visibleQuestions = questions;
 
   const hasQuestionSnapshot = questions.length > 0 || summary !== null;
-  const answeredCount = summary?.answeredQuestions ?? visibleQuestions.filter((item) => String(item.answer || '').trim()).length;
-  const unansweredCount = summary?.unansweredQuestions ?? visibleQuestions.filter((item) => !String(item.answer || '').trim()).length;
+  const visibleQuestionMetrics = useMemo(() => visibleQuestions.reduce((metrics, item) => {
+    if (String(item.answer || '').trim()) metrics.answered += 1;
+    else metrics.unanswered += 1;
+    return metrics;
+  }, { answered: 0, unanswered: 0 }), [visibleQuestions]);
+  const answeredCount = summary?.answeredQuestions ?? visibleQuestionMetrics.answered;
+  const unansweredCount = summary?.unansweredQuestions ?? visibleQuestionMetrics.unanswered;
   const responseScore = summary?.responseScore ?? Math.max(0, 100 - unansweredCount * 8);
   const staleHours = summary?.staleHours ?? 24;
   const staleCount = summary?.staleUnansweredQuestions ?? 0;

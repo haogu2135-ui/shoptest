@@ -133,9 +133,13 @@ const SeckillManagement: React.FC = () => {
     })),
     [products],
   );
-  const liveCount = campaigns.filter((campaign) => campaign.state === 'ONGOING').length;
-  const scheduledCount = campaigns.filter((campaign) => campaign.state === 'UPCOMING').length;
-  const soldUnits = campaigns.reduce((total, campaign) => total + campaign.items.reduce((sum, item) => sum + item.sold, 0), 0);
+  const campaignMetrics = useMemo(() => campaigns.reduce((summary, campaign) => {
+    if (campaign.state === 'ONGOING') summary.liveCount += 1;
+    if (campaign.state === 'UPCOMING') summary.scheduledCount += 1;
+    summary.soldUnits += campaign.items.reduce((total, item) => total + item.sold, 0);
+    return summary;
+  }, { liveCount: 0, scheduledCount: 0, soldUnits: 0 }), [campaigns]);
+  const { liveCount, scheduledCount, soldUnits } = campaignMetrics;
 
   const statusLabel = (campaign: SeckillCampaign) => {
     if (campaign.state === 'ONGOING') return t('pages.adminSeckill.ongoing');

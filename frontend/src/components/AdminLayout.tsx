@@ -284,6 +284,9 @@ const AdminLayout: React.FC = () => {
 
   useEffect(() => {
     if (checking || verifyUnavailable || !canSeeSupport) {
+      supportUnreadRequestSeqRef.current += 1;
+      supportUnreadAbortRef.current?.abort();
+      supportUnreadAbortRef.current = null;
       setSupportUnread(0);
       return;
     }

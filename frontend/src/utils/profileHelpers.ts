@@ -292,24 +292,71 @@ export const deriveProfileDashboardMetrics = (params: {
   petProfiles: PetProfile[];
   user?: Pick<UserProfile, 'email' | 'phone'> | null;
 }) => {
-  const pendingPaymentCount = params.orders.filter((order) => order.status === 'PENDING_PAYMENT').length;
-  const inTransitCount = params.orders.filter((order) => order.status === 'SHIPPED').length;
-  const afterSaleCount = params.orders.filter((order) => (PROFILE_AFTER_SALE_STATUSES as readonly string[]).includes(order.status)).length;
-  const returnableOrdersCount = params.orders.filter(isReturnableOrder).length;
-  const returnApprovedCount = params.orders.filter((order) => order.status === 'RETURN_APPROVED').length;
-  const returnShippedCount = params.orders.filter((order) => order.status === 'RETURN_SHIPPED').length;
-  const returnRefundingCount = params.orders.filter((order) => order.status === 'RETURN_REFUNDING').length;
+  const orderMetrics = params.orders.reduce((metrics, order) => {
+    if (order.status === 'PENDING_PAYMENT') metrics.pendingPaymentCount += 1;
+    if (order.status === 'SHIPPED') metrics.inTransitCount += 1;
+    if ((PROFILE_AFTER_SALE_STATUSES as readonly string[]).includes(order.status)) metrics.afterSaleCount += 1;
+    if (isReturnableOrder(order)) metrics.returnableOrdersCount += 1;
+    if (order.status === 'RETURN_APPROVED') metrics.returnApprovedCount += 1;
+    if (order.status === 'RETURN_SHIPPED') metrics.returnShippedCount += 1;
+    if (order.status === 'RETURN_REFUNDING') metrics.returnRefundingCount += 1;
+    return metrics;
+  }, {
+    pendingPaymentCount: 0,
+    inTransitCount: 0,
+    afterSaleCount: 0,
+    returnableOrdersCount: 0,
+    returnApprovedCount: 0,
+    returnShippedCount: 0,
+    returnRefundingCount: 0,
+  });
+  const {
+    pendingPaymentCount,
+    inTransitCount,
+    afterSaleCount,
+    returnableOrdersCount,
+    returnApprovedCount,
+    returnShippedCount,
+    returnRefundingCount,
+  } = orderMetrics;
   const ordersStale = params.ordersLoadFailed && params.orders.length > 0;
-  const defaultAddressReady = params.addresses.some((address) => address.isDefault);
-  const completedPetProfiles = params.petProfiles.filter((pet) => pet.name && pet.petType && pet.size && pet.weight && pet.birthday).length;
+  const petMetrics = params.petProfiles.reduce((metrics, pet) => {
+    if (pet.name && pet.petType && pet.size && pet.weight && pet.birthday) metrics.completedPetProfiles += 1;
+    if (!pet.birthday) metrics.petsMissingBirthdayCount += 1;
+    if (!pet.weight || !pet.size) metrics.petsMissingFitCount += 1;
+    return metrics;
+  }, {
+    completedPetProfiles: 0,
+    petsMissingBirthdayCount: 0,
+    petsMissingFitCount: 0,
+  });
+  const {
+    completedPetProfiles,
+    petsMissingBirthdayCount,
+    petsMissingFitCount,
+  } = petMetrics;
   const petProfileProgress = params.petProfiles.length > 0
     ? Math.round((completedPetProfiles / params.petProfiles.length) * 100)
     : 0;
-  const petsMissingBirthdayCount = params.petProfiles.filter((pet) => !pet.birthday).length;
-  const petsMissingFitCount = params.petProfiles.filter((pet) => !pet.weight || !pet.size).length;
-  const completeAddressCount = params.addresses.filter(isCompleteProfileAddress).length;
-  const addressesMissingPhoneCount = params.addresses.filter((address) => !isLikelyProfilePhone(address.phone)).length;
-  const addressesMissingDetailCount = params.addresses.filter((address) => !isCompleteProfileAddress(address)).length;
+  const addressMetrics = params.addresses.reduce((metrics, address) => {
+    const complete = isCompleteProfileAddress(address);
+    if (address.isDefault) metrics.defaultAddressReady = true;
+    if (complete) metrics.completeAddressCount += 1;
+    if (!isLikelyProfilePhone(address.phone)) metrics.addressesMissingPhoneCount += 1;
+    if (!complete) metrics.addressesMissingDetailCount += 1;
+    return metrics;
+  }, {
+    defaultAddressReady: false,
+    completeAddressCount: 0,
+    addressesMissingPhoneCount: 0,
+    addressesMissingDetailCount: 0,
+  });
+  const {
+    defaultAddressReady,
+    completeAddressCount,
+    addressesMissingPhoneCount,
+    addressesMissingDetailCount,
+  } = addressMetrics;
   const addressReadinessProgress = params.addresses.length > 0
     ? Math.round(((completeAddressCount + (defaultAddressReady ? 1 : 0)) / (params.addresses.length + 1)) * 100)
     : 0;

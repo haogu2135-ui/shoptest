@@ -55,7 +55,7 @@ describe('PaymentInstructions step readability guards', () => {
   it('treats RECONCILE_REQUIRED as review-only and hides open-payment actions', () => {
     expect(pageSource).toContain("const isReconcileRequired = paymentStatus === 'RECONCILE_REQUIRED'");
     expect(pageSource).toContain('!isRefunded && !isRefunding && !isReconcileRequired');
-    expect(pageSource).toContain('isRefunded || isRefunding || isReconcileRequired || isFailed || recovery.isExpired');
+    expect(pageSource).toContain('isExpiredOrFailed && !isPaid && !isRefunded && !isRefunding && !isReconcileRequired');
     expect(pageSource).toContain("t('pages.checkout.paymentRecoveryReconcileRequired')");
     expect(pageSource).toContain("t('pages.checkout.paymentRecoveryNextReconcileRequired')");
     expect(pageSource).toContain("announceAccessibleMessage(t('pages.profile.paymentReturnReconcileRequired'), 'warning')");
@@ -71,7 +71,7 @@ describe('PaymentInstructions step readability guards', () => {
     expect(pageSource).toContain("t('pages.profile.paymentRefundedTitle')");
     expect(pageSource).toContain("t('pages.profile.paymentRefundingTitle')");
     expect(pageSource).not.toContain("paidOrderStatuses = new Set(['PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'REFUNDED'])");
-    expect(pageSource).toContain("if (process.env.NODE_ENV === 'test') return;");
+    expect(pageSource).toContain("process.env.NODE_ENV !== 'test'");
   });
 
   it('keeps commercial payment recovery actions and status polling', () => {
@@ -80,6 +80,10 @@ describe('PaymentInstructions step readability guards', () => {
     expect(pageSource).toContain('getPaymentRecoveryState(payment)');
     expect(pageSource).toContain('paymentApi.sync');
     expect(pageSource).toContain('PAYMENT_STATUS_POLL_MS');
+    expect(pageSource).toContain('useVisiblePolling({');
+    expect(pageSource).toContain('intervalMs: PAYMENT_STATUS_POLL_MS');
+    expect(pageSource).toContain('run: refreshPaymentStatus');
+    expect(pageSource).toContain('runImmediately: false');
     expect(pageSource).toContain('ShopBreadcrumb');
     expect(pageSource).toContain('payment-instructions-page__status--');
   });

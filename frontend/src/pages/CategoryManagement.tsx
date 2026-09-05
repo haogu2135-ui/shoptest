@@ -71,12 +71,25 @@ const CategoryManagement: React.FC = () => {
   const flatCategories = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree]);
   const byId = useMemo(() => new Map(flatCategories.map((category) => [category.id, category])), [flatCategories]);
   const categoryHealth = useMemo(() => {
-    const rootCategories = flatCategories.filter((category) => !category.parentId).length;
-    const leafCategories = flatCategories.filter((category) => !category.children?.length).length;
-    const missingImages = flatCategories.filter((category) => !category.imageUrl?.trim()).length;
-    const missingEnglish = flatCategories.filter((category) => !category.localizedContent?.en?.name?.trim()).length;
-    const missingSpanish = flatCategories.filter((category) => !category.localizedContent?.es?.name?.trim()).length;
-    const shallowRoots = flatCategories.filter((category) => !category.parentId && !category.children?.length).length;
+    const metrics = flatCategories.reduce((summary, category) => {
+      const isRoot = !category.parentId;
+      const isLeaf = !category.children?.length;
+      if (isRoot) summary.rootCategories += 1;
+      if (isLeaf) summary.leafCategories += 1;
+      if (!category.imageUrl?.trim()) summary.missingImages += 1;
+      if (!category.localizedContent?.en?.name?.trim()) summary.missingEnglish += 1;
+      if (!category.localizedContent?.es?.name?.trim()) summary.missingSpanish += 1;
+      if (isRoot && isLeaf) summary.shallowRoots += 1;
+      return summary;
+    }, {
+      rootCategories: 0,
+      leafCategories: 0,
+      missingImages: 0,
+      missingEnglish: 0,
+      missingSpanish: 0,
+      shallowRoots: 0,
+    });
+    const { rootCategories, leafCategories, missingImages, missingEnglish, missingSpanish, shallowRoots } = metrics;
     const localizationGaps = missingEnglish + missingSpanish;
     const score = Math.max(0, 100 - missingImages * 10 - localizationGaps * 7 - shallowRoots * 14);
 

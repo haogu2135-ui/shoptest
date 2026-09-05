@@ -383,11 +383,12 @@ const CouponCenter: React.FC = () => {
   const mobileCouponProgressLabel = `${t('pages.coupons.nextActionEyebrow')}: ${couponNextAction.title}`;
   const nextCouponProgressLabel = `${mobileCouponProgressLabel}, ${hasCouponTarget ? t('pages.coupons.couponThresholdGap') : t('pages.coupons.noBestClaim')}: ${hasCouponTarget ? formatMoney(couponCartGap) : formatMoney(0)}`;
   const bestCouponValue = couponInsights.bestCoupon ? getCouponEstimatedValue(couponInsights.bestCoupon) : 0;
-  const couponWalletStats = useMemo(() => ({
-    unused: myCoupons.filter((coupon) => coupon.status === 'UNUSED').length,
-    used: myCoupons.filter((coupon) => coupon.status === 'USED').length,
-    expired: myCoupons.filter((coupon) => coupon.status === 'EXPIRED').length,
-  }), [myCoupons]);
+  const couponWalletStats = useMemo(() => myCoupons.reduce((stats, coupon) => {
+    if (coupon.status === 'UNUSED') stats.unused += 1;
+    if (coupon.status === 'USED') stats.used += 1;
+    if (coupon.status === 'EXPIRED') stats.expired += 1;
+    return stats;
+  }, { unused: 0, used: 0, expired: 0 }), [myCoupons]);
   const bestPublicCouponId = couponInsights.bestCoupon?.id;
   const sortedMyCoupons = useMemo(
     () => myCoupons.slice().sort((a, b) => {

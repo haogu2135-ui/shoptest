@@ -191,9 +191,9 @@ export const isRecommendationUnavailable = (item: ProductRecommendationCandidate
 export const scoreRelatedRecommendation = (
   currentProduct: ProductRecommendationCandidate | null | undefined,
   candidate: ProductRecommendationCandidate | null | undefined,
+  currentText = productRecommendationSearchText(currentProduct),
 ) => {
   const text = productRecommendationSearchText(candidate);
-  const currentText = productRecommendationSearchText(currentProduct);
   let score = 0;
   if (Number(candidate?.categoryId) === Number(currentProduct?.categoryId)) score += 24;
   if (PRODUCT_RECOMMENDATION_ACCESSORY_KEYWORDS.some((keyword) => text.includes(keyword))) score += 18;
@@ -212,6 +212,7 @@ export const buildRelatedRecommendations = <T extends ProductRecommendationCandi
   recommendations: T[],
 ): T[] => {
   const currentId = Number(currentProduct?.id);
+  const currentText = productRecommendationSearchText(currentProduct);
   return (Array.from(
     recommendations
       .filter((item) => Number(item.id) !== currentId)
@@ -224,7 +225,7 @@ export const buildRelatedRecommendations = <T extends ProductRecommendationCandi
       }, new Map<number, T>())
       .values(),
   ) as T[])
-    .map((item, index) => ({ item, index, score: scoreRelatedRecommendation(currentProduct, item) }))
+    .map((item, index) => ({ item, index, score: scoreRelatedRecommendation(currentProduct, item, currentText) }))
     .sort((left, right) => right.score - left.score || left.index - right.index)
     .map((entry) => entry.item);
 };
@@ -266,10 +267,10 @@ export const findSelectedProductVariant = <T extends ProductVariantLike>(
   selectedOptions: Record<string, string>,
 ): T | undefined => {
   if (!variants.length) return undefined;
+  const selectedKeys = Object.keys(selectedOptions).filter((key) => selectedOptions[key]);
   return variants.find((variant) => {
     const variantOptions = variant?.options || {};
     const variantKeys = Object.keys(variantOptions);
-    const selectedKeys = Object.keys(selectedOptions).filter((key) => selectedOptions[key]);
     return variantKeys.length === selectedKeys.length
       && variantKeys.every((key) => selectedOptions[key] === variantOptions[key])
       && selectedKeys.every((key) => Object.prototype.hasOwnProperty.call(variantOptions, key));
@@ -959,4 +960,3 @@ export const resolveProductDetailVariantGallerySelection = (params: {
   const galleryIndex = params.galleryImages.indexOf(imageUrl);
   return { imageUrl, galleryIndex };
 };
-

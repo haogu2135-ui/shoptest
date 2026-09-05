@@ -81,11 +81,13 @@ export type NotificationInsights = {
 };
 
 export const deriveNotificationInsights = (notifications: AppNotification[]): NotificationInsights => {
-  const unread = notifications.filter((item) => !item.isRead).length;
-  const promotions = notifications.filter((item) => item.type === 'PROMOTION').length;
-  const orders = notifications.filter((item) => item.type === 'ORDER').length;
-  const deliveries = notifications.filter((item) => item.type === 'DELIVERY').length;
-  return { unread, promotions, orders, deliveries };
+  return notifications.reduce((summary, item) => {
+    if (!item.isRead) summary.unread += 1;
+    if (item.type === 'PROMOTION') summary.promotions += 1;
+    if (item.type === 'ORDER') summary.orders += 1;
+    if (item.type === 'DELIVERY') summary.deliveries += 1;
+    return summary;
+  }, { unread: 0, promotions: 0, orders: 0, deliveries: 0 });
 };
 
 export const filterNotificationsByQuickFilter = (

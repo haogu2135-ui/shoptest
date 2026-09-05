@@ -1,5 +1,5 @@
 import React from 'react';
-import { fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen } from '@testing-library/react';
 import ShopDropdown from './ShopDropdown';
 
 describe('ShopDropdown', () => {
@@ -90,7 +90,9 @@ describe('ShopDropdown', () => {
         <button type="button">Menu</button>
       </ShopDropdown>,
     );
-    jest.runOnlyPendingTimers();
+    act(() => {
+      jest.runOnlyPendingTimers();
+    });
     const first = screen.getByRole('menuitem', { name: 'First' });
     expect(first).toHaveFocus();
     fireEvent.keyDown(first, { key: 'ArrowDown' });

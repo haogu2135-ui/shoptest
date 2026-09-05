@@ -373,14 +373,16 @@ describe('ProductDetail mobile buybar layout contract', () => {
   it('keeps non-critical content scroll warmup fallback cleanup-bound', () => {
     const source = readProductDetailSource();
     const nativeScrollSource = readNativeScrollSource();
-    const warmupStart = source.indexOf("const fallbackTimer = process.env.NODE_ENV === 'test'");
+    const warmupStart = source.indexOf('let fallbackTimer: number | null = null;');
     const warmupEffect = source.slice(warmupStart, source.indexOf('}, [authSessionVersion, cancelNonCriticalContent, id, language, reloadToken, warmNonCriticalContent]);', warmupStart));
 
     expect(nativeScrollSource).toContain("window.addEventListener('scroll', listener, options);");
     expect(nativeScrollSource).toContain("window.removeEventListener('scroll', listener, options);");
     expect(nativeScrollSource).toContain('nativeHosts.forEach((host) => host.removeEventListener');
     expect(warmupStart).toBeGreaterThan(-1);
-    expect(warmupEffect).toContain('warmNonCriticalContent(nonCriticalRequestSeq), 1800);');
+    expect(warmupEffect).toContain('const warmNonCritical = () => {');
+    expect(warmupEffect).toContain('fallbackTimer = window.setTimeout(warmNonCritical, 1800);');
+    expect(warmupEffect).toContain('warmNonCriticalContent(nonCriticalRequestSeq);');
     expect(warmupEffect).toContain('const scrollWarmupCleanup = addAppScrollListener(scrollWarmup, { passive: true });');
     expect(warmupEffect).toContain("removeScrollWarmup = typeof scrollWarmupCleanup === 'function'");
     expect(warmupEffect).toContain('detachScrollWarmup();');

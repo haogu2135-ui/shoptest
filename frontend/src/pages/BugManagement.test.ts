@@ -189,7 +189,7 @@ describe('BugManagement mobile modal guards', () => {
   it('uses the server-provided scan interval with a bounded fallback instead of a fixed poll cadence', () => {
     const scanRefreshStart = pageSource.indexOf('const scanRefreshMs = useMemo(() => {');
     const scanRefreshSource = pageSource.slice(scanRefreshStart, pageSource.indexOf('const noPermissionLabel', scanRefreshStart));
-    const intervalEffectStart = pageSource.indexOf('useEffect(() => {\n    if (!permissionsLoaded || !canReadBugs || bugModalOpen || loading) return;');
+    const intervalEffectStart = pageSource.indexOf('useVisiblePolling({');
     const intervalEffectSource = pageSource.slice(intervalEffectStart, pageSource.indexOf('const openEditor', intervalEffectStart));
 
     expect(pageSource).toContain('const DEFAULT_SCAN_REFRESH_MS = 10 * 60 * 1000;');
@@ -199,9 +199,15 @@ describe('BugManagement mobile modal guards', () => {
     expect(scanRefreshSource).toContain('return DEFAULT_SCAN_REFRESH_MS;');
     expect(scanRefreshSource).toContain('return Math.max(60 * 1000, intervalMinutes * 60 * 1000);');
     expect(scanRefreshSource).toContain('}, [summary?.scanIntervalMinutes]);');
-    expect(intervalEffectSource).toContain('if (!permissionsLoaded || !canReadBugs || bugModalOpen || loading) return;');
-    expect(intervalEffectSource).toContain('}, scanRefreshMs);');
-    expect(intervalEffectSource).toContain('}, [bugModalOpen, canReadBugs, loading, permissionsLoaded, reload, scanRefreshMs]);');
+    expect(intervalEffectStart).toBeGreaterThan(-1);
+    expect(intervalEffectSource).toContain('permissionsLoaded');
+    expect(intervalEffectSource).toContain('canReadBugs');
+    expect(intervalEffectSource).toContain('!bugModalOpen');
+    expect(intervalEffectSource).toContain('!loading');
+    expect(intervalEffectSource).toContain('intervalMs: scanRefreshMs');
+    expect(intervalEffectSource).toContain('run: () => reload(true)');
+    expect(intervalEffectSource).toContain('runImmediately: false');
+    expect(intervalEffectSource).not.toContain('window.setInterval');
   });
 
   it('aborts stale BUG list requests before applying list state', () => {
@@ -280,11 +286,11 @@ describe('BugManagement mobile modal guards', () => {
   });
 
   it('supports admin bug screenshot uploads by appending protected attachment URLs to the form', () => {
-    expect(apiSource).toContain('uploadBugAttachment: (file: File) => {');
-    expect(apiSource).toContain("return api.post<AdminBugAttachmentUploadResponse>('/admin/bugs/attachments', formData);");
+    expect(apiSource).toContain('uploadBugAttachment: (file: File, options?: ApiRequestOptions) => {');
+    expect(apiSource).toContain("return postWithOptions<AdminBugAttachmentUploadResponse>('/admin/bugs/attachments', formData, options);");
     expect(apiSource).toContain('const normalizeBugAttachmentApiPath = (value: unknown) => {');
     expect(apiSource).toContain("pathFromUrl.startsWith('/api/admin/bugs/attachments/')");
-    expect(apiSource).toContain('downloadBugAttachment: (attachmentUrl: string) => api.get<Blob>(normalizeBugAttachmentApiPath(attachmentUrl), {');
+    expect(apiSource).toContain('downloadBugAttachment: (attachmentUrl: string, options?: ApiRequestOptions) => api.get<Blob>(normalizeBugAttachmentApiPath(attachmentUrl), withRequestOptions({');
     expect(pageSource).toContain("const MAX_BUG_ATTACHMENT_SIZE_BYTES = 8 * 1024 * 1024;");
     expect(pageSource).toContain('const MAX_BUG_ATTACHMENT_URL_COUNT = 20;');
     expect(pageSource).toContain("const BUG_ATTACHMENT_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/gif'];");

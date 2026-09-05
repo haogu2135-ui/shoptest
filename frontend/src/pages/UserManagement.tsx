@@ -122,11 +122,16 @@ const UserManagement: React.FC = () => {
   }, [t]);
 
   const localUserHealth = useMemo(() => {
-    const activeUsers = users.filter((user) => normalizeUserAccountStatus(user.status) === 'ACTIVE').length;
-    const admins = users.filter((user) => isAdminRole(getEffectiveRole(user.role, user.roleCode))).length;
-    const bannedUsers = users.filter((user) => normalizeUserAccountStatus(user.status) === 'BANNED').length;
-    const missingEmail = users.filter((user) => !user.email?.trim()).length;
-    const missingPhone = users.filter((user) => !user.phone?.trim()).length;
+    const metrics = users.reduce((summary, user) => {
+      const status = normalizeUserAccountStatus(user.status);
+      if (status === 'ACTIVE') summary.activeUsers += 1;
+      if (isAdminRole(getEffectiveRole(user.role, user.roleCode))) summary.admins += 1;
+      if (status === 'BANNED') summary.bannedUsers += 1;
+      if (!user.email?.trim()) summary.missingEmail += 1;
+      if (!user.phone?.trim()) summary.missingPhone += 1;
+      return summary;
+    }, { activeUsers: 0, admins: 0, bannedUsers: 0, missingEmail: 0, missingPhone: 0 });
+    const { activeUsers, admins, bannedUsers, missingEmail, missingPhone } = metrics;
     const adminRatio = users.length ? admins / users.length : 0;
     const adminRisk = adminRatio > 0.25 && users.length >= 4 ? 1 : 0;
     const score = Math.max(0, 100 - bannedUsers * 8 - missingEmail * 10 - missingPhone * 4 - adminRisk * 18);

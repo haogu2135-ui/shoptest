@@ -707,6 +707,15 @@ The final verification record is maintained here after the post-change checks:
   passed with `NODE_OPTIONS=--max-old-space-size=768`.
 - Production: bounded frontend `npm run build` passed (exit code 0) after the
   final Checkout contract assertion update.
+- Final focused frontend lifecycle regression: 26 suites and 332 tests passed
+  across the visible polling, timeout scheduling, WebSocket lifecycle, cache,
+  animation-frame, aggregate-scan, gallery, cart, and checkout changes.
+- PetGallery H2 repository and service regression passed.
+- TypeScript: bounded `env NODE_OPTIONS=--max-old-space-size=768 npx tsc
+  --noEmit --pretty false --skipLibCheck` passed.
+- Production: bounded frontend `npm run build` passed (exit code 0).
+- `git diff --check` passed, with no Jest, build, or bounded-runner processes
+  left behind.
 
 All tests and builds are run through `scripts/run-bounded-task.sh` in
 accordance with the repository resource-safety instructions.

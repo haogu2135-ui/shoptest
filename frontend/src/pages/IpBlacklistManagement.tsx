@@ -393,12 +393,18 @@ const IpBlacklistManagement: React.FC = () => {
   }, [blacklistActionDisabled, blacklistActionUnavailableMessage, canReleaseIp, language, loadData, t]);
 
   const selectedEntries = useMemo(
-    () => entries.filter((entry) => selectedEntryIds.includes(entry.id)),
+    () => {
+      const selectedIds = new Set(selectedEntryIds);
+      return entries.filter((entry) => selectedIds.has(entry.id));
+    },
     [entries, selectedEntryIds]
   );
 
   const selectedReleasableIds = useMemo(
-    () => selectedEntries.filter((entry) => entry.status !== 'RELEASED').map((entry) => entry.id),
+    () => selectedEntries.reduce<number[]>((ids, entry) => {
+      if (entry.status !== 'RELEASED') ids.push(entry.id);
+      return ids;
+    }, []),
     [selectedEntries]
   );
   const batchReleaseActionLabel = `${t('pages.ipBlacklistAdmin.batchRelease')}: ${t('pages.ipBlacklistAdmin.selectedSummary', { selected: selectedEntryIds.length, releasable: selectedReleasableIds.length })}`;

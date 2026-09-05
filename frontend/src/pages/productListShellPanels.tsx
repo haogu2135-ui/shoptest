@@ -284,7 +284,10 @@ language,
   quickAddVariants,
   showMobileFilterHint,
   dismissMobileFilterHint,
-}) => (
+}) => {
+  const heroHighlights = heroProductHighlights.filter((item): item is string => Boolean(item));
+
+  return (
 
     <div className={`product-list product-list--${language}${!loading && !loadFailed && filteredProducts.length === 0 ? ' product-list--empty' : ''}${quickAddProduct ? ' product-list--quickAddOpen' : ''}${previewProduct ? ' product-list--previewOpen' : ''}${filterDrawerOpen ? ' product-list--filterDrawerOpen' : ''}`}>
       <ShopBreadcrumb
@@ -357,9 +360,9 @@ language,
                 <strong>{heroProductName}</strong>
                 <span className="product-list__text commerce-money">{formatMoney(getPrice(heroProduct))}</span>
                 <span>{renderBadges(heroProduct).slice(0, 2).map((badge) => badge.label).join(' / ') || t('pages.productList.viewPick')}</span>
-                {heroProductHighlights.filter(Boolean).length ? (
-                  <div className="product-list__heroHighlights">
-                    {heroProductHighlights.filter((item): item is string => Boolean(item)).map((item) => (
+              {heroHighlights.length > 0 ? (
+                <div className="product-list__heroHighlights">
+                  {heroHighlights.map((item) => (
                       <small key={item}>{item}</small>
                     ))}
                   </div>
@@ -828,4 +831,5 @@ language,
         topCategoryName={topCategoryName}
       />
     </div>
-);
+  );
+};

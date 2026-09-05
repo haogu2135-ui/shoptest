@@ -94,8 +94,12 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
     [products, variant],
   );
   const leadPet = petProfiles[0];
-  const quickAddReadyCount = products.filter((product) => !needsOptionSelection(product)).length;
-  const dealCount = products.filter(isDealProduct).length;
+  const productMetrics = useMemo(() => products.reduce((summary, product) => {
+    if (!needsOptionSelection(product)) summary.quickAddReadyCount += 1;
+    if (isDealProduct(product)) summary.dealCount += 1;
+    return summary;
+  }, { quickAddReadyCount: 0, dealCount: 0 }), [products]);
+  const { quickAddReadyCount, dealCount } = productMetrics;
 
   const openPetProfiles = () => navigate('/profile?tab=pets');
   const browseProducts = () => navigate('/products');

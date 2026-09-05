@@ -187,6 +187,8 @@ describe('AdminLayout visibility-aware polling', () => {
 
     expect(unreadEffectStart).toBeGreaterThan(-1);
     expect(unreadEffectSource).toContain('setSupportUnread(0);');
+    expect(unreadEffectSource).toContain('supportUnreadRequestSeqRef.current += 1;');
+    expect(unreadEffectSource).toContain('supportUnreadAbortRef.current?.abort();');
     expect(unreadEffectSource).toContain('if (supportRouteActive) return;');
     expect(source).toContain('&& !verifyUnavailable');
   });

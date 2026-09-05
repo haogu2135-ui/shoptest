@@ -311,17 +311,19 @@ const AlertManagement: React.FC = () => {
   }, [alertActionDisabled, canResolveAlerts, language, loadData, loadError, t]);
 
   const selectedAlerts = useMemo(
-    () => alerts.filter((alert) => selectedAlertIds.includes(alert.id)),
+    () => {
+      const selectedIds = new Set(selectedAlertIds);
+      return alerts.filter((alert) => selectedIds.has(alert.id));
+    },
     [alerts, selectedAlertIds]
   );
-  const selectedOpenIds = useMemo(
-    () => selectedAlerts.filter((alert) => alert.status === 'OPEN').map((alert) => alert.id),
-    [selectedAlerts]
-  );
-  const selectedUnresolvedIds = useMemo(
-    () => selectedAlerts.filter((alert) => alert.status !== 'RESOLVED').map((alert) => alert.id),
-    [selectedAlerts]
-  );
+  const selectedAlertActionIds = useMemo(() => selectedAlerts.reduce((ids, alert) => {
+    if (alert.status === 'OPEN') ids.open.push(alert.id);
+    if (alert.status !== 'RESOLVED') ids.unresolved.push(alert.id);
+    return ids;
+  }, { open: [] as number[], unresolved: [] as number[] }), [selectedAlerts]);
+  const selectedOpenIds = selectedAlertActionIds.open;
+  const selectedUnresolvedIds = selectedAlertActionIds.unresolved;
 
   const batchAcknowledge = async () => {
     if (!mountedRef.current || actingRef.current) return;
