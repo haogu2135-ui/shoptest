@@ -36,6 +36,11 @@ map $http_upgrade $sub2api_connection_upgrade {
     '' close;
 }
 
+map $http_upgrade $dashboard_connection_upgrade {
+    default upgrade;
+    '' close;
+}
+
 # Commercial edge: serve HTTP content (no force-HTTPS redirect).
 # Cloudflare Flexible SSL proxies client HTTPS -> origin HTTP. A 301 to HTTPS here
 # creates a CF edge loop and hangs public requests. Full/Strict still use :443 below.
@@ -59,6 +64,8 @@ server {
         }
         proxy_pass http://127.0.0.1:${F2B_DASHBOARD_PORT};
         proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $dashboard_connection_upgrade;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -99,6 +106,8 @@ server {
     location / {
         proxy_pass http://127.0.0.1:${F2B_DASHBOARD_PORT};
         proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection $dashboard_connection_upgrade;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -107,7 +116,8 @@ server {
         proxy_buffering off;
         proxy_connect_timeout 5s;
         proxy_send_timeout 30s;
-        proxy_read_timeout 30s;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
     }
 }
 
