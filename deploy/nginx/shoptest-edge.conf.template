@@ -50,6 +50,9 @@ server {
     listen 80;
     server_name ${F2B_SERVER_NAME};
 
+    auth_basic "Fail2Ban Monitoring";
+    auth_basic_user_file ${F2B_AUTH_FILE};
+
     location ^~ /.well-known/acme-challenge/ {
         auth_basic off;
         default_type "text/plain";
