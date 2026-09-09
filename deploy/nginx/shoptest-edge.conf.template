@@ -61,6 +61,18 @@ server {
         try_files $uri =404;
     }
 
+    location = /manifest.webmanifest {
+        auth_basic off;
+        proxy_pass http://127.0.0.1:${F2B_DASHBOARD_PORT}/manifest.webmanifest;
+        proxy_http_version 1.1;
+        proxy_hide_header Cache-Control;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        add_header Cache-Control "public, max-age=3600" always;
+    }
+
     location / {
         if ($http_x_forwarded_proto != "https") {
             return 301 https://$host$request_uri;
@@ -76,8 +88,8 @@ server {
         proxy_set_header X-Forwarded-Host $host;
         proxy_buffering off;
         proxy_connect_timeout 5s;
-        proxy_send_timeout 30s;
-        proxy_read_timeout 30s;
+        proxy_send_timeout 3600s;
+        proxy_read_timeout 3600s;
     }
 }
 
@@ -106,6 +118,18 @@ server {
         try_files $uri =404;
     }
 
+    location = /manifest.webmanifest {
+        auth_basic off;
+        proxy_pass http://127.0.0.1:${F2B_DASHBOARD_PORT}/manifest.webmanifest;
+        proxy_http_version 1.1;
+        proxy_hide_header Cache-Control;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        add_header Cache-Control "public, max-age=3600" always;
+    }
+
     location / {
         proxy_pass http://127.0.0.1:${F2B_DASHBOARD_PORT};
         proxy_http_version 1.1;
@@ -118,7 +142,6 @@ server {
         proxy_set_header X-Forwarded-Host $host;
         proxy_buffering off;
         proxy_connect_timeout 5s;
-        proxy_send_timeout 30s;
         proxy_read_timeout 3600s;
         proxy_send_timeout 3600s;
     }
