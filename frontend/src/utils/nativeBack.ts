@@ -43,12 +43,21 @@ const isVisibleElement = (element: HTMLElement) => {
     && element.getClientRects().length > 0;
 };
 
+type NativeBackEscapeTarget = HTMLElement | Document | Window;
+
+const dispatchEscapeKeyEvents = (target: NativeBackEscapeTarget, keyboardInit: KeyboardEventInit) => {
+  target.dispatchEvent(new KeyboardEvent('keydown', keyboardInit));
+  target.dispatchEvent(new KeyboardEvent('keyup', keyboardInit));
+};
+
 const consumeAntDesignOverlayBack = () => {
   if (typeof document === 'undefined' || typeof window === 'undefined') return false;
-  const closeButtons = Array.from(
-    document.querySelectorAll<HTMLButtonElement>('.ant-modal-root .ant-modal-close, .ant-drawer .ant-drawer-close'),
-  ).filter((button) => !button.disabled && isVisibleElement(button));
-  const topCloseButton = closeButtons[closeButtons.length - 1];
+  let topCloseButton: HTMLButtonElement | null = null;
+  const closeButtons = document.querySelectorAll<HTMLButtonElement>('.ant-modal-root .ant-modal-close, .ant-drawer .ant-drawer-close');
+  for (let index = 0; index < closeButtons.length; index += 1) {
+    const button = closeButtons[index];
+    if (!button.disabled && isVisibleElement(button)) topCloseButton = button;
+  }
   if (!topCloseButton) return false;
   topCloseButton.click();
   return true;
@@ -62,25 +71,22 @@ const dispatchConfirmDismissEvents = (modal: HTMLElement) => {
     code: 'Escape',
   };
   const wrap = modal.closest('.ant-modal-wrap') as HTMLElement | null;
-  const escapeTargets = [
-    document.activeElement instanceof HTMLElement ? document.activeElement : null,
-    modal,
-    wrap,
-    document.body,
-    document,
-    window,
-  ].filter(Boolean) as Array<HTMLElement | Document | Window>;
-  escapeTargets.forEach((target) => {
-    target.dispatchEvent(new KeyboardEvent('keydown', keyboardInit));
-    target.dispatchEvent(new KeyboardEvent('keyup', keyboardInit));
-  });
+  const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  if (activeElement) dispatchEscapeKeyEvents(activeElement, keyboardInit);
+  dispatchEscapeKeyEvents(modal, keyboardInit);
+  if (wrap) dispatchEscapeKeyEvents(wrap, keyboardInit);
+  dispatchEscapeKeyEvents(document.body, keyboardInit);
+  dispatchEscapeKeyEvents(document, keyboardInit);
+  dispatchEscapeKeyEvents(window, keyboardInit);
 };
 
 const clickConfirmCancelButton = (modal: HTMLElement) => {
-  const cancelButtons = Array.from(
-    modal.querySelectorAll<HTMLButtonElement>('.ant-modal-confirm-btns button:not(.ant-btn-primary)'),
-  ).filter((button) => !button.disabled && isVisibleElement(button));
-  const cancelButton = cancelButtons[cancelButtons.length - 1];
+  let cancelButton: HTMLButtonElement | null = null;
+  const cancelButtons = modal.querySelectorAll<HTMLButtonElement>('.ant-modal-confirm-btns button:not(.ant-btn-primary)');
+  for (let index = 0; index < cancelButtons.length; index += 1) {
+    const button = cancelButtons[index];
+    if (!button.disabled && isVisibleElement(button)) cancelButton = button;
+  }
   if (!cancelButton) return false;
   cancelButton.click();
   return true;
@@ -88,10 +94,12 @@ const clickConfirmCancelButton = (modal: HTMLElement) => {
 
 const consumeAntDesignConfirmBack = () => {
   if (typeof document === 'undefined' || typeof window === 'undefined') return false;
-  const visibleConfirms = Array.from(
-    document.querySelectorAll<HTMLElement>('.ant-modal-root .ant-modal-confirm, .ant-modal-confirm'),
-  ).filter(isVisibleElement);
-  const topConfirm = visibleConfirms[visibleConfirms.length - 1];
+  let topConfirm: HTMLElement | null = null;
+  const visibleConfirmCandidates = document.querySelectorAll<HTMLElement>('.ant-modal-root .ant-modal-confirm, .ant-modal-confirm');
+  for (let index = 0; index < visibleConfirmCandidates.length; index += 1) {
+    const confirm = visibleConfirmCandidates[index];
+    if (isVisibleElement(confirm)) topConfirm = confirm;
+  }
   if (!topConfirm) return false;
   if (!clickConfirmCancelButton(topConfirm)) {
     dispatchConfirmDismissEvents(topConfirm);
@@ -115,16 +123,11 @@ const dispatchPopupDismissEvents = () => {
     key: 'Escape',
     code: 'Escape',
   };
-  const escapeTargets = [
-    document.activeElement instanceof HTMLElement ? document.activeElement : null,
-    document.body,
-    document,
-    window,
-  ].filter(Boolean) as Array<HTMLElement | Document | Window>;
-  escapeTargets.forEach((target) => {
-    target.dispatchEvent(new KeyboardEvent('keydown', keyboardInit));
-    target.dispatchEvent(new KeyboardEvent('keyup', keyboardInit));
-  });
+  const activeElement = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+  if (activeElement) dispatchEscapeKeyEvents(activeElement, keyboardInit);
+  dispatchEscapeKeyEvents(document.body, keyboardInit);
+  dispatchEscapeKeyEvents(document, keyboardInit);
+  dispatchEscapeKeyEvents(window, keyboardInit);
 
   if (document.activeElement instanceof HTMLElement) {
     document.activeElement.blur();
@@ -143,11 +146,13 @@ const clickPopconfirmCancelButton = (popup: HTMLElement) => {
 
 const consumeAntDesignPopupBack = () => {
   if (typeof document === 'undefined' || typeof window === 'undefined') return false;
-  const visiblePopups = Array.from(
-    document.querySelectorAll<HTMLElement>(visiblePopupSelector),
-  ).filter(isVisibleElement);
-  if (visiblePopups.length === 0) return false;
-  const topPopup = visiblePopups[visiblePopups.length - 1];
+  let topPopup: HTMLElement | null = null;
+  const popupCandidates = document.querySelectorAll<HTMLElement>(visiblePopupSelector);
+  for (let index = 0; index < popupCandidates.length; index += 1) {
+    const popup = popupCandidates[index];
+    if (isVisibleElement(popup)) topPopup = popup;
+  }
+  if (!topPopup) return false;
   if (topPopup && topPopup.classList.contains('ant-popover') && clickPopconfirmCancelButton(topPopup)) {
     return true;
   }

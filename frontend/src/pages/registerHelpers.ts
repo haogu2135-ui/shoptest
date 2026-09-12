@@ -60,11 +60,17 @@ export const maskEmail = (value: unknown) => {
   return `${name.charAt(0)}***@${domain}`;
 };
 
-export const uniqueLoginCandidates = (...values: unknown[]) => Array.from(new Set(
-  values
-    .map((value) => String(value || '').trim())
-    .filter(Boolean),
-));
+export const uniqueLoginCandidates = (...values: unknown[]) => {
+  const candidates: string[] = [];
+  const seen = new Set<string>();
+  values.forEach((value) => {
+    const normalized = String(value || '').trim();
+    if (!normalized || seen.has(normalized)) return;
+    seen.add(normalized);
+    candidates.push(normalized);
+  });
+  return candidates;
+};
 
 export const asRegisterApiError = (error: unknown): RegisterApiErrorLike => (
   error && typeof error === 'object' ? error as RegisterApiErrorLike : {}

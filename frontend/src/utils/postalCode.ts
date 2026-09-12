@@ -69,15 +69,22 @@ const regionalPostalRules: RegionalPostalRule[] = [
 const fallbackRegionalPostalPattern = /^(?=.*\d)[A-Z0-9][A-Z0-9 -]{2,11}$/;
 
 const getRegionalPostalRule = (regionPath?: unknown): RegionalPostalRule | null => {
-  const regionTokens = (Array.isArray(regionPath) ? regionPath : [])
-    .map(normalizePostalRuleToken)
-    .filter(Boolean);
+  const regionTokens: string[] = [];
+  if (Array.isArray(regionPath)) {
+    for (const value of regionPath) {
+      const token = normalizePostalRuleToken(value);
+      if (token) regionTokens.push(token);
+    }
+  }
   if (regionTokens.length === 0) return null;
   const [countryToken] = regionTokens;
-  return regionalPostalRules.find((rule) =>
-    rule.aliases.includes(countryToken)
-      || regionTokens.some((token) => rule.regionHints.includes(token)),
-  ) || null;
+  for (const rule of regionalPostalRules) {
+    if (rule.aliases.includes(countryToken)) return rule;
+    for (const token of regionTokens) {
+      if (rule.regionHints.includes(token)) return rule;
+    }
+  }
+  return null;
 };
 
 export const isValidRegionalPostalCode = (postalCode: unknown, regionPath?: unknown) => {

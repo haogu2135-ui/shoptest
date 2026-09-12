@@ -54,19 +54,23 @@ const normalizeErrorText = (value: unknown) => {
 
 const compactErrorTexts = (values: string[]) => {
   const seen = new Set<string>();
-  return values
-    .map(normalizeErrorText)
-    .filter((value) => {
-      if (!value || seen.has(value.toLowerCase())) return false;
-      seen.add(value.toLowerCase());
-      return true;
-    })
-    .slice(0, MAX_ERROR_DETAIL_ITEMS);
+  const result: string[] = [];
+  for (const value of values) {
+    const normalized = normalizeErrorText(value);
+    const key = normalized.toLowerCase();
+    if (!normalized || seen.has(key)) continue;
+    seen.add(key);
+    result.push(normalized);
+    if (result.length >= MAX_ERROR_DETAIL_ITEMS) break;
+  }
+  return result;
 };
 
 const errorDetailTexts = (value: unknown): string[] => {
   if (Array.isArray(value)) {
-    return value.flatMap(errorDetailTexts);
+    const result: string[] = [];
+    for (const item of value) result.push(...errorDetailTexts(item));
+    return result;
   }
   if (!isRecord(value)) {
     return compactErrorTexts([normalizeErrorText(value)]);
@@ -98,21 +102,24 @@ const errorDetailTexts = (value: unknown): string[] => {
 
 const responseDetailTexts = (data?: ApiErrorData) => {
   if (!data) return [];
-  return compactErrorTexts([
-    ...errorDetailTexts(data.detail),
-    ...errorDetailTexts(data.details),
-    ...errorDetailTexts(data.errors),
-    ...errorDetailTexts(data.fieldErrors),
-    ...errorDetailTexts(data.validationErrors),
-  ]);
+  const details: string[] = [];
+  details.push(...errorDetailTexts(data.detail));
+  details.push(...errorDetailTexts(data.details));
+  details.push(...errorDetailTexts(data.errors));
+  details.push(...errorDetailTexts(data.fieldErrors));
+  details.push(...errorDetailTexts(data.validationErrors));
+  return compactErrorTexts(details);
 };
 
 export const getApiErrorDiagnosticText = (error: unknown) => {
   const errorLike = error as ApiErrorLike;
   const responseMessage = errorLike.response?.data;
   const primary = normalizeErrorText(responseMessage?.error || responseMessage?.message || errorLike.message);
-  const details = responseDetailTexts(responseMessage)
-    .filter((item) => item.toLowerCase() !== primary.toLowerCase());
+  const primaryKey = primary.toLowerCase();
+  const details: string[] = [];
+  for (const item of responseDetailTexts(responseMessage)) {
+    if (item.toLowerCase() !== primaryKey) details.push(item);
+  }
   if (!primary) return details.join('; ');
   return details.length ? `${primary}: ${details.join('; ')}` : primary;
 };

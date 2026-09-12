@@ -56,15 +56,22 @@ const normalizeRecentEntries = (value: unknown, recent: number[]) => {
 export const loadProductViewPreferences = (): ProductViewPreferences => {
   try {
     const parsed = JSON.parse(getLocalStorageItem(PRODUCT_VIEW_PREFERENCES_KEY) || '{}');
-    const recent: number[] = Array.isArray(parsed.recent)
-      ? parsed.recent.map(Number).filter((id: number) => Number.isSafeInteger(id) && id > 0)
-      : [];
+    const recent: number[] = [];
+    if (Array.isArray(parsed.recent)) {
+      const seenRecent = new Set<number>();
+      parsed.recent.forEach((value: unknown) => {
+        const id = Number(value);
+        if (!Number.isSafeInteger(id) || id <= 0 || seenRecent.has(id)) return;
+        seenRecent.add(id);
+        recent.push(id);
+      });
+    }
     const recentEntries = normalizeRecentEntries(parsed.recentEntries, recent);
     return {
       categories: normalizeScoreBucket(parsed.categories),
       brands: normalizeScoreBucket(parsed.brands),
       tags: normalizeScoreBucket(parsed.tags),
-      recent: Array.from(new Set(recent)).slice(0, MAX_PRODUCT_VIEW_HISTORY_ITEMS),
+      recent: recent.slice(0, MAX_PRODUCT_VIEW_HISTORY_ITEMS),
       recentEntries,
       updatedAt: Number.isFinite(Number(parsed.updatedAt)) ? Number(parsed.updatedAt) : undefined,
     };
@@ -95,11 +102,16 @@ export const recordProductView = (product: Pick<ProductPublic, 'id' | 'categoryI
     bump(preferences.categories, product.categoryId);
     bump(preferences.brands, product.brand);
     bump(preferences.tags, product.tag);
-    preferences.recent = [productId, ...preferences.recent.filter((id) => id !== productId)].slice(0, MAX_PRODUCT_VIEW_HISTORY_ITEMS);
-    preferences.recentEntries = [
-      { productId, viewedAt: now },
-      ...preferences.recentEntries.filter((entry) => entry.productId !== productId),
-    ].slice(0, MAX_PRODUCT_VIEW_HISTORY_ITEMS);
+    const recent: number[] = [productId];
+    const recentEntries: Array<{ productId: number; viewedAt: number }> = [{ productId, viewedAt: now }];
+    preferences.recent.forEach((id) => {
+      if (id !== productId && recent.length < MAX_PRODUCT_VIEW_HISTORY_ITEMS) recent.push(id);
+    });
+    preferences.recentEntries.forEach((entry) => {
+      if (entry.productId !== productId && recentEntries.length < MAX_PRODUCT_VIEW_HISTORY_ITEMS) recentEntries.push(entry);
+    });
+    preferences.recent = recent;
+    preferences.recentEntries = recentEntries;
     preferences.updatedAt = now;
     saveProductViewPreferences(preferences);
   } catch (error) {
@@ -124,10 +136,13 @@ export const removeProductViewHistoryItem = (productId: number) => {
   const normalizedProductId = Number(productId);
   if (!Number.isSafeInteger(normalizedProductId) || normalizedProductId <= 0) return;
   const preferences = loadProductViewPreferences();
-  saveProductViewPreferences({
-    ...preferences,
-    recent: preferences.recent.filter((id) => id !== normalizedProductId),
-    recentEntries: preferences.recentEntries.filter((entry) => entry.productId !== normalizedProductId),
-    updatedAt: Date.now(),
+  const recent: number[] = [];
+  const recentEntries: Array<{ productId: number; viewedAt: number }> = [];
+  preferences.recent.forEach((id) => {
+    if (id !== normalizedProductId) recent.push(id);
   });
+  preferences.recentEntries.forEach((entry) => {
+    if (entry.productId !== normalizedProductId) recentEntries.push(entry);
+  });
+  saveProductViewPreferences({ ...preferences, recent, recentEntries, updatedAt: Date.now() });
 };

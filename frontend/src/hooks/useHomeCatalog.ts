@@ -74,7 +74,9 @@ export const useHomeCatalog = ({
     wishlistApi.getByUser(0, { signal: abortController.signal })
       .then((response) => {
         if (!disposed && !abortController.signal.aborted) {
-          setWishlistedProductIds(new Set(response.data.map((item) => item.productId)));
+          const productIds = new Set<number>();
+          for (const item of response.data) productIds.add(item.productId);
+          setWishlistedProductIds(productIds);
         }
       })
       .catch((error) => {
@@ -108,7 +110,10 @@ export const useHomeCatalog = ({
         const boundedCatalog = mergeProductsById(featuredRes.data, productsRes.data);
         saveProductCatalogSnapshot(boundedCatalog);
         const localizedProducts = boundedCatalog.map((product) => localizeProduct(product, language));
-        const featuredProducts = featuredRes.data.map((product) => localizeProduct(product, language)).slice(0, HOME_FEATURED_LIMIT);
+        const featuredProducts: Product[] = [];
+        for (let index = 0; index < featuredRes.data.length && index < HOME_FEATURED_LIMIT; index += 1) {
+          featuredProducts.push(localizeProduct(featuredRes.data[index], language));
+        }
         setFeatured(featuredProducts.length ? featuredProducts : localizedProducts.slice(0, HOME_FEATURED_LIMIT));
         setProducts(localizedProducts);
         setCategories(categoriesRes.data);
@@ -124,7 +129,11 @@ export const useHomeCatalog = ({
         if (fallbackProducts.length > 0) {
           // Keep already-painted bootstrap content when possible; only replace if empty or hard failure.
           if (!catalogReadyRef.current) {
-            const featuredFallback = fallbackProducts.filter((product) => product.isFeatured).slice(0, HOME_FEATURED_LIMIT);
+            const featuredFallback: Product[] = [];
+            for (const product of fallbackProducts) {
+              if (product.isFeatured) featuredFallback.push(product);
+              if (featuredFallback.length >= HOME_FEATURED_LIMIT) break;
+            }
             setFeatured(featuredFallback.length ? featuredFallback : fallbackProducts.slice(0, HOME_FEATURED_LIMIT));
             setProducts(fallbackProducts);
             setCategories(buildProductCatalogFallbackCategories(fallbackSourceProducts));
@@ -175,7 +184,9 @@ export const useHomeCatalog = ({
       try {
         const response = await productApi.getPersonalizedRecommendations({ signal: abortController.signal });
         if (!disposed && !abortController.signal.aborted) {
-          setPersonalizedProducts(response.data.map((product) => localizeProduct(product, language)));
+          const localized: Product[] = [];
+          for (const product of response.data) localized.push(localizeProduct(product, language));
+          setPersonalizedProducts(localized);
         }
       } catch (error) {
         if (!disposed && !abortController.signal.aborted) {
@@ -225,7 +236,9 @@ export const useHomeCatalog = ({
       productApi.getByIds(recentProductIds, { signal: abortController.signal })
         .then((response) => {
           if (!disposed && !abortController.signal.aborted) {
-            setRecentlyViewedDetails(response.data.map((product) => localizeProduct(product, language)));
+            const localized: Product[] = [];
+            for (const product of response.data) localized.push(localizeProduct(product, language));
+            setRecentlyViewedDetails(localized);
             setRecentlyViewedHydrated(true);
           }
         })

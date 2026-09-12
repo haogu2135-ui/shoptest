@@ -114,7 +114,7 @@ const NotificationManagement: React.FC = () => {
     const hasContent = plainContent.length >= 30;
     const hasLink = /href=|https?:\/\/|\/(products|coupons|cart|checkout)/i.test(messageContent);
     const hasConversionHook = conversionHookPattern.test(normalized);
-    const readyCount = [hasTitle, hasContent, hasLink, hasConversionHook].filter(Boolean).length;
+    const readyCount = Number(hasTitle) + Number(hasContent) + Number(hasLink) + Number(hasConversionHook);
     return { hasTitle, hasContent, hasLink, hasConversionHook, readyCount };
   }, [messageContent, notificationTitle, plainContent]);
 

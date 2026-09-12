@@ -172,8 +172,9 @@ export const addGuestCartItem = (product: unknown, quantity = 1, selectedSpecs?:
   const productStock = normalizeOptionalStock(productInput.stock);
   const productPrice = normalizePrice(price ?? productInput.effectivePrice ?? productInput.price);
   const normalizedQuantity = normalizeGuestCartQuantity(quantity, stockLimit);
-  const existing = items.find((item) => item.productId === productId && (item.selectedSpecs || '') === (normalizedSpecs || ''));
-  if (existing) {
+  const existingIndex = items.findIndex((item) => item.productId === productId && (item.selectedSpecs || '') === (normalizedSpecs || ''));
+  if (existingIndex >= 0) {
+    const existing = items[existingIndex];
     const updatedExisting: CartItem = {
       ...existing,
       quantity: normalizeGuestCartQuantity(existing.quantity + normalizedQuantity, stockLimit),
@@ -183,12 +184,15 @@ export const addGuestCartItem = (product: unknown, quantity = 1, selectedSpecs?:
       freeShipping: Boolean(productInput.freeShipping),
       freeShippingThreshold: normalizeOptionalNonNegativeMoney(productInput.freeShippingThreshold),
     };
-    writeGuestCart(items.map((item) => (item.id === existing.id ? updatedExisting : item)));
+    items[existingIndex] = updatedExisting;
+    writeGuestCart(items);
     return updatedExisting;
   }
 
+  const existingIds = new Set<number>();
+  for (const cartItem of items) existingIds.add(cartItem.id);
   const item: CartItem = {
-    id: createLocalId(items.map((cartItem) => cartItem.id)),
+    id: createLocalId(existingIds),
     productId,
     quantity: normalizedQuantity,
     productName,
@@ -205,13 +209,24 @@ export const addGuestCartItem = (product: unknown, quantity = 1, selectedSpecs?:
 };
 
 export const updateGuestCartQuantity = (itemId: number, quantity: number) => {
-  const items = readGuestCart().map((item) => item.id === itemId ? { ...item, quantity: normalizeGuestCartQuantity(quantity, item.stock) } : item);
+  const items = readGuestCart();
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    if (item.id === itemId) {
+      items[index] = { ...item, quantity: normalizeGuestCartQuantity(quantity, item.stock) };
+      break;
+    }
+  }
   writeGuestCart(items);
   return items;
 };
 
 export const removeGuestCartItem = (itemId: number) => {
-  const items = readGuestCart().filter((item) => item.id !== itemId);
+  const storedItems = readGuestCart();
+  const items: NormalizedGuestCartItem[] = [];
+  for (const item of storedItems) {
+    if (item.id !== itemId) items.push(item);
+  }
   writeGuestCart(items);
   return items;
 };

@@ -32,6 +32,22 @@ const readGuestCartSnapshot = () => {
   return Array.isArray(items) ? items : [];
 };
 
+const collectCheckoutItems = <T extends CartItem>(items: T[], selectedIds: number[]) => {
+  const selectedIdSet = new Set(selectedIds);
+  const hasSelection = selectedIds.length > 0;
+  const purchasableItems: T[] = [];
+  const purchasableIds: number[] = [];
+  let selectedItemCount = 0;
+  items.forEach((item) => {
+    if (hasSelection && !selectedIdSet.has(item.id)) return;
+    selectedItemCount += 1;
+    if (!isPurchasable(item)) return;
+    purchasableItems.push(item);
+    purchasableIds.push(item.id);
+  });
+  return { purchasableItems, purchasableIds, selectedItemCount };
+};
+
 const clearExpiredCheckoutSession = () => {
   clearStoredAuthSession();
 };
@@ -88,19 +104,11 @@ export const useCheckoutCartBootstrap = ({
 }: UseCheckoutCartBootstrapParams) => {
   useEffect(() => {
     const selectedCartItemIds = readCheckoutCartItemIds();
-    const selectedCartItemIdSet = new Set(selectedCartItemIds);
     const hasToken = hasAuthenticatedCartSession();
     let disposed = false;
     if (!hasToken) {
       const guestSnapshot = readGuestCartSnapshot();
-      let selectedItemCount = 0;
-      const purchasableItems = guestSnapshot.reduce<typeof guestSnapshot>((items, item) => {
-        if (selectedCartItemIds.length > 0 && !selectedCartItemIdSet.has(item.id)) return items;
-        selectedItemCount += 1;
-        if (isPurchasable(item)) items.push(item);
-        return items;
-      }, guestSnapshot.slice(0, 0));
-      const purchasableIds = purchasableItems.map((item) => item.id);
+      const { purchasableItems, purchasableIds, selectedItemCount } = collectCheckoutItems(guestSnapshot, selectedCartItemIds);
       if (purchasableItems.length !== selectedItemCount || (selectedCartItemIds.length > 0 && !areSameIds(selectedCartItemIds, purchasableIds))) {
         showCheckoutMessage('warning', t('pages.checkout.unavailableSelected'));
         syncCheckoutCartItemIds(purchasableItems);
@@ -137,14 +145,7 @@ export const useCheckoutCartBootstrap = ({
           }),
         ]);
         if (disposed || !mountedRef.current || abortController.signal.aborted) return;
-        let selectedItemCount = 0;
-        const purchasableItems = cartRes.data.reduce<typeof cartRes.data>((items, item) => {
-          if (selectedCartItemIds.length > 0 && !selectedCartItemIdSet.has(item.id)) return items;
-          selectedItemCount += 1;
-          if (isPurchasable(item)) items.push(item);
-          return items;
-        }, cartRes.data.slice(0, 0));
-        const purchasableIds = purchasableItems.map((item) => item.id);
+        const { purchasableItems, purchasableIds, selectedItemCount } = collectCheckoutItems(cartRes.data, selectedCartItemIds);
         if (purchasableItems.length !== selectedItemCount || (selectedCartItemIds.length > 0 && !areSameIds(selectedCartItemIds, purchasableIds))) {
           showCheckoutMessage('warning', t('pages.checkout.unavailableSelected'));
           syncCheckoutCartItemIds(purchasableItems);

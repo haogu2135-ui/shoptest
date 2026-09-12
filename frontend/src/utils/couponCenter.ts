@@ -8,8 +8,14 @@ export const toFiniteNumber = (value: unknown, fallback = 0) => {
   return Number.isFinite(numeric) ? numeric : fallback;
 };
 
-export const toSafeArray = <T,>(value: unknown): T[] =>
-  Array.isArray(value) ? value.filter((item) => item != null) as T[] : [];
+export const toSafeArray = <T,>(value: unknown): T[] => {
+  if (!Array.isArray(value)) return [];
+  const result: T[] = [];
+  for (const item of value) {
+    if (item != null) result.push(item as T);
+  }
+  return result;
+};
 
 const toSafeQuantity = (value: unknown) => {
   const numeric = toFiniteNumber(value);
@@ -117,18 +123,15 @@ export const sortPublicCoupons = (
   couponSort: CouponSort,
 ) => {
   const query = couponSearch.trim().toLocaleLowerCase();
-  const coupons = publicCoupons.filter((coupon) => {
-    if (!query) return true;
-    const searchText = [
-      coupon.name,
-      coupon.description,
-      coupon.couponType,
-      coupon.thresholdAmount,
-      coupon.reductionAmount,
-      coupon.discountPercent,
-    ].filter((value) => value != null).join(' ').toLocaleLowerCase();
-    return searchText.includes(query);
-  });
+  const coupons: CouponPublic[] = [];
+  for (const coupon of publicCoupons) {
+    if (!query) {
+      coupons.push(coupon);
+      continue;
+    }
+    const searchText = `${coupon.name ?? ''} ${coupon.description ?? ''} ${coupon.couponType ?? ''} ${coupon.thresholdAmount ?? ''} ${coupon.reductionAmount ?? ''} ${coupon.discountPercent ?? ''}`.toLocaleLowerCase();
+    if (searchText.includes(query)) coupons.push(coupon);
+  }
   return coupons.sort((a, b) => {
     const remainingA = getCouponRemaining(a);
     const remainingB = getCouponRemaining(b);
@@ -176,12 +179,18 @@ export const filterPublicCoupons = (
   return true;
 });
 
-export const getCartSubtotal = (items: CartItem[]) =>
-  items.reduce((sum, item) => {
+export const getCartSubtotal = (items: CartItem[]) => {
+  let total = 0;
+  for (const item of items) {
     const price = Math.max(0, toFiniteNumber(item.price));
     const quantity = toSafeQuantity(item.quantity);
-    return sum + price * quantity;
-  }, 0);
+    total += price * quantity;
+  }
+  return total;
+};
 
-export const getCartItemCount = (items: CartItem[]) =>
-  items.reduce((sum, item) => sum + toSafeQuantity(item.quantity), 0);
+export const getCartItemCount = (items: CartItem[]) => {
+  let count = 0;
+  for (const item of items) count += toSafeQuantity(item.quantity);
+  return count;
+};

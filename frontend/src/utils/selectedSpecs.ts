@@ -74,17 +74,19 @@ export const getSubscriptionIntervalLabel = (value?: string | null, t?: Translat
 export const formatSelectedSpecs = (value?: string | null, t?: Translate, language?: Language | string) =>
   {
     const specs = parseSelectedSpecs(value);
-    return [
-      ...Object.entries(specs)
-    .filter(([name]) => !name.startsWith('_'))
-    .filter(([, option]) => option)
-      .map(([name, option]) => `${formatSelectedSpecName(name, t, language)}: ${formatSelectedSpecValue(option, language)}`),
-      ...(specs._purchaseMode === 'bundle'
-      ? [
-        t ? t('bundle.bundleDeal') : 'Bundle deal',
-        specs._bundleItems,
-      ].filter(Boolean)
-      : []),
-      ...(specs._purchaseMode === 'subscribe' ? [t ? t('subscription.subscribeSave') : 'Refill deal 20% off', getSubscriptionIntervalLabel(value, t)] : []),
-    ].join(' / ');
+    const parts: string[] = [];
+    Object.entries(specs).forEach(([name, option]) => {
+      if (name.startsWith('_') || !option) return;
+      parts.push(`${formatSelectedSpecName(name, t, language)}: ${formatSelectedSpecValue(option, language)}`);
+    });
+    if (specs._purchaseMode === 'bundle') {
+      const bundleLabel = t ? t('bundle.bundleDeal') : 'Bundle deal';
+      if (bundleLabel) parts.push(bundleLabel);
+      if (specs._bundleItems) parts.push(specs._bundleItems);
+    }
+    if (specs._purchaseMode === 'subscribe') {
+      parts.push(t ? t('subscription.subscribeSave') : 'Refill deal 20% off');
+      parts.push(getSubscriptionIntervalLabel(value, t));
+    }
+    return parts.join(' / ');
   };

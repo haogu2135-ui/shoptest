@@ -449,7 +449,10 @@ const OrderTracking: React.FC = () => {
   const restoreTrackedItemsToCart = async () => {
     if (hasStoredValue('token')) {
       const results = await Promise.allSettled(items.map((item) => cartApi.addItem(0, item.productId, item.quantity, item.selectedSpecs)));
-      const restored = results.filter((result) => result.status === 'fulfilled').length;
+      let restored = 0;
+      for (const result of results) {
+        if (result.status === 'fulfilled') restored += 1;
+      }
       const failed = results.length - restored;
       if (restored > 0) {
         dispatchDomEvent('shop:cart-updated');

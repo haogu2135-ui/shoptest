@@ -49,7 +49,14 @@ export const shouldShowCatalogFallbackToast = process.env.NODE_ENV !== 'producti
 export const readSearchHistory = () => {
   try {
     const parsed = JSON.parse(getLocalStorageItem(SEARCH_HISTORY_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed.map(String).filter(Boolean).slice(0, MAX_SEARCH_HISTORY) : [];
+    if (!Array.isArray(parsed)) return [];
+    const history: string[] = [];
+    parsed.forEach((value: unknown) => {
+      if (history.length >= MAX_SEARCH_HISTORY) return;
+      const normalized = String(value);
+      if (normalized) history.push(normalized);
+    });
+    return history;
   } catch (error) {
     reportNonBlockingError('ProductList.readSearchHistory', error);
     return [];
@@ -66,12 +73,24 @@ export const normalizeSortValue = (value: string | null | undefined) =>
 export const normalizePetSizeValue = (value: string | null | undefined) =>
   value && VALID_PET_SIZES.has(value) ? value : '';
 export const normalizePetSizeValues = (values: Array<string | null | undefined>) =>
-  Array.from(new Set(values.map(normalizePetSizeValue).filter(Boolean)));
+  values.reduce<string[]>((normalized, value) => {
+    const next = normalizePetSizeValue(value);
+    if (next && !normalized.includes(next)) normalized.push(next);
+    return normalized;
+  }, []);
 export const normalizeOptionValues = (values: Array<string | null | undefined>, allowedValues: Set<string>) => {
-  const allowedByLower = new Map(Array.from(allowedValues).map((value) => [value.toLowerCase(), value]));
-  return Array.from(new Set(values
-    .map((value) => allowedByLower.get(String(value || '').trim().toLowerCase()))
-    .filter(Boolean))) as string[];
+  const allowedByLower = new Map<string, string>();
+  allowedValues.forEach((value) => allowedByLower.set(value.toLowerCase(), value));
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+  values.forEach((value) => {
+    const match = allowedByLower.get(String(value || '').trim().toLowerCase());
+    if (match && !seen.has(match)) {
+      seen.add(match);
+      normalized.push(match);
+    }
+  });
+  return normalized;
 };
 export const normalizeCollectionValue = (value: string | null | undefined) =>
   value && VALID_COLLECTIONS.has(value) ? value : '';
@@ -116,13 +135,11 @@ export const normalizeCatalogTitle = (value: string | null | undefined, fallback
   return title;
 };
 
-export const productSearchText = (product: Product) => [
-  product.name,
-  product.description,
-  product.brand,
-  product.tag,
-  ...Object.values(product.specifications || {}),
-].join(' ').toLowerCase();
+export const productSearchText = (product: Product) => {
+  const parts = [product.name, product.description, product.brand, product.tag];
+  for (const value of Object.values(product.specifications || {})) parts.push(value);
+  return parts.join(' ').toLowerCase();
+};
 
 export const matchesSmartDeviceCollection = (product: Product) => {
   if (SMART_DEVICE_CATEGORY_IDS.has(Number(product.categoryId))) {
@@ -351,7 +368,11 @@ export const filterProductsByRefinements = (
   const hasSpecFilters = petSizes.length > 0 || materials.length > 0 || colors.length > 0;
   return products.filter((product) => {
     const price = getPrice(product);
-    const specText = hasSpecFilters ? Object.values(product.specifications || {}).join(' ').toLowerCase() : '';
+    let specText = '';
+    if (hasSpecFilters) {
+      for (const value of Object.values(product.specifications || {})) specText += `${value} `;
+      specText = specText.toLowerCase();
+    }
     const productName = colors.length > 0 ? product.name.toLowerCase() : '';
     const matchPrice = !filters.priceFilterActive
       || (price >= filters.displayedPriceRange[0] && price <= filters.displayedPriceRange[1]);
@@ -383,13 +404,18 @@ export const buildPersonalizedSortContext = (
     brands?: Record<string, number>;
     recent?: number[];
   },
-): PersonalizedSortContext => ({
-  personalizedProductIds: new Set(personalizedProducts.map((product) => product.id)),
-  topPreferenceCategory: resolveTopPreferenceKey(viewPreferences.categories),
-  topPreferenceBrand: resolveTopPreferenceKey(viewPreferences.brands),
-  recentProductIds: Array.isArray(viewPreferences.recent) ? viewPreferences.recent : [],
-  recentProductIdSet: new Set(Array.isArray(viewPreferences.recent) ? viewPreferences.recent : []),
-});
+): PersonalizedSortContext => {
+  const personalizedProductIds = new Set<number>();
+  for (const product of personalizedProducts) personalizedProductIds.add(product.id);
+  const recentProductIds = Array.isArray(viewPreferences.recent) ? viewPreferences.recent : [];
+  return {
+    personalizedProductIds,
+    topPreferenceCategory: resolveTopPreferenceKey(viewPreferences.categories),
+    topPreferenceBrand: resolveTopPreferenceKey(viewPreferences.brands),
+    recentProductIds,
+    recentProductIdSet: new Set(recentProductIds),
+  };
+};
 
 export const getPersonalizedSortScore = (
   product: Product,

@@ -49,13 +49,21 @@ export const notifyNavbarChanged = () => {
   dispatchDomEvent('shop:notifications-updated');
 };
 
-export const sortNotifications = (items: AppNotification[]) =>
-  [...items].sort((left, right) => {
+export const sortNotifications = (items: AppNotification[]) => items
+  .map((item, index) => {
+    const parsedTime = item.createdAt ? new Date(item.createdAt).getTime() : 0;
+    return {
+      item,
+      index,
+      isRead: item.isRead,
+      time: Number.isNaN(parsedTime) ? 0 : parsedTime,
+    };
+  })
+  .sort((left, right) => {
     if (left.isRead !== right.isRead) return left.isRead ? 1 : -1;
-    const leftTime = left.createdAt ? new Date(left.createdAt).getTime() : 0;
-    const rightTime = right.createdAt ? new Date(right.createdAt).getTime() : 0;
-    return (Number.isNaN(rightTime) ? 0 : rightTime) - (Number.isNaN(leftTime) ? 0 : leftTime);
-  });
+    return right.time - left.time || left.index - right.index;
+  })
+  .map(({ item }) => item);
 
 export const mergeNotificationPages = (current: AppNotification[], next: AppNotification[]) => {
   const itemsById = new Map<number, AppNotification>();

@@ -45,31 +45,40 @@ export const isHiddenSpecKey = (key: string) => {
 export const normalizeSpecValue = (value?: string | null) =>
   String(value || '').trim().replace(/\s+/g, ' ').toLowerCase();
 
-export const valuesDiffer = (products: Product[], getValue: (product: Product) => string | number | undefined | null) =>
-  products.length > 1 && new Set(products.map((product) => normalizeSpecValue(String(getValue(product) ?? '')))).size > 1;
+export const valuesDiffer = (products: Product[], getValue: (product: Product) => string | number | undefined | null) => {
+  if (products.length <= 1) return false;
+  let firstValue: string | undefined;
+  for (const product of products) {
+    const value = normalizeSpecValue(String(getValue(product) ?? ''));
+    if (firstValue === undefined) {
+      firstValue = value;
+    } else if (value !== firstValue) {
+      return true;
+    }
+  }
+  return false;
+};
 
 export const buildCompareDifferenceSignals = (products: Product[]) => {
-  const values = {
-    price: new Set<string>(),
-    rating: new Set<string>(),
-    brand: new Set<string>(),
-    stock: new Set<string>(),
-    shipping: new Set<string>(),
+  const firstValues: Record<string, string | undefined> = {};
+  const differences = { price: false, rating: false, brand: false, stock: false, shipping: false };
+  const markDifference = (key: keyof typeof differences, value: string) => {
+    if (firstValues[key] === undefined) firstValues[key] = value;
+    else if (firstValues[key] !== value) differences[key] = true;
   };
   products.forEach((product) => {
-    values.price.add(normalizeSpecValue(String(getPrice(product) ?? '')));
-    values.rating.add(normalizeSpecValue(String(product.averageRating || 0)));
-    values.brand.add(normalizeSpecValue(String(product.brand || '')));
-    values.stock.add(normalizeSpecValue(String(product.stock ?? '')));
-    values.shipping.add(normalizeSpecValue(product.freeShipping ? 'free-shipping' : product.shipping || 'default-shipping'));
+    markDifference('price', normalizeSpecValue(String(getPrice(product) ?? '')));
+    markDifference('rating', normalizeSpecValue(String(product.averageRating || 0)));
+    markDifference('brand', normalizeSpecValue(String(product.brand || '')));
+    markDifference('stock', normalizeSpecValue(String(product.stock ?? '')));
+    markDifference('shipping', normalizeSpecValue(product.freeShipping ? 'free-shipping' : product.shipping || 'default-shipping'));
   });
-  const differs = (set: Set<string>) => products.length > 1 && set.size > 1;
   return {
-    price: differs(values.price),
-    rating: differs(values.rating),
-    brand: differs(values.brand),
-    stock: differs(values.stock),
-    shipping: differs(values.shipping),
+    price: products.length > 1 && differences.price,
+    rating: products.length > 1 && differences.rating,
+    brand: products.length > 1 && differences.brand,
+    stock: products.length > 1 && differences.stock,
+    shipping: products.length > 1 && differences.shipping,
   };
 };
 

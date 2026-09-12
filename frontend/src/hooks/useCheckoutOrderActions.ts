@@ -470,7 +470,16 @@ export const useCheckoutOrderActions = ({
       dispatchDomEvent('shop:cart-updated');
       return true;
     }
-    const productIds = Array.from(new Set(submittedCartItems.map((item) => item.productId).filter((id) => Number.isFinite(Number(id)) && Number(id) > 0)));
+    const submittedProductIds = submittedCartItems.map((item) => item.productId);
+    const productIds: number[] = [];
+    const productIdSet = new Set<number>();
+    for (const rawProductId of submittedProductIds) {
+      const productId = Number(rawProductId);
+      if (Number.isFinite(productId) && productId > 0 && !productIdSet.has(productId)) {
+        productIdSet.add(productId);
+        productIds.push(productId);
+      }
+    }
     let latestProducts = new Map<number, Product>();
     if (productIds.length > 0) {
       const abortController = createApiAbortController();
@@ -479,7 +488,10 @@ export const useCheckoutOrderActions = ({
       try {
         const res = await productApi.getByIds(productIds, { bypassCache: true, signal: abortController.signal });
         if (!mountedRef.current || abortController.signal.aborted) return false;
-        latestProducts = new Map((Array.isArray(res.data) ? res.data : []).map((product) => [Number(product.id), product]));
+        latestProducts = new Map<number, Product>();
+        for (const product of (Array.isArray(res.data) ? res.data : [])) {
+          latestProducts.set(Number(product.id), product);
+        }
       } catch (error) {
         if (!mountedRef.current || abortController.signal.aborted) return false;
         reportNonBlockingError('checkout.restoreSubmittedCartItems product refresh failed', error);

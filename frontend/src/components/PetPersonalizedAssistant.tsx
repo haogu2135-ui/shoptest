@@ -75,12 +75,14 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
         if (cancelled) return;
         const excludedSet = new Set(normalizedExcludedProductIds);
         const nextPetProfiles = petProfilesResult.status === 'fulfilled' ? (petProfilesResult.value.data || []) : [];
-        const nextProducts = recommendationsResult.status === 'fulfilled'
-          ? (recommendationsResult.value.data || [])
-            .map((product) => localizeProduct(product, language))
-            .filter((product) => !excludedSet.has(product.id))
-            .filter((product) => product.stock === undefined || product.stock > 0)
-          : [];
+        const nextProducts: Product[] = [];
+        if (recommendationsResult.status === 'fulfilled') {
+          recommendationsResult.value.data?.forEach((product) => {
+            const localized = localizeProduct(product, language);
+            if (excludedSet.has(localized.id) || (localized.stock !== undefined && localized.stock <= 0)) return;
+            nextProducts.push(localized);
+          });
+        }
         setPetProfiles(nextPetProfiles);
         setProducts(nextProducts);
       })

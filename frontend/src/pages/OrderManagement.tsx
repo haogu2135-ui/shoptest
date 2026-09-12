@@ -355,7 +355,12 @@ const OrderManagement: React.FC = () => {
   }, []);
 
   useEffect(() => {
-    const shippableIds = new Set(canFulfillOrders ? orders.filter(isOrderShippable).map((order) => order.id) : []);
+    const shippableIds = new Set<number>();
+    if (canFulfillOrders) {
+      for (const order of orders) {
+        if (isOrderShippable(order)) shippableIds.add(order.id);
+      }
+    }
     setSelectedOrderIds((current) => current.filter((id) => shippableIds.has(Number(id))));
   }, [canFulfillOrders, orders]);
 

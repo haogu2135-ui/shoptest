@@ -26,7 +26,11 @@ export const historyProductName = (
 
 export const buildViewedAtById = (
   recentEntries: Array<{ productId: number; viewedAt: number }>,
-) => new Map(recentEntries.map((entry) => [entry.productId, entry.viewedAt]));
+) => {
+  const viewedAtById = new Map<number, number>();
+  for (const entry of recentEntries) viewedAtById.set(entry.productId, entry.viewedAt);
+  return viewedAtById;
+};
 
 export const orderHistoryProducts = (products: Product[], recentIds: number[]) => {
   const productById = new Map(products.map((product) => [product.id, product]));

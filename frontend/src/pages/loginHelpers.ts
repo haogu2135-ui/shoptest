@@ -52,20 +52,33 @@ export const normalizePasswordLogin = (value: unknown) => {
   return compactLogin;
 };
 export const readLoginCandidates = (primary: string) => {
-  const candidates = [primary];
+  const candidates: string[] = [];
+  const seen = new Set<string>();
+  const addCandidate = (value: string) => {
+    if (value && !seen.has(value)) {
+      seen.add(value);
+      candidates.push(value);
+    }
+  };
+  addCandidate(primary);
   try {
     const parsed = JSON.parse(getSessionStorageItem('loginCandidates') || '[]');
     if (Array.isArray(parsed)) {
-      const storedCandidates = parsed.map((value) => normalizePasswordLogin(value)).filter(Boolean);
-      if (!storedCandidates.includes(primary)) {
-        return candidates;
-      }
-      storedCandidates.forEach((value) => candidates.push(value));
+      const storedCandidates: string[] = [];
+      let hasPrimary = false;
+      parsed.forEach((value: unknown) => {
+        const normalized = normalizePasswordLogin(value);
+        if (!normalized) return;
+        storedCandidates.push(normalized);
+        if (normalized === primary) hasPrimary = true;
+      });
+      if (!hasPrimary) return candidates;
+      storedCandidates.forEach(addCandidate);
     }
   } catch (error) {
     reportNonBlockingError('Login.readLoginCandidates', error);
   }
-  return Array.from(new Set(candidates.filter(Boolean)));
+  return candidates;
 };
 export const maskEmail = (value: unknown) => {
   const email = normalizeEmail(value);

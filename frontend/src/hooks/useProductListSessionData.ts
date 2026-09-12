@@ -108,7 +108,9 @@ export const useProductListSessionData = ({
     wishlistApi.getByUser(0, { signal: abortController.signal })
       .then((res) => {
         if (!disposed && !abortController.signal.aborted) {
-          setWishlistedProductIds(new Set(res.data.map((item) => item.productId)));
+          const productIds = new Set<number>();
+          for (const item of res.data) productIds.add(item.productId);
+          setWishlistedProductIds(productIds);
         }
       })
       .catch(() => {
@@ -129,7 +131,9 @@ export const useProductListSessionData = ({
       const refreshPreferences = !event || event.type === 'shop:product-view-preferences-updated'
         || (isStorageEvent && (!storageKey || storageKey === 'shop-product-view-preferences'));
       if (refreshAlerts) {
-        setAlertedStockProductIds(new Set(readStockAlerts().map((alert) => alert.productId)));
+        const productIds = new Set<number>();
+        for (const alert of readStockAlerts()) productIds.add(alert.productId);
+        setAlertedStockProductIds(productIds);
       }
       if (refreshPreferences) {
         setViewPreferences(loadProductViewPreferences());
@@ -155,7 +159,9 @@ export const useProductListSessionData = ({
     productApi.getPersonalizedRecommendations({ signal: abortController.signal })
       .then((response) => {
         if (!disposed && !abortController.signal.aborted) {
-          setPersonalizedProducts(response.data.map((product) => localizeProduct(product, language)));
+          const localized: Product[] = [];
+          for (const product of response.data) localized.push(localizeProduct(product, language));
+          setPersonalizedProducts(localized);
         }
       })
       .catch(() => {

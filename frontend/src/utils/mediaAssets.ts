@@ -179,11 +179,17 @@ export const buildResponsiveImageSrcSet = (
     const url = new URL(safeValue, window.location.origin);
     const canResize = url.hostname === 'images.unsplash.com' || url.searchParams.has('w');
     if (!canResize) return undefined;
-    const safeWidths = Array.from(new Set(widths
-      .map((width) => Number(width))
-      .filter((width) => Number.isFinite(width) && width > 0)
-      .map((width) => Math.min(Math.floor(width), 2000))))
-      .sort((left, right) => left - right);
+    const safeWidths: number[] = [];
+    const seenWidths = new Set<number>();
+    for (const rawWidth of widths) {
+      const width = Number(rawWidth);
+      if (!Number.isFinite(width) || width <= 0) continue;
+      const normalizedWidth = Math.min(Math.floor(width), 2000);
+      if (seenWidths.has(normalizedWidth)) continue;
+      seenWidths.add(normalizedWidth);
+      safeWidths.push(normalizedWidth);
+    }
+    safeWidths.sort((left, right) => left - right);
     if (!safeWidths.length) return undefined;
     return safeWidths
       .map((width) => {

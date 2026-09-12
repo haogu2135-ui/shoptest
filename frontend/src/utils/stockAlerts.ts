@@ -28,20 +28,20 @@ const readRaw = (): StockAlertItem[] => {
     const parsed = JSON.parse(getLocalStorageItem(STORAGE_KEY) || '[]');
     if (!Array.isArray(parsed)) return [];
     const seenProductIds = new Set<number>();
-    return parsed
-      .map((item) => ({
-        productId: normalizePositiveId(item?.productId),
-        productName: String(item?.productName || '').trim().slice(0, 160),
+    const items: StockAlertItem[] = [];
+    for (const item of parsed) {
+      const productId = normalizePositiveId(item?.productId);
+      const productName = String(item?.productName || '').trim().slice(0, 160);
+      if (productId === null || !productName || seenProductIds.has(productId)) continue;
+      seenProductIds.add(productId);
+      items.push({
+        productId,
+        productName,
         imageUrl: item?.imageUrl ? String(item.imageUrl).trim().slice(0, 1000) : undefined,
         createdAt: normalizeCreatedAt(item?.createdAt),
-      }))
-      .filter((item) => {
-        if (item.productId === null || !item.productName || seenProductIds.has(item.productId)) {
-          return false;
-        }
-        seenProductIds.add(item.productId);
-        return true;
-      }) as StockAlertItem[];
+      });
+    }
+    return items;
   } catch (error) {
     reportNonBlockingError('stockAlerts.readRaw', error);
     return [];
@@ -50,19 +50,21 @@ const readRaw = (): StockAlertItem[] => {
 
 const writeRaw = (items: StockAlertItem[]) => {
   const seenProductIds = new Set<number>();
-  const normalizedItems = items.map((item) => ({
-    ...item,
-    productId: normalizePositiveId(item.productId),
-    productName: String(item.productName || '').trim().slice(0, 160),
-    imageUrl: item.imageUrl ? String(item.imageUrl).trim().slice(0, 1000) : undefined,
-    createdAt: normalizeCreatedAt(item.createdAt),
-  })).filter((item) => {
-    if (item.productId === null || !item.productName || seenProductIds.has(item.productId)) {
-      return false;
-    }
-    seenProductIds.add(item.productId);
-    return true;
-  }).slice(0, MAX_ALERTS) as StockAlertItem[];
+  const normalizedItems: StockAlertItem[] = [];
+  for (const item of items) {
+    if (normalizedItems.length >= MAX_ALERTS) break;
+    const productId = normalizePositiveId(item.productId);
+    const productName = String(item.productName || '').trim().slice(0, 160);
+    if (productId === null || !productName || seenProductIds.has(productId)) continue;
+    seenProductIds.add(productId);
+    normalizedItems.push({
+      ...item,
+      productId,
+      productName,
+      imageUrl: item.imageUrl ? String(item.imageUrl).trim().slice(0, 1000) : undefined,
+      createdAt: normalizeCreatedAt(item.createdAt),
+    });
+  }
   setLocalStorageItem(STORAGE_KEY, JSON.stringify(normalizedItems));
   dispatchDomEvent('shop:stock-alerts-updated');
 };

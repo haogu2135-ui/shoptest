@@ -222,8 +222,10 @@ const Home: React.FC = () => {
   );
 
   const recentlyViewedProducts = useMemo(() => {
-    const productById = new Map(recentlyViewedDetails.map((product) => [product.id, product]));
-    const viewedAtById = new Map(viewPreferences.recentEntries.map((entry) => [entry.productId, entry.viewedAt]));
+    const productById = new Map<number, Product>();
+    for (const product of recentlyViewedDetails) productById.set(product.id, product);
+    const viewedAtById = new Map<number, number>();
+    for (const entry of viewPreferences.recentEntries) viewedAtById.set(entry.productId, entry.viewedAt);
     const result: Array<{ product: Product; viewedAt?: number }> = [];
     for (const productId of viewPreferences.recent) {
       const product = productById.get(productId);
@@ -341,7 +343,13 @@ const Home: React.FC = () => {
     [localPetGalleryLikes, petGalleryPhotos],
   );
   const petGalleryLiveItemsCount = useMemo(
-    () => petGalleryItems.filter((item) => !item.isSample).length,
+    () => {
+      let count = 0;
+      for (const item of petGalleryItems) {
+        if (!item.isSample) count += 1;
+      }
+      return count;
+    },
     [petGalleryItems],
   );
   const heroSpotlights = buildHomeHeroSpotlightDescriptors({

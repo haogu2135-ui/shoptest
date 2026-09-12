@@ -182,11 +182,10 @@ const PRODUCT_RECOMMENDATION_ACCESSORY_KEYWORDS = [
   'accesorio',
 ];
 
-const recommendationObjectValues = (value: unknown) => (
-  value && typeof value === 'object' && !Array.isArray(value)
-    ? Object.values(value as Record<string, unknown>)
-    : []
-);
+const appendRecommendationObjectValues = (value: unknown, append: (value: unknown) => void) => {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return;
+  Object.keys(value as Record<string, unknown>).forEach((key) => append((value as Record<string, unknown>)[key]));
+};
 
 const productRecommendationSearchText = (item: ProductRecommendationCandidate | null | undefined) => {
   const parts: string[] = [];
@@ -199,8 +198,8 @@ const productRecommendationSearchText = (item: ProductRecommendationCandidate | 
   append(item?.tag);
   append(item?.shipping);
   append(item?.warranty);
-  recommendationObjectValues(item?.specifications).forEach(append);
-  recommendationObjectValues(item?.specificationItems).forEach(append);
+  appendRecommendationObjectValues(item?.specifications, append);
+  appendRecommendationObjectValues(item?.specificationItems, append);
   return parts.join(' ').toLowerCase();
 };
 
@@ -242,14 +241,17 @@ export const buildRelatedRecommendations = <T extends ProductRecommendationCandi
   const currentId = Number(currentProduct?.id);
   const currentText = productRecommendationSearchText(currentProduct);
   const uniqueRecommendations = new Map<number, T>();
+  const scoredRecommendations: Array<{ item: T; index: number; score: number }> = [];
+  let index = 0;
   recommendations.forEach((item) => {
     const recommendationId = Number(item.id);
     if (recommendationId !== currentId && Number.isFinite(recommendationId) && !uniqueRecommendations.has(recommendationId)) {
       uniqueRecommendations.set(recommendationId, item);
+      scoredRecommendations.push({ item, index, score: scoreRelatedRecommendation(currentProduct, item, currentText) });
     }
+    index += 1;
   });
-  return Array.from(uniqueRecommendations.values())
-    .map((item, index) => ({ item, index, score: scoreRelatedRecommendation(currentProduct, item, currentText) }))
+  return scoredRecommendations
     .sort((left, right) => right.score - left.score || left.index - right.index)
     .map((entry) => entry.item);
 };
@@ -257,9 +259,16 @@ export const buildRelatedRecommendations = <T extends ProductRecommendationCandi
 export const buildCompleteSetItems = <T extends ProductRecommendationCandidate>(
   relatedRecommendations: T[],
   limit = 2,
-): T[] => relatedRecommendations
-  .filter((item) => !isRecommendationUnavailable(item))
-  .slice(0, limit);
+): T[] => {
+  if (limit <= 0) return [];
+  const items: T[] = [];
+  for (const item of relatedRecommendations) {
+    if (isRecommendationUnavailable(item)) continue;
+    items.push(item);
+    if (items.length >= limit) break;
+  }
+  return items;
+};
 
 
 export interface PendingProductQuestion {
@@ -291,7 +300,10 @@ export const findSelectedProductVariant = <T extends ProductVariantLike>(
   selectedOptions: Record<string, string>,
 ): T | undefined => {
   if (!variants.length) return undefined;
-  const selectedEntries = Object.entries(selectedOptions).filter(([, value]) => Boolean(value));
+  const selectedEntries: Array<[string, string]> = [];
+  Object.entries(selectedOptions).forEach(([key, value]) => {
+    if (value) selectedEntries.push([key, value]);
+  });
   return variants.find((variant) => {
     const variantOptions = variant?.options || {};
     const variantKeys = Object.keys(variantOptions);
@@ -311,11 +323,13 @@ export const buildSelectedSpecsPayload = (
 ) => JSON.stringify({
   ...selectedOptions,
   ...(selectedVariant?.sku ? { _variantSku: selectedVariant.sku } : {}),
-  ...(purchaseMode === 'bundle' && bundleInfo ? {
-    _purchaseMode: 'bundle',
-    _bundleTitle: bundleInfo.title,
-    _bundleItems: (bundleInfo.items || []).map((item) => `${item.name} x${item.quantity || 1}`).join(', '),
-  } : {}),
+      ...(purchaseMode === 'bundle' && bundleInfo ? {
+        _purchaseMode: 'bundle',
+        _bundleTitle: bundleInfo.title,
+        _bundleItems: (bundleInfo.items || []).reduce((text, item, index) => (
+          `${text}${index > 0 ? ', ' : ''}${item.name} x${item.quantity || 1}`
+        ), ''),
+      } : {}),
 });
 
 
@@ -510,15 +524,16 @@ export const buildRecommendedPurchasePath = (params: {
   const recommendedPathTitle = params.recommendedPurchaseMode === 'bundle'
     ? params.t('pages.productDetail.pathBundleTitle')
     : params.t('pages.productDetail.pathOnceTitle');
-  const recommendedPathText = params.recommendedPurchaseMode === 'bundle' && params.bundleInfo
-    ? params.t('pages.productDetail.pathBundleText', { amount: params.formatMoney(params.bundleSavings * params.quantity) })
+  const hasBundleRecommendation = params.recommendedPurchaseMode === 'bundle' && Boolean(params.bundleInfo);
+  const bundleSavingsAmount = hasBundleRecommendation
+    ? params.formatMoney(params.bundleSavings * params.quantity)
+    : '';
+  const recommendedPathText = hasBundleRecommendation
+    ? params.t('pages.productDetail.pathBundleText', { amount: bundleSavingsAmount })
     : params.t('pages.productDetail.pathOnceText');
-  const recommendedPathTextNode = params.recommendedPurchaseMode === 'bundle' && params.bundleInfo
-    ? params.renderAmountText(
-      params.t('pages.productDetail.pathBundleText', { amount: params.formatMoney(params.bundleSavings * params.quantity) }),
-      params.formatMoney(params.bundleSavings * params.quantity),
-    )
-    : params.t('pages.productDetail.pathOnceText');
+  const recommendedPathTextNode = hasBundleRecommendation
+    ? params.renderAmountText(recommendedPathText, bundleSavingsAmount)
+    : recommendedPathText;
   return {
     recommendedPurchaseMode: params.recommendedPurchaseMode,
     recommendedPathTitle,
@@ -830,14 +845,20 @@ export const buildProductDetailSelectedOptionTags = (
   optionGroups: ProductOptionGroup[],
   selectedOptions: Record<string, string>,
   language: string,
-): ProductDetailSelectedOptionTag[] => optionGroups
-  .map((group) => ({
-    name: group.name,
-    label: getLocalizedOptionLabel(group.name, language),
-    value: selectedOptions[group.name],
-    valueLabel: getLocalizedOptionLabel(selectedOptions[group.name] || '', language),
-  }))
-  .filter((item): item is ProductDetailSelectedOptionTag => Boolean(item.value));
+): ProductDetailSelectedOptionTag[] => {
+  const tags: ProductDetailSelectedOptionTag[] = [];
+  optionGroups.forEach((group) => {
+    const value = selectedOptions[group.name];
+    if (!value) return;
+    tags.push({
+      name: group.name,
+      label: getLocalizedOptionLabel(group.name, language),
+      value,
+      valueLabel: getLocalizedOptionLabel(value, language),
+    });
+  });
+  return tags;
+};
 
 export const buildProductDetailFitGuidance = (params: {
   t: ProductDetailTranslate;

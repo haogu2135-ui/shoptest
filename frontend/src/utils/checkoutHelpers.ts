@@ -70,13 +70,18 @@ export const getCheckoutCouponErrorMessage = (
     return apiMessage;
   }
 
-  const signal = [
+  const signalParts: string[] = [];
+  for (const value of [
     responseData?.code,
     responseData?.error,
     responseData?.message,
     errorLike.code,
     errorLike.message,
-  ].map((value) => String(value || '').trim().toLowerCase()).filter(Boolean).join(' ');
+  ]) {
+    const normalized = String(value || '').trim().toLowerCase();
+    if (normalized) signalParts.push(normalized);
+  }
+  const signal = signalParts.join(' ');
 
   if (!signal) {
     return apiMessage;
@@ -110,11 +115,19 @@ export const estimateCouponDiscount = (coupon: UserCoupon, cartTotal: number) =>
   return Math.min(maxDiscount > 0 ? Math.min(discount, maxDiscount) : discount, safeCartTotal);
 };
 
-export const findBestCoupon = (coupons: UserCoupon[], cartTotal: number) =>
-  coupons
-    .map((coupon) => ({ coupon, discount: estimateCouponDiscount(coupon, cartTotal) }))
-    .filter((item) => Number.isFinite(item.discount) && item.discount > 0)
-    .sort((left, right) => right.discount - left.discount || toSafeMoney(left.coupon.thresholdAmount) - toSafeMoney(right.coupon.thresholdAmount))[0] || null;
+export const findBestCoupon = (coupons: UserCoupon[], cartTotal: number) => {
+  let best: { coupon: UserCoupon; discount: number } | null = null;
+  for (const coupon of coupons) {
+    const discount = estimateCouponDiscount(coupon, cartTotal);
+    if (!Number.isFinite(discount) || discount <= 0) continue;
+    const threshold = toSafeMoney(coupon.thresholdAmount);
+    const bestThreshold = best ? toSafeMoney(best.coupon.thresholdAmount) : Number.POSITIVE_INFINITY;
+    if (!best || discount > best.discount || (discount === best.discount && threshold < bestThreshold)) {
+      best = { coupon, discount };
+    }
+  }
+  return best;
+};
 
 export const normalizeCouponQuote = (quote?: CouponQuote | null): CouponQuote | null => (
   quote ? { ...quote, availableCoupons: Array.isArray(quote.availableCoupons) ? quote.availableCoupons : [] } : null
@@ -223,9 +236,12 @@ export const hasHydratableCheckoutValue = (value: unknown) => (
 
 export const getSavedAddressRegionPath = (address?: UserAddress | null) => {
   const region = address?.region;
-  return (Array.isArray(region) ? region : [])
-    .map((item) => normalizeCheckoutText(item, 120))
-    .filter(Boolean);
+  const normalized: string[] = [];
+  for (const item of (Array.isArray(region) ? region : [])) {
+    const value = normalizeCheckoutText(item, 120);
+    if (value) normalized.push(value);
+  }
+  return normalized;
 };
 
 export const getSavedAddressPostalCode = (address?: UserAddress | null) =>
@@ -372,7 +388,10 @@ export const resolveGuestRestorePrice = (item: CartItem, product?: Product | nul
   const bundlePrice = selectedSpecs._purchaseMode === 'bundle' ? toSafeMoney(getBundleInfo(product)?.price) : 0;
   if (bundlePrice > 0) return bundlePrice;
 
-  const selectedOptions = Object.entries(selectedSpecs).filter(([name]) => !name.startsWith('_'));
+  const selectedOptions: Array<[string, string]> = [];
+  Object.entries(selectedSpecs).forEach(([name, option]) => {
+    if (!name.startsWith('_')) selectedOptions.push([name, option]);
+  });
   const variants = product && Array.isArray(product.variants) ? product.variants : [];
   const skuMatch = selectedSpecs._variantSku
     ? variants.find((variant) => String(variant.sku || '').trim() === selectedSpecs._variantSku)
@@ -733,7 +752,11 @@ export const getCheckoutPaymentStatusColor = (status?: string) => {
 
 export const scoreCheckoutReadiness = (items: Array<{ ready: boolean }>) => {
   if (!items.length) return 0;
-  return Math.round((items.filter((item) => item.ready).length / items.length) * 100);
+  let readyCount = 0;
+  for (const item of items) {
+    if (item.ready) readyCount += 1;
+  }
+  return Math.round((readyCount / items.length) * 100);
 };
 
 export const pickCheckoutNextAction = <T extends { ready: boolean; key: string }>(
@@ -769,15 +792,17 @@ export const findNextCheckoutCouponUnlock = (
 ): CheckoutCouponUnlock | null => {
   if (!coupons.length) return null;
   const safeCartTotal = toSafeMoney(cartTotal);
-  return coupons
-    .map((coupon) => {
-      const threshold = toSafeMoney(coupon.thresholdAmount);
-      const gap = Math.max(0, threshold - safeCartTotal);
-      const estimatedValue = estimateCheckoutCouponUnlockValue(coupon);
-      return { coupon, gap, estimatedValue };
-    })
-    .filter((item) => item.gap > 0 && item.estimatedValue > 0)
-    .sort((left, right) => left.gap - right.gap || right.estimatedValue - left.estimatedValue)[0] || null;
+  let best: CheckoutCouponUnlock | null = null;
+  for (const coupon of coupons) {
+    const threshold = toSafeMoney(coupon.thresholdAmount);
+    const gap = Math.max(0, threshold - safeCartTotal);
+    const estimatedValue = estimateCheckoutCouponUnlockValue(coupon);
+    if (gap <= 0 || estimatedValue <= 0) continue;
+    if (!best || gap < best.gap || (gap === best.gap && estimatedValue > best.estimatedValue)) {
+      best = { coupon, gap, estimatedValue };
+    }
+  }
+  return best;
 };
 
 export type CheckoutCouponOpportunity = {
@@ -1290,17 +1315,21 @@ export const buildCheckoutCouponSelectOptions = (params: {
   bestCouponId?: number;
   formatMoney: CheckoutMoneyFormatter;
   t: CheckoutTranslationFn;
-}): CheckoutCouponSelectOption[] => params.availableCoupons.map((coupon) => {
-  const couponDiscount = estimateCouponDiscount(coupon, params.cartTotal);
-  const description = describeCheckoutCoupon(coupon, params.cartTotal, params.formatMoney, params.t);
-  return {
-    value: String(coupon.id),
-    label: couponDiscount > 0
-      ? `${description} - ${params.t('pages.checkout.couponSaveAmount', { amount: params.formatMoney(couponDiscount) })}${params.bestCouponId === coupon.id ? ` - ${params.t('pages.checkout.bestCoupon')}` : ''}`
-      : description,
-    disabled: couponDiscount <= 0,
-  };
-});
+}): CheckoutCouponSelectOption[] => {
+  const options: CheckoutCouponSelectOption[] = [];
+  for (const coupon of params.availableCoupons) {
+    const couponDiscount = estimateCouponDiscount(coupon, params.cartTotal);
+    const description = describeCheckoutCoupon(coupon, params.cartTotal, params.formatMoney, params.t);
+    options.push({
+      value: String(coupon.id),
+      label: couponDiscount > 0
+        ? `${description} - ${params.t('pages.checkout.couponSaveAmount', { amount: params.formatMoney(couponDiscount) })}${params.bestCouponId === coupon.id ? ` - ${params.t('pages.checkout.bestCoupon')}` : ''}`
+        : description,
+      disabled: couponDiscount <= 0,
+    });
+  }
+  return options;
+};
 
 export const deriveCheckoutEstimatedShippingSummary = (
   cartItems: CartItem[],
@@ -1412,10 +1441,12 @@ export type CheckoutAddressChoiceId = number | 'new';
 /** Ordered values for the saved-address radiogroup, including its new-address exit. */
 export const getCheckoutAddressChoiceIds = (
   addresses: Array<Pick<UserAddress, 'id'>>,
-): CheckoutAddressChoiceId[] => [
-  ...addresses.map((address) => address.id),
-  'new',
-];
+): CheckoutAddressChoiceId[] => {
+  const choices: CheckoutAddressChoiceId[] = [];
+  for (const address of addresses) choices.push(address.id);
+  choices.push('new');
+  return choices;
+};
 
 /** Native radio-style navigation for saved checkout addresses. */
 export const getNextCheckoutAddressChoiceId = (

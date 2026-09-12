@@ -278,6 +278,15 @@ const normalizeReleaseManifest = (value: unknown, manifestUrl: string): MobileRe
   const fileName = normalizeApkFileName(source.fileName);
   const sizeBytes = normalizePositiveInteger(source.sizeBytes);
   const sha256 = normalizeApkSha256(source.sha256);
+  const releaseNotes: string[] = [];
+  if (Array.isArray(source.releaseNotes)) {
+    for (const note of source.releaseNotes) {
+      const normalizedNote = cleanString(note);
+      if (!normalizedNote) continue;
+      releaseNotes.push(normalizedNote);
+      if (releaseNotes.length >= 6) break;
+    }
+  }
   return {
     platform,
     appId,
@@ -293,9 +302,7 @@ const normalizeReleaseManifest = (value: unknown, manifestUrl: string): MobileRe
     fileName,
     sizeBytes: sizeBytes || undefined,
     sha256,
-    releaseNotes: Array.isArray(source.releaseNotes)
-      ? source.releaseNotes.map(cleanString).filter(Boolean).slice(0, 6)
-      : [],
+    releaseNotes,
     generatedAt: cleanString(source.generatedAt),
     manifestUrl,
   };

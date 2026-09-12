@@ -62,13 +62,19 @@ const SIZE_OPTION_ALIASES = new Set([
   '尺寸',
 ]);
 
+const NORMALIZED_SIZE_OPTION_ALIASES = new Set(
+  Array.from(SIZE_OPTION_ALIASES, (value) => normalizeOptionName(value)),
+);
+Object.values(PRODUCT_OPTION_LABELS).forEach((labels) => {
+  const localizedSize = normalizeOptionName(labels?.Size || '');
+  if (localizedSize) NORMALIZED_SIZE_OPTION_ALIASES.add(localizedSize);
+});
+
 export const getLocalizedOptionLabel = (value: string, language: Language | string) =>
   PRODUCT_OPTION_LABELS[language as Language]?.[value] || value;
 
 export const isSizeOptionName = (value: string) => {
   const normalized = normalizeOptionName(value);
   if (!normalized) return false;
-  if (SIZE_OPTION_ALIASES.has(normalized)) return true;
-  return Object.values(PRODUCT_OPTION_LABELS)
-    .some((labels) => normalizeOptionName(labels?.Size || '') === normalized);
+  return NORMALIZED_SIZE_OPTION_ALIASES.has(normalized);
 };

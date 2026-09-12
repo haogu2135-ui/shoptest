@@ -22,6 +22,13 @@ import {
 const normalizeCartItems = (items: unknown): CartItem[] => (Array.isArray(items) ? items : []);
 const normalizeSavedForLaterItems = (items: unknown): SavedForLaterItem[] => (Array.isArray(items) ? items : []);
 const getSavedForLaterItemsSnapshot = () => normalizeSavedForLaterItems(getSavedForLaterItems());
+const getCheckoutableItemIds = (items: CartItem[], canCheckout: (item: CartItem) => boolean) => {
+  const ids: number[] = [];
+  items.forEach((item) => {
+    if (canCheckout(item)) ids.push(item.id);
+  });
+  return ids;
+};
 
 type UseCartItemMutationsParams = {
   canCheckout: (item: CartItem) => boolean;
@@ -196,7 +203,7 @@ export const useCartItemMutations = ({
         const nextItems = normalizeCartItems(getGuestCartItems());
         setCartItems(nextItems);
         clearRecentProductsCache();
-        setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
+        setSelectedIds(getCheckoutableItemIds(nextItems, canCheckout));
       }
       removeSavedForLaterProduct(item.productId, item.selectedSpecs);
       setSavedItems(getSavedForLaterItemsSnapshot());
@@ -274,7 +281,7 @@ export const useCartItemMutations = ({
         const nextItems = normalizeCartItems(getGuestCartItems());
         setCartItems(nextItems);
         clearRecentProductsCache();
-        setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
+        setSelectedIds(getCheckoutableItemIds(nextItems, canCheckout));
       }
       restoredItems.forEach((item) => removeSavedForLaterProduct(item.productId, item.selectedSpecs));
       setSavedItems(getSavedForLaterItemsSnapshot());

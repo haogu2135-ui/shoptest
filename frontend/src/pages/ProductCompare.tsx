@@ -98,9 +98,10 @@ const ProductCompare: React.FC = () => {
       const response = await productApi.getByIds(ids, { signal: abortController.signal });
       if (!isCurrentRequest()) return;
       const nextProducts = response.data.map((product) => localizeProduct(product, language));
-      ids
-        .filter((id) => !nextProducts.some((product) => product.id === id))
-        .forEach((id) => removeCompareProduct(id));
+      const nextProductIds = new Set(nextProducts.map((product) => product.id));
+      ids.forEach((id) => {
+        if (!nextProductIds.has(id)) removeCompareProduct(id);
+      });
       setProducts(nextProducts);
       setCompareLoadError(false);
     } catch (error) {
@@ -149,11 +150,18 @@ const ProductCompare: React.FC = () => {
     };
   }, [fetchComparedProducts]);
 
-  const comparedIds = useMemo(() => products.map((product) => product.id), [products]);
-  const directReadyProducts = useMemo(
-    () => products.filter((product) => (product.stock === undefined || product.stock > 0) && !needsOptionSelection(product)),
-    [products],
-  );
+  const compareProductMetrics = useMemo(() => {
+    const comparedIds: number[] = [];
+    const directReadyProducts: Product[] = [];
+    products.forEach((product) => {
+      comparedIds.push(product.id);
+      if ((product.stock === undefined || product.stock > 0) && !needsOptionSelection(product)) {
+        directReadyProducts.push(product);
+      }
+    });
+    return { comparedIds, directReadyProducts };
+  }, [products]);
+  const { comparedIds, directReadyProducts } = compareProductMetrics;
   const compareDecision = useMemo(() => buildCompareDecision(products), [products]);
   const compareActionsDisabled = compareLoadError;
 

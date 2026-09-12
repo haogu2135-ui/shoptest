@@ -41,8 +41,11 @@ type FormValues = {
   applyRuntime: boolean;
 };
 
-const rowsFromRecord = (record?: Record<string, string>) =>
-  Object.entries(record || {}).map(([key, value]) => ({ key, name: key, value }));
+const rowsFromRecord = (record?: Record<string, string>) => {
+  const rows: Array<{ key: string; name: string; value: string }> = [];
+  for (const [key, value] of Object.entries(record || {})) rows.push({ key, name: key, value });
+  return rows;
+};
 
 const isFormValidationError = (error: unknown): error is { errorFields: unknown[] } => (
   Boolean(error) && typeof error === 'object' && Array.isArray((error as { errorFields?: unknown }).errorFields)

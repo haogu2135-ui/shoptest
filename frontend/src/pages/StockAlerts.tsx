@@ -99,7 +99,14 @@ const StockAlerts: React.FC = () => {
       }
       try {
         setLoading(true);
-        const productIds = Array.from(new Set(alerts.map((alert) => alert.productId)));
+        const productIds: number[] = [];
+        const seenProductIds = new Set<number>();
+        for (const alert of alerts) {
+          if (!seenProductIds.has(alert.productId)) {
+            seenProductIds.add(alert.productId);
+            productIds.push(alert.productId);
+          }
+        }
         const response = await productApi.getByIds(productIds, { signal: abortController.signal });
         if (!isCurrentRequest()) return;
         const nextProducts = response.data.reduce<Record<number, Product>>((acc, item) => {

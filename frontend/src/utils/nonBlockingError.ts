@@ -94,20 +94,29 @@ const normalizeText = (value: unknown, maxLength: number) => {
 
 const normalizeStack = (value: unknown, maxLength: number) => {
   if (value === undefined || value === null) return '';
-  const normalized = String(value)
+  const lines = String(value)
     .replace(/\r\n/g, '\n')
     .replace(/\r/g, '\n')
     .replace(/\t/g, ' ')
-    .split('\n')
-    .map((line) => line.trim().replace(/\s+/g, ' '))
-    .filter(Boolean)
-    .slice(0, 16)
-    .join('\n');
+    .split('\n');
+  const normalizedLines: string[] = [];
+  for (const line of lines) {
+    const normalizedLine = line.trim().replace(/\s+/g, ' ');
+    if (!normalizedLine) continue;
+    normalizedLines.push(normalizedLine);
+    if (normalizedLines.length >= 16) break;
+  }
+  const normalized = normalizedLines.join('\n');
   return maskSensitiveData(normalized).slice(0, maxLength);
 };
 
 const objectKeysSummary = (value: Record<string, unknown>) => {
-  const keys = Object.keys(value).filter((key) => key !== 'error' && key !== 'componentStack').slice(0, 6);
+  const keys: string[] = [];
+  for (const key of Object.keys(value)) {
+    if (key === 'error' || key === 'componentStack') continue;
+    keys.push(key);
+    if (keys.length >= 6) break;
+  }
   return keys.length ? `Non-Error object keys: ${keys.join(',')}` : 'Non-Error object';
 };
 
@@ -264,8 +273,12 @@ export const buildNonBlockingErrorReport = (context: string, error: unknown): Cl
 
 const shouldSendReport = (payload: ClientErrorReportPayload) => {
   const now = Date.now();
-  reportTimestamps = reportTimestamps.filter((timestamp) => now - timestamp < REPORT_WINDOW_MS);
-  Array.from(recentReports.entries()).forEach(([fingerprint, timestamp]) => {
+  const activeTimestamps: number[] = [];
+  for (const timestamp of reportTimestamps) {
+    if (now - timestamp < REPORT_WINDOW_MS) activeTimestamps.push(timestamp);
+  }
+  reportTimestamps = activeTimestamps;
+  recentReports.forEach((timestamp, fingerprint) => {
     if (now - timestamp >= DEDUPE_WINDOW_MS) recentReports.delete(fingerprint);
   });
 

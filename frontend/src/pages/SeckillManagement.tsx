@@ -122,15 +122,25 @@ const SeckillManagement: React.FC = () => {
   }, [loadData]);
 
   const productById = useMemo(
-    () => new Map(products.map((product) => [product.id, product])),
+    () => {
+      const result = new Map<number, Product>();
+      for (const product of products) result.set(product.id, product);
+      return result;
+    },
     [products],
   );
   const productOptions = useMemo(
-    () => products.map((product) => ({
-      value: String(product.id),
-      label: `${product.name} · ${product.price.toFixed(2)}`,
-      disabled: product.status != null && product.status.toUpperCase() !== 'ACTIVE',
-    })),
+    () => {
+      const result: Array<{ value: string; label: string; disabled: boolean }> = [];
+      for (const product of products) {
+        result.push({
+          value: String(product.id),
+          label: `${product.name} · ${product.price.toFixed(2)}`,
+          disabled: product.status != null && product.status.toUpperCase() !== 'ACTIVE',
+        });
+      }
+      return result;
+    },
     [products],
   );
   const campaignMetrics = useMemo(() => campaigns.reduce((summary, campaign) => {
@@ -167,13 +177,19 @@ const SeckillManagement: React.FC = () => {
       startAt: parseDate(campaign?.startAt) || dayjs().add(1, 'hour'),
       endAt: parseDate(campaign?.endAt) || dayjs().add(1, 'day'),
     });
-    setItems(campaign?.items.map((item) => ({
-      id: `existing-${item.id}`,
-      productId: item.productId,
-      seckillPrice: Number(item.seckillPrice),
-      quota: item.quota,
-      limitPerUser: item.limitPerUser,
-    })) || [emptyItem()]);
+    const editorItems: ItemDraft[] = campaign ? [] : [emptyItem()];
+    if (campaign) {
+      for (const item of campaign.items) {
+        editorItems.push({
+          id: `existing-${item.id}`,
+          productId: item.productId,
+          seckillPrice: Number(item.seckillPrice),
+          quota: item.quota,
+          limitPerUser: item.limitPerUser,
+        });
+      }
+    }
+    setItems(editorItems);
     setModalOpen(true);
   };
 
@@ -186,7 +202,11 @@ const SeckillManagement: React.FC = () => {
   };
 
   const updateItem = (index: number, patch: Partial<ItemDraft>) => {
-    setItems((current) => current.map((item, itemIndex) => itemIndex === index ? { ...item, ...patch } : item));
+    setItems((current) => {
+      const next = current.slice();
+      if (index >= 0 && index < next.length) next[index] = { ...next[index], ...patch };
+      return next;
+    });
   };
 
   const validateItems = () => {
@@ -222,6 +242,11 @@ const SeckillManagement: React.FC = () => {
         message.error(itemError);
         return;
       }
+      const payloadItems: SeckillItemWritePayload[] = [];
+      for (const item of items) {
+        const { id: _id, ...payloadItem } = item;
+        payloadItems.push(payloadItem);
+      }
       const payload: SeckillCampaignWritePayload = {
         title: values.title.trim(),
         subtitle: values.subtitle?.trim() || undefined,
@@ -229,7 +254,7 @@ const SeckillManagement: React.FC = () => {
         status: values.status,
         startAt: normalizeDate(values.startAt),
         endAt: normalizeDate(values.endAt),
-        items: items.map(({ id: _id, ...item }) => item),
+        items: payloadItems,
       };
       if (!mountedRef.current) return;
       if (editing?.id) {

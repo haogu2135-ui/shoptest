@@ -94,9 +94,11 @@ export const saveCartItemForLater = (item: CartItem) => {
   const existingIndex = items.findIndex(
     (savedItem) => savedItem.productId === normalizedItem.productId && (savedItem.selectedSpecs || '') === selectedSpecs,
   );
+  const existingIds = new Set<number>();
+  for (const item of items) existingIds.add(item.id);
   const savedItem: SavedForLaterItem = {
     ...normalizedItem,
-    id: createLocalId(items.map((savedItem) => savedItem.id)),
+    id: createLocalId(existingIds),
     quantity: normalizeSavedItemQuantity(normalizedItem.quantity),
     savedAt: Date.now(),
     sourceCartItemId: normalizedItem.id,
@@ -118,7 +120,8 @@ export const saveCartItemForLater = (item: CartItem) => {
 
 export const removeSavedForLaterItem = (itemId: number) => {
   const normalizedItemId = normalizeSafeInteger(itemId);
-  const items = normalizedItemId === null ? readSavedItems() : readSavedItems().filter((item) => item.id !== normalizedItemId);
+  const storedItems = readSavedItems();
+  const items = normalizedItemId === null ? storedItems : storedItems.filter((item) => item.id !== normalizedItemId);
   writeSavedItems(items);
   return items;
 };
@@ -127,7 +130,8 @@ export const removeSavedForLaterProduct = (productId: number, selectedSpecs?: st
   const normalizedProductId = normalizePositiveInteger(productId);
   const normalizedSpecs = selectedSpecs ? String(selectedSpecs).trim().slice(0, 600) : '';
   if (normalizedProductId === null) return readSavedItems();
-  const items = readSavedItems().filter(
+  const storedItems = readSavedItems();
+  const items = storedItems.filter(
     (item) => !(item.productId === normalizedProductId && (item.selectedSpecs || '') === normalizedSpecs),
   );
   writeSavedItems(items);

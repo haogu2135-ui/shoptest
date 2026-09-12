@@ -53,9 +53,18 @@ const keywordMap: Record<Exclude<PetType, 'all'> | Exclude<NeedType, 'all'>, str
   food: ['food', 'treat', 'bowl', 'feeder', 'water', 'litter'],
 };
 
-const uniqueFinderKeywords = (keywords: string[]) => Array.from(new Set(
-  keywords.map((keyword) => keyword.trim()).filter(Boolean),
-)).slice(0, 12);
+const uniqueFinderKeywords = (keywords: string[]) => {
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+  for (const keyword of keywords) {
+    const value = keyword.trim();
+    if (!value || seen.has(value)) continue;
+    seen.add(value);
+    normalized.push(value);
+    if (normalized.length >= 12) break;
+  }
+  return normalized;
+};
 
 const finderCandidateKeywords = (petType: PetType, need: NeedType) => {
   const selectedKeywords = [

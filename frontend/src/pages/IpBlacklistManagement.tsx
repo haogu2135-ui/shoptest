@@ -187,7 +187,8 @@ const IpBlacklistManagement: React.FC = () => {
           if (!isCurrentRequest()) return false;
           const nextEntries = normalizeEntryList(listResponse.data);
           setEntries(nextEntries);
-          setSelectedEntryIds((ids) => ids.filter((id) => nextEntries.some((entry) => entry.id === id)));
+          const nextEntryIds = new Set(nextEntries.map((entry) => entry.id));
+          setSelectedEntryIds((ids) => ids.filter((id) => nextEntryIds.has(id)));
           setListLoadError(null);
           setListSnapshotLoaded(true);
           return true;
@@ -740,7 +741,14 @@ const IpBlacklistManagement: React.FC = () => {
               columnWidth: 56,
               columnTitle: (checkboxNode) => labelTableSelectionCheckbox(checkboxNode, selectAllVisibleBlacklistEntriesLabel),
               selectedRowKeys: selectedEntryIds,
-              onChange: (keys) => setSelectedEntryIds(keys.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0)),
+              onChange: (keys) => {
+                const nextIds: number[] = [];
+                keys.forEach((key) => {
+                  const id = Number(key);
+                  if (Number.isSafeInteger(id) && id > 0) nextIds.push(id);
+                });
+                setSelectedEntryIds(nextIds);
+              },
               getCheckboxProps: (record) => {
                 const selectionLabel = t('pages.ipBlacklistAdmin.selectEntryRow', { entry: blacklistEntryDisplayLabel(record) });
                 return {

@@ -156,7 +156,8 @@ const AlertManagement: React.FC = () => {
       if (!isCurrentRequest()) return;
       setAlerts(alertResponse.data);
       setSummary(summaryResponse.data);
-      const availableAlertIds = new Set(alertResponse.data.map((alert) => alert.id));
+      const availableAlertIds = new Set<number>();
+      for (const alert of alertResponse.data) availableAlertIds.add(alert.id);
       setSelectedAlertIds((ids) => ids.filter((id) => availableAlertIds.has(id)));
     } catch (error: unknown) {
       if (!isCurrentRequest()) return;
@@ -803,7 +804,14 @@ const AlertManagement: React.FC = () => {
                 columnWidth: 56,
                 columnTitle: (checkboxNode) => labelTableSelectionCheckbox(checkboxNode, selectAllVisibleAlertsLabel),
                 selectedRowKeys: selectedAlertIds,
-                onChange: (keys) => setSelectedAlertIds(keys.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0)),
+                onChange: (keys) => {
+                  const normalizedIds: number[] = [];
+                  for (const key of keys) {
+                    const id = Number(key);
+                    if (Number.isSafeInteger(id) && id > 0) normalizedIds.push(id);
+                  }
+                  setSelectedAlertIds(normalizedIds);
+                },
                 getCheckboxProps: (record) => {
                   const selectionLabel = t('pages.alertAdmin.selectAlertRow', { alert: alertDisplayLabel(record) });
                   return {

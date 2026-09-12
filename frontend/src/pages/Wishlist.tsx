@@ -206,7 +206,10 @@ const Wishlist: React.FC = () => {
         (item) => cartApi.addItem(0, item.productId, 1),
       );
       if (!mountedRef.current) return;
-      const added = results.filter((result) => result.status === 'fulfilled').length;
+      let added = 0;
+      for (const result of results) {
+        if (result.status === 'fulfilled') added += 1;
+      }
       if (added > 0) {
         announceAccessibleMessage(t('pages.wishlist.addedAllToCart', { count: added }), 'success');
         dispatchDomEvent('shop:cart-updated');
@@ -238,11 +241,10 @@ const Wishlist: React.FC = () => {
         (item) => wishlistApi.remove(0, item.productId),
       );
       if (!mountedRef.current) return;
-      const removedProductIds = new Set(
-        wishlistGroups.unavailableItems
-          .filter((_, index) => results[index]?.status === 'fulfilled')
-          .map((item) => item.productId),
-      );
+      const removedProductIds = new Set<number>();
+      wishlistGroups.unavailableItems.forEach((item, index) => {
+        if (results[index]?.status === 'fulfilled') removedProductIds.add(item.productId);
+      });
       if (removedProductIds.size > 0) {
         setItems((current) => current.filter((item) => !removedProductIds.has(item.productId)));
         dispatchDomEvent('shop:wishlist-updated');

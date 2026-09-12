@@ -262,8 +262,9 @@ export const filterProfileOrders = (params: {
   const filteredOrders = params.orders.filter((order) => {
     if (!matchesProfileOrderFilter(order, params.orderStatusFilter)) return false;
     if (!normalizedSearchText) return true;
-    const orderFields = [order.orderNo, order.id, order.trackingNumber, order.shippingAddress];
-    if (orderFields.some((value) => String(value || '').toLowerCase().includes(normalizedSearchText))) return true;
+    for (const value of [order.orderNo, order.id, order.trackingNumber, order.shippingAddress]) {
+      if (String(value || '').toLowerCase().includes(normalizedSearchText)) return true;
+    }
     return (params.orderItemsByOrderId[order.id] || []).some((item) => (
       params.resolveItemName(item).toLowerCase().includes(normalizedSearchText)
     ));
@@ -361,13 +362,12 @@ export const deriveProfileDashboardMetrics = (params: {
   const addressReadinessProgress = params.addresses.length > 0
     ? Math.round(((completeAddressCount + (defaultAddressReady ? 1 : 0)) / (params.addresses.length + 1)) * 100)
     : 0;
-  const accountHealthSignals = [
-    Boolean(params.user?.email),
-    Boolean(params.user?.phone),
-    defaultAddressReady,
-    params.petProfiles.length > 0,
-  ];
-  const accountHealthScore = Math.round((accountHealthSignals.filter(Boolean).length / accountHealthSignals.length) * 100);
+  let accountHealthReadyCount = 0;
+  if (params.user?.email) accountHealthReadyCount += 1;
+  if (params.user?.phone) accountHealthReadyCount += 1;
+  if (defaultAddressReady) accountHealthReadyCount += 1;
+  if (params.petProfiles.length > 0) accountHealthReadyCount += 1;
+  const accountHealthScore = Math.round((accountHealthReadyCount / 4) * 100);
   return {
     pendingPaymentCount,
     inTransitCount,
@@ -444,14 +444,14 @@ export const buildProfilePetFocusText = (params: {
   if (params.petProfiles.length === 0) return params.t('pages.profile.petProfileActionEmpty');
   const petProfileFocus = resolveProfilePetFocus(params.petProfiles);
   if (!petProfileFocus) return params.t('pages.profile.petProfileActionReady');
+  const missingFields: string[] = [];
+  if (!petProfileFocus.birthday) missingFields.push(params.t('pages.profile.petBirthday'));
+  if (!petProfileFocus.weight) missingFields.push(params.t('pages.profile.petWeight'));
+  if (!petProfileFocus.size) missingFields.push(params.t('pages.profile.petSize'));
+  if (!petProfileFocus.breed) missingFields.push(params.t('pages.profile.petBreed'));
   return params.t('pages.profile.petProfileActionImprove', {
     name: petProfileFocus.name || params.t('pages.profile.petName'),
-    fields: [
-      !petProfileFocus.birthday ? params.t('pages.profile.petBirthday') : null,
-      !petProfileFocus.weight ? params.t('pages.profile.petWeight') : null,
-      !petProfileFocus.size ? params.t('pages.profile.petSize') : null,
-      !petProfileFocus.breed ? params.t('pages.profile.petBreed') : null,
-    ].filter(Boolean).join(', '),
+    fields: missingFields.join(', '),
   });
 };
 

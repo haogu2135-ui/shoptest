@@ -164,12 +164,20 @@ const CouponCenter: React.FC = () => {
     };
   }, []);
 
-  const ownedCouponIds = useMemo(() => new Set(myCoupons.map((item) => item.couponId)), [myCoupons]);
+  const ownedCouponIds = useMemo(() => {
+    const ids = new Set<number>();
+    for (const item of myCoupons) ids.add(item.couponId);
+    return ids;
+  }, [myCoupons]);
   const claimableCoupons = useMemo(
-    () => publicCoupons.filter((coupon) => {
-      const remaining = getCouponRemaining(coupon);
-      return !ownedCouponIds.has(coupon.id) && remaining !== 0 && isCouponInValidWindow(coupon);
-    }),
+    () => {
+      const result: CouponPublic[] = [];
+      for (const coupon of publicCoupons) {
+        const remaining = getCouponRemaining(coupon);
+        if (!ownedCouponIds.has(coupon.id) && remaining !== 0 && isCouponInValidWindow(coupon)) result.push(coupon);
+      }
+      return result;
+    },
     [ownedCouponIds, publicCoupons],
   );
   const claimableCouponIds = useMemo(() => new Set(claimableCoupons.map((coupon) => coupon.id)), [claimableCoupons]);
@@ -307,7 +315,10 @@ const CouponCenter: React.FC = () => {
       navigate(buildLoginUrlFromWindow());
       return;
     }
-    const liveClaimableCoupons = claimableCoupons.filter((coupon) => !isFallbackCoupon(coupon.id));
+    const liveClaimableCoupons: CouponPublic[] = [];
+    for (const coupon of claimableCoupons) {
+      if (!isFallbackCoupon(coupon.id)) liveClaimableCoupons.push(coupon);
+    }
     if (claimableCoupons.length > 0 && liveClaimableCoupons.length === 0) {
       announceAccessibleMessage(t('pages.coupons.previewOnly'), 'info');
       return;
@@ -320,7 +331,10 @@ const CouponCenter: React.FC = () => {
       setClaimingAll(true);
       setClaimBatchSummary(null);
       const results = await claimCouponsInBatches(liveClaimableCoupons);
-      const claimed = results.filter((result) => result.status === 'fulfilled').length;
+      let claimed = 0;
+      for (const result of results) {
+        if (result.status === 'fulfilled') claimed += 1;
+      }
       setClaimBatchSummary({ claimed, total: liveClaimableCoupons.length });
       if (claimed > 0) {
         announceAccessibleMessage(t('pages.coupons.claimedAllSuccess', { count: claimed }), 'success');
@@ -445,9 +459,14 @@ const CouponCenter: React.FC = () => {
     [myCoupons],
   );
   const filteredWalletCoupons = useMemo(
-    () => walletFilter === 'all'
-      ? sortedMyCoupons
-      : sortedMyCoupons.filter((coupon) => coupon.status === walletFilter),
+    () => {
+      if (walletFilter === 'all') return sortedMyCoupons;
+      const result: UserCoupon[] = [];
+      for (const coupon of sortedMyCoupons) {
+        if (coupon.status === walletFilter) result.push(coupon);
+      }
+      return result;
+    },
     [sortedMyCoupons, walletFilter],
   );
   const walletGuide = useMemo(() => {
@@ -478,7 +497,10 @@ const CouponCenter: React.FC = () => {
   }), [couponUiText]);
   const hasActiveCouponControls = couponSearch.trim() || couponSort !== 'recommended' || couponFilter !== 'all';
   const couponFilterOptions = useMemo<Array<{ key: CouponFilter; label: string; count: number }>>(() => {
-    const endingCount = sortedClaimablePublicCoupons.filter((coupon) => isCouponEndingSoon(coupon.endAt)).length;
+    let endingCount = 0;
+    for (const coupon of sortedClaimablePublicCoupons) {
+      if (isCouponEndingSoon(coupon.endAt)) endingCount += 1;
+    }
     return [
       { key: 'all', label: t('common.all'), count: sortedClaimablePublicCoupons.length },
       { key: 'claimable', label: t('pages.coupons.claimableCount'), count: sortedClaimablePublicCoupons.length },

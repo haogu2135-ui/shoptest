@@ -48,13 +48,14 @@ const normalizePrice = (value?: number | null) => {
 const uniqueAbsoluteImages = (images: Array<string | null | undefined>, origin?: string | null) => {
   const seen = new Set<string>();
   const result: string[] = [];
-  images.forEach((image) => {
+  for (const image of images) {
+    if (result.length >= 8) break;
     const absolute = resolveAbsoluteUrl(image, origin);
-    if (!absolute || seen.has(absolute)) return;
+    if (!absolute || seen.has(absolute)) continue;
     seen.add(absolute);
     result.push(absolute);
-  });
-  return result.slice(0, 8);
+  }
+  return result;
 };
 
 export const buildProductStructuredData = (
@@ -131,23 +132,24 @@ export const buildBreadcrumbStructuredData = (
   origin?: string | null,
 ): Record<string, unknown> | null => {
   const siteOrigin = resolveSiteOrigin(origin);
-  const list = (Array.isArray(items) ? items : [])
-    .map((item, index) => {
-      const name = cleanText(item.name, 120);
-      if (!name) return null;
-      const entry: Record<string, unknown> = {
-        '@type': 'ListItem',
-        position: index + 1,
-        name,
-      };
-      const path = cleanText(item.path, 300);
-      if (path) {
-        const itemUrl = resolveAbsoluteUrl(path.startsWith('/') ? path : `/${path}`, siteOrigin);
-        if (itemUrl) entry.item = itemUrl;
-      }
-      return entry;
-    })
-    .filter((item): item is Record<string, unknown> => Boolean(item));
+  const list: Array<Record<string, unknown>> = [];
+  const source = Array.isArray(items) ? items : [];
+  for (let index = 0; index < source.length; index += 1) {
+    const item = source[index];
+    const name = cleanText(item.name, 120);
+    if (!name) continue;
+    const entry: Record<string, unknown> = {
+      '@type': 'ListItem',
+      position: index + 1,
+      name,
+    };
+    const path = cleanText(item.path, 300);
+    if (path) {
+      const itemUrl = resolveAbsoluteUrl(path.startsWith('/') ? path : `/${path}`, siteOrigin);
+      if (itemUrl) entry.item = itemUrl;
+    }
+    list.push(entry);
+  }
 
   if (list.length < 2) return null;
   return {
@@ -231,11 +233,12 @@ export const buildItemListStructuredData = (
   const listUrl = resolveAbsoluteUrl(listPath.startsWith('/') ? listPath : `/${listPath}`, siteOrigin);
   const description = cleanText(input.description, 320);
 
-  const elements = (Array.isArray(input.items) ? input.items : [])
-    .slice(0, 24)
-    .map((item, index) => {
+  const elements: Array<Record<string, unknown>> = [];
+  const sourceItems = Array.isArray(input.items) ? input.items : [];
+  for (let index = 0; index < sourceItems.length && index < 24; index += 1) {
+      const item = sourceItems[index];
       const itemName = cleanText(item.name, 180);
-      if (!itemName) return null;
+      if (!itemName) continue;
       const itemPath = cleanText(item.path, 300) || `/products/${item.id}`;
       const itemUrl = resolveAbsoluteUrl(itemPath.startsWith('/') ? itemPath : `/${itemPath}`, siteOrigin);
       const image = resolveAbsoluteUrl(item.imageUrl, siteOrigin);
@@ -266,9 +269,8 @@ export const buildItemListStructuredData = (
         if (itemUrl) (productNode.offers as Record<string, unknown>).url = itemUrl;
       }
       listItem.item = productNode;
-      return listItem;
-    })
-    .filter((entry): entry is Record<string, unknown> => Boolean(entry));
+      elements.push(listItem);
+  }
 
   if (!elements.length) return null;
 

@@ -121,16 +121,18 @@ const Cart: React.FC = () => {
 
   const clearQuantityPendingState = useCallback((itemIds: number[]) => {
     if (!mountedRef.current || itemIds.length === 0) return;
-    setUpdatingItemIds((ids) => ids.filter((id) => !itemIds.includes(id)));
+    const pendingIds = new Set(itemIds);
+    setUpdatingItemIds((ids) => ids.filter((id) => !pendingIds.has(id)));
   }, [mountedRef]);
 
   const setQuantityPending = useCallback((itemId: number, pending: boolean) => {
     if (!mountedRef.current) return;
-    setUpdatingItemIds((ids) => (
-      pending
-        ? Array.from(new Set([...ids, itemId]))
-        : ids.filter((id) => id !== itemId)
-    ));
+    setUpdatingItemIds((ids) => {
+      const next = new Set(ids);
+      if (pending) next.add(itemId);
+      else next.delete(itemId);
+      return Array.from(next);
+    });
   }, [mountedRef]);
 
   const {
@@ -196,7 +198,13 @@ const Cart: React.FC = () => {
     unavailableItems,
   } = cartCheckoutMetrics;
   const savedReminderItems = useMemo(
-    () => savedItems.filter((item) => getSavedAgeDays(item.savedAt) >= conversionConfig.saveForLater.reminderAfterDays),
+    () => {
+      const result = [] as typeof savedItems;
+      for (const item of savedItems) {
+        if (getSavedAgeDays(item.savedAt) >= conversionConfig.saveForLater.reminderAfterDays) result.push(item);
+      }
+      return result;
+    },
     [savedItems],
   );
   const showRecentlyViewedRecovery = recentProducts.length > 0 && (cartItems.length === 0 || purchasableItems.length === 0);
@@ -226,7 +234,11 @@ const Cart: React.FC = () => {
   }, [currency, freeShippingThreshold, selectedItems, selectedTotal]);
   const allSelected = purchasableItems.length > 0 && selectedPurchasableCount === purchasableItems.length;
   const savedItemsTotal = useMemo(
-    () => roundCartMoney(savedItems.reduce((sum, item) => sum + getLineTotal(item), 0)),
+    () => {
+      let total = 0;
+      for (const item of savedItems) total += getLineTotal(item);
+      return roundCartMoney(total);
+    },
     [savedItems],
   );
   const toggleAll = (checked: boolean) => {

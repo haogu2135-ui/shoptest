@@ -52,9 +52,17 @@ export const toPathId = (value: unknown) => {
 
 export const normalizePositiveIntList = (values: unknown[], limit = 40) => {
     const normalizedLimit = Number.isSafeInteger(limit) && limit >= 0 ? limit : 40;
-    return Array.isArray(values)
-        ? Array.from(new Set(values.map(normalizePositiveInt).filter((id): id is number => id !== null))).slice(0, normalizedLimit)
-        : [];
+    if (!Array.isArray(values) || normalizedLimit === 0) return [];
+    const normalized: number[] = [];
+    const seen = new Set<number>();
+    for (const value of values) {
+        const id = normalizePositiveInt(value);
+        if (id === null || seen.has(id)) continue;
+        seen.add(id);
+        normalized.push(id);
+        if (normalized.length >= normalizedLimit) break;
+    }
+    return normalized;
 };
 
 export const normalizeQuantityParam = (value: unknown) => {
@@ -205,21 +213,32 @@ export const normalizeOrderTrackingNumber = (value: unknown) =>
 const normalizeIdempotencyKeyParam = (value: unknown) =>
     normalizeTextParam(value, 120).replace(/[^a-z0-9._:-]/gi, '').slice(0, 120);
 
-export const normalizeGuestCheckoutItems = (items: Array<{ productId: number; quantity: number; selectedSpecs?: string }> = []) =>
-    (Array.isArray(items) ? items : [])
-        .map((item) => ({
-            productId: normalizePositiveInt(item?.productId) || 0,
+export const normalizeGuestCheckoutItems = (items: Array<{ productId: number; quantity: number; selectedSpecs?: string }> = []) => {
+    if (!Array.isArray(items)) return [];
+    const normalized: Array<{ productId: number; quantity: number; selectedSpecs?: string }> = [];
+    for (const item of items) {
+        const productId = normalizePositiveInt(item?.productId);
+        if (productId === null) continue;
+        normalized.push({
+            productId,
             quantity: normalizeQuantityParam(item?.quantity),
             selectedSpecs: item?.selectedSpecs ? normalizeTextParam(item.selectedSpecs, MAX_SELECTED_SPECS_LENGTH) : undefined,
-        }))
-        .filter((item) => item.productId > 0)
-        .slice(0, MAX_GUEST_CHECKOUT_ITEMS);
+        });
+        if (normalized.length >= MAX_GUEST_CHECKOUT_ITEMS) break;
+    }
+    return normalized;
+};
 
 export const normalizeAddressPayload = (address: Partial<UserAddress>) => ({
     recipientName: normalizeTextParam(address?.recipientName, 80),
     phone: normalizeTextParam(address?.phone, 30),
     region: Array.isArray(address?.region)
-        ? address.region.map((item) => normalizeTextParam(item, 120)).filter(Boolean).slice(0, 8)
+        ? address.region.reduce<string[]>((region, item) => {
+            if (region.length >= 8) return region;
+            const normalized = normalizeTextParam(item, 120);
+            if (normalized) region.push(normalized);
+            return region;
+        }, [])
         : undefined,
     postalCode: address?.postalCode === undefined ? undefined : normalizeTextParam(address.postalCode, 20).toUpperCase(),
     detailAddress: address?.detailAddress === undefined ? undefined : normalizeTextParam(address.detailAddress, 260),
@@ -351,17 +370,37 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 const normalizeNullableProductValue = <T,>(value: unknown, normalize: (raw: unknown) => T) =>
     value === null ? null : normalize(value);
 
-export const normalizeStringListParam = (values: unknown, limit = 30, maxLength = 500) =>
-    Array.isArray(values)
-        ? Array.from(new Set(values.map((value) => normalizeTextParam(value, normalizeTextLength(maxLength))).filter(Boolean)))
-            .slice(0, Number.isSafeInteger(limit) && limit >= 0 ? limit : 30)
-        : [];
+export const normalizeStringListParam = (values: unknown, limit = 30, maxLength = 500) => {
+    const normalizedLimit = Number.isSafeInteger(limit) && limit >= 0 ? limit : 30;
+    if (!Array.isArray(values) || normalizedLimit === 0) return [];
+    const normalized: string[] = [];
+    const seen = new Set<string>();
+    const normalizedMaxLength = normalizeTextLength(maxLength);
+    for (const value of values) {
+        const item = normalizeTextParam(value, normalizedMaxLength);
+        if (!item || seen.has(item)) continue;
+        seen.add(item);
+        normalized.push(item);
+        if (normalized.length >= normalizedLimit) break;
+    }
+    return normalized;
+};
 
-export const normalizeImageListParam = (values: unknown, limit = 30, maxLength = 2048) =>
-    Array.isArray(values)
-        ? Array.from(new Set(values.map((value) => normalizeImageUrlParam(value, normalizeTextLength(maxLength))).filter(Boolean)))
-            .slice(0, Number.isSafeInteger(limit) && limit >= 0 ? limit : 30)
-        : [];
+export const normalizeImageListParam = (values: unknown, limit = 30, maxLength = 2048) => {
+    const normalizedLimit = Number.isSafeInteger(limit) && limit >= 0 ? limit : 30;
+    if (!Array.isArray(values) || normalizedLimit === 0) return [];
+    const normalized: string[] = [];
+    const seen = new Set<string>();
+    const normalizedMaxLength = normalizeTextLength(maxLength);
+    for (const value of values) {
+        const image = normalizeImageUrlParam(value, normalizedMaxLength);
+        if (!image || seen.has(image)) continue;
+        seen.add(image);
+        normalized.push(image);
+        if (normalized.length >= normalizedLimit) break;
+    }
+    return normalized;
+};
 
 const normalizeProductSpecifications = (value: unknown) => {
     if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
@@ -378,34 +417,41 @@ const normalizeProductSpecifications = (value: unknown) => {
 const normalizeProductDetailContent = (value: unknown) => {
     if (!Array.isArray(value)) return [];
     const allowedTypes = new Set(['text', 'image', 'video']);
-    return value.slice(0, 80).map((block) => {
+    const normalized = [];
+    for (let index = 0; index < value.length && index < 80; index += 1) {
+        const block = value[index];
         const rawBlock = block && typeof block === 'object' ? block as Record<string, unknown> : {};
         const type = normalizeTextParam(rawBlock.type, 20).toLowerCase();
         const normalizedType = allowedTypes.has(type) ? type : 'text';
         const mediaUrl = normalizedType === 'image' || normalizedType === 'video'
             ? normalizeImageUrlParam(rawBlock.url, 2048)
             : undefined;
-        return {
+        const normalizedBlock = {
             type: normalizedType,
             content: normalizeTextParam(rawBlock.content, 5000) || undefined,
             url: mediaUrl || undefined,
             caption: normalizeTextParam(rawBlock.caption, 300) || undefined,
         };
-    }).filter((block) => block.type === 'text' || block.url);
+        if (normalizedBlock.type === 'text' || normalizedBlock.url) normalized.push(normalizedBlock);
+    }
+    return normalized;
 };
 
 const normalizeProductVariants = (value: unknown) => {
     if (!Array.isArray(value)) return [];
-    return value.slice(0, 120).map((variant) => {
+    const normalized = [];
+    for (let index = 0; index < value.length && index < 120; index += 1) {
+        const variant = value[index];
         const rawVariant = variant && typeof variant === 'object' ? variant as Record<string, unknown> : {};
-        return {
+        normalized.push({
             sku: normalizeTextParam(rawVariant.sku, 120) || undefined,
             options: normalizeProductSpecifications(rawVariant.options),
             price: normalizeNonNegativeNumberParam(rawVariant.price),
             stock: rawVariant.stock === undefined ? undefined : normalizeNonNegativeIntParam(rawVariant.stock),
             imageUrl: normalizeImageUrlParam(rawVariant.imageUrl, 2048) || undefined,
-        };
-    });
+        });
+    }
+    return normalized;
 };
 
 const PRODUCT_NAME_MAX_LENGTH = 200;
@@ -1032,9 +1078,13 @@ const parseMaybeJson = (value: unknown) => {
 
 const normalizeProductImages = (product: { images?: unknown; imageUrl?: unknown }) => {
     const rawImages = parseMaybeJson(product.images);
-    const images = Array.isArray(rawImages)
-        ? rawImages.map(String).map((image) => image.trim()).filter(Boolean)
-        : [];
+    const images: string[] = [];
+    if (Array.isArray(rawImages)) {
+        for (const rawImage of rawImages) {
+            const image = String(rawImage).trim();
+            if (image) images.push(image);
+        }
+    }
     const imageUrl = typeof product.imageUrl === 'string' ? product.imageUrl.trim() : '';
     return images.length > 0 ? images : (imageUrl ? [imageUrl] : []);
 };
@@ -1049,16 +1099,18 @@ const normalizeProductListField = <T,>(value: unknown): T[] => {
     return Array.isArray(parsed) ? parsed as T[] : [];
 };
 
-const normalizeProductOptionGroups = (value: unknown) =>
-    normalizeProductListField<Record<string, unknown>>(value)
-        .map((group) => {
-            const name = normalizeTextParam(group?.name, 80);
-            const values = Array.isArray(group?.values)
-                ? normalizeStringListParam(group.values, 40, 120)
-                : normalizeStringListParam(group.options, 40, 120);
-            return { name, values, options: values };
-        })
-        .filter((group) => group.name && group.values.length > 0);
+const normalizeProductOptionGroups = (value: unknown) => {
+    const groups = normalizeProductListField<Record<string, unknown>>(value);
+    const normalized = [];
+    for (const group of groups) {
+        const name = normalizeTextParam(group?.name, 80);
+        const values = Array.isArray(group?.values)
+            ? normalizeStringListParam(group.values, 40, 120)
+            : normalizeStringListParam(group.options, 40, 120);
+        if (name && values.length > 0) normalized.push({ name, values, options: values });
+    }
+    return normalized;
+};
 
 const normalizeProductPageData = <T extends ProductPublic>(data: unknown): T[] => {
     if (Array.isArray(data)) return data.map(normalizeProduct);
@@ -1073,17 +1125,20 @@ const normalizeResponseInteger = (value: unknown): number | null => {
     return Number.isSafeInteger(numeric) ? numeric : null;
 };
 
-const normalizeProduct = <T extends ProductPublic>(product: T): T => ({
-    ...product,
-    images: normalizeProductImages(product),
-    imageUrl: (typeof product.imageUrl === 'string' && product.imageUrl.trim()) || normalizeProductImages(product)[0] || '',
-    specifications: normalizeProductMap(product.specifications),
-    detailContent: normalizeProductListField(product.detailContent),
-    variants: normalizeProductListField(product.variants),
-    optionGroups: normalizeProductOptionGroups(product.optionGroups),
-    bundle: product.bundle && typeof product.bundle === 'object' ? product.bundle : null,
-    localizedContent: product.localizedContent && typeof product.localizedContent === 'object' ? product.localizedContent : null,
-} as T);
+const normalizeProduct = <T extends ProductPublic>(product: T): T => {
+    const images = normalizeProductImages(product);
+    return {
+        ...product,
+        images,
+        imageUrl: (typeof product.imageUrl === 'string' && product.imageUrl.trim()) || images[0] || '',
+        specifications: normalizeProductMap(product.specifications),
+        detailContent: normalizeProductListField(product.detailContent),
+        variants: normalizeProductListField(product.variants),
+        optionGroups: normalizeProductOptionGroups(product.optionGroups),
+        bundle: product.bundle && typeof product.bundle === 'object' ? product.bundle : null,
+        localizedContent: product.localizedContent && typeof product.localizedContent === 'object' ? product.localizedContent : null,
+    } as T;
+};
 
 export const withProductArrayData = <T extends ProductPublic>(response: AxiosResponse<T[] | ProductPublicPage>): AxiosResponse<T[]> => ({
     ...response,

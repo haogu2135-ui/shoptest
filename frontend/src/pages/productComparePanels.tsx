@@ -97,8 +97,20 @@ export const ProductCompareMainPanels: React.FC<ProductComparePanelsProps> = ({
   const specKeys = useMemo(() => collectCompareSpecKeys(products), [products]);
 
   const specRows = useMemo<CompareRow[]>(() => specKeys.map((specKey) => {
-    const normalizedValues = products.map((product) => normalizeSpecValue(getSpecValue(product, specKey)));
-    const isDifferent = products.length > 1 && new Set(normalizedValues).size > 1;
+    const valuesByProductId = new Map<number, string>();
+    let firstNormalizedValue: string | undefined;
+    let isDifferent = false;
+    products.forEach((product) => {
+      const value = getSpecValue(product, specKey);
+      const normalizedValue = normalizeSpecValue(value);
+      valuesByProductId.set(product.id, value);
+      if (firstNormalizedValue === undefined) {
+        firstNormalizedValue = normalizedValue;
+      } else if (normalizedValue !== firstNormalizedValue) {
+        isDifferent = true;
+      }
+    });
+    isDifferent = products.length > 1 && isDifferent;
     const specLabel = formatProductSpecLabel(specKey, t);
     return {
       key: `spec-${specKey}`,
@@ -111,7 +123,7 @@ export const ProductCompareMainPanels: React.FC<ProductComparePanelsProps> = ({
       ),
       isDifferent,
       render: (product: Product) => {
-        const value = getSpecValue(product, specKey);
+        const value = valuesByProductId.get(product.id) || '';
         const hasValue = normalizeSpecValue(value).length > 0;
         return (
           <span
@@ -272,15 +284,13 @@ export const ProductCompareMainPanels: React.FC<ProductComparePanelsProps> = ({
 
   const rowMetrics = rows.reduce((metrics, row) => {
     if (row.isDifferent) metrics.differentRows.push(row);
+    if (row.isDifferent && row.rawLabel) metrics.differentSpecNames.push(row.rawLabel);
     if (!showOnlyDifferences || row.alwaysVisible || row.isDifferent) metrics.visibleRows.push(row);
     return metrics;
-  }, { visibleRows: [] as CompareRow[], differentRows: [] as CompareRow[] });
+  }, { visibleRows: [] as CompareRow[], differentRows: [] as CompareRow[], differentSpecNames: [] as string[] });
   const visibleRows = rowMetrics.visibleRows;
   const differentRows = rowMetrics.differentRows;
-  const differentSpecNames = specRows.reduce<string[]>((names, row) => {
-    if (row.isDifferent && row.rawLabel) names.push(row.rawLabel);
-    return names;
-  }, []);
+  const differentSpecNames = rowMetrics.differentSpecNames;
   const compareDifferenceToggleLabel = `${compareCopy.onlyDifferent}: ${differentRows.length}`;
 
   return (

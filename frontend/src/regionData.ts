@@ -38,7 +38,11 @@ const option = (name: string, children?: RegionOption[]): RegionOption => ({
   ...(children && children.length > 0 ? { children } : {}),
 });
 
-const streets = (names: string[]): RegionOption[] => names.map((name) => option(name));
+const streets = (names: string[]): RegionOption[] => {
+  const result: RegionOption[] = [];
+  for (const name of names) result.push(option(name));
+  return result;
+};
 
 // Keep leaf locality options lightweight so checkout never pulls multi-MB district catalogs.
 const localityFallback = ['Centro', 'Colonia', 'Fraccionamiento', 'Localidad'];
@@ -49,37 +53,37 @@ const localityFallback = ['Centro', 'Colonia', 'Fraccionamiento', 'Localidad'];
  * the multi-megabyte province-city-china street catalog to every shopper.
  */
 const buildChinaRegionData = (chinaLevelData: ChinaLevelItem[]): RegionOption => {
-  const provinces = chinaLevelData.map((province) =>
-    option(
-      province.n,
-      (province.d || []).map((cityOrArea) => {
-        const childAreas = cityOrArea.d || [];
-        if (childAreas.length === 0) {
-          return option(cityOrArea.n, streets(localityFallback));
-        }
-        return option(
-          cityOrArea.n,
-          childAreas.map((area) => option(area.n, streets(localityFallback))),
-        );
-      }),
-    ),
-  );
+  const provinces: RegionOption[] = [];
+  for (const province of chinaLevelData) {
+    const cities: RegionOption[] = [];
+    for (const cityOrArea of province.d || []) {
+      const childAreas = cityOrArea.d || [];
+      if (childAreas.length === 0) {
+        cities.push(option(cityOrArea.n, streets(localityFallback)));
+        continue;
+      }
+      const areas: RegionOption[] = [];
+      for (const area of childAreas) areas.push(option(area.n, streets(localityFallback)));
+      cities.push(option(cityOrArea.n, areas));
+    }
+    provinces.push(option(province.n, cities));
+  }
 
   return option('\u4e2d\u56fd', provinces);
 };
 
 const buildMexicoRegionData = (mexicoMunicipalitiesData: MexicoMunicipalities): RegionOption => {
-  const states = Object.entries(mexicoMunicipalitiesData)
-    .sort(([stateA], [stateB]) => stateA.localeCompare(stateB, 'es-MX'))
-    .map(([state, municipalities]) =>
-      option(
-        state,
-        municipalities
-          .slice()
-          .sort((a, b) => a.localeCompare(b, 'es-MX'))
-          .map((municipality) => option(municipality, streets(localityFallback))),
-      ),
-    );
+  const stateEntries = Object.entries(mexicoMunicipalitiesData);
+  stateEntries.sort(([stateA], [stateB]) => stateA.localeCompare(stateB, 'es-MX'));
+  const states: RegionOption[] = [];
+  for (const [state, municipalities] of stateEntries) {
+    const sortedMunicipalities = [...municipalities].sort((a, b) => a.localeCompare(b, 'es-MX'));
+    const municipalityOptions: RegionOption[] = [];
+    for (const municipality of sortedMunicipalities) {
+      municipalityOptions.push(option(municipality, streets(localityFallback)));
+    }
+    states.push(option(state, municipalityOptions));
+  }
 
   return option('\u58a8\u897f\u54e5', states);
 };
@@ -164,7 +168,11 @@ export const loadRegionData = async (language?: string): Promise<RegionOption[]>
 };
 
 export const findRegionPath = (address: string, regions: RegionOption[] = assembledRegionData()): { region: string[]; detail: string } => {
-  const parts = address.split(' ').filter(Boolean);
+  const rawParts = address.split(' ');
+  const parts: string[] = [];
+  for (const part of rawParts) {
+    if (part) parts.push(part);
+  }
 
   for (let end = Math.min(parts.length, 5); end >= 3; end -= 1) {
     const candidate = parts.slice(0, end);

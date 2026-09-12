@@ -110,7 +110,11 @@ const ProductList: React.FC = () => {
   const [wishlistedProductIds, setWishlistedProductIds] = useState<Set<number>>(new Set());
   const [authSessionVersion, setAuthSessionVersion] = useState(0);
   const [alertedStockProductIds, setAlertedStockProductIds] = useState<Set<number>>(
-    () => new Set(readStockAlerts().map((alert) => alert.productId)),
+    () => {
+      const productIds = new Set<number>();
+      for (const alert of readStockAlerts()) productIds.add(alert.productId);
+      return productIds;
+    },
   );
   const priceRangeMaxRef = useRef(DEFAULT_PRICE_RANGE[1]);
   const { t, language } = useLanguage();
@@ -267,10 +271,10 @@ const ProductList: React.FC = () => {
   const categoryDepthById = useMemo(() => {
     const depths = new Map<number, number>();
     const visit = (nodes: CategoryTreeNode<CategoryPublic>[], depth: number) => {
-      nodes.forEach((category) => {
+      for (const category of nodes) {
         depths.set(category.id, depth);
         visit(category.children || [], depth + 1);
-      });
+      }
     };
     visit(categoryTree, 1);
     return depths;

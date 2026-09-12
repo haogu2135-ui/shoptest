@@ -86,13 +86,25 @@ export const deriveCartShippingSummary = (
   subtotalOverride?: number,
 ): CartShippingSummary => {
   const safeItems = Array.isArray(items) ? items : [];
-  const subtotal = subtotalOverride === undefined
-    ? roundCartMoney(safeItems.reduce((sum, item) => sum + getCartLineAmount(item), 0))
-    : roundCartMoney(subtotalOverride);
+  let subtotal = 0;
+  if (subtotalOverride === undefined) {
+    for (const item of safeItems) subtotal += getCartLineAmount(item);
+    subtotal = roundCartMoney(subtotal);
+  } else {
+    subtotal = roundCartMoney(subtotalOverride);
+  }
   const zeroThresholdFreeShipping = isExactZeroFinite(freeShippingThreshold);
   const threshold = toNonNegativeFinite(freeShippingThreshold);
   const globalFreeShippingUnlocked = zeroThresholdFreeShipping || (threshold > 0 && subtotal >= threshold);
-  const allItemsQualifyForFreeShipping = safeItems.length > 0 && safeItems.every(isCartItemFreeShippingQualified);
+  let allItemsQualifyForFreeShipping = safeItems.length > 0;
+  if (allItemsQualifyForFreeShipping) {
+    for (const item of safeItems) {
+      if (!isCartItemFreeShippingQualified(item)) {
+        allItemsQualifyForFreeShipping = false;
+        break;
+      }
+    }
+  }
   const freeShippingUnlocked = globalFreeShippingUnlocked || allItemsQualifyForFreeShipping;
   const remainingAmount = freeShippingUnlocked || threshold <= 0
     ? 0

@@ -709,6 +709,171 @@ are kept in addition to the original 130-item record:
 482. Compute AdminDashboard payment scale without spreading a variable-sized array.
 483. Reconcile AlertManagement selections against a precomputed alert-ID Set.
 
+## Optimization Round 484-513
+
+484. Precompute notification read-state and timestamp sort keys before sorting.
+485. Count NotificationManagement readiness signals without a temporary boolean array.
+486. Aggregate UserManagement health metrics with one mutable user scan.
+487. Count UserManagement readiness signals without filter allocations.
+488. Aggregate LogisticsCarrierManagement health and duplicate metrics in one scan.
+489. Count carrier readiness signals without a temporary array.
+490. Match carrier search fields directly without constructing a values array.
+491. Compute the AdminDashboard payment maximum without `Object.values` and `reduce` intermediates.
+492. Count open AdminDashboard actions directly.
+493. Build AdminDashboard donut segments in one positive-value collection pass.
+494. Reconcile IP blacklist selections against a precomputed entry-ID Set.
+495. Normalize IP blacklist selection keys in one direct collection pass.
+496. Remove missing compare IDs using a response product-ID Set.
+497. Derive compare IDs and direct-ready products in one product scan.
+498. Cache compare specification values while determining row differences.
+499. Merge compare visible-row, difference-row, and difference-name scans.
+500. Short-circuit generic compare value differences at the first mismatch.
+501. Track compare attribute differences with first values and flags instead of Sets.
+502. Collect recommendation search text fields without `Object.values` arrays.
+503. Deduplicate and score related recommendations during one source traversal.
+504. Collect complete-set items with a bounded availability scan.
+505. Collect selected variant entries without a filter intermediate.
+506. Build selected product-option tags in one direct collection pass.
+507. Reuse formatted recommendation-path amounts and text nodes.
+508. Assemble bundle payload text while collecting items, including direct and parsed bundle sources.
+509. Format selected-spec display text with one direct entry traversal.
+510. Collect Checkout purchasable items and IDs in one scan for guest and member carts.
+511. Merge personalized recommendation localization, exclusion, and stock checks into one pass.
+512. Reuse one checkoutable-ID collector across saved-item cart restoration paths.
+513. Keep bundle parsing and checkout restoration bounded while eliminating remaining map/filter chains.
+
+## Optimization Round 514-543
+
+514. Collect positive API IDs directly while enforcing the result limit.
+515. Normalize guest checkout lines in one bounded traversal.
+516. Normalize address region entries without map/filter/slice intermediates.
+517. Normalize API string lists with one bounded deduplicating pass.
+518. Normalize API image lists with one bounded deduplicating pass.
+519. Normalize product detail blocks without slice/map/filter intermediates.
+520. Normalize product variants in one bounded traversal.
+521. Parse normalized product images once and reuse them for the primary image.
+522. Normalize public product option groups with a direct accepted-row scan.
+523. Collect product-import error strings without map/filter allocations.
+524. Collect product-admin image URLs directly with an early display-limit stop.
+525. Deduplicate admin option-group values during collection.
+526. Build specification option form rows in one direct scan.
+527. Parse bundle form rows without mapped temporary objects.
+528. Normalize variant option text with one direct token traversal.
+529. Format variant option text without an intermediate map result.
+530. Hydrate product detail blocks with a direct valid-block collection.
+531. Hydrate product variants with one accepted-row traversal.
+532. Preserve plain product specifications while filtering structured keys once.
+533. Generate variant option groups without chained map/filter passes.
+534. Rebuild variant combinations with direct nested collection loops.
+535. Reconcile existing variant rows with one normalized-key map pass.
+536. Cache default variant price and stock values before combination assembly.
+537. Serialize detail-content form rows in one valid-block traversal.
+538. Serialize bundle item rows without mapped/filter intermediates.
+539. Serialize product variants in one valid-row traversal.
+540. Collect StockAlerts product IDs without map/set intermediates.
+541. Normalize AlertManagement and OrderManagement selection IDs directly.
+542. Deduplicate PetFinder keywords and product-list personalization IDs during collection.
+543. Reuse direct ID and localization collectors across checkout, Home, and product-list session state.
+
+## Optimization Round 544-573
+
+544. Normalize responsive-image widths with one deduplicating numeric pass.
+545. Stop structured-data image collection at its eight-image bound.
+546. Build breadcrumb structured-data entries without map/filter intermediates.
+547. Build bounded item-list structured data with one accepted-entry traversal.
+548. Normalize stored stock-alert rows without mapped temporary objects.
+549. Bound stock-alert persistence during its normalization pass.
+550. Filter payment channels directly while preserving backend order.
+551. Build payment method options without a second map allocation.
+552. Build payment method details without a second map allocation.
+553. Construct category lookup maps directly for path resolution.
+554. Traverse category descendants with direct loops.
+555. Bound catalog snapshot string normalization with early termination.
+556. Bound catalog snapshot image normalization with early termination.
+557. Normalize snapshot specifications directly without entry-pair materialization.
+558. Normalize snapshot variants with bounded nested loops and no key-count array.
+559. Build fallback-category search text with direct accepted-field collection.
+560. Select unique fallback-category names without candidate filtering.
+561. Normalize saved checkout address regions in one direct pass.
+562. Score checkout readiness with a counter instead of a filtered array.
+563. Find the next coupon unlock in one best-candidate traversal.
+564. Build checkout coupon options with direct result collection.
+565. Build checkout address choice IDs without spread/map intermediates.
+566. Match profile orders against fields without an order-field array.
+567. Compute profile account health using a direct readiness counter.
+568. Build missing pet-profile fields without filter allocations.
+569. Count Wishlist bulk-add successes directly.
+570. Collect successfully removed Wishlist IDs without filter/map chains.
+571. Build ConfigCenter record rows in one direct traversal.
+572. Save catalog snapshots with an early product-limit stop.
+573. Load catalog snapshots with an early product-limit stop.
+
+## Optimization Round 574-603
+
+574. Build locality options with direct collection.
+575. Build the China region hierarchy with nested direct loops.
+576. Build the Mexico region hierarchy without map-chain intermediates.
+577. Parse region address tokens with one direct non-empty pass.
+578. Generate saved-for-later IDs from a Set built in one scan.
+579. Read saved-for-later storage once when removing an item.
+580. Read saved-for-later storage once when removing a product variant.
+581. Update matching guest-cart rows in place after one index lookup.
+582. Generate guest-cart IDs from a direct existing-ID scan.
+583. Update guest-cart quantities with a bounded in-place traversal.
+584. Remove one guest-cart item with direct result collection.
+585. Count password classes without a boolean-array filter.
+586. Normalize coupon arrays without a filter allocation.
+587. Build coupon search text without a temporary field array.
+588. Collect public coupons directly before sorting.
+589. Sum coupon cart subtotal with a direct numeric accumulator.
+590. Count coupon cart units with a direct numeric accumulator.
+591. Compact API detail text in one bounded deduplicating traversal.
+592. Flatten API array details without a flatMap intermediate.
+593. Assemble API response details through direct collection.
+594. Reuse native scroll candidates during scroll-to-top.
+595. Reuse an existing Set during local ID generation.
+596. Collect ProductList stock-alert IDs without a map intermediate.
+597. Traverse ProductList category depths with direct loops.
+598. Build Home recently viewed lookup maps without mapped tuples.
+599. Count Home live gallery items directly.
+600. Count tracked-cart restore successes without filtering results.
+601. Normalize PetGallery local likes without a map allocation.
+602. Deduplicate PetGallery local likes during direct Set collection.
+603. Exclude duplicate primary API error details during one traversal.
+
+## Optimization Round 604-633
+
+604. Normalize mobile release notes with bounded direct collection.
+605. Normalize postal region tokens with one direct pass.
+606. Resolve postal rules with an ordered direct scan.
+607. Sum cart shipping subtotal with a direct accumulator.
+608. Check item-level free-shipping qualification with early exit.
+609. Normalize error stacks with bounded direct collection.
+610. Build non-error object key summaries with an early key bound.
+611. Retain active error-report timestamps with one direct pass.
+612. Prune duplicate-report entries during direct Map iteration.
+613. Find the top native overlay close button without a filtered array.
+614. Find the modal confirm cancel button without a filtered array.
+615. Find the top native confirm without a visible-element array.
+616. Dispatch confirm Escape targets without a temporary target array.
+617. Dispatch popup Escape targets without a temporary target array.
+618. Build owned CouponCenter IDs with direct Set collection.
+619. Collect CouponCenter claimable coupons in one direct pass.
+620. Collect live CouponCenter claim candidates without filter allocation.
+621. Count CouponCenter settled claim successes directly.
+622. Filter CouponCenter wallet coupons with direct collection.
+623. Count CouponCenter ending coupons without filter allocation.
+624. Build the SeckillManagement product lookup with direct Map collection.
+625. Build SeckillManagement product options without map allocation.
+626. Populate SeckillManagement editor rows with direct collection.
+627. Update a SeckillManagement editor row with one copied array and index write.
+628. Serialize SeckillManagement rows with direct payload collection.
+629. Clear Cart pending quantities with Set membership.
+630. Update Cart pending IDs through one Set transition.
+631. Build Cart saved-item reminders with direct collection.
+632. Sum Cart saved-item totals with a direct accumulator.
+633. Build BrowsingHistory viewed-time indexes with direct Map collection.
+
 ## Verification
 
 The final verification record is maintained here after the post-change checks:
@@ -872,6 +1037,54 @@ The final verification record is maintained here after the post-change checks:
 - Round 454-483 production: bounded frontend `npm run build` passed (exit code 0).
 - Round 454-483 cleanup: `git diff --check` passed; no build/test processes
   remained, and the pre-existing `127.0.0.1:4200` listener was unchanged.
+
+- Round 514-543 focused regression: 7 suites and 155 tests passed across
+  ProductManagement, PetFinder, API normalization/index, source-quality, and
+  selection type-safety coverage.
+- Supplemental 514-543 regression: 9 of 10 suites passed with 363 tests
+  passing across Checkout, ProductList, AlertManagement, OrderManagement,
+  StockAlerts, optimization helpers, and frontend contract guards. The only
+  failure is the pre-existing `commercialOpsGuard` expectation for the
+  unrelated `useProductDetailGallery.ts` comment `Avoid background carousel
+  timers in tests`.
+- Round 514-543 TypeScript: bounded frontend `npx tsc --noEmit --skipLibCheck`
+  passed with `NODE_OPTIONS=--max-old-space-size=768`.
+- Round 514-543 production: bounded frontend `npm run build` passed (exit code 0).
+- Round 514-543 cleanup: `git diff --check` passed; no build/test processes
+  remained, and the pre-existing `127.0.0.1:4200` listener was unchanged.
+- Round 544-573 focused regression: 15 of 16 suites passed with 402 tests
+  passing across media assets, structured data, stock alerts, payment methods,
+  category trees, catalog snapshots, Wishlist, ConfigCenter, Profile, SEO, and
+  source-quality contracts; the initial Checkout source-contract assertion was
+  corrected in the follow-up below.
+- Round 544-573 Checkout follow-up: 2 suites and 103 tests passed after
+  preserving the submitted-cart source contract used by Checkout tests.
+- Round 544-573 TypeScript: bounded frontend `npx tsc --noEmit --skipLibCheck`
+  passed with `NODE_OPTIONS=--max-old-space-size=768`.
+- Round 544-573 production: bounded frontend `npm run build` passed (exit code 0).
+- Round 544-573 cleanup: `git diff --check` passed; no build/test processes
+  remained, and the pre-existing `127.0.0.1:4200` listener was unchanged.
+- Round 574-603 focused regression: 12 suites and 143 tests passed across
+  region loading, saved-for-later and guest-cart storage, password policy,
+  coupon and API-error utilities, ProductList, Home, OrderTracking, PetGallery,
+  and native-scroll coverage.
+- Round 574-603 TypeScript: bounded frontend `npx tsc --noEmit --skipLibCheck`
+  passed with `NODE_OPTIONS=--max-old-space-size=768`.
+- Round 574-603 production: bounded frontend `npm run build` passed (exit code
+  0).
+- Round 574-603 cleanup: `git diff --check` passed; no test, TypeScript, or
+  build processes remained, and the pre-existing `127.0.0.1:4200` listener was
+  unchanged.
+- Round 604-633 focused regression: 11 suites and 162 tests passed across
+  mobile updates, cart utilities and flows, error reporting, CouponCenter,
+  SeckillManagement, BrowsingHistory, ProductList, and ProductDetail coverage.
+- Round 604-633 TypeScript: bounded frontend `npx tsc --noEmit --skipLibCheck`
+  passed with `NODE_OPTIONS=--max-old-space-size=768`.
+- Round 604-633 production: bounded frontend `npm run build` passed (exit code
+  0).
+- Round 604-633 cleanup: `git diff --check` passed; no test, TypeScript, or
+  build processes remained, and the pre-existing `127.0.0.1:4200` listener was
+  unchanged.
 
 All tests and builds are run through `scripts/run-bounded-task.sh` in
 accordance with the repository resource-safety instructions.

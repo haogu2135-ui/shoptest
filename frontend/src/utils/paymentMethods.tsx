@@ -85,40 +85,48 @@ export const filterPaymentChannelsForMarket = (
     options?: PaymentMethodChannelFilterOptions,
 ): PaymentChannel[] => {
     const hideForeign = shouldHideForeignPaymentRails(options);
-    return preservePaymentChannelOrder(
-        channels.filter((channel) => {
-            const market = normalizePaymentMarket(channel.market);
-            if (!['MX', 'CN', 'GLOBAL'].includes(market)) return false;
-            // Mexico-first: do not surface Alipay/WeChat/UnionPay for MXN shoppers.
-            if (hideForeign && market === 'CN') return false;
-            return true;
-        }),
-    );
+    const filtered: PaymentChannel[] = [];
+    for (const channel of channels) {
+        const market = normalizePaymentMarket(channel.market);
+        if (!['MX', 'CN', 'GLOBAL'].includes(market)) continue;
+        // Mexico-first: do not surface Alipay/WeChat/UnionPay for MXN shoppers.
+        if (hideForeign && market === 'CN') continue;
+        filtered.push(channel);
+    }
+    return preservePaymentChannelOrder(filtered);
 };
 
 export const createPaymentMethodOptions = (
     t: (key: string) => string,
     channels: PaymentChannel[] = [],
     options?: PaymentMethodChannelFilterOptions,
-): PaymentMethodOption[] =>
-    filterPaymentChannelsForMarket(channels, options)
-        .map((channel) => ({
+): PaymentMethodOption[] => {
+    const result: PaymentMethodOption[] = [];
+    for (const channel of filterPaymentChannelsForMarket(channels, options)) {
+        result.push({
             value: channel.code,
             label: <span>{iconForPaymentMethod(channel.code)} {channel.labelKey ? t(channel.labelKey) : channel.displayName}</span>,
-        }));
+        });
+    }
+    return result;
+};
 
 export const createPaymentMethodDetails = (
     channels: PaymentChannel[],
     options?: PaymentMethodChannelFilterOptions,
-): PaymentMethodDetail[] =>
-    filterPaymentChannelsForMarket(channels, options)
-        .map((channel) => ({
+): PaymentMethodDetail[] => {
+    const result: PaymentMethodDetail[] = [];
+    for (const channel of filterPaymentChannelsForMarket(channels, options)) {
+        result.push({
             value: channel.code,
             title: channel.displayName,
             descriptionKey: channel.descriptionKey || 'pages.checkout.paymentGenericDesc',
             badgeKey: channel.badgeKey || badgeKeyForPaymentMarket(channel.market),
             market: normalizePaymentMarket(channel.market),
-        }));
+        });
+    }
+    return result;
+};
 
 export const paymentMethodLabel = (method: string, t: (key: string) => string) => {
     switch (method) {

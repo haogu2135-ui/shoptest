@@ -206,12 +206,13 @@ const boundedStringList = (value: unknown, limit: number, maxLength = 80) => {
   if (!Array.isArray(value)) return undefined;
   const normalized: string[] = [];
   const seen = new Set<string>();
-  value.forEach((item) => {
+  for (const item of value) {
+    if (normalized.length >= limit) break;
     const next = clampString(item, maxLength);
-    if (!next || seen.has(next) || normalized.length >= limit) return;
+    if (!next || seen.has(next)) continue;
     seen.add(next);
     normalized.push(next);
-  });
+  }
   return normalized;
 };
 
@@ -219,50 +220,55 @@ const boundedImageList = (value: unknown, limit: number, maxLength = 1000) => {
   if (!Array.isArray(value)) return undefined;
   const normalized: string[] = [];
   const seen = new Set<string>();
-  value.forEach((item) => {
+  for (const item of value) {
+    if (normalized.length >= limit) break;
     const next = normalizePersistentImageUrl(clampString(item, maxLength));
-    if (!next || seen.has(next) || normalized.length >= limit) return;
+    if (!next || seen.has(next)) continue;
     seen.add(next);
     normalized.push(next);
-  });
+  }
   return normalized;
 };
 
 const normalizeSpecifications = (value: unknown) => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-  const entries: Array<readonly [string, string]> = [];
-  Object.entries(value as Record<string, unknown>).forEach(([key, rawValue]) => {
-    if (entries.length >= MAX_SNAPSHOT_SPEC_KEYS) return;
+  const normalized: Record<string, string> = {};
+  let entryCount = 0;
+  for (const [key, rawValue] of Object.entries(value as Record<string, unknown>)) {
+    if (entryCount >= MAX_SNAPSHOT_SPEC_KEYS) break;
     const normalizedKey = clampString(key, 80);
     const specValue = clampString(rawValue, 500);
-    if (normalizedKey && specValue) entries.push([normalizedKey, specValue]);
-  });
-  return entries.length ? Object.fromEntries(entries) : undefined;
+    if (normalizedKey && specValue) {
+      normalized[normalizedKey] = specValue;
+      entryCount += 1;
+    }
+  }
+  return entryCount > 0 ? normalized : undefined;
 };
 
 const normalizeVariants = (value: unknown): ProductVariant[] | undefined => {
   if (!Array.isArray(value)) return undefined;
   const variants: ProductVariant[] = [];
-  value.forEach((variant) => {
-    if (variants.length >= MAX_SNAPSHOT_VARIANTS) return;
+  for (const variant of value) {
+    if (variants.length >= MAX_SNAPSHOT_VARIANTS) break;
+    let optionCount = 0;
     const options = variant?.options && typeof variant.options === 'object' && !Array.isArray(variant.options)
       ? (() => {
         const normalizedOptions: Record<string, string> = {};
-        let optionCount = 0;
-        Object.entries(variant.options as Record<string, unknown>).forEach(([key, rawValue]) => {
-          if (optionCount >= MAX_SNAPSHOT_OPTIONS) return;
+        for (const [key, rawValue] of Object.entries(variant.options as Record<string, unknown>)) {
+          if (optionCount >= MAX_SNAPSHOT_OPTIONS) break;
           const normalizedKey = clampString(key, 60);
           const optionValue = clampString(rawValue, 80);
           if (normalizedKey && optionValue) {
             normalizedOptions[normalizedKey] = optionValue;
             optionCount += 1;
           }
-        });
+        }
         return normalizedOptions;
       })()
       : {};
     const price = finiteNumber(variant?.price, 0);
-    if (Object.keys(options).length === 0 || price <= 0) return;
+    if (optionCount === 0 || price <= 0) continue;
     const normalizedVariant: ProductVariant = {
       options,
       price,
@@ -273,7 +279,7 @@ const normalizeVariants = (value: unknown): ProductVariant[] | undefined => {
     if (Number.isFinite(Number(variant?.stock))) normalizedVariant.stock = Math.max(0, Math.floor(Number(variant.stock)));
     if (imageUrl) normalizedVariant.imageUrl = imageUrl;
     variants.push(normalizedVariant);
-  });
+  }
   return variants.length ? variants : undefined;
 };
 
@@ -329,10 +335,12 @@ export const normalizeProductForCatalogSnapshot = (value: unknown): ProductCatal
 
 export const saveProductCatalogSnapshot = (products: ProductPublic[], now = Date.now()) => {
   try {
-    const normalizedProducts = products
-      .map(normalizeProductForCatalogSnapshot)
-      .filter((product): product is ProductCatalogSnapshotProduct => Boolean(product))
-      .slice(0, MAX_SNAPSHOT_PRODUCTS);
+    const normalizedProducts: ProductCatalogSnapshotProduct[] = [];
+    for (const product of products) {
+      if (normalizedProducts.length >= MAX_SNAPSHOT_PRODUCTS) break;
+      const normalized = normalizeProductForCatalogSnapshot(product);
+      if (normalized) normalizedProducts.push(normalized);
+    }
     if (normalizedProducts.length === 0) return;
     setLocalStorageItem(PRODUCT_CATALOG_SNAPSHOT_KEY, JSON.stringify({
       savedAt: now,
@@ -348,12 +356,14 @@ export const loadProductCatalogSnapshot = (now = Date.now()): ProductCatalogSnap
     const parsed = JSON.parse(getLocalStorageItem(PRODUCT_CATALOG_SNAPSHOT_KEY) || 'null');
     const savedAt = Number(parsed?.savedAt);
     if (!Number.isFinite(savedAt) || savedAt <= 0 || now - savedAt > PRODUCT_CATALOG_SNAPSHOT_TTL_MS) return null;
-    const products = Array.isArray(parsed?.products)
-      ? parsed.products
-        .map(normalizeProductForCatalogSnapshot)
-        .filter((product: ProductCatalogSnapshotProduct | null): product is ProductCatalogSnapshotProduct => Boolean(product))
-        .slice(0, MAX_SNAPSHOT_PRODUCTS)
-      : [];
+    const products: ProductCatalogSnapshotProduct[] = [];
+    if (Array.isArray(parsed?.products)) {
+      for (const product of parsed.products) {
+        if (products.length >= MAX_SNAPSHOT_PRODUCTS) break;
+        const normalized = normalizeProductForCatalogSnapshot(product);
+        if (normalized) products.push(normalized);
+      }
+    }
     return products.length ? { savedAt, products } : null;
   } catch (error) {
     reportNonBlockingError('productCatalogSnapshot.loadProductCatalogSnapshot', error);
@@ -361,10 +371,14 @@ export const loadProductCatalogSnapshot = (now = Date.now()): ProductCatalogSnap
   }
 };
 
-export const loadFallbackProductCatalog = (): ProductCatalogSnapshotProduct[] =>
-  fallbackCatalogProducts
-    .map(normalizeProductForCatalogSnapshot)
-    .filter((product): product is ProductCatalogSnapshotProduct => Boolean(product));
+export const loadFallbackProductCatalog = (): ProductCatalogSnapshotProduct[] => {
+  const products: ProductCatalogSnapshotProduct[] = [];
+  fallbackCatalogProducts.forEach((product) => {
+    const normalized = normalizeProductForCatalogSnapshot(product);
+    if (normalized) products.push(normalized);
+  });
+  return products;
+};
 
 const cleanFallbackCategoryName = (value: unknown) => {
   const cleaned = clampString(value, 80);
@@ -379,12 +393,11 @@ const inferFallbackCategoryName = (product: ProductCatalogSnapshotProduct, fallb
   const explicitName = cleanFallbackCategoryName(product.categoryName);
   if (explicitName) return explicitName;
 
-  const searchText = [
-    product.name,
-    product.description,
-    product.tag,
-    product.brand,
-  ].filter(Boolean).join(' ');
+  const searchParts: string[] = [];
+  for (const value of [product.name, product.description, product.tag, product.brand]) {
+    if (value) searchParts.push(value);
+  }
+  const searchText = searchParts.join(' ');
   const matchedRule = fallbackCategoryRules.find(([pattern]) => pattern.test(searchText));
   if (matchedRule) return matchedRule[1];
 
@@ -401,9 +414,11 @@ const uniqueFallbackCategoryName = (baseName: string, product: ProductCatalogSna
     `${cleanedBaseName} picks`,
     brandName ? `${brandName} picks` : '',
     tagName,
-  ].filter(Boolean);
-  const candidate = candidates.find((name) => !usedNames.has(name.toLowerCase()));
-  return candidate || cleanedBaseName;
+  ];
+  for (const candidate of candidates) {
+    if (candidate && !usedNames.has(candidate.toLowerCase())) return candidate;
+  }
+  return cleanedBaseName;
 };
 
 export const buildProductCatalogFallbackCategories = (products: ProductCatalogSnapshotProduct[]): CategoryPublic[] => {

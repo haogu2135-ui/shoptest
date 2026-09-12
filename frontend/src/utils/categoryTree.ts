@@ -93,7 +93,8 @@ export const getLocalizedCategoryValue = (
 export const getCategoryPath = (categories: CategoryTreeNode<CategoryPublic>[], categoryId?: number, language?: Language) => {
   if (!categoryId) return '';
 
-  const byId = new Map(categories.map((category) => [category.id, category]));
+  const byId = new Map<number, CategoryTreeNode<CategoryPublic>>();
+  for (const category of categories) byId.set(category.id, category);
   const names: string[] = [];
   let current = byId.get(categoryId);
 
@@ -125,10 +126,10 @@ export const toTreeOptions = <T extends CategoryPublic>(
 export const descendantIdSet = (category: CategoryTreeNode<CategoryPublic>): Set<number> => {
   const ids = new Set<number>([category.id]);
   const visit = (nodes: CategoryTreeNode<CategoryPublic>[]) => {
-    nodes.forEach((node) => {
+    for (const node of nodes) {
       ids.add(node.id);
       visit(node.children || []);
-    });
+    }
   };
 
   visit(category.children || []);

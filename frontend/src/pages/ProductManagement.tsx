@@ -168,11 +168,15 @@ const getErrorResponseData = (error: unknown): unknown => {
   return error.response.data;
 };
 
-const stringListFromUnknown = (value: unknown) => (
-  Array.isArray(value)
-    ? value.map((item) => String(item || '').trim()).filter(Boolean)
-    : []
-);
+const stringListFromUnknown = (value: unknown) => {
+  if (!Array.isArray(value)) return [];
+  const normalized: string[] = [];
+  for (const item of value) {
+    const text = String(item || '').trim();
+    if (text) normalized.push(text);
+  }
+  return normalized;
+};
 
 const productImportRowErrorsFromUnknown = (value: unknown): ProductImportRowError[] => {
   if (!Array.isArray(value)) return [];
@@ -203,16 +207,26 @@ const parseJsonArray = (value: unknown): unknown[] => {
 };
 
 const normalizeProductImageList = (...values: unknown[]) => {
-  const flattened = values.flatMap((value) => {
-    if (Array.isArray(value)) return value;
-    const parsedArray = parseJsonArray(value);
-    return parsedArray.length > 0 ? parsedArray : [value];
-  });
-  return Array.from(new Set(
-    flattened
-      .map((image) => String(image || '').trim())
-      .filter((image) => image && isHttpMediaUrl(image))
-  )).slice(0, 12);
+  const images: string[] = [];
+  const seen = new Set<string>();
+  const addImage = (value: unknown) => {
+    if (images.length >= 12) return;
+    const image = String(value || '').trim();
+    if (image && isHttpMediaUrl(image) && !seen.has(image)) {
+      seen.add(image);
+      images.push(image);
+    }
+  };
+  for (const value of values) {
+    const candidates = Array.isArray(value) ? value : parseJsonArray(value);
+    if (candidates.length > 0) {
+      for (const candidate of candidates) addImage(candidate);
+    } else {
+      addImage(value);
+    }
+    if (images.length >= 12) break;
+  }
+  return images;
 };
 
 const parseJsonObject = (value: unknown) => {
@@ -242,7 +256,15 @@ const getProductAdminSpecs = (product: Product) => {
   (Array.isArray(product.optionGroups) ? product.optionGroups : []).forEach((group) => {
     const name = String(group?.name || '').trim();
     const values = Array.isArray(group?.values) ? group.values : (Array.isArray(group?.options) ? group.options : []);
-    const normalizedValues = Array.from(new Set(values.map((value: unknown) => String(value || '').trim()).filter(Boolean)));
+    const normalizedValues: string[] = [];
+    const seenValues = new Set<string>();
+    values.forEach((value: unknown) => {
+      const normalized = String(value || '').trim();
+      if (normalized && !seenValues.has(normalized)) {
+        seenValues.add(normalized);
+        normalizedValues.push(normalized);
+      }
+    });
     if (name && normalizedValues.length > 0) specs[`options.${name}`] = normalizedValues.join(',');
   });
   const bundle = product.bundle && typeof product.bundle === 'object' ? product.bundle : null;
@@ -255,43 +277,56 @@ const getProductAdminSpecs = (product: Product) => {
   return specs;
 };
 
-const specOptionsToFormRows = (specs: Record<string, string>) =>
-  Object.entries(specs)
-    .filter(([key]) => key.startsWith('options.'))
-    .map(([key, value]) => ({
+const specOptionsToFormRows = (specs: Record<string, string>) => {
+  const rows: Array<{ name: string; values: string }> = [];
+  Object.entries(specs).forEach(([key, value]) => {
+    if (!key.startsWith('options.')) return;
+    const values: string[] = [];
+    for (const item of String(value || '').split(',')) {
+      const normalized = item.trim();
+      if (normalized) values.push(normalized);
+    }
+    rows.push({
       name: key.replace(/^options\./, ''),
-      values: String(value || '').split(',').map(item => item.trim()).filter(Boolean).join(', '),
-    }));
+      values: values.join(', '),
+    });
+  });
+  return rows;
+};
 
 const bundleItemsToFormRows = (value?: string) => {
   if (!value) return [{ name: '', quantity: 1 }];
   try {
     const parsed = JSON.parse(value);
     if (Array.isArray(parsed)) {
-      const rows = parsed
-        .map((item) => ({
-          name: String(item?.name || '').trim(),
-          quantity: Number(item?.quantity || 1),
-        }))
-        .filter((item) => item.name);
+      const rows: Array<{ name: string; quantity: number }> = [];
+      for (const item of parsed) {
+        const name = String(item?.name || '').trim();
+        if (name) rows.push({ name, quantity: Number(item?.quantity || 1) });
+      }
       return rows.length > 0 ? rows : [{ name: '', quantity: 1 }];
     }
   } catch (error) {
     reportNonBlockingError('ProductManagement.parseBundleItems', error);
   }
-  const rows = value
-    .split(/[+,，、]/)
-    .map((name) => ({ name: name.trim(), quantity: 1 }))
-    .filter((item) => item.name);
+  const rows: Array<{ name: string; quantity: number }> = [];
+  for (const rawName of value.split(/[+,，、]/)) {
+    const name = rawName.trim();
+    if (name) rows.push({ name, quantity: 1 });
+  }
   return rows.length > 0 ? rows : [{ name: '', quantity: 1 }];
 };
 
-const normalizeVariantOptionText = (value?: string) =>
-  String(value || '')
-    .split(',')
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .join(', ');
+const normalizeVariantOptionValues = (value?: string) => {
+  const normalized: string[] = [];
+  for (const item of String(value || '').split(',')) {
+    const option = item.trim();
+    if (option) normalized.push(option);
+  }
+  return normalized;
+};
+
+const normalizeVariantOptionText = (value?: string) => normalizeVariantOptionValues(value).join(', ');
 
 const toSafeNumber = (value: unknown, fallback = 0) => {
   const parsed = Number(value);
@@ -325,8 +360,12 @@ const parseVariantOptions = (variant: ProductVariantSource | ProductVariantFormR
     }, {});
 };
 
-const formatVariantOptionText = (variant: ProductVariantSource | ProductVariantFormRow | unknown) =>
-  Object.entries(parseVariantOptions(variant)).map(([key, value]) => `${key}=${value}`).join(', ');
+const formatVariantOptionText = (variant: ProductVariantSource | ProductVariantFormRow | unknown) => {
+  const options = parseVariantOptions(variant);
+  const formatted: string[] = [];
+  Object.entries(options).forEach(([key, value]) => formatted.push(`${key}=${value}`));
+  return formatted.join(', ');
+};
 
 const productDetailContentBlockFromUnknown = (block: unknown): ProductDetailContentBlock | null => {
   if (!isRecord(block)) return null;
@@ -1216,7 +1255,10 @@ const ProductManagement: React.FC = () => {
       return;
     }
     setEditingProduct(record);
-    const images = parseJsonArray(record.images).filter((image): image is string => typeof image === 'string');
+    const images: string[] = [];
+    for (const image of parseJsonArray(record.images)) {
+      if (typeof image === 'string') images.push(image);
+    }
     const specsObj = getProductAdminSpecs(record);
     const localizedContent = {
       es: {
@@ -1230,35 +1272,36 @@ const ProductManagement: React.FC = () => {
         brand: specsObj['i18n.zh.brand'],
       },
     };
-    Object.keys(specsObj).forEach((key) => {
-      if (key.startsWith('i18n.')) delete specsObj[key];
-    });
     const optionRows = specOptionsToFormRows(specsObj);
-    Object.keys(specsObj).forEach((key) => {
-      if (key.startsWith('options.')) delete specsObj[key];
-    });
     const bundleEnabled = specsObj['bundle.enabled'] === 'true';
     const bundleTitle = specsObj['bundle.title'];
     const bundlePrice = specsObj['bundle.price'] ? Number(specsObj['bundle.price']) : undefined;
     const bundleItems = bundleItemsToFormRows(specsObj['bundle.items']);
-    Object.keys(specsObj).forEach((key) => {
-      if (key.startsWith('bundle.')) delete specsObj[key];
+    const plainSpecs: Record<string, string> = {};
+    Object.entries(specsObj).forEach(([key, value]) => {
+      if (!key.startsWith('i18n.') && !key.startsWith('options.') && !key.startsWith('bundle.')) {
+        plainSpecs[key] = value;
+      }
     });
-    const detailContent = parseJsonArray(record.detailContent)
-      .map(productDetailContentBlockFromUnknown)
-      .filter((block): block is ProductDetailContentBlock => Boolean(block));
-    const variants = parseJsonArray(record.variants).map((variant): ProductVariantFormRow => {
+    const detailContent: ProductDetailContentBlock[] = [];
+    for (const rawBlock of parseJsonArray(record.detailContent)) {
+      const block = productDetailContentBlockFromUnknown(rawBlock);
+      if (block) detailContent.push(block);
+    }
+    const variants: ProductVariantFormRow[] = [];
+    for (const variant of parseJsonArray(record.variants)) {
       const source = isRecord(variant) ? variant : {};
-      return {
+      const row = {
         sku: optionalString(source.sku),
         optionText: formatVariantOptionText(variant),
         price: toSafeNumber(source.price),
         stock: toSafeNumber(source.stock),
         imageUrl: optionalString(source.imageUrl),
       };
-    }).filter((variant) => variant.optionText);
-    const specs = Object.keys(specsObj).length > 0
-      ? Object.entries(specsObj).map(([key, value]) => ({ key, value }))
+      if (row.optionText) variants.push(row);
+    }
+    const specs = Object.keys(plainSpecs).length > 0
+      ? Object.entries(plainSpecs).map(([key, value]) => ({ key, value }))
       : [{}];
     form.setFieldsValue({
       ...record,
@@ -1387,35 +1430,45 @@ const ProductManagement: React.FC = () => {
 
   const generateVariantRows = () => {
     const optionGroupRows = (form.getFieldValue('optionGroups') as ProductOptionGroupFormRow[] | undefined) || [];
-    const optionGroups: Array<{ name: string; values: string[] }> = optionGroupRows
-      .map((group: ProductOptionGroupFormRow) => ({
-        name: String(group?.name || '').trim(),
-        values: String(group?.values || '').split(',').map((item: string) => item.trim()).filter(Boolean),
-      }))
-      .filter((group) => group.name && group.values.length > 0);
+    const optionGroups: Array<{ name: string; values: string[] }> = [];
+    for (const group of optionGroupRows) {
+      const name = String(group?.name || '').trim();
+      const values = normalizeVariantOptionValues(String(group?.values || ''));
+      if (name && values.length > 0) optionGroups.push({ name, values });
+    }
     if (optionGroups.length === 0) {
       message.warning(t('pages.productAdmin.variantOptionsRequired'));
       return;
     }
-    const combinations: Array<Record<string, string>> = optionGroups.reduce((rows: Array<Record<string, string>>, group) => {
-      if (rows.length === 0) {
-        return group.values.map((value: string) => ({ [group.name]: value }));
+    let combinations: Array<Record<string, string>> = [];
+    for (const group of optionGroups) {
+      if (combinations.length === 0) {
+        combinations = group.values.map((value) => ({ [group.name]: value }));
+        continue;
       }
-      return rows.flatMap((row) => group.values.map((value: string) => ({ ...row, [group.name]: value })));
-    }, []);
-    const existingRows = new Map(
-      ((form.getFieldValue('variants') as ProductVariantFormRow[] | undefined) || [])
-        .map((row): [string, ProductVariantFormRow] => [normalizeVariantOptionText(String(row?.optionText || '')), row])
-        .filter(([optionText]) => optionText)
-    );
+      const previousCombinations = combinations;
+      combinations = [];
+      for (const row of previousCombinations) {
+        for (const value of group.values) {
+          combinations.push({ ...row, [group.name]: value });
+        }
+      }
+    }
+    const existingRows = new Map<string, ProductVariantFormRow>();
+    for (const row of ((form.getFieldValue('variants') as ProductVariantFormRow[] | undefined) || [])) {
+      const optionText = normalizeVariantOptionText(String(row?.optionText || ''));
+      if (optionText) existingRows.set(optionText, row);
+    }
+    const defaultPrice = form.getFieldValue('price') ?? 0;
+    const defaultStock = form.getFieldValue('stock') ?? 0;
     form.setFieldValue('variants', combinations.map((options, index) => {
       const optionText = Object.entries(options).map(([key, value]) => `${key}=${value}`).join(', ');
       const existing = existingRows.get(normalizeVariantOptionText(optionText));
       return {
         sku: existing?.sku || createSkuFromOptions(options, index),
         optionText,
-        price: existing?.price ?? form.getFieldValue('price') ?? 0,
-        stock: existing?.stock ?? form.getFieldValue('stock') ?? 0,
+        price: existing?.price ?? defaultPrice,
+        stock: existing?.stock ?? defaultStock,
         imageUrl: existing?.imageUrl,
       };
     }));
@@ -1454,18 +1507,20 @@ const ProductManagement: React.FC = () => {
       const rawMainImage = String(values.imageUrl || '').trim();
       const imageList = normalizeProductImageList(rawMainImage, values.images);
       const mainImage = isHttpMediaUrl(rawMainImage) ? rawMainImage : imageList[0] || '';
-      const detailContent = (values.detailContent || [])
-        .map((block): ProductDetailContentBlock => {
+      const detailContent: ProductDetailContentBlock[] = [];
+      for (const block of (values.detailContent || [])) {
           const rawType = String(block?.type || 'text');
           const type: ProductDetailContentBlock['type'] = rawType === 'image' || rawType === 'video' ? rawType : 'text';
-          return {
+          const normalizedBlock = {
             type,
             content: String(block?.content || '').trim() || undefined,
             url: String(block?.url || '').trim() || undefined,
             caption: String(block?.caption || '').trim() || undefined,
           };
-        })
-        .filter((block) => block.type === 'text' ? !!block.content : !!block.url && isHttpMediaUrl(block.url));
+          if (normalizedBlock.type === 'text' ? normalizedBlock.content : normalizedBlock.url && isHttpMediaUrl(normalizedBlock.url)) {
+            detailContent.push(normalizedBlock);
+          }
+      }
       const localizedContent = values.localizedContent || {};
       ['es', 'zh'].forEach((locale) => {
         ['name', 'description', 'brand'].forEach((field) => {
@@ -1479,17 +1534,17 @@ const ProductManagement: React.FC = () => {
         const name = String(group?.name || '').trim();
         const valuesText = String(group?.values || '').trim();
         if (name && valuesText) {
-          const options = valuesText.split(',').map((item: string) => item.trim()).filter(Boolean);
+          const options = normalizeVariantOptionValues(valuesText);
           if (options.length) specs[`options.${name}`] = options.join(',');
         }
       });
       if (values.bundleEnabled) {
-        const bundleItems = (values.bundleItems || [])
-          .map((item) => ({
-            name: String(item?.name || '').trim(),
-            quantity: Number(item?.quantity || 1),
-          }))
-          .filter((item) => item.name && item.quantity > 0);
+        const bundleItems: Array<{ name: string; quantity: number }> = [];
+        for (const item of (values.bundleItems || [])) {
+          const name = String(item?.name || '').trim();
+          const quantity = Number(item?.quantity || 1);
+          if (name && quantity > 0) bundleItems.push({ name, quantity });
+        }
         if (bundleItems.length > 0 && Number(values.bundlePrice || 0) > 0) {
           specs['bundle.enabled'] = 'true';
           specs['bundle.title'] = String(values.bundleTitle || values.name || '').trim();
@@ -1497,21 +1552,29 @@ const ProductManagement: React.FC = () => {
           specs['bundle.items'] = JSON.stringify(bundleItems);
         }
       }
-      const variants = (values.variants || [])
-        .map((variant) => {
+      const variants: Array<{
+        sku?: string;
+        options: Record<string, string>;
+        price: number;
+        stock?: number;
+        imageUrl?: string;
+      }> = [];
+      for (const variant of (values.variants || [])) {
           const optionText = String(variant?.optionText || '').trim();
           const options = parseVariantOptions({ optionText });
           const price = toSafeNumber(variant?.price);
           const stock = toSafeNumber(variant?.stock, NaN);
-          return {
+          const normalizedVariant = {
             sku: String(variant?.sku || '').trim() || undefined,
             options,
             price,
             stock: Number.isFinite(stock) ? stock : undefined,
             imageUrl: String(variant?.imageUrl || '').trim() || undefined,
           };
-        })
-        .filter((variant) => Object.keys(variant.options).length > 0 && Number.isFinite(variant.price) && variant.price > 0);
+          if (Object.keys(normalizedVariant.options).length > 0 && Number.isFinite(normalizedVariant.price) && normalizedVariant.price > 0) {
+            variants.push(normalizedVariant);
+          }
+      }
       const variantStockTotal = variants.reduce((sum, variant) => sum + toSafeNumber(variant.stock), 0);
       const {
         specifications: _specs,

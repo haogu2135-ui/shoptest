@@ -12,20 +12,24 @@ const parseBundleItems = (value?: string): ProductBundleItem[] => {
   if (!value) return [];
   try {
     const parsed = JSON.parse(value);
-    return Array.isArray(parsed)
-      ? parsed
-        .map((item) => ({
-          name: String(item?.name || '').trim(),
-          quantity: normalizeBundleQuantity(item?.quantity),
-          productId: Number.isSafeInteger(Number(item?.productId)) && Number(item.productId) > 0 ? Number(item.productId) : undefined,
-        }))
-        .filter((item) => item.name)
-      : [];
+    if (!Array.isArray(parsed)) return [];
+    const items: ProductBundleItem[] = [];
+    parsed.forEach((item) => {
+      const normalized = {
+        name: String(item?.name || '').trim(),
+        quantity: normalizeBundleQuantity(item?.quantity),
+        productId: Number.isSafeInteger(Number(item?.productId)) && Number(item.productId) > 0 ? Number(item.productId) : undefined,
+      };
+      if (normalized.name) items.push(normalized);
+    });
+    return items;
   } catch (_error) {
-    return value
-      .split(/[+,\n,，、]/)
-      .map((name) => ({ name: name.trim(), quantity: 1 }))
-      .filter((item) => item.name);
+    const items: ProductBundleItem[] = [];
+    value.split(/[+,\n,，、]/).forEach((name) => {
+      const normalizedName = name.trim();
+      if (normalizedName) items.push({ name: normalizedName, quantity: 1 });
+    });
+    return items;
   }
 };
 
@@ -33,15 +37,17 @@ export const getBundleInfo = (product?: ProductPublic | null) => {
   const directBundle = product?.bundle && typeof product.bundle === 'object' ? product.bundle : null;
   if (directBundle?.enabled) {
     const price = Number(directBundle.price || 0);
-    const items = Array.isArray(directBundle.items)
-      ? directBundle.items
-        .map((item) => ({
+    const items: ProductBundleItem[] = [];
+    if (Array.isArray(directBundle.items)) {
+      directBundle.items.forEach((item) => {
+        const normalized = {
           name: String(item?.name || '').trim(),
           quantity: normalizeBundleQuantity(item?.quantity),
           productId: Number.isSafeInteger(Number(item?.productId)) && Number(item.productId) > 0 ? Number(item.productId) : undefined,
-        }))
-        .filter((item) => item.name)
-      : [];
+        };
+        if (normalized.name) items.push(normalized);
+      });
+    }
     if (Number.isFinite(price) && price > 0 && items.length > 0) {
       return {
         price,
@@ -73,6 +79,8 @@ export const buildBundleSpecs = (product: ProductPublic, options: Record<string,
     ...(variantSku ? { _variantSku: variantSku } : {}),
     _purchaseMode: 'bundle',
     _bundleTitle: bundle.title,
-    _bundleItems: bundle.items.map((item) => `${item.name} x${item.quantity || 1}`).join(', '),
+    _bundleItems: bundle.items.reduce((text, item, index) => (
+      `${text}${index > 0 ? ', ' : ''}${item.name} x${item.quantity || 1}`
+    ), ''),
   });
 };

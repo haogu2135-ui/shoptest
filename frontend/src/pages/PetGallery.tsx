@@ -49,7 +49,10 @@ type GalleryItem = {
 const readLocalLikes = () => {
   try {
     const parsed = JSON.parse(getLocalStorageItem(PET_GALLERY_LOCAL_LIKES_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed.map(String) : [];
+    if (!Array.isArray(parsed)) return [];
+    const likes: string[] = [];
+    for (const value of parsed) likes.push(String(value));
+    return likes;
   } catch (error) {
     reportNonBlockingError('PetGallery.readLocalLikes', error);
     return [];
@@ -57,7 +60,9 @@ const readLocalLikes = () => {
 };
 
 const writeLocalLikes = (likes: string[]) => {
-  setLocalStorageItem(PET_GALLERY_LOCAL_LIKES_KEY, JSON.stringify(Array.from(new Set(likes))));
+  const uniqueLikes = new Set<string>();
+  for (const like of likes) uniqueLikes.add(like);
+  setLocalStorageItem(PET_GALLERY_LOCAL_LIKES_KEY, JSON.stringify(Array.from(uniqueLikes)));
 };
 
 const resolvePhotoUrl = (imageUrl: string) => resolveApiAssetUrl(imageUrl, petGalleryImageFallback);

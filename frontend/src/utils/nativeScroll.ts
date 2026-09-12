@@ -37,7 +37,8 @@ export const getNativeScrollHost = (): HTMLElement | null => {
 };
 
 export const scrollAppToTop = (behavior: ScrollBehavior = 'auto') => {
-  const host = getNativeScrollHost();
+  const candidates = getNativeScrollCandidates();
+  const host = candidates.find(canElementScroll) || null;
   const shell = getNativeShellElement();
   const effectiveBehavior = isNativeRuntime() && behavior === 'smooth' ? 'auto' : behavior;
   if (host) {
@@ -45,7 +46,7 @@ export const scrollAppToTop = (behavior: ScrollBehavior = 'auto') => {
   } else if (shell) {
     shell.scrollTo({ top: 0, left: 0, behavior: effectiveBehavior });
   }
-  getNativeScrollCandidates().forEach((candidate) => {
+  candidates.forEach((candidate) => {
     if (candidate !== host) {
       candidate.scrollTo({ top: 0, left: 0, behavior: effectiveBehavior });
     }

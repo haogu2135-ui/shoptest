@@ -122,15 +122,15 @@ const UserManagement: React.FC = () => {
   }, [t]);
 
   const localUserHealth = useMemo(() => {
-    const metrics = users.reduce((summary, user) => {
+    const metrics = { activeUsers: 0, admins: 0, bannedUsers: 0, missingEmail: 0, missingPhone: 0 };
+    users.forEach((user) => {
       const status = normalizeUserAccountStatus(user.status);
-      if (status === 'ACTIVE') summary.activeUsers += 1;
-      if (isAdminRole(getEffectiveRole(user.role, user.roleCode))) summary.admins += 1;
-      if (status === 'BANNED') summary.bannedUsers += 1;
-      if (!user.email?.trim()) summary.missingEmail += 1;
-      if (!user.phone?.trim()) summary.missingPhone += 1;
-      return summary;
-    }, { activeUsers: 0, admins: 0, bannedUsers: 0, missingEmail: 0, missingPhone: 0 });
+      if (status === 'ACTIVE') metrics.activeUsers += 1;
+      if (isAdminRole(getEffectiveRole(user.role, user.roleCode))) metrics.admins += 1;
+      if (status === 'BANNED') metrics.bannedUsers += 1;
+      if (!user.email?.trim()) metrics.missingEmail += 1;
+      if (!user.phone?.trim()) metrics.missingPhone += 1;
+    });
     const { activeUsers, admins, bannedUsers, missingEmail, missingPhone } = metrics;
     const adminRatio = users.length ? admins / users.length : 0;
     const adminRisk = adminRatio > 0.25 && users.length >= 4 ? 1 : 0;
@@ -163,12 +163,14 @@ const UserManagement: React.FC = () => {
     missingPhone: `${t('pages.adminUsers.missingPhone')}: ${userHealth.missingPhone}`,
   };
 
-  const getUserReadiness = (user: User) => [
-    user.username?.trim(),
-    user.email?.trim(),
-    user.phone?.trim(),
-    normalizeUserAccountStatus(user.status) === 'ACTIVE',
-  ].filter(Boolean).length;
+  const getUserReadiness = (user: User) => {
+    let readySignals = 0;
+    if (user.username?.trim()) readySignals += 1;
+    if (user.email?.trim()) readySignals += 1;
+    if (user.phone?.trim()) readySignals += 1;
+    if (normalizeUserAccountStatus(user.status) === 'ACTIVE') readySignals += 1;
+    return readySignals;
+  };
 
   const fetchUsers = useCallback(async (page = 1, size = DEFAULT_USER_PAGE_SIZE) => {
     // Filter edits and pagination can leave several fetches in flight at once. Each

@@ -244,9 +244,10 @@ const DonutChartComponent: React.FC<DonutChartProps> = ({ data, labels }) => {
     <ShopSpace align="center" className="admin-dashboard__donutChart">
       <svg width="128" height="128" viewBox="0 0 128 128" role="img" aria-label={labels.orderStatusChart}>
         <circle cx="64" cy="64" r={radius} fill="none" stroke="#f0f0f0" strokeWidth="18" />
-        {data.filter((item) => item.value > 0).map((item) => {
+        {data.reduce<React.ReactNode[]>((circles, item) => {
+          if (item.value <= 0) return circles;
           const dash = (item.value / total) * circumference;
-          const circle = (
+          circles.push(
             <circle
               key={item.label}
               cx="64"
@@ -259,11 +260,11 @@ const DonutChartComponent: React.FC<DonutChartProps> = ({ data, labels }) => {
               strokeDashoffset={-offset}
               strokeLinecap="round"
               transform="rotate(-90 64 64)"
-            />
+            />,
           );
           offset += dash;
-          return circle;
-        })}
+          return circles;
+        }, [])}
         <text x="64" y="60" textAnchor="middle" fontSize="20" fontWeight="700" fill="#222">{total}</text>
         <text x="64" y="78" textAnchor="middle" fontSize="11" fill="#888">{labels.orderUnit}</text>
       </svg>
@@ -512,8 +513,10 @@ const AdminDashboard: React.FC = () => {
     },
   ];
 
-  const maxPaymentCount = Object.values(stats.paymentMethodBreakdown || {})
-    .reduce((max, count) => Math.max(max, Number(count) || 0), 1);
+  let maxPaymentCount = 1;
+  Object.values(stats.paymentMethodBreakdown || {}).forEach((count) => {
+    maxPaymentCount = Math.max(maxPaymentCount, Number(count) || 0);
+  });
   const shippedOrders = Number(stats.shippedOrders || 0);
   const ordersWithTracking = Number(stats.ordersWithTracking || 0);
   const trackingCoverage = shippedOrders ? Math.min(100, Math.round((ordersWithTracking / shippedOrders) * 100)) : 0;
@@ -663,7 +666,10 @@ const AdminDashboard: React.FC = () => {
       target: '/admin/audit-logs?view=refunds',
     },
   ];
-  const openActionCount = operationalActions.filter((item) => item.value > 0).length;
+  let openActionCount = 0;
+  operationalActions.forEach((item) => {
+    if (item.value > 0) openActionCount += 1;
+  });
   const commercialRiskTotal = openActionCount + paymentReturnRiskScore + operationsSlaRiskTotal;
   const commercialReadinessScore = Math.max(0, Math.min(100, 100 - Math.min(100, commercialRiskTotal * 8)));
   const commercialReadinessTone = commercialReadinessScore >= 85 ? 'ready' : commercialReadinessScore >= 65 ? 'watch' : 'risk';

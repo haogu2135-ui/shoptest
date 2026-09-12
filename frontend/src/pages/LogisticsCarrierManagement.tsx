@@ -71,27 +71,27 @@ const LogisticsCarrierManagement: React.FC = () => {
   }, [t]);
 
   const carrierHealth = useMemo(() => {
-    const metrics = carriers.reduce((acc, carrier) => {
-      if (carrier.status === 'ACTIVE') acc.active += 1;
-      if (!carrier.trackingCode?.trim()) acc.missingCodes += 1;
-      const key = carrier.trackingCode?.trim().toLowerCase();
-      if (key) {
-        const nextCount = (acc.duplicateCodeKeys[key] || 0) + 1;
-        acc.duplicateCodeKeys[key] = nextCount;
-        if (nextCount === 2) acc.duplicateCodes += 1;
-      }
-      const sortKey = String(carrier.sortOrder ?? 0);
-      const nextSortCount = (acc.duplicateSortKeys[sortKey] || 0) + 1;
-      acc.duplicateSortKeys[sortKey] = nextSortCount;
-      if (nextSortCount === 2) acc.duplicateSortOrders += 1;
-      return acc;
-    }, {
+    const metrics = {
       active: 0,
       missingCodes: 0,
       duplicateCodes: 0,
       duplicateSortOrders: 0,
       duplicateCodeKeys: {} as Record<string, number>,
       duplicateSortKeys: {} as Record<string, number>,
+    };
+    carriers.forEach((carrier) => {
+      if (carrier.status === 'ACTIVE') metrics.active += 1;
+      if (!carrier.trackingCode?.trim()) metrics.missingCodes += 1;
+      const key = carrier.trackingCode?.trim().toLowerCase();
+      if (key) {
+        const nextCount = (metrics.duplicateCodeKeys[key] || 0) + 1;
+        metrics.duplicateCodeKeys[key] = nextCount;
+        if (nextCount === 2) metrics.duplicateCodes += 1;
+      }
+      const sortKey = String(carrier.sortOrder ?? 0);
+      const nextSortCount = (metrics.duplicateSortKeys[sortKey] || 0) + 1;
+      metrics.duplicateSortKeys[sortKey] = nextSortCount;
+      if (nextSortCount === 2) metrics.duplicateSortOrders += 1;
     });
     const active = metrics.active;
     const inactive = carriers.length - active;
@@ -113,13 +113,12 @@ const LogisticsCarrierManagement: React.FC = () => {
   }, [carriers]);
 
   const getCarrierReadiness = (carrier: LogisticsCarrier) => {
-    const signals = [
-      carrier.name?.trim(),
-      carrier.trackingCode?.trim(),
-      carrier.status === 'ACTIVE',
-      carrier.sortOrder !== undefined && carrier.sortOrder !== null,
-    ];
-    return signals.filter(Boolean).length;
+    let readySignals = 0;
+    if (carrier.name?.trim()) readySignals += 1;
+    if (carrier.trackingCode?.trim()) readySignals += 1;
+    if (carrier.status === 'ACTIVE') readySignals += 1;
+    if (carrier.sortOrder !== undefined && carrier.sortOrder !== null) readySignals += 1;
+    return readySignals;
   };
 
   const filteredCarriers = useMemo(() => {
@@ -127,8 +126,10 @@ const LogisticsCarrierManagement: React.FC = () => {
     return carriers.filter((carrier) => {
       if (statusFilter && carrier.status !== statusFilter) return false;
       if (!text) return true;
-      return [carrier.name, carrier.trackingCode, carrier.status, carrier.sortOrder]
-        .some((value) => String(value || '').toLowerCase().includes(text));
+      return String(carrier.name || '').toLowerCase().includes(text)
+        || String(carrier.trackingCode || '').toLowerCase().includes(text)
+        || String(carrier.status || '').toLowerCase().includes(text)
+        || String(carrier.sortOrder || '').toLowerCase().includes(text);
     });
   }, [carriers, keyword, statusFilter]);
   const carrierEditorLabel = editingCarrier?.name || editingCarrier?.trackingCode || t('pages.logisticsCarriers.addCarrier');

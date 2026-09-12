@@ -23,11 +23,10 @@ export const isCommonPassword = (password: string) =>
 
 export const hasRequiredPasswordClasses = (password: string) => {
   const value = String(password || '');
-  const classCount = [
-    /[a-z]/.test(value),
-    /[A-Z]/.test(value),
-    /\d/.test(value),
-    /[^A-Za-z0-9\s]/.test(value),
-  ].filter(Boolean).length;
+  let classCount = 0;
+  if (/[a-z]/.test(value)) classCount += 1;
+  if (/[A-Z]/.test(value)) classCount += 1;
+  if (/\d/.test(value)) classCount += 1;
+  if (/[^A-Za-z0-9\s]/.test(value)) classCount += 1;
   return classCount >= 3;
 };
