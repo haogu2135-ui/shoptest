@@ -202,52 +202,78 @@ const positiveInt = (value: unknown) => {
   return Number.isSafeInteger(numeric) && numeric > 0 ? numeric : null;
 };
 
-const boundedStringList = (value: unknown, limit: number, maxLength = 80) =>
-  Array.isArray(value)
-    ? Array.from(new Set(value.map((item) => clampString(item, maxLength)).filter(Boolean))).slice(0, limit)
-    : undefined;
+const boundedStringList = (value: unknown, limit: number, maxLength = 80) => {
+  if (!Array.isArray(value)) return undefined;
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+  value.forEach((item) => {
+    const next = clampString(item, maxLength);
+    if (!next || seen.has(next) || normalized.length >= limit) return;
+    seen.add(next);
+    normalized.push(next);
+  });
+  return normalized;
+};
 
-const boundedImageList = (value: unknown, limit: number, maxLength = 1000) =>
-  Array.isArray(value)
-    ? Array.from(new Set(value.map((item) => normalizePersistentImageUrl(clampString(item, maxLength))).filter(Boolean))).slice(0, limit)
-    : undefined;
+const boundedImageList = (value: unknown, limit: number, maxLength = 1000) => {
+  if (!Array.isArray(value)) return undefined;
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+  value.forEach((item) => {
+    const next = normalizePersistentImageUrl(clampString(item, maxLength));
+    if (!next || seen.has(next) || normalized.length >= limit) return;
+    seen.add(next);
+    normalized.push(next);
+  });
+  return normalized;
+};
 
 const normalizeSpecifications = (value: unknown) => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return undefined;
-  const entries = Object.entries(value as Record<string, unknown>)
-    .map(([key, rawValue]) => [clampString(key, 80), clampString(rawValue, 500)] as const)
-    .filter(([key, specValue]) => key && specValue)
-    .slice(0, MAX_SNAPSHOT_SPEC_KEYS);
+  const entries: Array<readonly [string, string]> = [];
+  Object.entries(value as Record<string, unknown>).forEach(([key, rawValue]) => {
+    if (entries.length >= MAX_SNAPSHOT_SPEC_KEYS) return;
+    const normalizedKey = clampString(key, 80);
+    const specValue = clampString(rawValue, 500);
+    if (normalizedKey && specValue) entries.push([normalizedKey, specValue]);
+  });
   return entries.length ? Object.fromEntries(entries) : undefined;
 };
 
 const normalizeVariants = (value: unknown): ProductVariant[] | undefined => {
   if (!Array.isArray(value)) return undefined;
-  const variants = value
-    .map((variant): ProductVariant | null => {
-      const options = variant?.options && typeof variant.options === 'object' && !Array.isArray(variant.options)
-        ? Object.fromEntries(
-          Object.entries(variant.options as Record<string, unknown>)
-            .map(([key, rawValue]) => [clampString(key, 60), clampString(rawValue, 80)] as const)
-            .filter(([key, optionValue]) => key && optionValue)
-            .slice(0, MAX_SNAPSHOT_OPTIONS),
-        )
-        : {};
-      const price = finiteNumber(variant?.price, 0);
-      if (Object.keys(options).length === 0 || price <= 0) return null;
-      const normalizedVariant: ProductVariant = {
-        options,
-        price,
-      };
-      const sku = clampString(variant?.sku, 80);
-      const imageUrl = normalizePersistentImageUrl(clampString(variant?.imageUrl, 1000));
-      if (sku) normalizedVariant.sku = sku;
-      if (Number.isFinite(Number(variant?.stock))) normalizedVariant.stock = Math.max(0, Math.floor(Number(variant.stock)));
-      if (imageUrl) normalizedVariant.imageUrl = imageUrl;
-      return normalizedVariant;
-    })
-    .filter((variant): variant is ProductVariant => Boolean(variant))
-    .slice(0, MAX_SNAPSHOT_VARIANTS);
+  const variants: ProductVariant[] = [];
+  value.forEach((variant) => {
+    if (variants.length >= MAX_SNAPSHOT_VARIANTS) return;
+    const options = variant?.options && typeof variant.options === 'object' && !Array.isArray(variant.options)
+      ? (() => {
+        const normalizedOptions: Record<string, string> = {};
+        let optionCount = 0;
+        Object.entries(variant.options as Record<string, unknown>).forEach(([key, rawValue]) => {
+          if (optionCount >= MAX_SNAPSHOT_OPTIONS) return;
+          const normalizedKey = clampString(key, 60);
+          const optionValue = clampString(rawValue, 80);
+          if (normalizedKey && optionValue) {
+            normalizedOptions[normalizedKey] = optionValue;
+            optionCount += 1;
+          }
+        });
+        return normalizedOptions;
+      })()
+      : {};
+    const price = finiteNumber(variant?.price, 0);
+    if (Object.keys(options).length === 0 || price <= 0) return;
+    const normalizedVariant: ProductVariant = {
+      options,
+      price,
+    };
+    const sku = clampString(variant?.sku, 80);
+    const imageUrl = normalizePersistentImageUrl(clampString(variant?.imageUrl, 1000));
+    if (sku) normalizedVariant.sku = sku;
+    if (Number.isFinite(Number(variant?.stock))) normalizedVariant.stock = Math.max(0, Math.floor(Number(variant.stock)));
+    if (imageUrl) normalizedVariant.imageUrl = imageUrl;
+    variants.push(normalizedVariant);
+  });
   return variants.length ? variants : undefined;
 };
 

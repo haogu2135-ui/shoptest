@@ -64,11 +64,19 @@ export const cacheProductRecommendations = (cacheKey: string, items: Product[], 
 };
 
 const parseImageList = (value: unknown): string[] => {
-  if (Array.isArray(value)) return value.map((item) => String(item || '').trim()).filter(Boolean);
+  const normalizeItems = (items: unknown[]) => {
+    const normalized: string[] = [];
+    items.forEach((item) => {
+      const image = String(item || '').trim();
+      if (image) normalized.push(image);
+    });
+    return normalized;
+  };
+  if (Array.isArray(value)) return normalizeItems(value);
   if (typeof value !== 'string') return [];
   try {
     const parsed = JSON.parse(value);
-    return Array.isArray(parsed) ? parsed.map((item) => String(item || '').trim()).filter(Boolean) : [];
+    return Array.isArray(parsed) ? normalizeItems(parsed) : [];
   } catch (error) {
     reportNonBlockingError('ProductDetail.parseImageList', error);
     return [];
@@ -77,10 +85,18 @@ const parseImageList = (value: unknown): string[] => {
 
 export const normalizeProductImages = (product: ProductRecommendationCandidate | null | undefined) => {
   const rawImages = parseImageList(product?.images);
-  const images = [product?.imageUrl, ...rawImages]
-    .map((image) => String(image || '').trim())
-    .filter(Boolean);
-  const uniqueImages = Array.from(new Set(images.map(resolveDetailImage)));
+  const uniqueImages: string[] = [];
+  const seenImages = new Set<string>();
+  const addImage = (image: unknown) => {
+    const normalized = String(image || '').trim();
+    if (!normalized) return;
+    const resolved = resolveDetailImage(normalized);
+    if (seenImages.has(resolved)) return;
+    seenImages.add(resolved);
+    uniqueImages.push(resolved);
+  };
+  addImage(product?.imageUrl);
+  rawImages.forEach(addImage);
   return uniqueImages.length > 0
     ? uniqueImages.concat(fallbackProductImage)
     : [fallbackProductImage, fallbackProductImage];
@@ -172,16 +188,21 @@ const recommendationObjectValues = (value: unknown) => (
     : []
 );
 
-const productRecommendationSearchText = (item: ProductRecommendationCandidate | null | undefined) => [
-  item?.name,
-  item?.description,
-  item?.brand,
-  item?.tag,
-  item?.shipping,
-  item?.warranty,
-  ...recommendationObjectValues(item?.specifications),
-  ...recommendationObjectValues(item?.specificationItems),
-].filter(Boolean).join(' ').toLowerCase();
+const productRecommendationSearchText = (item: ProductRecommendationCandidate | null | undefined) => {
+  const parts: string[] = [];
+  const append = (value: unknown) => {
+    if (value) parts.push(String(value));
+  };
+  append(item?.name);
+  append(item?.description);
+  append(item?.brand);
+  append(item?.tag);
+  append(item?.shipping);
+  append(item?.warranty);
+  recommendationObjectValues(item?.specifications).forEach(append);
+  recommendationObjectValues(item?.specificationItems).forEach(append);
+  return parts.join(' ').toLowerCase();
+};
 
 export const isRecommendationUnavailable = (item: ProductRecommendationCandidate | null | undefined) => {
   const hasStockValue = item?.stock !== undefined && item?.stock !== null;
@@ -196,8 +217,15 @@ export const scoreRelatedRecommendation = (
   const text = productRecommendationSearchText(candidate);
   let score = 0;
   if (Number(candidate?.categoryId) === Number(currentProduct?.categoryId)) score += 24;
-  if (PRODUCT_RECOMMENDATION_ACCESSORY_KEYWORDS.some((keyword) => text.includes(keyword))) score += 18;
-  if (currentText && PRODUCT_RECOMMENDATION_ACCESSORY_KEYWORDS.some((keyword) => currentText.includes(keyword) && text.includes(keyword))) score += 8;
+  let hasAccessoryKeyword = false;
+  let sharesAccessoryKeyword = false;
+  for (const keyword of PRODUCT_RECOMMENDATION_ACCESSORY_KEYWORDS) {
+    if (!text.includes(keyword)) continue;
+    hasAccessoryKeyword = true;
+    if (currentText && currentText.includes(keyword)) sharesAccessoryKeyword = true;
+  }
+  if (hasAccessoryKeyword) score += 18;
+  if (sharesAccessoryKeyword) score += 8;
   if (candidate?.activeLimitedTimeDiscount || Number(candidate?.effectiveDiscountPercent || candidate?.discount || 0) > 0) score += 6;
   const reviewCount = Number(candidate?.reviewCount || 0);
   const averageRating = Number(candidate?.averageRating || 0);
@@ -213,18 +241,14 @@ export const buildRelatedRecommendations = <T extends ProductRecommendationCandi
 ): T[] => {
   const currentId = Number(currentProduct?.id);
   const currentText = productRecommendationSearchText(currentProduct);
-  return (Array.from(
-    recommendations
-      .filter((item) => Number(item.id) !== currentId)
-      .reduce((itemsById, item) => {
-        const recommendationId = Number(item.id);
-        if (Number.isFinite(recommendationId) && !itemsById.has(recommendationId)) {
-          itemsById.set(recommendationId, item);
-        }
-        return itemsById;
-      }, new Map<number, T>())
-      .values(),
-  ) as T[])
+  const uniqueRecommendations = new Map<number, T>();
+  recommendations.forEach((item) => {
+    const recommendationId = Number(item.id);
+    if (recommendationId !== currentId && Number.isFinite(recommendationId) && !uniqueRecommendations.has(recommendationId)) {
+      uniqueRecommendations.set(recommendationId, item);
+    }
+  });
+  return Array.from(uniqueRecommendations.values())
     .map((item, index) => ({ item, index, score: scoreRelatedRecommendation(currentProduct, item, currentText) }))
     .sort((left, right) => right.score - left.score || left.index - right.index)
     .map((entry) => entry.item);
@@ -267,13 +291,15 @@ export const findSelectedProductVariant = <T extends ProductVariantLike>(
   selectedOptions: Record<string, string>,
 ): T | undefined => {
   if (!variants.length) return undefined;
-  const selectedKeys = Object.keys(selectedOptions).filter((key) => selectedOptions[key]);
+  const selectedEntries = Object.entries(selectedOptions).filter(([, value]) => Boolean(value));
   return variants.find((variant) => {
     const variantOptions = variant?.options || {};
     const variantKeys = Object.keys(variantOptions);
-    return variantKeys.length === selectedKeys.length
-      && variantKeys.every((key) => selectedOptions[key] === variantOptions[key])
-      && selectedKeys.every((key) => Object.prototype.hasOwnProperty.call(variantOptions, key));
+    if (variantKeys.length !== selectedEntries.length) return false;
+    return selectedEntries.every(([key, value]) => (
+      Object.prototype.hasOwnProperty.call(variantOptions, key)
+      && variantOptions[key] === value
+    ));
   });
 };
 

@@ -155,26 +155,34 @@ const PetGallery: React.FC = () => {
   }, [refreshGallery]);
 
   const items = useMemo<GalleryItem[]>(() => {
-    const apiItems = photos.map((photo) => ({
-      key: `photo-${photo.id}`,
-      image: resolvePhotoUrl(photo.imageUrl),
-      label: `@${photo.username || 'pet_parent'}`,
-      likeCount: photo.likeCount || 0,
-      likedByMe: Boolean(photo.likedByMe),
-      canDelete: Boolean(photo.canDelete),
-      photo,
-    }));
-    const existingImages = new Set(apiItems.map((item) => item.image));
-    const existingLabels = new Set(apiItems.map((item) => item.label.toLowerCase()));
-    const localItems = fallbackPhotos
-      .filter((item) => !existingImages.has(item.image) && !existingLabels.has(item.label.toLowerCase()))
-      .map((item) => ({
+    const existingImages = new Set<string>();
+    const existingLabels = new Set<string>();
+    const apiItems = photos.reduce<GalleryItem[]>((items, photo) => {
+      const item = {
+        key: `photo-${photo.id}`,
+        image: resolvePhotoUrl(photo.imageUrl),
+        label: `@${photo.username || 'pet_parent'}`,
+        likeCount: photo.likeCount || 0,
+        likedByMe: Boolean(photo.likedByMe),
+        canDelete: Boolean(photo.canDelete),
+        photo,
+      };
+      items.push(item);
+      existingImages.add(item.image);
+      existingLabels.add(item.label.toLowerCase());
+      return items;
+    }, []);
+    const localItems = fallbackPhotos.reduce<GalleryItem[]>((items, item) => {
+      if (existingImages.has(item.image) || existingLabels.has(item.label.toLowerCase())) return items;
+      items.push({
         ...item,
         likeCount: 0,
         likedByMe: false,
         canDelete: false,
         isSample: true,
-      }));
+      });
+      return items;
+    }, []);
     if (loadError) {
       return apiItems.sort((left, right) => right.likeCount - left.likeCount || left.label.localeCompare(right.label));
     }
@@ -184,18 +192,34 @@ const PetGallery: React.FC = () => {
   const hasLiveGalleryData = !loadError;
   const remainingUploads = quota ? Math.max(0, quota.remaining) : 3;
   const displayedRemainingUploads = hasLiveGalleryData ? remainingUploads : '-';
-  const liveItems = useMemo(() => items.filter((item) => !item.isSample), [items]);
-  const isSampleOnlyGallery = !loadError && items.length > 0 && liveItems.length === 0;
-  const canUseLiveInteractions = hasLiveGalleryData && !isSampleOnlyGallery;
   const galleryInsights = useMemo(() => {
-    const totalLikes = liveItems.reduce((sum, item) => sum + item.likeCount, 0);
-    const likedByMe = liveItems.filter((item) => item.likedByMe).length;
-    const topMoment = liveItems[0];
-    const communityMoments = liveItems.length;
-    const activeMembers = Math.max(0, new Set(liveItems.map((item) => item.label.toLowerCase())).size);
-    const featuredMoments = photos.filter((photo) => isWithinDays(photo.createdAt, 7)).length;
-    return { totalLikes, likedByMe, topMoment, communityMoments, activeMembers, featuredMoments };
-  }, [liveItems, photos]);
+    const liveMetrics = items.reduce((metrics, item) => {
+      if (item.isSample) return metrics;
+      metrics.totalLikes += item.likeCount;
+      if (item.likedByMe) metrics.likedByMe += 1;
+      if (!metrics.topMoment) metrics.topMoment = item;
+      metrics.activeMembers.add(item.label.toLowerCase());
+      metrics.communityMoments += 1;
+      return metrics;
+    }, {
+      totalLikes: 0,
+      likedByMe: 0,
+      topMoment: undefined as GalleryItem | undefined,
+      activeMembers: new Set<string>(),
+      communityMoments: 0,
+    });
+    const featuredMoments = photos.reduce((count, photo) => count + (isWithinDays(photo.createdAt, 7) ? 1 : 0), 0);
+    return {
+      totalLikes: liveMetrics.totalLikes,
+      likedByMe: liveMetrics.likedByMe,
+      topMoment: liveMetrics.topMoment,
+      communityMoments: liveMetrics.communityMoments,
+      activeMembers: liveMetrics.activeMembers.size,
+      featuredMoments,
+    };
+  }, [items, photos]);
+  const isSampleOnlyGallery = !loadError && items.length > 0 && galleryInsights.communityMoments === 0;
+  const canUseLiveInteractions = hasLiveGalleryData && !isSampleOnlyGallery;
   const lastUpdated = useMemo(() => lastUpdatedAt.toLocaleTimeString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US', {
     hour: '2-digit',
     minute: '2-digit',
@@ -587,7 +611,7 @@ const PetGallery: React.FC = () => {
                 {t('home.petUgcShopFeed')}
               </ShopButton>
               {galleryInsights.topMoment ? (
-                <ShopButton aria-label={galleryItemPreviewLabel(galleryInsights.topMoment)} title={galleryItemPreviewLabel(galleryInsights.topMoment)} onClick={() => setPreviewItem(galleryInsights.topMoment)}>
+                <ShopButton aria-label={galleryItemPreviewLabel(galleryInsights.topMoment)} title={galleryItemPreviewLabel(galleryInsights.topMoment)} onClick={() => setPreviewItem(galleryInsights.topMoment || null)}>
                   {t('pages.petGallery.previewTop')}
                 </ShopButton>
               ) : null}
@@ -613,7 +637,7 @@ const PetGallery: React.FC = () => {
               {t('pages.petGallery.shopInspired')}
             </ShopButton>
             {galleryInsights.topMoment ? (
-              <ShopButton aria-label={galleryItemPreviewLabel(galleryInsights.topMoment)} title={galleryItemPreviewLabel(galleryInsights.topMoment)} onClick={() => setPreviewItem(galleryInsights.topMoment)}>
+              <ShopButton aria-label={galleryItemPreviewLabel(galleryInsights.topMoment)} title={galleryItemPreviewLabel(galleryInsights.topMoment)} onClick={() => setPreviewItem(galleryInsights.topMoment || null)}>
                 {t('pages.petGallery.previewTop')}
               </ShopButton>
             ) : null}

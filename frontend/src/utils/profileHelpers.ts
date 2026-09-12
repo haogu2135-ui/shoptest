@@ -259,30 +259,31 @@ export const filterProfileOrders = (params: {
   resolveItemName: (item: Pick<OrderItemCustomer, 'productId' | 'productName'>) => string;
 }) => {
   const normalizedSearchText = params.orderSearchText.trim().toLowerCase();
-  return sortOrdersNewestFirst(params.orders.filter((order) => matchesProfileOrderFilter(order, params.orderStatusFilter)))
-    .filter((order) => {
-      if (!normalizedSearchText) return true;
-      const items = params.orderItemsByOrderId[order.id] || [];
-      return [
-        order.orderNo,
-        order.id,
-        order.trackingNumber,
-        order.shippingAddress,
-        ...items.map((item) => params.resolveItemName(item)),
-      ].some((value) => String(value || '').toLowerCase().includes(normalizedSearchText));
-    });
+  const filteredOrders = params.orders.filter((order) => {
+    if (!matchesProfileOrderFilter(order, params.orderStatusFilter)) return false;
+    if (!normalizedSearchText) return true;
+    const orderFields = [order.orderNo, order.id, order.trackingNumber, order.shippingAddress];
+    if (orderFields.some((value) => String(value || '').toLowerCase().includes(normalizedSearchText))) return true;
+    return (params.orderItemsByOrderId[order.id] || []).some((item) => (
+      params.resolveItemName(item).toLowerCase().includes(normalizedSearchText)
+    ));
+  });
+  return sortOrdersNewestFirst(filteredOrders);
 };
 
 export const resolveNextReturnDeadlineLabel = (
   orders: OrderCustomer[],
   dateLocale: string,
 ) => {
-  const deadlines = orders
-    .filter((order) => isReturnableOrder(order) && order.returnDeadline)
-    .map((order) => new Date(order.returnDeadline as string))
-    .filter((date) => !Number.isNaN(date.getTime()))
-    .sort((left, right) => left.getTime() - right.getTime());
-  return deadlines[0] ? deadlines[0].toLocaleDateString(dateLocale) : '';
+  let earliestDeadline = Number.POSITIVE_INFINITY;
+  orders.forEach((order) => {
+    if (!isReturnableOrder(order) || !order.returnDeadline) return;
+    const deadline = new Date(order.returnDeadline).getTime();
+    if (!Number.isNaN(deadline) && deadline < earliestDeadline) earliestDeadline = deadline;
+  });
+  return Number.isFinite(earliestDeadline)
+    ? new Date(earliestDeadline).toLocaleDateString(dateLocale)
+    : '';
 };
 
 export const deriveProfileDashboardMetrics = (params: {

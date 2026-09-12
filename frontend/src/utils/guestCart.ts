@@ -116,8 +116,15 @@ const readGuestCart = (): NormalizedGuestCartItem[] => {
     const raw = getLocalStorageItem(GUEST_CART_KEY) || '[]';
     const parsed = JSON.parse(raw);
     if (!Array.isArray(parsed)) return [];
-    const normalizedItems = parsed.map(normalizeCartItem).filter(isNormalizedGuestCartItem);
-    const hasLegacyNestedProduct = parsed.some((item) => isRecord(item) && Object.prototype.hasOwnProperty.call(item, 'product'));
+    const normalizedItems: NormalizedGuestCartItem[] = [];
+    let hasLegacyNestedProduct = false;
+    parsed.forEach((item) => {
+      if (isRecord(item) && Object.prototype.hasOwnProperty.call(item, 'product')) {
+        hasLegacyNestedProduct = true;
+      }
+      const normalized = normalizeCartItem(item);
+      if (isNormalizedGuestCartItem(normalized)) normalizedItems.push(normalized);
+    });
     if (hasLegacyNestedProduct) {
       setLocalStorageItem(GUEST_CART_KEY, JSON.stringify(normalizedItems));
     }
@@ -129,7 +136,11 @@ const readGuestCart = (): NormalizedGuestCartItem[] => {
 };
 
 const writeGuestCart = (items: CartItem[]) => {
-  const normalizedItems = items.map(normalizeCartItem).filter(isNormalizedGuestCartItem);
+  const normalizedItems: NormalizedGuestCartItem[] = [];
+  items.forEach((item) => {
+    const normalized = normalizeCartItem(item);
+    if (isNormalizedGuestCartItem(normalized)) normalizedItems.push(normalized);
+  });
   const persisted = setLocalStorageItem(GUEST_CART_KEY, JSON.stringify(normalizedItems));
   if (!persisted && hasLocalStorage()) {
     reportNonBlockingError('guestCart.writeGuestCart persistence failed', new Error('Unable to persist guest cart'));

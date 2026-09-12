@@ -912,60 +912,88 @@ const OrderManagement: React.FC = () => {
       .filter((order) => selectedOrderIds.includes(order.id) && isOrderShippable(order))
       .map((order) => order.id)
     : [];
+  const orderFallbackMetrics = orders.reduce((metrics, order) => {
+    const status = normalizeStatusCode(order.status);
+    const sla = getOrderSlaState(order);
+    if (isOrderNeedsAction(order)) metrics.needsAction += 1;
+    if (sla?.overdue) metrics.slaOverdue += 1;
+    if (sla?.dueSoon) metrics.slaDueSoon += 1;
+    if (order.status === 'SHIPPED' && !String(order.trackingNumber || '').trim()) metrics.missingTracking += 1;
+    if (isOrderShippable(order)) metrics.pendingShipment += 1;
+    if (['RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURN_REFUNDING'].includes(order.status)) metrics.afterSales += 1;
+    if (status === 'RETURN_REQUESTED') metrics.returnRequested += 1;
+    if (status === 'RETURN_APPROVED') metrics.returnApproved += 1;
+    if (status === 'RETURN_SHIPPED') metrics.returnShipped += 1;
+    if (status === 'RETURN_REFUNDING') metrics.returnRefunding += 1;
+    if (isOrderRefunded(order)) metrics.refunded += 1;
+    return metrics;
+  }, {
+    needsAction: 0,
+    slaOverdue: 0,
+    slaDueSoon: 0,
+    missingTracking: 0,
+    pendingShipment: 0,
+    afterSales: 0,
+    returnRequested: 0,
+    returnApproved: 0,
+    returnShipped: 0,
+    returnRefunding: 0,
+    refunded: 0,
+  });
   const orderSummaryCards = [
     {
       key: 'needsAction',
       label: t('pages.adminOrders.needsAction'),
-      value: orderSummary.NEEDS_ACTION ?? orders.filter(isOrderNeedsAction).length,
+      value: orderSummary.NEEDS_ACTION ?? orderFallbackMetrics.needsAction,
       color: '#cf1322',
       filter: 'NEEDS_ACTION',
     },
     {
       key: 'slaOverdue',
       label: t('pages.adminOrders.slaOverdueCard'),
-      value: orderSummary.SLA_OVERDUE ?? orders.filter((order) => getOrderSla(order)?.overdue).length,
+      value: orderSummary.SLA_OVERDUE ?? orderFallbackMetrics.slaOverdue,
       color: '#a8071a',
       filter: 'SLA_OVERDUE',
     },
     {
       key: 'slaDueSoon',
       label: t('pages.adminOrders.slaDueSoonCard'),
-      value: orderSummary.SLA_DUE_SOON ?? orders.filter((order) => getOrderSla(order)?.dueSoon).length,
+      value: orderSummary.SLA_DUE_SOON ?? orderFallbackMetrics.slaDueSoon,
       color: '#fa8c16',
       filter: 'SLA_DUE_SOON',
     },
     {
       key: 'missingTracking',
       label: t('pages.adminOrders.missingTrackingCard'),
-      value: orderSummary.MISSING_TRACKING ?? orders.filter((order) => order.status === 'SHIPPED' && !String(order.trackingNumber || '').trim()).length,
+      value: orderSummary.MISSING_TRACKING ?? orderFallbackMetrics.missingTracking,
       color: '#ad4e00',
       filter: 'MISSING_TRACKING',
     },
     {
       key: 'pendingShipment',
       label: t('status.PENDING_SHIPMENT'),
-      value: orderSummary.PENDING_SHIPMENT ?? orders.filter(isOrderShippable).length,
+      value: orderSummary.PENDING_SHIPMENT ?? orderFallbackMetrics.pendingShipment,
       color: '#1677ff',
       filter: 'PENDING_SHIPMENT',
     },
     {
       key: 'afterSales',
       label: t('pages.adminDashboard.commercialReadiness.afterSales'),
-      value: orderSummary.AFTER_SALES ?? orders.filter((order) => ['RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED', 'RETURN_REFUNDING'].includes(order.status)).length,
+      value: orderSummary.AFTER_SALES ?? orderFallbackMetrics.afterSales,
       color: '#cf1322',
       filter: 'AFTER_SALES',
     },
     {
       key: 'returnRequested',
       label: t('status.RETURN_REQUESTED'),
-      value: orderSummary.RETURN_REQUESTED ?? orders.filter((order) => order.status === 'RETURN_REQUESTED').length,
+      value: orderSummary.RETURN_REQUESTED ?? orderFallbackMetrics.returnRequested,
       color: '#d48806',
       filter: 'RETURN_REQUESTED',
     },
     {
       key: 'returnShipped',
       label: t('status.RETURN_SHIPPED'),
-      value: orderSummary.RETURN_SHIPPED ?? orders.filter((order) => order.status === 'RETURN_SHIPPED').length,
+      value: orderSummary.RETURN_SHIPPED ?? orderFallbackMetrics.returnShipped,
       color: '#08979c',
       filter: 'RETURN_SHIPPED',
     },
@@ -979,7 +1007,7 @@ const OrderManagement: React.FC = () => {
     {
       key: 'refunded',
       label: t('status.REFUNDED'),
-      value: orderSummary.REFUNDED ?? orders.filter(isOrderRefunded).length,
+      value: orderSummary.REFUNDED ?? orderFallbackMetrics.refunded,
       color: '#722ed1',
       filter: 'REFUNDED',
     },
@@ -1000,25 +1028,25 @@ const OrderManagement: React.FC = () => {
       key: 'RETURN_REQUESTED',
       filter: 'RETURN_REQUESTED',
       label: t('status.RETURN_REQUESTED'),
-      value: orderSummary.RETURN_REQUESTED ?? orders.filter((order) => normalizeStatusCode(order.status) === 'RETURN_REQUESTED').length,
+      value: orderSummary.RETURN_REQUESTED ?? orderFallbackMetrics.returnRequested,
     },
     {
       key: 'RETURN_APPROVED',
       filter: 'RETURN_APPROVED',
       label: t('status.RETURN_APPROVED'),
-      value: orderSummary.RETURN_APPROVED ?? orders.filter((order) => normalizeStatusCode(order.status) === 'RETURN_APPROVED').length,
+      value: orderSummary.RETURN_APPROVED ?? orderFallbackMetrics.returnApproved,
     },
     {
       key: 'RETURN_SHIPPED',
       filter: 'RETURN_SHIPPED',
       label: t('status.RETURN_SHIPPED'),
-      value: orderSummary.RETURN_SHIPPED ?? orders.filter((order) => normalizeStatusCode(order.status) === 'RETURN_SHIPPED').length,
+      value: orderSummary.RETURN_SHIPPED ?? orderFallbackMetrics.returnShipped,
     },
     {
       key: 'RETURN_REFUNDING',
       filter: 'RETURN_REFUNDING',
       label: t('status.RETURN_REFUNDING'),
-      value: orderSummary.RETURN_REFUNDING ?? orders.filter((order) => normalizeStatusCode(order.status) === 'RETURN_REFUNDING').length,
+      value: orderSummary.RETURN_REFUNDING ?? orderFallbackMetrics.returnRefunding,
     },
   ];
   const prioritizeAfterSalesQueue = showAfterSalesQueueHint

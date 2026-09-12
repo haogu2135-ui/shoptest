@@ -577,6 +577,138 @@ are kept in addition to the original 130-item record:
 363. Avoid rewriting the guest checkout draft when its serialized contents are
      unchanged.
 
+## Optimization Round 364-393
+
+364. Collapse Profile order-derived indicators into one reduction.
+365. Collapse Profile pet-derived indicators into one reduction.
+366. Collapse Profile address-derived indicators into one reduction.
+367. Collapse BrowsingHistory insight metrics into one reduction.
+368. Select the best BrowsingHistory recovery product with a linear scan.
+369. Collapse Notifications insight metrics into one reduction.
+370. Reuse the current ProductDetail search text while scoring recommendations.
+371. Compute ProductDetail variant selection keys once per matching lookup.
+372. Collapse CategoryManagement health metrics into one reduction.
+373. Collapse PetGalleryManagement page statistics into one reduction.
+374. Collapse UserManagement health metrics into one reduction.
+375. Collapse SeckillManagement campaign metrics into one reduction.
+376. Collapse ProductQuestionManagement question metrics into one reduction.
+377. Collapse PetPersonalizedAssistant product metrics into one reduction.
+378. Track duplicate logistics-carrier keys during the existing reduction.
+379. Collapse CouponCenter wallet metrics into one reduction.
+380. Use a Set and one reduction for AlertManagement batch selection state.
+381. Use a Set for IpBlacklistManagement selected-row membership checks.
+382. Reuse one filtered result for ProductList hero highlights.
+383. Decorate ProductList rows before sorting to avoid repeated comparator work.
+384. Merge ProductList collection filtering into one predicate pass.
+385. Normalize ProductList refinement criteria once and skip unused spec work.
+386. Resolve ProductList preference leaders with a linear maximum scan.
+387. Use a Set for ProductList recent-product membership scoring.
+388. Track BrandManagement duplicate sort conflicts during health reduction.
+389. Track repeated SecurityAuditLogManagement failure actors during reduction.
+390. Combine Home personalized-ready and deal counts into one traversal.
+391. Bound Home recently-viewed hydration to one ordered traversal.
+392. Build legacy array-response pet-gallery summary counts with one reduction.
+393. Build OrderManagement fallback summary counts with one reduction.
+
+## Optimization Round 394-423
+
+394. Collapse StockAlerts item classification into one reduction.
+395. Select the cheapest StockAlerts ready item with a linear scan.
+396. Build ProductCompare decision metrics in one pass without a ready subset.
+397. Build ProductCompare attribute-difference signals in one pass.
+398. Build ProductCompare visible and different rows in one reduction.
+399. Build ProductCompare different specification labels in one reduction.
+400. Reuse a CouponCenter claimable-ID Set across sorted public views.
+401. Build CouponCenter sorted claimable and saved stats in one traversal.
+402. Collapse CouponCenter claimable insight scans and best selection into one reduction.
+403. Collapse CouponCenter wallet counts and next-use selection into one reduction.
+404. Collapse CouponCenter wallet guide filtering and ranking into one traversal.
+405. Precompute CouponCenter wallet sort keys before sorting.
+406. Build PetGallery API items and duplicate guards in one reduction.
+407. Build PetGallery fallback items in one reduction.
+408. Aggregate PetGallery live metrics without an intermediate live-item filter.
+409. Stop the Home catalog bootstrap featured scan at its display limit.
+410. Precompute Home best-seller sort keys before sorting.
+411. Build Home local-personalized candidates during scoring.
+412. Resolve Home preference leaders with linear scans.
+413. Pick the ProductList recommendation with a linear maximum scan.
+414. Combine guest Checkout selection and purchasability filtering.
+415. Use Set membership for guest and authenticated Checkout selection checks.
+416. Combine authenticated Checkout selection and purchasability filtering.
+417. Bound Cart recent-product hydration to one ordered pass.
+418. Cache ProductManagement quality issues across stats and filter views.
+419. Build ProductManagement visible IDs with one reduction.
+420. Build ProductManagement selected keys and numeric IDs with one reduction.
+421. Compute PetFinder keyword hits without per-product filter arrays.
+422. Combine PetFinder scoring and eligibility filtering into one reduction.
+423. Select the featured Wishlist item with a linear maximum scan.
+
+## Optimization Round 424-453
+
+424. Return unfiltered browsing history directly without creating a result array.
+425. Combine browsing-history keyword and quick-filter matching into one pass.
+426. Track the browsing-history top brand while counting brands.
+427. Build ordered browsing-history products with one ID traversal.
+428. Normalize ProductDetail image-list inputs through one shared collector.
+429. Deduplicate ProductDetail images as they are normalized.
+430. Build ProductDetail recommendation search text without spread/filter arrays.
+431. Scan ProductDetail accessory keywords once per recommendation.
+432. Deduplicate ProductDetail recommendations while ingesting them.
+433. Match ProductDetail variant options from one precomputed entry list.
+434. Merge Home featured and catalog products directly into the identity map.
+435. Preserve the latest Home catalog product while deduplicating recommendation IDs.
+436. Bound Home best-seller ranking to the eight displayed entries.
+437. Build Home pet-gallery items and duplicate guards in one source traversal.
+438. Compute ProductList active refinement counts arithmetically.
+439. Reuse the ProductList personalized score when deriving conversion scores.
+440. Compute ProductList savings once per decorated sort row.
+441. Resolve reusable OrderTracking payments in one status traversal.
+442. Select an OrderTracking payment channel in one channel traversal.
+443. Merge SupportManagement messages without concatenating input arrays.
+444. Update the SupportManagement queue with one existence/remaining pass.
+445. Precompute SupportManagement session sort keys before sorting.
+446. Build SupportManagement search text without a temporary field array.
+447. Build RegistryManagement search text by direct accumulation.
+448. Match PermissionManagement role fields without a temporary values array.
+449. Summarize Login cart-merge successes and failures in one reduction.
+450. Count ongoing Seckill campaigns with one reduction.
+451. Combine Profile order status and search filtering into one predicate pass.
+452. Search Profile order items without constructing a mapped field array.
+453. Select the earliest valid Profile return deadline with a linear scan.
+
+## Optimization Round 454-483
+
+454. Split ProductOptions text values into one direct collection pass.
+455. Normalize ProductOptions values with one deduplicating pass.
+456. Normalize direct ProductOptions groups without map/filter intermediates.
+457. Build configured ProductOptions groups in one specification scan.
+458. Normalize ProductOptions variants without a map/filter pipeline.
+459. Reuse selected ProductOptions entries across variant matching.
+460. Normalize and migrate guest-cart rows in one read traversal.
+461. Normalize guest-cart rows for persistence in one write traversal.
+462. Bound and deduplicate compare IDs with one shared set scan for reads and writes.
+463. Normalize saved-for-later rows without a temporary mapped array.
+464. Bound catalog snapshot string lists while collecting unique values.
+465. Bound catalog snapshot image lists while collecting unique URLs.
+466. Normalize catalog snapshot specifications in one bounded traversal.
+467. Normalize catalog snapshot variants without map/filter/slice intermediates.
+468. Read checkout-session IDs with one validation and deduplication pass.
+469. Sync checkout-session IDs with one validation and deduplication pass.
+470. Normalize product-view score buckets without Object.fromEntries intermediates.
+471. Normalize product-view recent entries with one bounded deduplication pass.
+472. Normalize nested checkout validation messages with one direct collection pass.
+473. Build the checkout validation announcement with one unique-message traversal.
+474. Build checkout field errors by stopping at the first valid message.
+475. Extract accessible array-message text without map/filter allocations.
+476. Build enabled ShopTabs keys in one traversal.
+477. Normalize ShopMultiSelect values without map/filter allocations.
+478. Deduplicate ShopMultiSelect changes while collecting normalized values.
+479. Derive AddOnAssistant excluded IDs and cache key in one memoized pass.
+480. Derive PetPersonalizedAssistant excluded IDs and reuse them for filtering.
+481. Count CartDrawer pending quantity updates with one reduction.
+482. Compute AdminDashboard payment scale without spreading a variable-sized array.
+483. Reconcile AlertManagement selections against a precomputed alert-ID Set.
+
 ## Verification
 
 The final verification record is maintained here after the post-change checks:
@@ -710,12 +842,36 @@ The final verification record is maintained here after the post-change checks:
 - Final focused frontend lifecycle regression: 26 suites and 332 tests passed
   across the visible polling, timeout scheduling, WebSocket lifecycle, cache,
   animation-frame, aggregate-scan, gallery, cart, and checkout changes.
+- Focused optimization-round regression: 13 suites and 111 tests passed across
+  ProductList, Home, Profile, BrowsingHistory, Notifications, CategoryManagement,
+  UserManagement, SeckillManagement, PetGalleryManagement,
+  ProductQuestionManagement, CouponCenter, and OrderManagement.
+- Supplemental optimization regression: 4 suites and 127 tests passed across
+  BrandManagement, SecurityAuditLogManagement, and API index contracts.
+- Focused storefront optimization regression: 16 suites and 191 tests passed
+  across StockAlerts, ProductCompare, CouponCenter, PetGallery, ProductManagement,
+  PetFinder, ProductList, Checkout, Cart, Wishlist, and Home helpers.
 - PetGallery H2 repository and service regression passed.
+- Final TypeScript: bounded frontend `npx tsc --noEmit --pretty false
+  --skipLibCheck` passed with `NODE_OPTIONS=--max-old-space-size=768`.
+- Final production: bounded frontend `npm run build` passed (exit code 0).
+- Final `git diff --check` passed; no Jest, build, or bounded-runner processes
+  remained, and no development-server listener was added.
+- Final focused optimization regression: 24 suites and 220 tests passed.
+- Final TypeScript: bounded frontend `npx tsc --noEmit --pretty false
+  --skipLibCheck` passed with `NODE_OPTIONS=--max-old-space-size=768`.
+- Final production: bounded frontend `npm run build` passed (exit code 0).
 - TypeScript: bounded `env NODE_OPTIONS=--max-old-space-size=768 npx tsc
   --noEmit --pretty false --skipLibCheck` passed.
 - Production: bounded frontend `npm run build` passed (exit code 0).
 - `git diff --check` passed, with no Jest, build, or bounded-runner processes
   left behind.
+- Focused round 454-483 regression: 16 suites and 143 tests passed.
+- Round 454-483 TypeScript: bounded frontend `npx tsc --noEmit --pretty false
+  --skipLibCheck` passed with `NODE_OPTIONS=--max-old-space-size=768`.
+- Round 454-483 production: bounded frontend `npm run build` passed (exit code 0).
+- Round 454-483 cleanup: `git diff --check` passed; no build/test processes
+  remained, and the pre-existing `127.0.0.1:4200` listener was unchanged.
 
 All tests and builds are run through `scripts/run-bounded-task.sh` in
 accordance with the repository resource-safety instructions.

@@ -25,7 +25,12 @@ export const extractAccessibleMessageText = (value: unknown): string => {
   if (value === null || value === undefined || typeof value === 'boolean') return '';
   if (typeof value === 'string' || typeof value === 'number') return normalizeWhitespace(String(value));
   if (Array.isArray(value)) {
-    return normalizeWhitespace(value.map(extractAccessibleMessageText).filter(Boolean).join(' '));
+    const parts: string[] = [];
+    value.forEach((item) => {
+      const text = extractAccessibleMessageText(item);
+      if (text) parts.push(text);
+    });
+    return normalizeWhitespace(parts.join(' '));
   }
   if (React.isValidElement(value)) {
     return extractAccessibleMessageText((value.props as { children?: unknown }).children);

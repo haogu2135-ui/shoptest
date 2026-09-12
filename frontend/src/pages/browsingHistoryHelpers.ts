@@ -30,9 +30,12 @@ export const buildViewedAtById = (
 
 export const orderHistoryProducts = (products: Product[], recentIds: number[]) => {
   const productById = new Map(products.map((product) => [product.id, product]));
-  return recentIds
-    .map((productId) => productById.get(productId))
-    .filter(Boolean) as Product[];
+  const orderedProducts: Product[] = [];
+  recentIds.forEach((productId) => {
+    const product = productById.get(productId);
+    if (product) orderedProducts.push(product);
+  });
+  return orderedProducts;
 };
 
 export type HistoryInsights = {
@@ -56,6 +59,8 @@ export const deriveHistoryInsights = (
   let bestRecovery: Product | undefined;
   let bestRecoveryScore = Number.NEGATIVE_INFINITY;
   const brandCounts = new Map<string, number>();
+  let topBrand: string | undefined;
+  let topBrandCount = 0;
   historyProducts.forEach((product) => {
     const viewedAt = Number(viewedAtById.get(product.id) || 0);
     const viewedRecently = viewedAt >= oneDayAgo;
@@ -65,7 +70,14 @@ export const deriveHistoryInsights = (
     if (deal) deals += 1;
     if (hasLowStock) lowStock += 1;
     if (isPurchasable(product) && !needsOptionSelection(product)) readyToCart += 1;
-    if (product.brand) brandCounts.set(product.brand, (brandCounts.get(product.brand) || 0) + 1);
+    if (product.brand) {
+      const nextBrandCount = (brandCounts.get(product.brand) || 0) + 1;
+      brandCounts.set(product.brand, nextBrandCount);
+      if (nextBrandCount > topBrandCount) {
+        topBrand = product.brand;
+        topBrandCount = nextBrandCount;
+      }
+    }
     const score = (viewedRecently ? 28 : 0)
       + (deal ? 24 : 0)
       + (hasLowStock ? 18 : 0)
@@ -75,7 +87,6 @@ export const deriveHistoryInsights = (
       bestRecoveryScore = score;
     }
   });
-  const topBrand = Array.from(brandCounts.entries()).sort((a, b) => b[1] - a[1])[0]?.[0];
   return { viewedToday, deals, lowStock, readyToCart, topBrand, bestRecovery };
 };
 
@@ -87,22 +98,20 @@ export const filterHistoryProducts = (params: {
 }) => {
   const { historyProducts, keyword, quickFilter, viewedAtById } = params;
   const query = keyword.trim().toLowerCase();
-  const keywordMatched = !query ? historyProducts : historyProducts.filter((product) =>
-    [product.name, product.brand, product.description]
-      .filter(Boolean)
-      .some((value) => String(value).toLowerCase().includes(query)),
-  );
-  if (quickFilter === 'recent') {
-    const oneDayAgo = Date.now() - 24 * 60 * 60 * 1000;
-    return keywordMatched.filter((product) => Number(viewedAtById.get(product.id) || 0) >= oneDayAgo);
-  }
-  if (quickFilter === 'deals') {
-    return keywordMatched.filter(isDealProduct);
-  }
-  if (quickFilter === 'lowStock') {
-    return keywordMatched.filter((product) => getLowStockCount(product.stock, 1) !== null);
-  }
-  return keywordMatched;
+  if (!query && quickFilter === 'all') return historyProducts;
+  const oneDayAgo = quickFilter === 'recent' ? Date.now() - 24 * 60 * 60 * 1000 : 0;
+  return historyProducts.filter((product) => {
+    if (query) {
+      const name = String(product.name || '').toLowerCase();
+      const brand = String(product.brand || '').toLowerCase();
+      const description = String(product.description || '').toLowerCase();
+      if (!name.includes(query) && !brand.includes(query) && !description.includes(query)) return false;
+    }
+    if (quickFilter === 'recent') return Number(viewedAtById.get(product.id) || 0) >= oneDayAgo;
+    if (quickFilter === 'deals') return isDealProduct(product);
+    if (quickFilter === 'lowStock') return getLowStockCount(product.stock, 1) !== null;
+    return true;
+  });
 };
 
 export const formatHistoryViewedAt = (

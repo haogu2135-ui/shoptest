@@ -41,10 +41,20 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
   const [loading, setLoading] = useState(false);
   const [addingId, setAddingId] = useState<number | null>(null);
   const isAuthenticated = hasStoredValue('token');
-  const excludedKey = useMemo(
-    () => Array.from(new Set(excludedProductIds.map(Number).filter(Boolean))).sort((left, right) => left - right).join(','),
-    [excludedProductIds],
-  );
+  const excludedProducts = useMemo(() => {
+    const ids: number[] = [];
+    const seen = new Set<number>();
+    excludedProductIds.forEach((value) => {
+      const id = Number(value);
+      if (!id || seen.has(id)) return;
+      seen.add(id);
+      ids.push(id);
+    });
+    ids.sort((left, right) => left - right);
+    return { ids, key: ids.join(',') };
+  }, [excludedProductIds]);
+  const excludedKey = excludedProducts.key;
+  const normalizedExcludedProductIds = excludedProducts.ids;
 
   useEffect(() => {
     let cancelled = false;
@@ -63,11 +73,7 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
     ])
       .then(([petProfilesResult, recommendationsResult]) => {
         if (cancelled) return;
-        const excludedSet = new Set(
-          excludedKey
-            ? excludedKey.split(',').map((value) => Number(value)).filter(Boolean)
-            : [],
-        );
+        const excludedSet = new Set(normalizedExcludedProductIds);
         const nextPetProfiles = petProfilesResult.status === 'fulfilled' ? (petProfilesResult.value.data || []) : [];
         const nextProducts = recommendationsResult.status === 'fulfilled'
           ? (recommendationsResult.value.data || [])
@@ -87,7 +93,7 @@ const PetPersonalizedAssistant: React.FC<PetPersonalizedAssistantProps> = ({
     return () => {
       cancelled = true;
     };
-  }, [excludedKey, isAuthenticated, language]);
+  }, [excludedKey, isAuthenticated, language, normalizedExcludedProductIds]);
 
   const displayProducts = useMemo(
     () => products.slice(0, variant === 'compact' ? 2 : 3),

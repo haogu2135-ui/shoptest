@@ -224,13 +224,14 @@ const Home: React.FC = () => {
   const recentlyViewedProducts = useMemo(() => {
     const productById = new Map(recentlyViewedDetails.map((product) => [product.id, product]));
     const viewedAtById = new Map(viewPreferences.recentEntries.map((entry) => [entry.productId, entry.viewedAt]));
-    return viewPreferences.recent
-      .map((productId: number) => {
-        const product = productById.get(productId);
-        return product ? { product, viewedAt: viewedAtById.get(productId) } : undefined;
-      })
-      .filter(Boolean)
-      .slice(0, 8) as Array<{ product: Product; viewedAt?: number }>;
+    const result: Array<{ product: Product; viewedAt?: number }> = [];
+    for (const productId of viewPreferences.recent) {
+      const product = productById.get(productId);
+      if (!product) continue;
+      result.push({ product, viewedAt: viewedAtById.get(productId) });
+      if (result.length >= 8) break;
+    }
+    return result;
   }, [recentlyViewedDetails, viewPreferences]);
 
   // Reserve rail space while history ids exist but product payloads are still hydrating (CLS).
@@ -251,18 +252,20 @@ const Home: React.FC = () => {
     [localPersonalizedProducts, personalizedProducts],
   );
   const personalizedRecommendationSource = personalizedProducts.length > 0 ? 'petProfile' : 'recentViews';
-  const personalizedReadyProducts = useMemo(
-    () =>
-      personalizedDisplayProducts
-        .filter((product) => !needsOptionSelection(product) && (product.stock === undefined || product.stock > 0))
-        .slice(0, 4),
-    [personalizedDisplayProducts],
-  );
+  const personalizedDisplayMetrics = useMemo(() => {
+    const readyProducts: Product[] = [];
+    let dealCount = 0;
+    personalizedDisplayProducts.forEach((product) => {
+      if (readyProducts.length < 4 && !needsOptionSelection(product) && (product.stock === undefined || product.stock > 0)) {
+        readyProducts.push(product);
+      }
+      if (getHomeDiscountPercent(product) > 0 || product.activeLimitedTimeDiscount) dealCount += 1;
+    });
+    return { readyProducts, dealCount };
+  }, [personalizedDisplayProducts]);
+  const personalizedReadyProducts = personalizedDisplayMetrics.readyProducts;
   const personalizedReadyCount = personalizedReadyProducts.length;
-  const personalizedDealCount = useMemo(
-    () => personalizedDisplayProducts.filter((product) => getHomeDiscountPercent(product) > 0 || product.activeLimitedTimeDiscount).length,
-    [personalizedDisplayProducts],
-  );
+  const personalizedDealCount = personalizedDisplayMetrics.dealCount;
   const personalizedPreferenceLabel = useMemo(
     () => resolveHomePersonalizedPreferenceLabel({ categories, language, viewPreferences }),
     [categories, language, viewPreferences],

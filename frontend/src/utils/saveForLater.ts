@@ -52,9 +52,15 @@ const normalizeSavedItem = (item: Partial<SavedForLaterItem>): SavedForLaterItem
   };
 };
 
-const normalizeSavedItems = (items: unknown): SavedForLaterItem[] => (
-  Array.isArray(items) ? items.map((item) => normalizeSavedItem(item as Partial<SavedForLaterItem>)).filter(Boolean) as SavedForLaterItem[] : []
-);
+const normalizeSavedItems = (items: unknown): SavedForLaterItem[] => {
+  if (!Array.isArray(items)) return [];
+  const normalized: SavedForLaterItem[] = [];
+  items.forEach((item) => {
+    const savedItem = normalizeSavedItem(item as Partial<SavedForLaterItem>);
+    if (savedItem) normalized.push(savedItem);
+  });
+  return normalized;
+};
 
 const readSavedItems = (): SavedForLaterItem[] => {
   try {

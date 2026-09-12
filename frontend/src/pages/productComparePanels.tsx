@@ -16,12 +16,12 @@ import ShopTag from '../components/ShopTag';
 import ShopAlert from '../components/ShopAlert';
 import {
   compareImageFallback,
+  buildCompareDifferenceSignals,
   collectCompareSpecKeys,
   getPrice,
   getSpecValue,
   normalizeSpecValue,
   resolveCompareImage,
-  valuesDiffer,
   type CompareDecision,
   type CompareRow,
   type CompareTranslate,
@@ -135,11 +135,12 @@ export const ProductCompareMainPanels: React.FC<ProductComparePanelsProps> = ({
     </div>
   );
 
-  const priceDifferent = valuesDiffer(products, (product) => getPrice(product));
-  const ratingDifferent = valuesDiffer(products, (product) => product.averageRating || 0);
-  const brandDifferent = valuesDiffer(products, (product) => product.brand || '');
-  const stockDifferent = valuesDiffer(products, (product) => product.stock ?? '');
-  const shippingDifferent = valuesDiffer(products, (product) => product.freeShipping ? 'free-shipping' : product.shipping || 'default-shipping');
+  const differenceSignals = buildCompareDifferenceSignals(products);
+  const priceDifferent = differenceSignals.price;
+  const ratingDifferent = differenceSignals.rating;
+  const brandDifferent = differenceSignals.brand;
+  const stockDifferent = differenceSignals.stock;
+  const shippingDifferent = differenceSignals.shipping;
 
   const rows: CompareRow[] = [
     {
@@ -269,13 +270,17 @@ export const ProductCompareMainPanels: React.FC<ProductComparePanelsProps> = ({
     ...specRows,
   ];
 
-  const visibleRows = showOnlyDifferences
-    ? rows.filter((row) => row.alwaysVisible || row.isDifferent)
-    : rows;
-  const differentRows = rows.filter((row) => row.isDifferent);
-  const differentSpecNames = specRows
-    .filter((row) => row.isDifferent && row.rawLabel)
-    .map((row) => row.rawLabel as string);
+  const rowMetrics = rows.reduce((metrics, row) => {
+    if (row.isDifferent) metrics.differentRows.push(row);
+    if (!showOnlyDifferences || row.alwaysVisible || row.isDifferent) metrics.visibleRows.push(row);
+    return metrics;
+  }, { visibleRows: [] as CompareRow[], differentRows: [] as CompareRow[] });
+  const visibleRows = rowMetrics.visibleRows;
+  const differentRows = rowMetrics.differentRows;
+  const differentSpecNames = specRows.reduce<string[]>((names, row) => {
+    if (row.isDifferent && row.rawLabel) names.push(row.rawLabel);
+    return names;
+  }, []);
   const compareDifferenceToggleLabel = `${compareCopy.onlyDifferent}: ${differentRows.length}`;
 
   return (

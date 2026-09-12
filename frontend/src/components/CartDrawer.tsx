@@ -282,7 +282,8 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
   const blockedCount = blockedItems.length;
   const checkoutUnitCount = checkoutItems.reduce((sum, item) => sum + item.quantity, 0);
   const lowStockCount = checkoutItems.filter((item) => getCartItemLowStockCount(item) !== null).length;
-  const pendingQuantityCount = Object.values(updatingQuantityIds).filter(Boolean).length;
+  const pendingQuantityCount = Object.values(updatingQuantityIds)
+    .reduce((count, pending) => count + (pending ? 1 : 0), 0);
   const hasPendingQuantityUpdates = pendingQuantityCount > 0;
   const freeShippingThreshold = market.freeShippingThreshold;
   const shippingSummary = deriveCartShippingSummary(checkoutItems, freeShippingThreshold, subtotal);

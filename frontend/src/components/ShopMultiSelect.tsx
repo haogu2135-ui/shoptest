@@ -44,9 +44,15 @@ const optionSearchText = (option: ShopMultiSelectOption) => {
   return String(option.value || '').toLowerCase();
 };
 
-const normalizeValue = (value?: string[]) => (
-  Array.isArray(value) ? value.map((item) => String(item)).filter(Boolean) : []
-);
+const normalizeValue = (value?: string[]) => {
+  if (!Array.isArray(value)) return [];
+  const normalized: string[] = [];
+  value.forEach((item) => {
+    const next = String(item);
+    if (next) normalized.push(next);
+  });
+  return normalized;
+};
 
 const ShopMultiSelect: React.FC<ShopMultiSelectProps> = ({
   value,
@@ -214,7 +220,14 @@ const ShopMultiSelect: React.FC<ShopMultiSelectProps> = ({
   const atMax = safeMaxCount !== undefined && selectedValues.length >= safeMaxCount;
 
   const emitChange = (next: string[]) => {
-    const unique = Array.from(new Set(next.map((item) => String(item)).filter(Boolean)));
+    const unique: string[] = [];
+    const seen = new Set<string>();
+    next.forEach((item) => {
+      const normalized = String(item);
+      if (!normalized || seen.has(normalized)) return;
+      seen.add(normalized);
+      unique.push(normalized);
+    });
     const limited = safeMaxCount !== undefined ? unique.slice(0, safeMaxCount) : unique;
     onChange?.(limited);
   };

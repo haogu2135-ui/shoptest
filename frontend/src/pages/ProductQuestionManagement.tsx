@@ -1,5 +1,5 @@
 import { useNavigate } from 'react-router-dom';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Table } from 'antd';
 import ShopSearchField from '../components/ShopSearchField';
 import ShopPopconfirm from '../components/ShopPopconfirm';

@@ -62,8 +62,8 @@ describe('ProductManagement editor popup guards', () => {
   it('keeps product submit payloads typed without a broad any escape hatch', () => {
     expect(typesSource).toContain('export type ProductMutationPayload = Omit<');
     expect(apiSource).toContain('const normalizeProductPayload = (product: ProductMutationPayload) => {');
-    expect(apiSource).toContain('createProduct: (product: ProductMutationPayload) =>');
-    expect(apiSource).toContain('updateProduct: (id: number, product: ProductMutationPayload) =>');
+    expect(apiSource).toContain('createProduct: (product: ProductMutationPayload, options?: ApiRequestOptions) =>');
+    expect(apiSource).toContain('updateProduct: (id: number, product: ProductMutationPayload, options?: ApiRequestOptions) =>');
     expect(pageSource).toContain('type ProductFormValues = Partial<Omit<');
     expect(pageSource).toContain('const [form] = Form.useForm<ProductFormValues>();');
     expect(pageSource).toContain('const payload: ProductMutationPayload = {');

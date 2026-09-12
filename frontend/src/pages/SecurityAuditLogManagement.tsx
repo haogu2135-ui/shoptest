@@ -358,7 +358,11 @@ const SecurityAuditLogManagement: React.FC = () => {
         if (log.action.startsWith('PAYMENT') || log.action.includes('STRIPE')) acc.paymentFailures += 1;
         if (accountSecurityActions.has(log.action)) acc.accountFailures += 1;
         const key = log.actorUsername || log.ipAddress || (log.actorUserId ? String(log.actorUserId) : '');
-        if (key) acc.failedActorCounts[key] = (acc.failedActorCounts[key] || 0) + 1;
+        if (key) {
+          const nextCount = (acc.failedActorCounts[key] || 0) + 1;
+          acc.failedActorCounts[key] = nextCount;
+          if (nextCount === 3) acc.repeatedFailures += 1;
+        }
       }
       if (highRiskActions.has(log.action)) acc.sensitiveActions += 1;
       if (log.action.includes('EXPORT')) acc.exports += 1;
@@ -381,11 +385,12 @@ const SecurityAuditLogManagement: React.FC = () => {
       passwordChanges: 0,
       emailCodeEvents: 0,
       accountSecurityEvents: 0,
+      repeatedFailures: 0,
       failedActorCounts: {} as Record<string, number>,
     });
     const total = logs.length;
     const failureRate = total ? Math.round((metrics.failures / total) * 100) : 0;
-    const repeatedFailures = Object.values(metrics.failedActorCounts).filter((count) => count >= 3).length;
+    const repeatedFailures = metrics.repeatedFailures;
     const healthScore = Math.max(0, 100 - failureRate - repeatedFailures * 12 - metrics.paymentFailures * 8 - Math.max(0, metrics.exports - 2) * 5);
 
     return {

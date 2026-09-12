@@ -264,7 +264,7 @@ const Seckill: React.FC = () => {
   }, [now]);
 
   const activeCampaignCount = useMemo(
-    () => campaigns.filter((campaign) => resolveCampaignState(campaign) === 'ONGOING').length,
+    () => campaigns.reduce((count, campaign) => count + (resolveCampaignState(campaign) === 'ONGOING' ? 1 : 0), 0),
     [campaigns, resolveCampaignState],
   );
 

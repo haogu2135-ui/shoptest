@@ -25,11 +25,15 @@ const emptyPreferences = (): ProductViewPreferences => ({
 
 const normalizeScoreBucket = (value: unknown): Record<string, number> => {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>)
-      .map(([key, score]) => [String(key), Math.max(0, Math.min(Number(score) || 0, 999))] as const)
-      .filter(([key, score]) => key && Number.isFinite(score) && score > 0),
-  );
+  const normalized: Record<string, number> = {};
+  Object.entries(value as Record<string, unknown>).forEach(([key, score]) => {
+    const normalizedKey = String(key);
+    const normalizedScore = Math.max(0, Math.min(Number(score) || 0, 999));
+    if (normalizedKey && Number.isFinite(normalizedScore) && normalizedScore > 0) {
+      normalized[normalizedKey] = normalizedScore;
+    }
+  });
+  return normalized;
 };
 
 const normalizeRecentEntries = (value: unknown, recent: number[]) => {
@@ -38,17 +42,15 @@ const normalizeRecentEntries = (value: unknown, recent: number[]) => {
   }
 
   const seen = new Set<number>();
-  return value
-    .map((entry) => ({
-      productId: Number(entry?.productId ?? entry?.id),
-      viewedAt: Number(entry?.viewedAt ?? 0),
-    }))
-    .filter((entry) => {
-      if (!Number.isSafeInteger(entry.productId) || entry.productId <= 0 || seen.has(entry.productId)) return false;
-      seen.add(entry.productId);
-      return true;
-    })
-    .slice(0, MAX_PRODUCT_VIEW_HISTORY_ITEMS);
+  const normalized: Array<{ productId: number; viewedAt: number }> = [];
+  value.forEach((entry) => {
+    if (normalized.length >= MAX_PRODUCT_VIEW_HISTORY_ITEMS) return;
+    const productId = Number(entry?.productId ?? entry?.id);
+    if (!Number.isSafeInteger(productId) || productId <= 0 || seen.has(productId)) return;
+    seen.add(productId);
+    normalized.push({ productId, viewedAt: Number(entry?.viewedAt ?? 0) });
+  });
+  return normalized;
 };
 
 export const loadProductViewPreferences = (): ProductViewPreferences => {

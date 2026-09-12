@@ -1017,6 +1017,11 @@ const ProductManagement: React.FC = () => {
     return products;
   }, [products]);
 
+  const listingQualityRows = useMemo(
+    () => baseFilteredProducts.map((product) => ({ product, issues: getListingQualityIssues(product) })),
+    [baseFilteredProducts],
+  );
+
   const listingQualityStats = useMemo(() => {
     const initial = {
       total: baseFilteredProducts.length,
@@ -1029,8 +1034,8 @@ const ProductManagement: React.FC = () => {
       active: 0,
       featured: 0,
     };
-    return baseFilteredProducts.reduce((stats, product) => {
-      const issues = getListingQualityIssues(product);
+    return listingQualityRows.reduce((stats, row) => {
+      const { product, issues } = row;
       if (issues.length === 0) stats.ready += 1;
       issues.forEach((issue) => {
         stats[issue] += 1;
@@ -1039,15 +1044,14 @@ const ProductManagement: React.FC = () => {
       if (product.isFeatured) stats.featured += 1;
       return stats;
     }, initial);
-  }, [baseFilteredProducts]);
+  }, [baseFilteredProducts.length, listingQualityRows]);
 
   const filteredProducts = useMemo(() => {
     if (!listingQualityFilter) return baseFilteredProducts;
-    return baseFilteredProducts.filter((product) => {
-      const issues = getListingQualityIssues(product);
-      return listingQualityFilter === 'ready' ? issues.length === 0 : issues.includes(listingQualityFilter);
-    });
-  }, [baseFilteredProducts, listingQualityFilter]);
+    return listingQualityRows
+      .filter(({ issues }) => listingQualityFilter === 'ready' ? issues.length === 0 : issues.includes(listingQualityFilter))
+      .map(({ product }) => product);
+  }, [baseFilteredProducts, listingQualityFilter, listingQualityRows]);
 
   const applyListingQualityFilter = (nextFilter?: ListingQualityFilter) => {
     setListingQualityFilter(nextFilter);
@@ -1062,20 +1066,22 @@ const ProductManagement: React.FC = () => {
   };
 
   const visibleProductIdSet = useMemo(() => new Set(
-    filteredProducts
-      .map((product) => Number(product.id))
-      .filter((id) => Number.isFinite(id))
+    filteredProducts.reduce<number[]>((ids, product) => {
+      const id = Number(product.id);
+      if (Number.isFinite(id)) ids.push(id);
+      return ids;
+    }, []),
   ), [filteredProducts]);
 
-  const selectedVisibleProductKeys = useMemo(() => (
-    selectedProductIds.filter((id) => visibleProductIdSet.has(Number(id)))
-  ), [selectedProductIds, visibleProductIdSet]);
-
-  const selectedVisibleProductIds = useMemo(() => (
-    selectedVisibleProductKeys
-      .map((id) => Number(id))
-      .filter((id) => Number.isFinite(id))
-  ), [selectedVisibleProductKeys]);
+  const visibleProductSelection = useMemo(() => selectedProductIds.reduce((selection, id) => {
+    if (!visibleProductIdSet.has(Number(id))) return selection;
+    selection.keys.push(id);
+    const numericId = Number(id);
+    if (Number.isFinite(numericId)) selection.ids.push(numericId);
+    return selection;
+  }, { keys: [] as React.Key[], ids: [] as number[] }), [selectedProductIds, visibleProductIdSet]);
+  const selectedVisibleProductKeys = visibleProductSelection.keys;
+  const selectedVisibleProductIds = visibleProductSelection.ids;
 
   useEffect(() => {
     setSelectedProductIds((currentSelectedProductIds) => {

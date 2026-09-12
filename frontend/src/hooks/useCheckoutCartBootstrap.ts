@@ -88,13 +88,20 @@ export const useCheckoutCartBootstrap = ({
 }: UseCheckoutCartBootstrapParams) => {
   useEffect(() => {
     const selectedCartItemIds = readCheckoutCartItemIds();
+    const selectedCartItemIdSet = new Set(selectedCartItemIds);
     const hasToken = hasAuthenticatedCartSession();
     let disposed = false;
     if (!hasToken) {
-      const guestItems = readGuestCartSnapshot().filter((item) => selectedCartItemIds.length === 0 || selectedCartItemIds.includes(item.id));
-      const purchasableItems = guestItems.filter(isPurchasable);
+      const guestSnapshot = readGuestCartSnapshot();
+      let selectedItemCount = 0;
+      const purchasableItems = guestSnapshot.reduce<typeof guestSnapshot>((items, item) => {
+        if (selectedCartItemIds.length > 0 && !selectedCartItemIdSet.has(item.id)) return items;
+        selectedItemCount += 1;
+        if (isPurchasable(item)) items.push(item);
+        return items;
+      }, guestSnapshot.slice(0, 0));
       const purchasableIds = purchasableItems.map((item) => item.id);
-      if (purchasableItems.length !== guestItems.length || (selectedCartItemIds.length > 0 && !areSameIds(selectedCartItemIds, purchasableIds))) {
+      if (purchasableItems.length !== selectedItemCount || (selectedCartItemIds.length > 0 && !areSameIds(selectedCartItemIds, purchasableIds))) {
         showCheckoutMessage('warning', t('pages.checkout.unavailableSelected'));
         syncCheckoutCartItemIds(purchasableItems);
       }
@@ -130,12 +137,15 @@ export const useCheckoutCartBootstrap = ({
           }),
         ]);
         if (disposed || !mountedRef.current || abortController.signal.aborted) return;
-        const selectedItems = selectedCartItemIds.length === 0
-          ? cartRes.data
-          : cartRes.data.filter((item) => selectedCartItemIds.includes(item.id));
-        const purchasableItems = selectedItems.filter(isPurchasable);
+        let selectedItemCount = 0;
+        const purchasableItems = cartRes.data.reduce<typeof cartRes.data>((items, item) => {
+          if (selectedCartItemIds.length > 0 && !selectedCartItemIdSet.has(item.id)) return items;
+          selectedItemCount += 1;
+          if (isPurchasable(item)) items.push(item);
+          return items;
+        }, cartRes.data.slice(0, 0));
         const purchasableIds = purchasableItems.map((item) => item.id);
-        if (purchasableItems.length !== selectedItems.length || (selectedCartItemIds.length > 0 && !areSameIds(selectedCartItemIds, purchasableIds))) {
+        if (purchasableItems.length !== selectedItemCount || (selectedCartItemIds.length > 0 && !areSameIds(selectedCartItemIds, purchasableIds))) {
           showCheckoutMessage('warning', t('pages.checkout.unavailableSelected'));
           syncCheckoutCartItemIds(purchasableItems);
         }

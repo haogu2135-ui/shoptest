@@ -392,19 +392,34 @@ const OrderTracking: React.FC = () => {
     try {
       const paymentsRes = await paymentApi.getByOrder(order.id, canUseGuestActions ? trackedEmail : undefined, canUseGuestActions ? order.orderNo : undefined, { signal: abortController.signal });
       const payments = paymentsRes.data || [];
-      if (payments.some((payment: PaymentCustomer) => String(payment.status || '').trim().toUpperCase() === 'RECONCILE_REQUIRED')) {
+      let reconcileRequired = false;
+      let paidPayment: PaymentCustomer | undefined;
+      let pendingPayment: PaymentCustomer | undefined;
+      payments.forEach((payment: PaymentCustomer) => {
+        const normalizedStatus = String(payment.status || '').trim().toUpperCase();
+        if (normalizedStatus === 'RECONCILE_REQUIRED') reconcileRequired = true;
+        if (!paidPayment && payment.status === 'PAID') {
+          paidPayment = payment;
+        } else if (!pendingPayment && payment.status === 'PENDING' && !getPaymentRecoveryState(payment).isExpired) {
+          pendingPayment = payment;
+        }
+      });
+      if (reconcileRequired) {
         announceAccessibleMessage(t('pages.profile.paymentReturnReconcileRequired'), 'warning');
         return;
       }
-      const reusablePayment = payments.find((payment: PaymentCustomer) => payment.status === 'PAID')
-        || payments.find((payment: PaymentCustomer) => payment.status === 'PENDING' && !getPaymentRecoveryState(payment).isExpired);
+      const reusablePayment = paidPayment || pendingPayment;
       let payment = reusablePayment;
       if (!payment) {
         const channelsRes = await paymentApi.getChannels({ signal: abortController.signal });
         const channels = channelsRes.data || [];
-        const channel = channels.find((item) => item.code === order.paymentMethod)?.code
-          || channels.find((item) => item.recommended)?.code
-          || channels[0]?.code;
+        let matchingChannel: string | undefined;
+        let recommendedChannel: string | undefined;
+        channels.forEach((item) => {
+          if (!matchingChannel && item.code === order.paymentMethod) matchingChannel = item.code;
+          if (!recommendedChannel && item.recommended) recommendedChannel = item.code;
+        });
+        const channel = matchingChannel || recommendedChannel || channels[0]?.code;
         if (!channel) {
           announceAccessibleMessage(t('pages.checkout.paymentUnavailable'), 'error');
           return;

@@ -28,6 +28,7 @@ import './ProductCompare.css';
 
 export {
   buildCompareDecision,
+  buildCompareDifferenceSignals,
   collectCompareSpecKeys,
   compareImageFallback,
   getPrice,

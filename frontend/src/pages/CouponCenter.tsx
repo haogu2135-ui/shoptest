@@ -172,6 +172,7 @@ const CouponCenter: React.FC = () => {
     }),
     [ownedCouponIds, publicCoupons],
   );
+  const claimableCouponIds = useMemo(() => new Set(claimableCoupons.map((coupon) => coupon.id)), [claimableCoupons]);
   const couponUiText = useMemo(() => getCouponUiText(t), [t]);
   const formatDaysBadge = useCallback((days: number | null | undefined, fallback?: string) => {
     if (days == null) return fallback || couponUiText.noExpiry;
@@ -183,10 +184,16 @@ const CouponCenter: React.FC = () => {
     () => sortPublicCoupons(publicCoupons, ownedCouponIds, deferredCouponSearch, couponSort),
     [couponSort, deferredCouponSearch, ownedCouponIds, publicCoupons],
   );
-  const sortedClaimablePublicCoupons = useMemo(
-    () => sortedPublicCoupons.filter((coupon) => !ownedCouponIds.has(coupon.id) && getCouponRemaining(coupon) !== 0 && isCouponInValidWindow(coupon)),
-    [ownedCouponIds, sortedPublicCoupons],
-  );
+  const sortedPublicCouponInsights = useMemo(() => {
+    const claimable: CouponPublic[] = [];
+    let saved = 0;
+    sortedPublicCoupons.forEach((coupon) => {
+      if (ownedCouponIds.has(coupon.id)) saved += 1;
+      if (claimableCouponIds.has(coupon.id)) claimable.push(coupon);
+    });
+    return { claimable, saved };
+  }, [claimableCouponIds, ownedCouponIds, sortedPublicCoupons]);
+  const sortedClaimablePublicCoupons = sortedPublicCouponInsights.claimable;
   const filteredClaimablePublicCoupons = useMemo(
     () => filterPublicCoupons(sortedClaimablePublicCoupons, ownedCouponIds, couponFilter),
     [couponFilter, ownedCouponIds, sortedClaimablePublicCoupons],
@@ -195,31 +202,66 @@ const CouponCenter: React.FC = () => {
   const couponInsights = useMemo(() => {
     const now = Date.now();
     const threeDaysMs = 3 * 24 * 60 * 60 * 1000;
-    const expiringSoon = claimableCoupons.filter((coupon) => {
-      if (!coupon.endAt) return false;
-      const endAt = new Date(coupon.endAt).getTime();
-      return Number.isFinite(endAt) && endAt >= now && endAt - now <= threeDaysMs;
-    }).length;
-    const limitedStock = claimableCoupons.filter((coupon) => {
+    const claimableMetrics = claimableCoupons.reduce((metrics, coupon) => {
+      if (coupon.endAt) {
+        const endAt = new Date(coupon.endAt).getTime();
+        if (Number.isFinite(endAt) && endAt >= now && endAt - now <= threeDaysMs) metrics.expiringSoon += 1;
+      }
       const remaining = getCouponRemaining(coupon);
-      return remaining != null && remaining > 0 && remaining <= 10;
-    }).length;
-    const bestCoupon = claimableCoupons
-      .slice()
-      .sort((a, b) => getCouponEstimatedValue(b) - getCouponEstimatedValue(a))[0];
-    const unusedMine = myCoupons.filter((coupon) => coupon.status === 'UNUSED').length;
-    const nextToUse = myCoupons
-      .filter((coupon) => coupon.status === 'UNUSED')
-      .slice()
-      .sort((a, b) => {
-        const daysA = getDaysUntilEnd(a.endAt);
-        const daysB = getDaysUntilEnd(b.endAt);
-        const endScoreA = daysA == null ? Number.MAX_SAFE_INTEGER : daysA;
-        const endScoreB = daysB == null ? Number.MAX_SAFE_INTEGER : daysB;
-        return endScoreA - endScoreB || getCouponEstimatedValue(b) - getCouponEstimatedValue(a);
-      })[0];
+      if (remaining != null && remaining > 0 && remaining <= 10) metrics.limitedStock += 1;
+      const value = getCouponEstimatedValue(coupon);
+      if (!metrics.bestCoupon || value > metrics.bestCouponValue) {
+        metrics.bestCoupon = coupon;
+        metrics.bestCouponValue = value;
+      }
+      return metrics;
+    }, {
+      expiringSoon: 0,
+      limitedStock: 0,
+      bestCoupon: undefined as CouponPublic | undefined,
+      bestCouponValue: Number.NEGATIVE_INFINITY,
+    });
+    const walletMetrics = myCoupons.reduce((metrics, coupon) => {
+      if (coupon.status === 'USED') {
+        metrics.usedMine += 1;
+        return metrics;
+      }
+      if (coupon.status === 'EXPIRED') {
+        metrics.expiredMine += 1;
+        return metrics;
+      }
+      if (coupon.status !== 'UNUSED') return metrics;
+      metrics.unusedMine += 1;
+      const days = getDaysUntilEnd(coupon.endAt);
+      const endScore = days == null ? Number.MAX_SAFE_INTEGER : days;
+      const value = getCouponEstimatedValue(coupon);
+      if (!metrics.nextToUse || endScore < metrics.nextToUseEnd || (endScore === metrics.nextToUseEnd && value > metrics.nextToUseValue)) {
+        metrics.nextToUse = coupon;
+        metrics.nextToUseEnd = endScore;
+        metrics.nextToUseValue = value;
+      }
+      return metrics;
+    }, {
+      unusedMine: 0,
+      usedMine: 0,
+      expiredMine: 0,
+      nextToUse: undefined as UserCoupon | undefined,
+      nextToUseEnd: Number.MAX_SAFE_INTEGER,
+      nextToUseValue: Number.NEGATIVE_INFINITY,
+    });
+    const bestCoupon = claimableMetrics.bestCoupon;
+    const nextToUse = walletMetrics.nextToUse;
     const targetCoupon = nextToUse || bestCoupon;
-    return { expiringSoon, limitedStock, bestCoupon, unusedMine, nextToUse, targetCoupon };
+    return {
+      expiringSoon: claimableMetrics.expiringSoon,
+      limitedStock: claimableMetrics.limitedStock,
+      bestCoupon,
+      unusedMine: walletMetrics.unusedMine,
+      usedMine: walletMetrics.usedMine,
+      expiredMine: walletMetrics.expiredMine,
+      nextToUse,
+      targetCoupon,
+    };
   }, [claimableCoupons, myCoupons]);
 
   const describeCoupon = (coupon: Pick<CouponPublic, 'couponType' | 'thresholdAmount' | 'reductionAmount' | 'discountPercent' | 'maxDiscountAmount'>) => {
@@ -383,22 +425,23 @@ const CouponCenter: React.FC = () => {
   const mobileCouponProgressLabel = `${t('pages.coupons.nextActionEyebrow')}: ${couponNextAction.title}`;
   const nextCouponProgressLabel = `${mobileCouponProgressLabel}, ${hasCouponTarget ? t('pages.coupons.couponThresholdGap') : t('pages.coupons.noBestClaim')}: ${hasCouponTarget ? formatMoney(couponCartGap) : formatMoney(0)}`;
   const bestCouponValue = couponInsights.bestCoupon ? getCouponEstimatedValue(couponInsights.bestCoupon) : 0;
-  const couponWalletStats = useMemo(() => myCoupons.reduce((stats, coupon) => {
-    if (coupon.status === 'UNUSED') stats.unused += 1;
-    if (coupon.status === 'USED') stats.used += 1;
-    if (coupon.status === 'EXPIRED') stats.expired += 1;
-    return stats;
-  }, { unused: 0, used: 0, expired: 0 }), [myCoupons]);
+  const couponWalletStats = useMemo(() => ({
+    unused: couponInsights.unusedMine,
+    used: couponInsights.usedMine,
+    expired: couponInsights.expiredMine,
+  }), [couponInsights.expiredMine, couponInsights.unusedMine, couponInsights.usedMine]);
   const bestPublicCouponId = couponInsights.bestCoupon?.id;
   const sortedMyCoupons = useMemo(
-    () => myCoupons.slice().sort((a, b) => {
-      const statusScore = (coupon: UserCoupon) => coupon.status === 'UNUSED' ? 0 : coupon.status === 'USED' ? 1 : 2;
-      const daysA = getDaysUntilEnd(a.endAt) ?? Number.MAX_SAFE_INTEGER;
-      const daysB = getDaysUntilEnd(b.endAt) ?? Number.MAX_SAFE_INTEGER;
-      return statusScore(a) - statusScore(b)
-        || daysA - daysB
-        || getCouponEstimatedValue(b) - getCouponEstimatedValue(a);
-    }),
+    () => myCoupons
+      .map((coupon, index) => ({
+        coupon,
+        index,
+        statusScore: coupon.status === 'UNUSED' ? 0 : coupon.status === 'USED' ? 1 : 2,
+        days: getDaysUntilEnd(coupon.endAt) ?? Number.MAX_SAFE_INTEGER,
+        value: getCouponEstimatedValue(coupon),
+      }))
+      .sort((a, b) => a.statusScore - b.statusScore || a.days - b.days || b.value - a.value || a.index - b.index)
+      .map(({ coupon }) => coupon),
     [myCoupons],
   );
   const filteredWalletCoupons = useMemo(
@@ -408,18 +451,25 @@ const CouponCenter: React.FC = () => {
     [sortedMyCoupons, walletFilter],
   );
   const walletGuide = useMemo(() => {
-    const unusedCoupons = sortedMyCoupons.filter((coupon) => coupon.status === 'UNUSED');
-    const nextExpiring = unusedCoupons.find((coupon) => getDaysUntilEnd(coupon.endAt) != null);
-    const strongestSaved = unusedCoupons
-      .slice()
-      .sort((a, b) => getCouponEstimatedValue(b) - getCouponEstimatedValue(a))[0];
+    let nextExpiring: UserCoupon | undefined;
+    let strongestSaved: UserCoupon | undefined;
+    let strongestValue = Number.NEGATIVE_INFINITY;
+    sortedMyCoupons.forEach((coupon) => {
+      if (coupon.status !== 'UNUSED') return;
+      if (!nextExpiring && getDaysUntilEnd(coupon.endAt) != null) nextExpiring = coupon;
+      const value = getCouponEstimatedValue(coupon);
+      if (!strongestSaved || value > strongestValue) {
+        strongestSaved = coupon;
+        strongestValue = value;
+      }
+    });
     return { nextExpiring, strongestSaved };
   }, [sortedMyCoupons]);
   const publicClaimStats = useMemo(() => ({
     matched: filteredClaimablePublicCoupons.length,
-    saved: sortedPublicCoupons.filter((coupon) => ownedCouponIds.has(coupon.id)).length,
+    saved: sortedPublicCouponInsights.saved,
     total: sortedClaimablePublicCoupons.length,
-  }), [filteredClaimablePublicCoupons.length, ownedCouponIds, sortedClaimablePublicCoupons.length, sortedPublicCoupons]);
+  }), [filteredClaimablePublicCoupons.length, sortedClaimablePublicCoupons.length, sortedPublicCouponInsights.saved]);
   const couponSortLabels = useMemo<Record<CouponSort, string>>(() => ({
     recommended: couponUiText.sortRecommended,
     value: couponUiText.sortValue,

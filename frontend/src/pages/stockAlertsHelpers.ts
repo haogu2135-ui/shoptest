@@ -34,22 +34,45 @@ export const deriveStockAlertInsights = (
   alerts: StockAlertItem[],
   products: Record<number, Product>,
 ): StockAlertInsights => {
-  const items = alerts.map((alert) => ({
-    ...alert,
-    product: products[alert.productId],
-  }));
-  const backInStockItems = items.filter((item) => isBackInStock(item.product));
-  const directAddItems = backInStockItems.filter((item) => item.product && !needsOptionSelection(item.product));
-  const optionItems = backInStockItems.filter((item) => item.product && needsOptionSelection(item.product));
-  const waitingItems = items.length - backInStockItems.length;
-  const urgentItems = backInStockItems.filter((item) => {
-    const stock = item.product?.stock;
-    return stock !== undefined && stock > 0 && stock <= 5;
+  const insights = alerts.reduce((acc, alert) => {
+    const item = { ...alert, product: products[alert.productId] };
+    acc.items.push(item);
+    const product = item.product;
+    if (!isBackInStock(product) || !product) {
+      acc.waitingItems += 1;
+      return acc;
+    }
+    acc.backInStockItems.push(item);
+    const needsSelection = needsOptionSelection(product);
+    if (needsSelection) acc.optionItems.push(item);
+    else acc.directAddItems.push(item);
+    const stock = product.stock;
+    if (stock !== undefined && stock > 0 && stock <= 5) acc.urgentItems.push(item);
+    const price = product.effectivePrice ?? product.price ?? 0;
+    if (!acc.bestReadyItem || price < acc.bestReadyPrice) {
+      acc.bestReadyItem = item;
+      acc.bestReadyPrice = price;
+    }
+    return acc;
+  }, {
+    items: [] as StockAlertListItem[],
+    backInStockItems: [] as StockAlertListItem[],
+    directAddItems: [] as StockAlertListItem[],
+    optionItems: [] as StockAlertListItem[],
+    waitingItems: 0,
+    urgentItems: [] as StockAlertListItem[],
+    bestReadyItem: undefined as StockAlertListItem | undefined,
+    bestReadyPrice: Number.POSITIVE_INFINITY,
   });
-  const bestReadyItem = backInStockItems
-    .filter((item) => item.product)
-    .sort((a, b) => (a.product?.effectivePrice ?? a.product?.price ?? 0) - (b.product?.effectivePrice ?? b.product?.price ?? 0))[0];
-  return { items, backInStockItems, directAddItems, optionItems, waitingItems, urgentItems, bestReadyItem };
+  return {
+    items: insights.items,
+    backInStockItems: insights.backInStockItems,
+    directAddItems: insights.directAddItems,
+    optionItems: insights.optionItems,
+    waitingItems: insights.waitingItems,
+    urgentItems: insights.urgentItems,
+    bestReadyItem: insights.bestReadyItem,
+  };
 };
 
 export const maskStaleStockAlertInsights = (insights: StockAlertInsights): StockAlertInsights => ({

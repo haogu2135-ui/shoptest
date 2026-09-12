@@ -156,7 +156,8 @@ const AlertManagement: React.FC = () => {
       if (!isCurrentRequest()) return;
       setAlerts(alertResponse.data);
       setSummary(summaryResponse.data);
-      setSelectedAlertIds((ids) => ids.filter((id) => alertResponse.data.some((alert) => alert.id === id)));
+      const availableAlertIds = new Set(alertResponse.data.map((alert) => alert.id));
+      setSelectedAlertIds((ids) => ids.filter((id) => availableAlertIds.has(id)));
     } catch (error: unknown) {
       if (!isCurrentRequest()) return;
       const errorMessage = getApiErrorMessage(error, t('pages.alertAdmin.loadFailed'), language);

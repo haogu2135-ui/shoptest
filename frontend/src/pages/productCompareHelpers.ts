@@ -48,6 +48,31 @@ export const normalizeSpecValue = (value?: string | null) =>
 export const valuesDiffer = (products: Product[], getValue: (product: Product) => string | number | undefined | null) =>
   products.length > 1 && new Set(products.map((product) => normalizeSpecValue(String(getValue(product) ?? '')))).size > 1;
 
+export const buildCompareDifferenceSignals = (products: Product[]) => {
+  const values = {
+    price: new Set<string>(),
+    rating: new Set<string>(),
+    brand: new Set<string>(),
+    stock: new Set<string>(),
+    shipping: new Set<string>(),
+  };
+  products.forEach((product) => {
+    values.price.add(normalizeSpecValue(String(getPrice(product) ?? '')));
+    values.rating.add(normalizeSpecValue(String(product.averageRating || 0)));
+    values.brand.add(normalizeSpecValue(String(product.brand || '')));
+    values.stock.add(normalizeSpecValue(String(product.stock ?? '')));
+    values.shipping.add(normalizeSpecValue(product.freeShipping ? 'free-shipping' : product.shipping || 'default-shipping'));
+  });
+  const differs = (set: Set<string>) => products.length > 1 && set.size > 1;
+  return {
+    price: differs(values.price),
+    rating: differs(values.rating),
+    brand: differs(values.brand),
+    stock: differs(values.stock),
+    shipping: differs(values.shipping),
+  };
+};
+
 export const getSpecValue = (product: Product, specKey: string) => {
   const normalizedKey = specKey.trim().toLowerCase();
   const matchedEntry = Object.entries(product.specifications || {}).find(([key]) =>
@@ -92,8 +117,9 @@ export type CompareDecision = {
 };
 
 export const buildCompareDecision = (products: Product[]): CompareDecision => {
-  const readyProducts = products.filter((product) => product.stock === undefined || product.stock > 0);
-  const metrics = readyProducts.reduce((acc, product) => {
+  const metrics = products.reduce((acc, product) => {
+    if (product.stock !== undefined && product.stock <= 0) return acc;
+    acc.readyCount += 1;
     const price = getPrice(product);
     const rating = Number(product.averageRating || 0);
     const recommendationScore = rating * 8 - price * 0.08 - (product.stock ?? 999) * 0.01;
@@ -115,6 +141,7 @@ export const buildCompareDecision = (products: Product[]): CompareDecision => {
     }
     return acc;
   }, {
+    readyCount: 0,
     bestValue: undefined as Product | undefined,
     bestValuePrice: Number.POSITIVE_INFINITY,
     topRated: undefined as Product | undefined,
@@ -130,12 +157,12 @@ export const buildCompareDecision = (products: Product[]): CompareDecision => {
   const topRated = metrics.topRated;
   const lowStock = metrics.lowStock;
   const needsSelection = metrics.needsSelection;
-  const priceSpread = readyProducts.length > 1 ? metrics.maxPrice - metrics.minPrice : 0;
+  const priceSpread = metrics.readyCount > 1 ? metrics.maxPrice - metrics.minPrice : 0;
   const recommended = metrics.recommended;
   const recommendedNeedsSelection = recommended ? needsOptionSelection(recommended) : false;
   const recommendedLowStock = recommended?.stock !== undefined && recommended.stock > 0 && recommended.stock <= 5;
   return {
-    readyCount: readyProducts.length,
+    readyCount: metrics.readyCount,
     bestValue,
     topRated,
     lowStock,

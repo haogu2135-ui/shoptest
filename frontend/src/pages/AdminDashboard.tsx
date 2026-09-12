@@ -512,7 +512,8 @@ const AdminDashboard: React.FC = () => {
     },
   ];
 
-  const maxPaymentCount = Math.max(...Object.values(stats.paymentMethodBreakdown || {}), 1);
+  const maxPaymentCount = Object.values(stats.paymentMethodBreakdown || {})
+    .reduce((max, count) => Math.max(max, Number(count) || 0), 1);
   const shippedOrders = Number(stats.shippedOrders || 0);
   const ordersWithTracking = Number(stats.ordersWithTracking || 0);
   const trackingCoverage = shippedOrders ? Math.min(100, Math.round((ordersWithTracking / shippedOrders) * 100)) : 0;

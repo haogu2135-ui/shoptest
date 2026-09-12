@@ -107,7 +107,11 @@ const PermissionManagement: React.FC = () => {
   const filteredRoles = useMemo(() => {
     const text = keyword.trim().toLowerCase();
     if (!text) return roles;
-    return roles.filter((role) => [role.code, role.name, role.description].some((value) => String(value || '').toLowerCase().includes(text)));
+    return roles.filter((role) => (
+      String(role.code || '').toLowerCase().includes(text)
+      || String(role.name || '').toLowerCase().includes(text)
+      || String(role.description || '').toLowerCase().includes(text)
+    ));
   }, [keyword, roles]);
 
   const openRoleModal = (role?: AdminRole) => {

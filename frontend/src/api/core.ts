@@ -1471,6 +1471,11 @@ export const normalizeAdminCouponPageResponse = (response: AxiosResponse<AdminCo
 export const normalizeAdminPetGalleryPageResponse = (response: AxiosResponse<AdminPetGalleryPage | AdminPetGalleryPhoto[]>): AxiosResponse<AdminPetGalleryPage> => {
     if (Array.isArray(response.data)) {
         const metadata = normalizeAdminPageMetadata(undefined, response.data.length, 12, response.data.length || 12);
+        const summary = response.data.reduce((counts, photo) => {
+            if ((photo.source || 'USER_UPLOAD') === 'USER_UPLOAD') counts.userUploads += 1;
+            if (photo.source === 'SEED') counts.seedPhotos += 1;
+            return counts;
+        }, { userUploads: 0, seedPhotos: 0 });
         return {
             ...response,
             data: {
@@ -1478,8 +1483,7 @@ export const normalizeAdminPetGalleryPageResponse = (response: AxiosResponse<Adm
                 ...metadata,
                 summary: {
                     visiblePhotos: response.data.length,
-                    userUploads: response.data.filter((photo) => (photo.source || 'USER_UPLOAD') === 'USER_UPLOAD').length,
-                    seedPhotos: response.data.filter((photo) => photo.source === 'SEED').length,
+                    ...summary,
                 },
             },
         };

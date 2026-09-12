@@ -168,8 +168,12 @@ const Login: React.FC = () => {
         return { item, mergedQuantity: 0, failed: true };
       }
     }));
-    const failedItems = mergeResults.filter(({ failed }) => failed).map(({ item }) => item);
-    const mergedCount = mergeResults.reduce((sum, result) => sum + result.mergedQuantity, 0);
+    const mergeSummary = mergeResults.reduce<{ failedItems: CartItem[]; mergedCount: number }>((summary, result) => {
+      if (result.failed) summary.failedItems.push(result.item);
+      summary.mergedCount += result.mergedQuantity;
+      return summary;
+    }, { failedItems: [], mergedCount: 0 });
+    const { failedItems, mergedCount } = mergeSummary;
     replaceGuestCartItems(failedItems);
     if (!mountedRef.current) return;
     if (mergedCount > 0 && failedItems.length === 0) {

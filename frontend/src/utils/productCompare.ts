@@ -6,11 +6,23 @@ import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 const COMPARE_STORAGE_KEY = 'shop-product-compare';
 export const MAX_COMPARE_ITEMS = 4;
 
+const normalizeCompareProductIds = (values: unknown[]) => {
+  const normalized: number[] = [];
+  const seen = new Set<number>();
+  values.forEach((value) => {
+    const id = Number(value);
+    if (!Number.isSafeInteger(id) || id <= 0 || seen.has(id) || normalized.length >= MAX_COMPARE_ITEMS) return;
+    seen.add(id);
+    normalized.push(id);
+  });
+  return normalized;
+};
+
 export const readCompareProductIds = (): number[] => {
   try {
     const parsed = JSON.parse(getLocalStorageItem(COMPARE_STORAGE_KEY) || '[]');
     if (!Array.isArray(parsed)) return [];
-    return Array.from(new Set(parsed.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0))).slice(0, MAX_COMPARE_ITEMS);
+    return normalizeCompareProductIds(parsed);
   } catch (error) {
     reportNonBlockingError('productCompare.readCompareProductIds', error);
     return [];
@@ -18,7 +30,7 @@ export const readCompareProductIds = (): number[] => {
 };
 
 const writeCompareProductIds = (ids: number[]) => {
-  const normalizedIds = Array.from(new Set(ids.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0))).slice(0, MAX_COMPARE_ITEMS);
+  const normalizedIds = normalizeCompareProductIds(ids);
   setLocalStorageItem(COMPARE_STORAGE_KEY, JSON.stringify(normalizedIds));
   dispatchDomEvent('shop:compare-updated');
 };

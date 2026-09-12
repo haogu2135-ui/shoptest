@@ -9,14 +9,26 @@ export type ProductOptionGroup = {
 
 const OPTION_VALUE_DELIMITER = /[,\uFF0C\u3001;\uFF1B\n]/;
 
-const splitOptionValues = (value: unknown) =>
-  String(value || '')
-    .split(OPTION_VALUE_DELIMITER)
-    .map((item) => item.trim())
-    .filter(Boolean);
+const splitOptionValues = (value: unknown) => {
+  const normalized: string[] = [];
+  String(value || '').split(OPTION_VALUE_DELIMITER).forEach((item) => {
+    const next = item.trim();
+    if (next) normalized.push(next);
+  });
+  return normalized;
+};
 
-const normalizeOptionValues = (values: unknown[]) =>
-  Array.from(new Set(values.map((value) => String(value || '').trim()).filter(Boolean)));
+const normalizeOptionValues = (values: unknown[]) => {
+  const normalized: string[] = [];
+  const seen = new Set<string>();
+  values.forEach((value) => {
+    const item = String(value || '').trim();
+    if (!item || seen.has(item)) return;
+    seen.add(item);
+    normalized.push(item);
+  });
+  return normalized;
+};
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value && typeof value === 'object' && !Array.isArray(value));
@@ -79,21 +91,25 @@ type ProductOptionInput = Partial<ProductPublic> & {
 
 export const getProductOptionGroups = (product?: ProductOptionInput | null): ProductOptionGroup[] => {
   if (!product) return [];
-  const directGroups = Array.isArray(product.optionGroups)
-    ? product.optionGroups
-      .map(normalizeOptionGroup)
-      .filter((group): group is ProductOptionGroup => group !== null)
-    : [];
+  const directGroups: ProductOptionGroup[] = [];
+  if (Array.isArray(product.optionGroups)) {
+    product.optionGroups.forEach((group) => {
+      const normalized = normalizeOptionGroup(group);
+      if (normalized) directGroups.push(normalized);
+    });
+  }
   if (directGroups.length > 0) return directGroups;
 
   const specs = product.specifications || {};
-  const configured = Object.entries(specs)
-    .filter(([key]) => key.startsWith('options.'))
-    .map(([key, value]) => ({
+  const configured: ProductOptionGroup[] = [];
+  Object.entries(specs).forEach(([key, value]) => {
+    if (!key.startsWith('options.')) return;
+    const group = {
       name: key.replace(/^options\./, ''),
       values: normalizeOptionValues(splitOptionValues(value)),
-    }))
-    .filter((group) => group.name && group.values.length > 0);
+    };
+    if (group.name && group.values.length > 0) configured.push(group);
+  });
 
   if (configured.length > 0) return configured;
 
@@ -106,10 +122,14 @@ export const getProductOptionGroups = (product?: ProductOptionInput | null): Pro
 export const getProductVariants = (product?: ProductOptionInput | null): ProductVariant[] => {
   if (!product) return [];
   const rawVariants = (product as { variants?: ProductVariant[] | string }).variants;
-  const normalizeVariants = (items: unknown[]) =>
-    items
-      .map(normalizeVariant)
-      .filter((variant): variant is ProductVariant => variant !== null);
+  const normalizeVariants = (items: unknown[]) => {
+    const normalized: ProductVariant[] = [];
+    items.forEach((item) => {
+      const variant = normalizeVariant(item);
+      if (variant) normalized.push(variant);
+    });
+    return normalized;
+  };
   if (Array.isArray(rawVariants)) return normalizeVariants(rawVariants);
   if (typeof rawVariants !== 'string' || !rawVariants.trim()) return [];
   try {
@@ -127,10 +147,12 @@ export const needsOptionSelection = (product?: ProductOptionInput | null) =>
 export const variantMatchesSelectedOptions = (
   variants: ProductVariant[],
   selectedOptions: Record<string, string>,
-) =>
-  variants.some((variant) =>
-    Object.entries(selectedOptions).every(([key, selectedValue]) => !selectedValue || variant.options?.[key] === selectedValue),
-  );
+) => {
+  const selectedEntries = Object.entries(selectedOptions);
+  return variants.some((variant) => selectedEntries.every(([key, selectedValue]) => (
+    !selectedValue || variant.options?.[key] === selectedValue
+  )));
+};
 
 export const optionValueHasVariant = (
   variants: ProductVariant[],

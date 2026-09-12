@@ -257,11 +257,13 @@ export const useCartSessionData = ({
         const response = await productApi.getByIds(recentIds, { signal: abortController.signal });
         if (!isCurrentLoad()) return;
         const productById = new Map(response.data.map((product) => [product.id, localizeProduct(product, language)]));
-        const nextRecentProducts = preferences.recent
-          .map((productId) => productById.get(productId))
-          .filter((product): product is Product => Boolean(product))
-          .filter((product) => product.stock === undefined || product.stock > 0)
-          .slice(0, conversionConfig.cartRecentlyViewed.maxItems);
+        const nextRecentProducts: Product[] = [];
+        for (const productId of preferences.recent) {
+          const product = productById.get(productId);
+          if (!product || (product.stock !== undefined && product.stock <= 0)) continue;
+          nextRecentProducts.push(product);
+          if (nextRecentProducts.length >= conversionConfig.cartRecentlyViewed.maxItems) break;
+        }
         setCachedRecentProducts(cacheKey, nextRecentProducts);
         setRecentProducts(nextRecentProducts);
       } catch (error) {

@@ -17,6 +17,7 @@ import { getLocalStorageItem, setLocalStorageItem } from '../utils/safeStorage';
 export const DISCOVERY_BATCH_SIZE = 12;
 export const HOME_FEATURED_LIMIT = 12;
 export const HOME_PRODUCT_PAGE_SIZE = 48;
+const HOME_BEST_SELLER_LIMIT = 8;
 export const PET_GALLERY_MAX_FILE_SIZE = 5 * 1024 * 1024;
 export const PET_GALLERY_LOCAL_LIKES_KEY = 'shop-pet-gallery-local-likes';
 
@@ -87,7 +88,12 @@ export const resolveHomeCatalogBootstrap = (language: Language): HomeCatalogBoot
       : loadFallbackProductCatalog();
     if (!sourceProducts.length) return null;
     const products = sourceProducts.map((product) => localizeProduct(product, language));
-    const featuredFromFlag = products.filter((product) => product.isFeatured).slice(0, HOME_FEATURED_LIMIT);
+    const featuredFromFlag: Product[] = [];
+    for (const product of products) {
+      if (!product.isFeatured) continue;
+      featuredFromFlag.push(product);
+      if (featuredFromFlag.length >= HOME_FEATURED_LIMIT) break;
+    }
     const featured = featuredFromFlag.length
       ? featuredFromFlag
       : products.slice(0, Math.min(HOME_FEATURED_LIMIT, products.length));
@@ -272,21 +278,33 @@ export const deriveHomePromoProducts = (products: Product[]) =>
     )
     .slice(0, 6);
 
-export const deriveHomeBestSellers = (products: Product[]) =>
-  [...products]
-    .sort((left, right) =>
-      (right.reviewCount || 0) - (left.reviewCount || 0) ||
-      (right.positiveRate || 0) - (left.positiveRate || 0)
-    )
-    .slice(0, 8);
+export const deriveHomeBestSellers = (products: Product[]) => {
+  const best: Array<{ product: Product; index: number; reviewCount: number; positiveRate: number }> = [];
+  const compare = (left: typeof best[number], right: typeof best[number]) => (
+    right.reviewCount - left.reviewCount
+    || right.positiveRate - left.positiveRate
+    || left.index - right.index
+  );
+  products.forEach((product, index) => {
+    const entry = { product, index, reviewCount: product.reviewCount || 0, positiveRate: product.positiveRate || 0 };
+    let insertAt = 0;
+    while (insertAt < best.length && compare(best[insertAt], entry) <= 0) insertAt += 1;
+    if (insertAt >= HOME_BEST_SELLER_LIMIT && best.length >= HOME_BEST_SELLER_LIMIT) return;
+    best.splice(insertAt, 0, entry);
+    if (best.length > HOME_BEST_SELLER_LIMIT) best.pop();
+  });
+  return best.map((entry) => entry.product);
+};
 
 export const deriveHomeDiscoveryProducts = (params: {
   featured: Product[];
   products: Product[];
   viewPreferences: ProductViewPreferences;
 }) => {
-  const merged = [...params.featured, ...params.products];
-  const uniqueProducts = Array.from(new Map(merged.map((product) => [product.id, product])).values());
+  const productsById = new Map<number, Product>();
+  params.featured.forEach((product) => productsById.set(product.id, product));
+  params.products.forEach((product) => productsById.set(product.id, product));
+  const uniqueProducts = Array.from(productsById.values());
   const recentSet = new Set(params.viewPreferences.recent);
   return uniqueProducts
     .map((product, index) => ({
@@ -308,20 +326,23 @@ export const deriveHomeLocalPersonalizedProducts = (params: {
   viewPreferences: ProductViewPreferences;
 }) => {
   const recentSet = new Set(params.viewPreferences.recent);
-  return params.products
-    .map((product, index) => ({
-      product,
-      index,
-      score:
-        (params.viewPreferences.categories[String(product.categoryId)] || 0) * 8 +
-        (product.brand ? (params.viewPreferences.brands[String(product.brand)] || 0) * 4 : 0) +
-        (product.tag ? (params.viewPreferences.tags[String(product.tag)] || 0) * 3 : 0) +
-        (getHomeDiscountPercent(product) > 0 ? 1 : 0),
-    }))
-    .filter((entry) => entry.score > 0 && !recentSet.has(entry.product.id))
-    .sort((left, right) => right.score - left.score || left.index - right.index)
-    .map((entry) => entry.product)
-    .slice(0, 8);
+  const scored: Array<{ product: Product; index: number; score: number }> = [];
+  params.products.forEach((product, index) => {
+    const score =
+      (params.viewPreferences.categories[String(product.categoryId)] || 0) * 8 +
+      (product.brand ? (params.viewPreferences.brands[String(product.brand)] || 0) * 4 : 0) +
+      (product.tag ? (params.viewPreferences.tags[String(product.tag)] || 0) * 3 : 0) +
+      (getHomeDiscountPercent(product) > 0 ? 1 : 0);
+    if (score > 0 && !recentSet.has(product.id)) {
+      let insertAt = 0;
+      while (insertAt < scored.length
+        && (scored[insertAt].score > score
+          || (scored[insertAt].score === score && scored[insertAt].index < index))) insertAt += 1;
+      scored.splice(insertAt, 0, { product, index, score });
+      if (scored.length > 8) scored.pop();
+    }
+  });
+  return scored.map((entry) => entry.product);
 };
 
 export const resolveHomePetUploadButtonLabel = (params: {
@@ -340,41 +361,60 @@ export const resolveHomePersonalizedPreferenceLabel = (params: {
   language: Language;
   viewPreferences: ProductViewPreferences;
 }) => {
-  const topCategory = Object.entries(params.viewPreferences.categories).sort((left, right) => right[1] - left[1])[0];
-  if (topCategory) {
-    const category = params.categories.find((item) => String(item.id) === topCategory[0]);
+  const resolveTopPreference = (scores: Record<string, number>) => {
+    let topKey = '';
+    let topScore = Number.NEGATIVE_INFINITY;
+    Object.entries(scores).forEach(([key, score]) => {
+      if (score > topScore) {
+        topKey = key;
+        topScore = score;
+      }
+    });
+    return topKey;
+  };
+  const topCategoryKey = resolveTopPreference(params.viewPreferences.categories);
+  if (topCategoryKey) {
+    const category = params.categories.find((item) => String(item.id) === topCategoryKey);
     if (category) return getLocalizedCategoryValue(category, params.language, 'name');
   }
-  const topBrand = Object.entries(params.viewPreferences.brands).sort((left, right) => right[1] - left[1])[0];
-  if (topBrand) return topBrand[0];
-  const topTag = Object.entries(params.viewPreferences.tags).sort((left, right) => right[1] - left[1])[0];
-  return topTag?.[0] || '';
+  const topBrandKey = resolveTopPreference(params.viewPreferences.brands);
+  if (topBrandKey) return topBrandKey;
+  return resolveTopPreference(params.viewPreferences.tags);
 };
 
 export const buildHomePetGalleryItems = (params: {
   petGalleryPhotos: PetGalleryPhotoPublic[];
   localPetGalleryLikes: string[];
 }): HomePetGalleryItem[] => {
-  const photoItems = params.petGalleryPhotos.map((photo) => ({
-    key: `photo-${photo.id}`,
-    image: resolvePetGalleryImage(photo.imageUrl),
-    label: `@${photo.username || 'pet_parent'}`,
-    likeCount: photo.likeCount || 0,
-    likedByMe: Boolean(photo.likedByMe),
-    canDelete: Boolean(photo.canDelete),
-    photo,
-  }));
-  const existingImages = new Set(photoItems.map((item) => item.image));
-  const existingLabels = new Set(photoItems.map((item) => item.label.toLowerCase()));
-  const fallbackItems = ugcImages
-    .filter((item) => !existingImages.has(item.image) && !existingLabels.has(item.label.toLowerCase()))
-    .map((item) => ({
+  const photoItems: HomePetGalleryItem[] = [];
+  const existingImages = new Set<string>();
+  const existingLabels = new Set<string>();
+  params.petGalleryPhotos.forEach((photo) => {
+    const image = resolvePetGalleryImage(photo.imageUrl);
+    const label = `@${photo.username || 'pet_parent'}`;
+    photoItems.push({
+      key: `photo-${photo.id}`,
+      image,
+      label,
+      likeCount: photo.likeCount || 0,
+      likedByMe: Boolean(photo.likedByMe),
+      canDelete: Boolean(photo.canDelete),
+      photo,
+    });
+    existingImages.add(image);
+    existingLabels.add(label.toLowerCase());
+  });
+  const fallbackItems: HomePetGalleryItem[] = [];
+  ugcImages.forEach((item) => {
+    if (existingImages.has(item.image) || existingLabels.has(item.label.toLowerCase())) return;
+    fallbackItems.push({
       ...item,
       likeCount: 0,
       likedByMe: false,
       canDelete: false,
       isSample: true,
-    }));
+    });
+  });
   return [...photoItems, ...fallbackItems]
     .sort((left, right) => right.likeCount - left.likeCount || left.label.localeCompare(right.label))
     .slice(0, 24);

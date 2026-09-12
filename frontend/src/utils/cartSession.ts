@@ -38,10 +38,16 @@ export const readCheckoutCartItemIds = () => {
       || (legacyTokenKey ? getSessionStorageItem(legacyTokenKey) : null)
       || getSessionStorageItem(CHECKOUT_CART_ITEM_IDS_KEY);
     const parsed = raw ? JSON.parse(raw) : [];
-    const ids = Array.isArray(parsed)
-      ? parsed.map(Number).filter((id) => Number.isSafeInteger(id) && id > 0)
-      : [];
-    return Array.from(new Set(ids));
+    if (!Array.isArray(parsed)) return [];
+    const ids: number[] = [];
+    const seen = new Set<number>();
+    parsed.forEach((value) => {
+      const id = Number(value);
+      if (!Number.isSafeInteger(id) || id <= 0 || seen.has(id)) return;
+      seen.add(id);
+      ids.push(id);
+    });
+    return ids;
   } catch (error) {
     reportNonBlockingError('cartSession.readCheckoutCartItemIds', error);
     return [];
@@ -52,11 +58,14 @@ export const syncCheckoutCartItemIds = (items: Pick<CartItem, 'id'>[]) => {
   try {
     const token = getLocalStorageItem('token');
     const currentKey = getCheckoutCartItemIdsKey();
-    const ids = Array.from(new Set(
-      items
-        .map((item) => Number(item?.id))
-        .filter((id) => Number.isSafeInteger(id) && id > 0),
-    ));
+    const ids: number[] = [];
+    const seen = new Set<number>();
+    items.forEach((item) => {
+      const id = Number(item?.id);
+      if (!Number.isSafeInteger(id) || id <= 0 || seen.has(id)) return;
+      seen.add(id);
+      ids.push(id);
+    });
     setSessionStorageItem(currentKey, JSON.stringify(ids));
     if (token) {
       const legacyTokenKey = getTokenScopedCheckoutCartItemIdsKey(token);

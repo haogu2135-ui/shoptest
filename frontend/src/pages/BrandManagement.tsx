@@ -85,17 +85,19 @@ const BrandManagement: React.FC = () => {
       if (!brand.websiteUrl?.trim()) acc.missingWebsite += 1;
       if ((brand.description?.trim().length || 0) < 24) acc.weakDescription += 1;
       const key = String(brand.sortOrder ?? 0);
-      acc.duplicateSortKeys[key] = (acc.duplicateSortKeys[key] || 0) + 1;
+      const nextCount = (acc.duplicateSortKeys[key] || 0) + 1;
+      acc.duplicateSortKeys[key] = nextCount;
+      if (nextCount === 2) acc.sortConflicts += 1;
       return acc;
     }, {
       active: 0,
       missingLogo: 0,
       missingWebsite: 0,
       weakDescription: 0,
+      sortConflicts: 0,
       duplicateSortKeys: {} as Record<string, number>,
     });
-    const sortConflicts = Object.values(metrics.duplicateSortKeys).filter((count) => count > 1).length;
-    const score = Math.max(0, 100 - metrics.missingLogo * 18 - metrics.missingWebsite * 12 - metrics.weakDescription * 10 - sortConflicts * 8);
+    const score = Math.max(0, 100 - metrics.missingLogo * 18 - metrics.missingWebsite * 12 - metrics.weakDescription * 10 - metrics.sortConflicts * 8);
 
     return {
       active: metrics.active,

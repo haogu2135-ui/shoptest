@@ -198,10 +198,10 @@ const PetFinder: React.FC = () => {
       ...(petType === 'all' ? [] : keywordMap[petType]),
       ...(need === 'all' ? [] : keywordMap[need]),
     ];
-    const scored = products.map((product) => {
+    const scored = products.reduce<Array<{ product: Product; score: number; keywordHits: number; budgetFit: boolean }>>((entries, product) => {
       const text = productText(product);
       const price = productPrice(product);
-      const keywordHits = selectedKeywords.filter((keyword) => text.includes(keyword)).length;
+      const keywordHits = selectedKeywords.reduce((count, keyword) => count + (text.includes(keyword) ? 1 : 0), 0);
       const budgetFit = price >= budget[0] && price <= budget[1];
       const rating = Number(product.averageRating || 0);
       const discount = product.effectiveDiscountPercent || product.discount || 0;
@@ -211,10 +211,12 @@ const PetFinder: React.FC = () => {
       if (priority === 'rating') score += rating * 8;
       if (priority === 'deal') score += discount * 1.2;
       if (priority === 'budget') score += Math.max(0, budget[1] - price) / 12;
-      return { product, score, keywordHits, budgetFit };
-    });
+      if (budgetFit && (selectedKeywords.length === 0 || keywordHits > 0)) {
+        entries.push({ product, score, keywordHits, budgetFit });
+      }
+      return entries;
+    }, []);
     return scored
-      .filter((item) => item.budgetFit && (selectedKeywords.length === 0 || item.keywordHits > 0))
       .sort((a, b) => b.score - a.score)
       .slice(0, 12);
   }, [budget, need, petType, priority, products]);

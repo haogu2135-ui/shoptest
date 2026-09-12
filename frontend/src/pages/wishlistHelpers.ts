@@ -53,11 +53,19 @@ export const scoreWishlistItem = (item: WishlistItem) => {
   return lowStockBoost + readyBoost + priceBoost;
 };
 
-export const pickFeaturedWishlistItem = (items: WishlistItem[]) => (
-  [...items]
-    .filter(isPurchasable)
-    .sort((a, b) => scoreWishlistItem(b) - scoreWishlistItem(a))[0]
-);
+export const pickFeaturedWishlistItem = (items: WishlistItem[]) => {
+  let featured: WishlistItem | undefined;
+  let featuredScore = Number.NEGATIVE_INFINITY;
+  items.forEach((item) => {
+    if (!isPurchasable(item)) return;
+    const score = scoreWishlistItem(item);
+    if (!featured || score > featuredScore) {
+      featured = item;
+      featuredScore = score;
+    }
+  });
+  return featured;
+};
 
 export type WishlistStats = {
   optionCount: number;

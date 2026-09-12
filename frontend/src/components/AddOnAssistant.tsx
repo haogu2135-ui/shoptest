@@ -72,14 +72,20 @@ const AddOnAssistantContent: React.FC<AddOnAssistantProps> = ({ cartProductIds, 
   const { t, language } = useLanguage();
   const { formatMoney } = useMarket();
   const shouldLoadProducts = conversionConfig.addOnAssistant.enabled && remainingAmount > 0;
-  const excludedKey = useMemo(
-    () => Array.from(new Set(cartProductIds.map(Number).filter(Boolean))).sort((left, right) => left - right).join(','),
-    [cartProductIds],
-  );
-  const excludedProductIds = useMemo(
-    () => (excludedKey ? excludedKey.split(',').map((value) => Number(value)).filter(Boolean) : []),
-    [excludedKey],
-  );
+  const excludedProducts = useMemo(() => {
+    const ids: number[] = [];
+    const seen = new Set<number>();
+    cartProductIds.forEach((value) => {
+      const id = Number(value);
+      if (!id || seen.has(id)) return;
+      seen.add(id);
+      ids.push(id);
+    });
+    ids.sort((left, right) => left - right);
+    return { ids, key: ids.join(',') };
+  }, [cartProductIds]);
+  const excludedKey = excludedProducts.key;
+  const excludedProductIds = excludedProducts.ids;
 
   useEffect(() => {
     if (!shouldLoadProducts) {

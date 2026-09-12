@@ -44,7 +44,13 @@ const ShopTabs: React.FC<ShopTabsProps> = ({
     : 16;
   const [internalKey, setInternalKey] = useState<string | undefined>(defaultActiveKey || firstEnabledKey);
   const currentKey = activeKey != null ? activeKey : internalKey;
-  const enabledKeys = useMemo(() => normalizedItems.filter((item) => !item.disabled).map((item) => item.key), [normalizedItems]);
+  const enabledKeys = useMemo(() => {
+    const keys: string[] = [];
+    normalizedItems.forEach((item) => {
+      if (!item.disabled) keys.push(item.key);
+    });
+    return keys;
+  }, [normalizedItems]);
   const activeItem = useMemo(
     () => normalizedItems.find((item) => item.key === currentKey && !item.disabled)
       || normalizedItems.find((item) => !item.disabled)

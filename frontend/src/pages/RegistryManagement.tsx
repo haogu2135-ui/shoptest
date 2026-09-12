@@ -94,11 +94,11 @@ const RegistryManagement: React.FC = () => {
     const text = serviceKeyword.trim().toLowerCase();
     if (!text) return serviceSummaries;
     return serviceSummaries.filter((service) => {
-      const haystack = [
-        service.serviceId,
-        ...(service.instances || []).flatMap((instance) => [instance.host, instance.port, instance.uri]),
-      ].join(' ').toLowerCase();
-      return haystack.includes(text);
+      let haystack = `${service.serviceId || ''}`;
+      (service.instances || []).forEach((instance) => {
+        haystack += ` ${instance.host || ''} ${instance.port || ''} ${instance.uri || ''}`;
+      });
+      return haystack.toLowerCase().includes(text);
     });
   }, [serviceKeyword, serviceSummaries]);
   const frontendGatewayReady = apiGatewayEnabled || apiBaseUrl === '/api' || apiBaseUrl.endsWith('/api');

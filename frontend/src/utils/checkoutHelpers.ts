@@ -471,7 +471,12 @@ export const normalizeCheckoutValidationMessage = (message: ReactNode): string =
     return String(message).trim();
   }
   if (Array.isArray(message)) {
-    return message.map(normalizeCheckoutValidationMessage).filter(Boolean).join(' ').trim();
+    const parts: string[] = [];
+    message.forEach((item) => {
+      const normalized = normalizeCheckoutValidationMessage(item);
+      if (normalized) parts.push(normalized);
+    });
+    return parts.join(' ').trim();
   }
   return '';
 };
@@ -480,9 +485,17 @@ export const buildCheckoutValidationAnnouncement = (
   fields: CheckoutValidationField[],
   t: CheckoutTranslationFn,
 ) => {
-  const messages = Array.from(new Set(
-    fields.flatMap((field) => (field.errors || []).map(normalizeCheckoutValidationMessage).filter(Boolean)),
-  ));
+  const messages: string[] = [];
+  const seen = new Set<string>();
+  fields.forEach((field) => {
+    (field.errors || []).forEach((error) => {
+      const message = normalizeCheckoutValidationMessage(error);
+      if (message && !seen.has(message)) {
+        seen.add(message);
+        messages.push(message);
+      }
+    });
+  });
   if (messages.length === 0) {
     return '';
   }
@@ -496,10 +509,12 @@ export const buildCheckoutFieldErrorMap = (fields: CheckoutValidationField[]): R
     if (!namePath || namePath.length === 0) {
       return;
     }
-    const key = namePath.map(String).join('.');
-    const message = (field.errors || [])
-      .map(normalizeCheckoutValidationMessage)
-      .find(Boolean);
+    const key = namePath.join('.');
+    let message = '';
+    for (const error of field.errors || []) {
+      message = normalizeCheckoutValidationMessage(error);
+      if (message) break;
+    }
     if (message) {
       next[key] = message;
     }

@@ -82,11 +82,11 @@ const newestSupportMessageId = (items: SupportMessage[]) =>
 
 const mergeSupportMessages = (current: SupportMessage[], incoming: SupportMessage[]) => {
   const byId = new Map<number, SupportMessage>();
-  [...current, ...incoming].forEach((item) => {
-    if (Number.isSafeInteger(item.id) && item.id > 0) {
-      byId.set(item.id, item);
-    }
+  const addMessages = (items: SupportMessage[]) => items.forEach((item) => {
+    if (Number.isSafeInteger(item.id) && item.id > 0) byId.set(item.id, item);
   });
+  addMessages(current);
+  addMessages(incoming);
   return Array.from(byId.values())
     .sort((left, right) => left.id - right.id)
     .slice(-SUPPORT_MESSAGE_WINDOW);
@@ -108,14 +108,7 @@ const supportSessionMatchesQueue = (session: SupportSession, filter?: string, se
   if (!normalizedSearch) {
     return true;
   }
-  const searchable = [
-    session.id,
-    session.userId,
-    session.username,
-    session.status,
-    session.assignedAdminName,
-    session.lastMessage,
-  ].join(' ').toLowerCase();
+  const searchable = `${session.id} ${session.userId} ${session.username || ''} ${session.status || ''} ${session.assignedAdminName || ''} ${session.lastMessage || ''}`.toLowerCase();
   return searchable.includes(normalizedSearch);
 };
 
@@ -386,25 +379,23 @@ const SupportManagement: React.FC = () => {
             ? t('pages.adminSupport.replyUseWorkflow')
             : t('pages.adminSupport.replyNeedsContext');
 
-  const sortSupportSessions = (items: SupportSession[]) =>
-
-    [...items].sort((left, right) => {
-
-      const unreadDelta = Number(right.unreadByAdmin || 0) - Number(left.unreadByAdmin || 0);
-
-      if (unreadDelta !== 0) return unreadDelta;
-
-      const leftOpen = left.status === 'OPEN' ? 1 : 0;
-
-      const rightOpen = right.status === 'OPEN' ? 1 : 0;
-
-      if (leftOpen !== rightOpen) return rightOpen - leftOpen;
-
-      const leftTime = getSafeTime(left.updatedAt);
-      const rightTime = getSafeTime(right.updatedAt);
-      return rightTime - leftTime || right.id - left.id;
-
-    });
+  const sortSupportSessions = (items: SupportSession[]) => {
+    const decorated = items.map((item, index) => ({
+      item,
+      index,
+      unread: Number(item.unreadByAdmin || 0),
+      open: item.status === 'OPEN' ? 1 : 0,
+      updatedAt: getSafeTime(item.updatedAt),
+    }));
+    decorated.sort((left, right) => (
+      right.unread - left.unread
+      || right.open - left.open
+      || right.updatedAt - left.updatedAt
+      || right.item.id - left.item.id
+      || left.index - right.index
+    ));
+    return decorated.map((entry) => entry.item);
+  };
 
   useEffect(() => {
     selectedSessionRef.current = selectedSession;
@@ -434,8 +425,12 @@ const SupportManagement: React.FC = () => {
     if (!mountedRef.current) return;
     const matchesQueue = supportSessionMatchesQueue(session, queueFilterRef.current, queueSearchRef.current);
     const currentItems = sessionsRef.current;
-    const existed = currentItems.some((item) => item.id === session.id);
-    const remaining = currentItems.filter((item) => item.id !== session.id);
+    let existed = false;
+    const remaining: SupportSession[] = [];
+    currentItems.forEach((item) => {
+      if (item.id === session.id) existed = true;
+      else remaining.push(item);
+    });
     setSelectedSession((current) => current?.id === session.id ? session : current);
     const nextItems = matchesQueue ? sortSupportSessions([session, ...remaining]) : remaining;
     sessionsRef.current = nextItems;
