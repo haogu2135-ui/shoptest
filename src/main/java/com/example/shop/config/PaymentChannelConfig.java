@@ -28,18 +28,18 @@ public class PaymentChannelConfig {
     private Geo geo = new Geo();
 
     public List<Channel> configuredChannels() {
+        if (channels == null || channels.isEmpty()) {
+            Set<String> supported = supportedChannelSet();
+            List<Channel> defaults = defaultChannels();
+            List<Channel> result = new ArrayList<>(defaults.size());
+            for (Channel channel : defaults) {
+                if (supported.contains(channel.getCode())) result.add(channel);
+            }
+            return result;
+        }
         List<Channel> configured = new ArrayList<>(channels);
         configured.sort(Comparator.comparingInt(Channel::getSortOrder).thenComparing(Channel::getCode));
-        if (!configured.isEmpty()) {
-            return configured;
-        }
-        Set<String> supported = supportedChannelSet();
-        List<Channel> defaults = defaultChannels();
-        List<Channel> result = new ArrayList<>(defaults.size());
-        for (Channel channel : defaults) {
-            if (supported.contains(channel.getCode())) result.add(channel);
-        }
-        return result;
+        return configured;
     }
 
     public List<Channel> enabledChannels() {
@@ -80,7 +80,7 @@ public class PaymentChannelConfig {
     }
 
     private Set<String> supportedChannelSet() {
-        Set<String> supported = new HashSet<>();
+        Set<String> supported = new HashSet<>(16);
         int tokenStart = 0;
         for (int index = 0; index <= supportedChannels.length(); index++) {
             if (index != supportedChannels.length() && supportedChannels.charAt(index) != ',') continue;

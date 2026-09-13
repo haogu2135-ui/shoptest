@@ -45,7 +45,7 @@ public class PaymentWebhookEvidenceService {
     }
 
     public Map<String, Object> snapshot() {
-        Map<String, Object> out = new LinkedHashMap<>();
+        Map<String, Object> out = new LinkedHashMap<>(6);
         try {
             out.put("stripe", channelSnapshot(ACTION_STRIPE));
             out.put("mercadoPago", channelSnapshot(ACTION_MERCADO));
@@ -74,7 +74,7 @@ public class PaymentWebhookEvidenceService {
         if (latest == null) {
             return emptyChannel(count);
         }
-        Map<String, Object> row = new LinkedHashMap<>();
+        Map<String, Object> row = new LinkedHashMap<>(4);
         row.put("successCount", count);
         row.put("lastSuccessAt", latest.getCreatedAt() == null ? null : latest.getCreatedAt().toString());
         row.put("lastSourceClass", sourceClassFrom(latest));
@@ -87,7 +87,7 @@ public class PaymentWebhookEvidenceService {
     }
 
     private Map<String, Object> emptyChannel(long count) {
-        Map<String, Object> row = new LinkedHashMap<>();
+        Map<String, Object> row = new LinkedHashMap<>(4);
         row.put("successCount", count);
         row.put("lastSuccessAt", null);
         row.put("lastSourceClass", null);
@@ -113,11 +113,18 @@ public class PaymentWebhookEvidenceService {
             return null;
         }
         String prefix = key + "=";
-        for (String part : metadata.split(",")) {
-            String item = part == null ? "" : part.trim();
+        int start = 0;
+        while (start <= metadata.length()) {
+            int separator = metadata.indexOf(',', start);
+            int end = separator < 0 ? metadata.length() : separator;
+            String item = metadata.substring(start, end).trim();
             if (item.startsWith(prefix) && item.length() > prefix.length()) {
                 return item.substring(prefix.length()).trim();
             }
+            if (separator < 0) {
+                break;
+            }
+            start = separator + 1;
         }
         return null;
     }
@@ -149,7 +156,7 @@ public class PaymentWebhookEvidenceService {
 
     private boolean isLocalAddress(String value) {
         String normalized = clientIpResolver.normalizeIpAddress(value);
-        if (normalized == null || normalized.isBlank()) {
+        if (normalized == null || normalized.isEmpty()) {
             return true;
         }
         try {

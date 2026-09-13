@@ -23,6 +23,7 @@ public class BrandService {
     private static final Set<String> ALLOWED_STATUSES = Set.of("ACTIVE", "INACTIVE");
     private static final int DEFAULT_LEGACY_BRAND_LIST_LIMIT = 500;
     private static final int HARD_BRAND_REFERENCE_LIST_LIMIT = 1_000;
+    private static final Pageable DEFAULT_BRAND_PAGE = PageRequest.of(0, DEFAULT_LEGACY_BRAND_LIST_LIMIT);
 
     private final BrandRepository brandRepository;
 
@@ -38,7 +39,9 @@ public class BrandService {
     @Cacheable(cacheNames = "brandReferenceData", key = "'all:active=' + #activeOnly + ':max=' + #maxRows")
     public List<Brand> findAll(boolean activeOnly, int maxRows) {
         int boundedMaxRows = Math.max(1, Math.min(maxRows, HARD_BRAND_REFERENCE_LIST_LIMIT));
-        Pageable page = PageRequest.of(0, boundedMaxRows);
+        Pageable page = boundedMaxRows == DEFAULT_LEGACY_BRAND_LIST_LIMIT
+                ? DEFAULT_BRAND_PAGE
+                : PageRequest.of(0, boundedMaxRows);
         if (activeOnly) {
             return brandRepository.findByStatusOrderBySortOrderAscNameAsc("ACTIVE", page);
         }
@@ -57,11 +60,10 @@ public class BrandService {
             throw new IllegalArgumentException("Brand name is required");
         }
         Long currentId = brand.getId();
-        brandRepository.findByNameIgnoreCase(name)
-                .filter(existing -> currentId == null || !existing.getId().equals(currentId))
-                .ifPresent(existing -> {
-                    throw new IllegalArgumentException("Brand name already exists");
-                });
+        Optional<Brand> existing = brandRepository.findByNameIgnoreCase(name);
+        if (existing.isPresent() && (currentId == null || !existing.get().getId().equals(currentId))) {
+            throw new IllegalArgumentException("Brand name already exists");
+        }
         brand.setName(name);
         brand.setLogoUrl(ImageUrlValidator.normalizePersistentImageUrl(brand.getLogoUrl(), "logoUrl"));
         brand.setStatus(normalizeStatus(brand.getStatus()));

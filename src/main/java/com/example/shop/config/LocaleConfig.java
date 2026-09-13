@@ -10,17 +10,19 @@ import java.util.Locale;
 
 @Configuration
 public class LocaleConfig {
+    private static final List<Locale> SUPPORTED_LOCALES = List.of(
+            Locale.ENGLISH,
+            Locale.SIMPLIFIED_CHINESE,
+            Locale.TRADITIONAL_CHINESE,
+            new Locale("es"),
+            new Locale("es", "MX")
+    );
+
     @Bean
     public LocaleResolver localeResolver() {
         AcceptHeaderLocaleResolver resolver = new AcceptHeaderLocaleResolver();
         resolver.setDefaultLocale(Locale.ENGLISH);
-        resolver.setSupportedLocales(List.of(
-                Locale.ENGLISH,
-                Locale.SIMPLIFIED_CHINESE,
-                Locale.TRADITIONAL_CHINESE,
-                new Locale("es"),
-                new Locale("es", "MX")
-        ));
+        resolver.setSupportedLocales(SUPPORTED_LOCALES);
         return resolver;
     }
 }

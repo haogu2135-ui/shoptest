@@ -1807,3 +1807,208 @@ accordance with the repository resource-safety instructions.
 1261. Avoid repeated catalog review-count number conversion.
 1262. Load fallback products through direct iteration.
 1263. Reuse normalized fallback category-name keys.
+
+1264. Precompile numeric-host validation for image URLs.
+1265. Reuse the numeric-host matcher for whole-host checks.
+1266. Reuse the numeric-host matcher for ambiguous-host segments.
+1267. Normalize BigDecimal configuration input once before parsing.
+1268. Normalize product statuses with a stable root locale.
+1269. Pre-size decoded review-image storage from the JSON list size.
+1270. Normalize decoded review-image entries through one direct pass.
+1271. Return the immutable empty review-image list without allocation.
+
+1272. Centralize order-item batch-size limits as service constants.
+1273. Pre-size normalized order-ID storage from the bounded input size.
+1274. Traverse order IDs directly without a stream pipeline.
+1275. Deduplicate order IDs with a bounded hash set.
+1276. Stop order-ID scanning immediately at the repository batch cap.
+1277. Group fetched order items through one direct repository-row pass.
+1278. Pre-size the grouped order-item map from the fetched row count.
+1279. Create each order-item group only when its first row arrives.
+1280. Pre-size normalized status storage from the bounded input size.
+1281. Traverse paid statuses directly without stream intermediates.
+1282. Deduplicate paid statuses with a hash set.
+1283. Stop paid-status scanning immediately at the status cap.
+1284. Reuse the capped top-product limit constant.
+
+1285. Pre-size wishlist product-ID membership storage.
+1286. Collect wishlist product IDs through direct iteration.
+1287. Skip null wishlist product IDs before set insertion.
+1288. Pre-size the wishlist product lookup map.
+1289. Build the wishlist product map directly from the repository iterable.
+1290. Preserve the first product row without duplicate map replacement.
+1291. Enrich wishlist rows through direct iteration.
+1292. Scan product option specifications without a stream pipeline.
+1293. Read each option key and value once during selection detection.
+1294. Cache the product variant list during selection detection.
+1295. Read the bundle flag directly without a default-value allocation.
+1296. Trim the primary wishlist image URL once.
+1297. Trim each fallback wishlist image URL once.
+
+1298. Pre-size the webhook snapshot map for its fixed fields.
+1299. Pre-size populated webhook channel maps.
+1300. Pre-size empty webhook channel maps.
+1301. Scan webhook metadata segments with delimiter indexes.
+1302. Remove metadata split-array allocation.
+1303. Return metadata values immediately after the first matching segment.
+1304. Use the normalized empty-string contract for local-address checks.
+
+1305. Centralize bug-attachment size and dimension defaults.
+1306. Reuse the configured bug upload directory during file loading.
+1307. Precompile bug-attachment filename validation.
+1308. Reuse the bug attachment byte-size default constant.
+1309. Reuse the bug attachment width default constant.
+1310. Reuse the bug attachment height default constant.
+1311. Reject impossible attachment filename lengths before pattern matching.
+
+1312. Centralize the default storefront URL for order emails.
+1313. Precompile order-email address validation.
+1314. Trim order-email titles once before account retries.
+1315. Trim order-email messages once before account retries.
+1316. Pass normalized email content through every SMTP attempt.
+1317. Resolve the storefront base URL once per rendered message.
+1318. Remove storefront trailing slashes through direct character scanning.
+1319. Build valid mail-account lists through direct iteration.
+1320. Pre-size valid mail-account storage from configured accounts.
+1321. Trim the SMTP from address once before message preparation.
+1322. Hash the effective trimmed password in sender-cache keys.
+1323. Normalize email whitespace once before lowercasing.
+1324. Match normalized emails with the compiled pattern.
+1325. Normalize the configured brand name through one local value.
+1326. Skip HTML replacement passes when text has no escapable characters.
+1327. Shuffle the freshly-built account list without copying it.
+1328. Trim storefront configuration candidates once per fallback level.
+1329. Skip escaping fixed localized email labels known to be safe.
+
+1330. Share one immutable public category page request.
+1331. Reuse the shared page request for the legacy default limit.
+1332. Initialize hierarchy roots without singleton-list allocations.
+1333. Pre-size hierarchy child frontiers from repository results.
+1334. Initialize refresh traversal roots through direct set insertion.
+1335. Pre-size refresh parent-level and parent-path maps.
+1336. Pre-size refresh child frontiers and next-level maps.
+1337. Enrich category counts through direct list iteration.
+1338. Collect root category IDs without stream collectors.
+1339. Pre-size root-ID membership storage.
+1340. Initialize root ownership sets without singleton-list wrappers.
+1341. Pre-size category-count traversal frontiers.
+1342. Flatten category IDs through direct set insertion.
+1343. Aggregate product-count rows through direct iteration.
+1344. Pre-size direct category-count storage.
+1345. Sum root category counts through direct iteration.
+1346. Cache a loaded parent path during path construction.
+1347. Cache a fetched parent path during path construction.
+1348. Build category paths with one sized string builder.
+1349. Replace repeated leading-zero string checks with character checks.
+1350. Scan ambiguous numeric host segments without split arrays.
+1351. Parse mapped IPv4 tail segments without split arrays.
+1352. Validate product-filter list values through indexed iteration.
+1353. Cache product-filter value length before limit comparison.
+
+1354. Reuse the product URL prefix while rendering the sitemap.
+1355. Pre-size sitemap product-entry storage from the bounded page size.
+1356. Cache each sitemap product ID before entry construction.
+1357. Cache each sitemap product timestamp before fallback selection.
+1358. Sort sitemap entries in place before deduplication.
+1359. Deduplicate sorted sitemap entries through direct iteration.
+1360. Pre-size the ordered sitemap URL map.
+1361. Remove storefront trailing slashes with direct character scanning.
+1362. Skip XML escaping scans for already-safe sitemap text.
+
+1363. Cache the public brand-list configuration key.
+1364. Return the immutable empty brand response list without allocation.
+1365. Pre-size public brand responses from the repository result count.
+1366. Convert public brands through direct iteration.
+1367. Cache the authenticated admin user ID during permission checks.
+1368. Cache brand name and status values during audit metadata construction.
+
+1369. Return the immutable empty favorites response list without allocation.
+1370. Pre-size favorite responses from the repository result count.
+1371. Convert favorites through direct iteration.
+
+1372. Return the immutable empty search response list without allocation.
+1373. Pre-size public search responses from the product result count.
+1374. Convert search products through direct iteration.
+1375. Short-circuit empty search-filter value scans.
+1376. Scan search-filter values directly without a stream predicate.
+
+1377. Cache loaded user addresses before response conversion.
+1378. Pre-size and populate user-address responses through direct iteration.
+
+1379. Centralize the maximum API error message length.
+1380. Centralize the maximum request-ID length.
+1381. Precompile API error control-text matching.
+1382. Pre-size the API error payload map.
+1383. Share control-text sanitization between messages and request IDs.
+1384. Skip control-text regex matching when text is clean.
+1385. Apply named limits after API error text normalization.
+
+1386. Cache the canonical manual error payload before merging fields.
+1387. Pre-size normalized manual error maps from both payload sizes.
+1388. Merge canonical manual error fields with one bulk map operation.
+1389. Traverse supplemental manual error fields without a lambda callback.
+1390. Cache media subtypes during JSON-like response checks.
+
+1391. Cache binding-error field names before message construction.
+1392. Scan constraint violations directly for the first message.
+1393. Extract constraint field suffixes with one separator index.
+1394. Cache response-status reasons before sanitizing and logging.
+
+1395. Separate null and blank request-ID normalization checks.
+1396. Return early for null request paths during admin detection.
+
+1397. Resolve production mode once for each CORS origin parse.
+1398. Share fallback origin selection across CORS parsing paths.
+1399. Parse CORS origins with delimiter indexes instead of split arrays.
+1400. Deduplicate CORS origin patterns with insertion-order set storage.
+1401. Pre-size the parsed CORS origin result list.
+1402. Normalize safe production-origin text once before validation.
+
+1403. Cache the allowed CORS method array.
+1404. Cache the allowed CORS header array.
+1405. Cache the shared upload resource cache-control policy.
+1406. Share upload resource-location normalization across handlers.
+1407. Normalize upload resource trailing slashes with a direct check.
+
+1408. Share one immutable supported-locale list.
+
+1409. Skip payment-channel sorting when configured channels are absent.
+1410. Pre-size supported payment-channel membership storage.
+
+1411. Cache the home product page-size constant.
+1412. Return the immutable empty home-product list without allocation.
+1413. Pre-size home-product responses from the product result count.
+1414. Convert home products through direct iteration.
+
+1415. Return the immutable empty cart response list without allocation.
+1416. Pre-size cart responses from the cart result count.
+1417. Convert cart items through direct iteration.
+
+1418. Share the default legacy brand page request.
+1419. Replace brand-name stream validation with direct optional checks.
+
+1420. Resolve a cart product price once during insertion validation.
+1421. Reuse the resolved price for existing cart-line updates.
+1422. Reuse the resolved price for new cart-line inserts.
+1423. Share one timestamp between new cart-line audit fields.
+1424. Cache selected specs during cart quantity updates.
+1425. Reuse selected specs for cart stock validation.
+1426. Reuse selected specs for cart price resolution.
+1427. Pre-size normalized cart-delete IDs from the bounded input.
+1428. Deduplicate cart-delete IDs with a bounded membership set.
+1429. Enforce the cart-delete maximum during direct scanning.
+1430. Avoid a second full pass for cart-delete size validation.
+1431. Pre-size cart owner membership storage.
+1432. Stop cart owner scanning after a second owner is found.
+1433. Accumulate cart totals through direct BigDecimal iteration.
+1434. Collect snapshot product IDs without mapped stream intermediates.
+1435. Build the snapshot product map through direct repository iteration.
+1436. Normalize primary and fallback cart image candidates once each.
+
+1437. Share the placeholder-scan page request.
+1438. Pre-size invalid announcement storage from each scan batch.
+1439. Share the administrator announcement sort definition.
+1440. Return the immutable empty public announcement list without allocation.
+1441. Skip announcement copy normalization for empty text.
+1442. Skip URL lowercase allocation when no percent escapes exist.
+1443. Cache the parsed URI host during safe-link validation.

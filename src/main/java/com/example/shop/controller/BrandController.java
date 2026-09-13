@@ -15,16 +15,17 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/brands")
 public class BrandController {
     private static final int DEFAULT_PUBLIC_BRAND_LIMIT = 120;
     private static final int HARD_PUBLIC_BRAND_LIMIT = 500;
+    private static final String PUBLIC_BRAND_LIMIT_KEY = "brand.public-list-max-rows";
 
     private final BrandService brandService;
     private final SecurityAuditLogService auditLogService;
@@ -43,9 +44,15 @@ public class BrandController {
 
     @GetMapping
     public ResponseEntity<List<BrandPublicResponse>> getAll() {
-        return ResponseEntity.ok(brandService.findAll(true, publicBrandLimit()).stream()
-                .map(BrandPublicResponse::from)
-                .collect(Collectors.toList()));
+        List<Brand> brands = brandService.findAll(true, publicBrandLimit());
+        if (brands.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+        List<BrandPublicResponse> responses = new ArrayList<>(brands.size());
+        for (Brand brand : brands) {
+            responses.add(BrandPublicResponse.from(brand));
+        }
+        return ResponseEntity.ok(responses);
     }
 
     @PostMapping
@@ -132,7 +139,8 @@ public class BrandController {
                                               Long resourceId,
                                               HttpServletRequest request,
                                               String metadata) {
-        if (adminRoleService.hasPermission(SecurityUtils.requireUser(authentication).getId(), permission)) {
+        Long userId = SecurityUtils.requireUser(authentication).getId();
+        if (adminRoleService.hasPermission(userId, permission)) {
             return;
         }
         String auditMetadata = metadata == null || metadata.isBlank()
@@ -147,11 +155,13 @@ public class BrandController {
         if (brand == null) {
             return null;
         }
-        return "name=" + brand.getName() + ",status=" + brand.getStatus();
+        String name = brand.getName();
+        String status = brand.getStatus();
+        return "name=" + name + ",status=" + status;
     }
 
     private int publicBrandLimit() {
-        int configured = runtimeConfig.getInt("brand.public-list-max-rows", DEFAULT_PUBLIC_BRAND_LIMIT);
+        int configured = runtimeConfig.getInt(PUBLIC_BRAND_LIMIT_KEY, DEFAULT_PUBLIC_BRAND_LIMIT);
         return Math.max(1, Math.min(configured, HARD_PUBLIC_BRAND_LIMIT));
     }
 }

@@ -124,10 +124,11 @@ class CartServiceTest {
         assertFalse(cartService.contains("convertSimpleVoToCartVo"));
         assertFalse(cartService.contains("getProductById("));
         assertTrue(cartService.contains("private void refreshCartItemSnapshots(List<CartItem> items)"));
-        assertTrue(cartService.contains(".distinct()\n"
-                + "                .collect(Collectors.toList());"));
+        assertTrue(cartService.contains("Set<Long> productIds = new LinkedHashSet<>(items.size());"));
+        assertTrue(cartService.contains("productIds.add(productId);"));
         assertTrue(cartService.contains("productRepository.findAllById(productIds)"));
-        assertTrue(cartService.contains("items.forEach(item -> refreshCartItemSnapshot(item, productById.get(item.getProductId())))"));
+        assertTrue(cartService.contains("productById.put(product.getId(), product);"));
+        assertTrue(cartService.contains("refreshCartItemSnapshot(item, productById.get(item.getProductId()));"));
     }
 
     @Test

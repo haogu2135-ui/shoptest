@@ -50,7 +50,7 @@ class SecurityConfigCorsTest {
         String source = java.nio.file.Files.readString(
                 java.nio.file.Paths.get("src/main/java/com/example/shop/config/WebConfig.java"));
 
-        assertTrue(source.contains(".allowedHeaders(Arrays.asList("));
+        assertTrue(source.contains(".allowedHeaders(ALLOWED_HEADERS)"));
         assertFalse(source.contains(".allowedHeaders(\"*\")"));
         assertFalse(source.contains("allowedHeaders(Arrays.asList(\"*\""));
         assertTrue(source.contains("\"Authorization\""));

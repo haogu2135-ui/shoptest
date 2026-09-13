@@ -35,6 +35,8 @@ public class SiteAnnouncementService {
     private static final int DEFAULT_TITLE_MAX_CHARS = 120;
     private static final int DEFAULT_CONTENT_MAX_CHARS = 500;
     private static final int DEFAULT_LINK_URL_MAX_CHARS = 500;
+    private static final PageRequest PLACEHOLDER_SCAN_PAGE = PageRequest.of(0, PLACEHOLDER_SCAN_BATCH_SIZE);
+    private static final Sort ADMIN_SORT = Sort.by(Sort.Order.asc("sortOrder"), Sort.Order.desc("id"));
     private static final Pattern PLACEHOLDER_COPY_PATTERN = Pattern.compile(
             "(?i)(^|\\b)(test|testing|dummy|placeholder|lorem|ipsum|asdf|qwer|sadsad|foobar|sample|demo|xxx|yyyy|zzzz|junk|garbage|qa|tmp|temp|hello\\s*world|foo\\s*bar)(\\b|$)");
     private static final Pattern REPEATED_CHARACTER_PATTERN = Pattern.compile("(?i)([a-z])\\1{4,}");
@@ -54,11 +56,11 @@ public class SiteAnnouncementService {
         while (true) {
             List<SiteAnnouncement> batch = repository
                     .findByStatusIgnoreCaseAndIdGreaterThanOrderByIdAsc(
-                            "ACTIVE", lastId, PageRequest.of(0, PLACEHOLDER_SCAN_BATCH_SIZE));
+                            "ACTIVE", lastId, PLACEHOLDER_SCAN_PAGE);
             if (batch == null || batch.isEmpty()) {
                 return;
             }
-            List<SiteAnnouncement> invalidActiveAnnouncements = new ArrayList<>();
+            List<SiteAnnouncement> invalidActiveAnnouncements = new ArrayList<>(batch.size());
             for (SiteAnnouncement announcement : batch) {
                 if (hasPlaceholderOrGibberishCopy(announcement)) invalidActiveAnnouncements.add(announcement);
             }
@@ -89,17 +91,16 @@ public class SiteAnnouncementService {
         int safePage = Math.max(1, page);
         String safeStatus = normalizeStatusFilter(status);
         String keywordPattern = searchKeywordPattern(keyword);
-        Sort sort = Sort.by(Sort.Order.asc("sortOrder"), Sort.Order.desc("id"));
         Page<SiteAnnouncement> result = repository.searchAdmin(
                 safeStatus,
                 keywordPattern,
-                PageRequest.of(safePage - 1, safeSize, sort));
+                PageRequest.of(safePage - 1, safeSize, ADMIN_SORT));
         if (result.getTotalPages() > 0 && safePage > result.getTotalPages()) {
             safePage = result.getTotalPages();
             result = repository.searchAdmin(
                     safeStatus,
                     keywordPattern,
-                    PageRequest.of(safePage - 1, safeSize, sort));
+                    PageRequest.of(safePage - 1, safeSize, ADMIN_SORT));
         }
         return SiteAnnouncementAdminPageResponse.of(result.getContent(), result.getTotalElements(), safePage, safeSize);
     }
@@ -109,6 +110,9 @@ public class SiteAnnouncementService {
         int safeLimit = clamp(limit, 1, activeLimit());
         int fetchLimit = Math.max(safeLimit, Math.min(activeLimit(), safeLimit * 4));
         List<SiteAnnouncement> announcements = repository.findActive(LocalDateTime.now(), PageRequest.of(0, fetchLimit));
+        if (announcements == null || announcements.isEmpty()) {
+            return List.of();
+        }
         List<SiteAnnouncementPublicResponse> result = new ArrayList<>(Math.min(safeLimit, announcements.size()));
         for (SiteAnnouncement announcement : announcements) {
             if (announcement == null || !isPubliclyDisplayable(announcement)) continue;
@@ -306,7 +310,7 @@ public class SiteAnnouncementService {
     }
 
     private String normalizeCopy(String value) {
-        if (value == null) return "";
+        if (value == null || value.isEmpty()) return "";
         return ANNOUNCEMENT_WHITESPACE_PATTERN.matcher(
                 ANNOUNCEMENT_CONTROL_PATTERN.matcher(value).replaceAll(" "))
                 .replaceAll(" ").trim();
@@ -346,7 +350,7 @@ public class SiteAnnouncementService {
     }
 
     private boolean isSafeLinkUrl(String value) {
-        String normalizedValue = value.toLowerCase(Locale.ROOT);
+        String normalizedValue = value.indexOf('%') >= 0 ? value.toLowerCase(Locale.ROOT) : "";
         boolean hasControl = false;
         for (int index = 0; index < value.length(); index++) {
             char character = value.charAt(index);
@@ -365,11 +369,12 @@ public class SiteAnnouncementService {
         try {
             URI uri = new URI(value);
             String scheme = uri.getScheme();
+            String host = uri.getHost();
             return scheme != null
                     && "https".equalsIgnoreCase(scheme)
                     && uri.getUserInfo() == null
-                    && uri.getHost() != null
-                    && !uri.getHost().trim().isEmpty();
+                    && host != null
+                    && !host.trim().isEmpty();
         } catch (URISyntaxException ex) {
             return false;
         }

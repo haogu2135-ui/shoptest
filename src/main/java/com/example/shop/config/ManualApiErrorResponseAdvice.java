@@ -60,13 +60,16 @@ public class ManualApiErrorResponseAdvice implements ResponseBodyAdvice<Object> 
 
         HttpStatus status = resolveStatus(response);
         String message = String.valueOf(map.get("error"));
-        Map<String, Object> normalized = new LinkedHashMap<>(
-                errorResponses.buildPayload(status, message, servletRequest));
-        map.forEach((key, value) -> {
+        Map<String, Object> errorPayload = errorResponses.buildPayload(status, message, servletRequest);
+        Map<String, Object> normalized = new LinkedHashMap<>(errorPayload.size() + map.size());
+        normalized.putAll(errorPayload);
+        for (Map.Entry<?, ?> entry : map.entrySet()) {
+            Object key = entry.getKey();
+            Object value = entry.getValue();
             if (key instanceof String && !normalized.containsKey(key)) {
                 normalized.put((String) key, value);
             }
-        });
+        }
         return normalized;
     }
 
@@ -81,9 +84,12 @@ public class ManualApiErrorResponseAdvice implements ResponseBodyAdvice<Object> 
     }
 
     private boolean isJsonLike(MediaType mediaType) {
-        return mediaType == null
-                || MediaType.APPLICATION_JSON.includes(mediaType)
-                || mediaType.getSubtype().endsWith("+json");
+        if (mediaType == null) {
+            return true;
+        }
+        String subtype = mediaType.getSubtype();
+        return MediaType.APPLICATION_JSON.includes(mediaType)
+                || (subtype != null && subtype.endsWith("+json"));
     }
 
     private HttpStatus resolveStatus(ServerHttpResponse response) {
@@ -96,8 +102,10 @@ public class ManualApiErrorResponseAdvice implements ResponseBodyAdvice<Object> 
     }
 
     private HttpStatus currentStatus(ServerHttpResponse response) {
-        return response instanceof ServletServerHttpResponse
-                ? HttpStatus.resolve(((ServletServerHttpResponse) response).getServletResponse().getStatus())
-                : null;
+        if (!(response instanceof ServletServerHttpResponse)) {
+            return null;
+        }
+        ServletServerHttpResponse servletResponse = (ServletServerHttpResponse) response;
+        return HttpStatus.resolve(servletResponse.getServletResponse().getStatus());
     }
 }

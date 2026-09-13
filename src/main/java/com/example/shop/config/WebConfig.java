@@ -7,12 +7,19 @@ import org.springframework.web.servlet.config.annotation.CorsRegistry;
 import org.springframework.web.servlet.config.annotation.ResourceHandlerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
-import java.util.Arrays;
 import java.nio.file.Paths;
 import java.util.concurrent.TimeUnit;
 
 @Configuration
 public class WebConfig implements WebMvcConfigurer {
+    private static final String[] ALLOWED_METHODS = {"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"};
+    private static final String[] ALLOWED_HEADERS = {
+            "Authorization", "Content-Type", "Accept", "Accept-Language", "X-Requested-With",
+            RequestCorrelationFilter.REQUEST_ID_HEADER, RequestCorrelationFilter.CORRELATION_ID_HEADER,
+            "X-Bootstrap-Token", "X-Guest-Access-Token", "Idempotency-Key"
+    };
+    private static final CacheControl UPLOAD_CACHE_CONTROL =
+            CacheControl.maxAge(30, TimeUnit.DAYS).cachePublic();
     private final CorsOriginProperties corsOriginProperties;
     private final RuntimeConfigService runtimeConfig;
 
@@ -27,18 +34,8 @@ public class WebConfig implements WebMvcConfigurer {
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
                 .allowedOriginPatterns(corsOriginProperties.getCorsAllowedOriginPatternArray())
-                .allowedMethods("GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS")
-                .allowedHeaders(Arrays.asList(
-                        "Authorization",
-                        "Content-Type",
-                        "Accept",
-                        "Accept-Language",
-                        "X-Requested-With",
-                        RequestCorrelationFilter.REQUEST_ID_HEADER,
-                        RequestCorrelationFilter.CORRELATION_ID_HEADER,
-                        "X-Bootstrap-Token",
-                        "X-Guest-Access-Token",
-                        "Idempotency-Key").toArray(new String[0]))
+                .allowedMethods(ALLOWED_METHODS)
+                .allowedHeaders(ALLOWED_HEADERS)
                 .exposedHeaders(RequestCorrelationFilter.REQUEST_ID_HEADER)
                 .allowCredentials(true)
                 .maxAge(3600);
@@ -46,20 +43,20 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
-        String petGalleryLocation = Paths.get(runtimeConfig.getString("pet-gallery.upload-dir", "uploads/pet-gallery")).toAbsolutePath().normalize().toUri().toString();
-        if (!petGalleryLocation.endsWith("/")) {
-            petGalleryLocation = petGalleryLocation + "/";
-        }
+        String petGalleryLocation = uploadResourceLocation("pet-gallery.upload-dir", "uploads/pet-gallery");
         registry.addResourceHandler("/uploads/pet-gallery/**")
                 .addResourceLocations(petGalleryLocation)
-                .setCacheControl(CacheControl.maxAge(30, TimeUnit.DAYS).cachePublic());
+                .setCacheControl(UPLOAD_CACHE_CONTROL);
 
-        String reviewImageLocation = Paths.get(runtimeConfig.getString("review.image.upload-dir", "uploads/reviews")).toAbsolutePath().normalize().toUri().toString();
-        if (!reviewImageLocation.endsWith("/")) {
-            reviewImageLocation = reviewImageLocation + "/";
-        }
+        String reviewImageLocation = uploadResourceLocation("review.image.upload-dir", "uploads/reviews");
         registry.addResourceHandler("/uploads/reviews/**")
                 .addResourceLocations(reviewImageLocation)
-                .setCacheControl(CacheControl.maxAge(30, TimeUnit.DAYS).cachePublic());
+                .setCacheControl(UPLOAD_CACHE_CONTROL);
+    }
+
+    private String uploadResourceLocation(String key, String fallback) {
+        String location = Paths.get(runtimeConfig.getString(key, fallback))
+                .toAbsolutePath().normalize().toUri().toString();
+        return location.endsWith("/") ? location : location + "/";
     }
 } 

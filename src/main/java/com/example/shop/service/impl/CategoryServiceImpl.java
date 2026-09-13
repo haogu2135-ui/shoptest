@@ -22,7 +22,6 @@ import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -31,6 +30,8 @@ public class CategoryServiceImpl implements CategoryService {
     private static final int DEFAULT_PUBLIC_CATEGORY_LIST_LIMIT = 500;
     private static final int DEFAULT_LEGACY_CATEGORY_LIST_LIMIT = 500;
     private static final int HARD_CATEGORY_REFERENCE_LIST_LIMIT = 1_000;
+    private static final PageRequest PUBLIC_CATEGORY_PAGE =
+            PageRequest.of(0, DEFAULT_PUBLIC_CATEGORY_LIST_LIMIT);
 
     @Autowired
     private CategoryRepository categoryRepository;
@@ -48,18 +49,20 @@ public class CategoryServiceImpl implements CategoryService {
     @Cacheable(cacheNames = "categoryReferenceData", key = "'all:max=' + #maxRows")
     public List<Category> findAll(int maxRows) {
         int boundedMaxRows = Math.max(1, Math.min(maxRows, HARD_CATEGORY_REFERENCE_LIST_LIMIT));
+        PageRequest page = boundedMaxRows == DEFAULT_LEGACY_CATEGORY_LIST_LIMIT
+                ? PUBLIC_CATEGORY_PAGE
+                : PageRequest.of(0, boundedMaxRows);
         return withProductCounts(categoryRepository.findAllByOrderByLevelAscParentIdAscNameAscIdAsc(
-                PageRequest.of(0, boundedMaxRows)));
+                page));
     }
 
     @Override
     @Cacheable(cacheNames = "categoryReferenceData", key = "'parent=' + (#parentId == null ? 'root' : #parentId)")
     public List<Category> findByParentId(Long parentId) {
-        PageRequest page = PageRequest.of(0, DEFAULT_PUBLIC_CATEGORY_LIST_LIMIT);
         if (parentId == null) {
-            return withProductCounts(categoryRepository.findByParentIdIsNullOrderByNameAscIdAsc(page));
+            return withProductCounts(categoryRepository.findByParentIdIsNullOrderByNameAscIdAsc(PUBLIC_CATEGORY_PAGE));
         }
-        return withProductCounts(categoryRepository.findByParentIdOrderByNameAscIdAsc(parentId, page));
+        return withProductCounts(categoryRepository.findByParentIdOrderByNameAscIdAsc(parentId, PUBLIC_CATEGORY_PAGE));
     }
 
     @Override
@@ -73,14 +76,14 @@ public class CategoryServiceImpl implements CategoryService {
         }
         return withProductCounts(categoryRepository.findByLevelOrderByNameAscIdAsc(
                 level,
-                PageRequest.of(0, DEFAULT_PUBLIC_CATEGORY_LIST_LIMIT)));
+                PUBLIC_CATEGORY_PAGE));
     }
 
     @Override
     @Cacheable(cacheNames = "categoryReferenceData", key = "'top'")
     public List<Category> findTopLevel() {
         return withProductCounts(categoryRepository.findByParentIdIsNullOrderByNameAscIdAsc(
-                PageRequest.of(0, DEFAULT_PUBLIC_CATEGORY_LIST_LIMIT)));
+                PUBLIC_CATEGORY_PAGE));
     }
 
     @Override
@@ -188,12 +191,14 @@ public class CategoryServiceImpl implements CategoryService {
     }
 
     private CategoryHierarchy loadCategoryHierarchy(Long id) {
-        Set<Long> visited = new LinkedHashSet<>(List.of(id));
-        Set<Long> frontier = new LinkedHashSet<>(List.of(id));
+        Set<Long> visited = new LinkedHashSet<>();
+        visited.add(id);
+        Set<Long> frontier = new LinkedHashSet<>();
+        frontier.add(id);
         int depth = 0;
         while (!frontier.isEmpty()) {
             List<Category> children = categoryRepository.findByParentIdIn(new ArrayList<>(frontier));
-            Set<Long> nextFrontier = new LinkedHashSet<>();
+            Set<Long> nextFrontier = new LinkedHashSet<>(children.size());
             for (Category child : children) {
                 if (child == null || child.getId() == null || !visited.add(child.getId())) {
                     continue;
@@ -213,17 +218,19 @@ public class CategoryServiceImpl implements CategoryService {
         if (parentId == null || parentLevel == null) {
             return;
         }
-        Set<Long> visited = new LinkedHashSet<>(List.of(parentId));
-        Set<Long> frontier = new LinkedHashSet<>(List.of(parentId));
-        Map<Long, Integer> parentLevels = new LinkedHashMap<>();
-        Map<Long, String> parentPaths = new LinkedHashMap<>();
+        Set<Long> visited = new LinkedHashSet<>();
+        visited.add(parentId);
+        Set<Long> frontier = new LinkedHashSet<>();
+        frontier.add(parentId);
+        Map<Long, Integer> parentLevels = new LinkedHashMap<>(4);
+        Map<Long, String> parentPaths = new LinkedHashMap<>(4);
         parentLevels.put(parentId, parentLevel);
         parentPaths.put(parentId, parentPath);
         while (!frontier.isEmpty()) {
             List<Category> children = categoryRepository.findByParentIdIn(new ArrayList<>(frontier));
-            Set<Long> nextFrontier = new LinkedHashSet<>();
-            Map<Long, Integer> nextParentLevels = new LinkedHashMap<>();
-            Map<Long, String> nextParentPaths = new LinkedHashMap<>();
+            Set<Long> nextFrontier = new LinkedHashSet<>(children.size());
+            Map<Long, Integer> nextParentLevels = new LinkedHashMap<>(children.size());
+            Map<Long, String> nextParentPaths = new LinkedHashMap<>(children.size());
             for (Category child : children) {
                 if (child == null || child.getId() == null || child.getParentId() == null
                         || !parentLevels.containsKey(child.getParentId())
@@ -257,14 +264,20 @@ public class CategoryServiceImpl implements CategoryService {
             return appendPath(null, categoryId);
         }
         if (loadedParent != null && parentId.equals(loadedParent.getId())) {
-            return appendPath(loadedParent.getPath() != null && !loadedParent.getPath().isBlank()
-                    ? loadedParent.getPath()
-                    : buildCategoryPath(loadedParent.getParentId(), loadedParent.getId()), categoryId);
+            String loadedParentPath = loadedParent.getPath();
+            String parentPath = loadedParentPath != null && !loadedParentPath.isBlank()
+                    ? loadedParentPath
+                    : buildCategoryPath(loadedParent.getParentId(), loadedParent.getId());
+            return appendPath(parentPath, categoryId);
         }
         return categoryRepository.findById(parentId)
-                .map(parent -> appendPath(parent.getPath() != null && !parent.getPath().isBlank()
-                        ? parent.getPath()
-                        : buildCategoryPath(parent.getParentId(), parent.getId()), categoryId))
+                .map(parent -> {
+                    String storedParentPath = parent.getPath();
+                    String parentPath = storedParentPath != null && !storedParentPath.isBlank()
+                            ? storedParentPath
+                            : buildCategoryPath(parent.getParentId(), parent.getId());
+                    return appendPath(parentPath, categoryId);
+                })
                 .orElse(appendPath(null, categoryId));
     }
 
@@ -277,10 +290,14 @@ public class CategoryServiceImpl implements CategoryService {
             return "/" + categoryId + "/";
         }
         String prefix = normalizedParent.startsWith("/") ? normalizedParent : "/" + normalizedParent;
-        if (!prefix.endsWith("/")) {
-            prefix += "/";
+        String categoryText = String.valueOf(categoryId);
+        int extraSlash = prefix.endsWith("/") ? 0 : 1;
+        StringBuilder path = new StringBuilder(prefix.length() + extraSlash + categoryText.length() + 1)
+                .append(prefix);
+        if (extraSlash == 1) {
+            path.append('/');
         }
-        return prefix + categoryId + "/";
+        return path.append(categoryText).append('/').toString();
     }
 
     private List<Category> withProductCounts(List<Category> categories) {
@@ -288,30 +305,39 @@ public class CategoryServiceImpl implements CategoryService {
             return categories;
         }
         Map<Long, Long> productCounts = countPublicProductsForRoots(categories);
-        categories.forEach(category -> category.setProductCount(productCounts.getOrDefault(category.getId(), 0L)));
+        for (Category category : categories) {
+            category.setProductCount(productCounts.getOrDefault(category.getId(), 0L));
+        }
         return categories;
     }
 
     private Map<Long, Long> countPublicProductsForRoots(List<Category> rootCategories) {
-        Set<Long> rootIds = rootCategories.stream()
-                .map(Category::getId)
-                .filter(id -> id != null && id > 0)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<Long> rootIds = new LinkedHashSet<>(rootCategories.size());
+        for (Category rootCategory : rootCategories) {
+            Long rootId = rootCategory.getId();
+            if (rootId != null && rootId > 0) {
+                rootIds.add(rootId);
+            }
+        }
         if (rootIds.isEmpty()) {
             return Collections.emptyMap();
         }
 
-        Map<Long, Set<Long>> categoryIdsByRoot = new LinkedHashMap<>();
-        Map<Long, Set<Long>> rootsByParentId = new LinkedHashMap<>();
+        Map<Long, Set<Long>> categoryIdsByRoot = new LinkedHashMap<>(rootIds.size());
+        Map<Long, Set<Long>> rootsByParentId = new LinkedHashMap<>(rootIds.size());
         for (Long rootId : rootIds) {
-            categoryIdsByRoot.put(rootId, new LinkedHashSet<>(List.of(rootId)));
-            rootsByParentId.put(rootId, new LinkedHashSet<>(List.of(rootId)));
+            Set<Long> rootCategoryIds = new LinkedHashSet<>();
+            rootCategoryIds.add(rootId);
+            categoryIdsByRoot.put(rootId, rootCategoryIds);
+            Set<Long> owningRoots = new LinkedHashSet<>();
+            owningRoots.add(rootId);
+            rootsByParentId.put(rootId, owningRoots);
         }
 
         Set<Long> frontier = new LinkedHashSet<>(rootIds);
         for (int depth = 1; depth < MAX_CATEGORY_COUNT_DEPTH && !frontier.isEmpty(); depth++) {
             List<Category> children = categoryRepository.findByParentIdIn(new ArrayList<>(frontier));
-            Set<Long> nextFrontier = new LinkedHashSet<>();
+            Set<Long> nextFrontier = new LinkedHashSet<>(children.size());
             Map<Long, Set<Long>> nextRootsByParentId = new LinkedHashMap<>();
             for (Category child : children) {
                 Long childId = child.getId();
@@ -333,21 +359,24 @@ public class CategoryServiceImpl implements CategoryService {
             rootsByParentId = nextRootsByParentId;
         }
 
-        Set<Long> categoryIds = categoryIdsByRoot.values().stream()
-                .flatMap(Set::stream)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
-        Map<Long, Long> directCounts = productRepository.countPublicProductsByCategoryIds(new ArrayList<>(categoryIds)).stream()
-                .collect(Collectors.toMap(
-                        row -> ((Number) row[0]).longValue(),
-                        row -> ((Number) row[1]).longValue(),
-                        Long::sum,
-                        LinkedHashMap::new));
+        Set<Long> categoryIds = new LinkedHashSet<>(rootIds.size());
+        for (Set<Long> ids : categoryIdsByRoot.values()) {
+            categoryIds.addAll(ids);
+        }
+        List<Object[]> countRows = productRepository.countPublicProductsByCategoryIds(new ArrayList<>(categoryIds));
+        Map<Long, Long> directCounts = new LinkedHashMap<>(countRows.size());
+        for (Object[] row : countRows) {
+            Long categoryId = ((Number) row[0]).longValue();
+            Long count = ((Number) row[1]).longValue();
+            directCounts.merge(categoryId, count, Long::sum);
+        }
 
-        Map<Long, Long> countsByRoot = new LinkedHashMap<>();
+        Map<Long, Long> countsByRoot = new LinkedHashMap<>(categoryIdsByRoot.size());
         categoryIdsByRoot.forEach((rootId, ids) -> {
-            long total = ids.stream()
-                    .mapToLong(id -> directCounts.getOrDefault(id, 0L))
-                    .sum();
+            long total = 0L;
+            for (Long id : ids) {
+                total += directCounts.getOrDefault(id, 0L);
+            }
             countsByRoot.put(rootId, total);
         });
         return countsByRoot;

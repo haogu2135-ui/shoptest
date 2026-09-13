@@ -2,6 +2,7 @@ package com.example.shop.util;
 
 import com.example.shop.entity.Product;
 
+import java.util.Locale;
 import java.util.Set;
 
 public final class ProductStatusUtils {
@@ -15,10 +16,11 @@ public final class ProductStatusUtils {
     }
 
     public static String normalizeProductStatus(String status) {
-        if (status == null || status.isBlank()) {
+        String normalizedInput = status == null ? "" : status.trim();
+        if (normalizedInput.isEmpty()) {
             return null;
         }
-        String normalized = status.trim().toUpperCase();
+        String normalized = normalizedInput.toUpperCase(Locale.ROOT);
         return PRODUCT_STATUSES.contains(normalized) ? normalized : null;
     }
 }

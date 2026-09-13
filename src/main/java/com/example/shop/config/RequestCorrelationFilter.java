@@ -71,10 +71,13 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
     }
 
     private String normalizeRequestId(String value) {
-        if (value == null || value.isBlank()) {
+        if (value == null) {
             return null;
         }
         String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
         return SAFE_REQUEST_ID.matcher(trimmed).matches() ? trimmed : null;
     }
 
@@ -107,10 +110,13 @@ public class RequestCorrelationFilter extends OncePerRequestFilter {
     }
 
     private boolean isAdminRequestPath(String path) {
+        if (path == null) {
+            return false;
+        }
         return "/admin".equals(path)
-                || (path != null && path.startsWith("/admin/"))
+                || path.startsWith("/admin/")
                 || "/api/admin".equals(path)
-                || (path != null && path.startsWith("/api/admin/"));
+                || path.startsWith("/api/admin/");
     }
 
     private String safeRequestPath(HttpServletRequest request) {

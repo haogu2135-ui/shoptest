@@ -17,9 +17,10 @@ class PageControllerTest {
 
         assertTrue(source.contains("@GetMapping(\"/home/products\")"));
         assertTrue(source.contains("query.setPage(0);"));
-        assertTrue(source.contains("query.setSize(24);"));
+        assertTrue(source.contains("private static final int HOME_PRODUCT_PAGE_SIZE = 24;"));
+        assertTrue(source.contains("query.setSize(HOME_PRODUCT_PAGE_SIZE);"));
         assertTrue(source.contains("productService.findPublicProducts(query)"));
-        assertTrue(source.contains("ProductPublicListItemResponse::from"));
+        assertTrue(source.contains("responses.add(ProductPublicListItemResponse.from(product));"));
         assertTrue(source.contains("@GetMapping(\"/home/products/{id}\")"));
         assertTrue(source.contains("productService.findPublicById(id)"));
         assertTrue(source.contains("ResponseEntity.notFound().build()"));

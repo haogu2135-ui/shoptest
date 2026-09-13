@@ -13,12 +13,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.Collections;
+import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -140,16 +139,27 @@ public class WishlistService {
         if (items == null || items.isEmpty()) {
             return;
         }
-        Set<Long> productIds = items.stream()
-                .map(Wishlist::getProductId)
-                .filter(Objects::nonNull)
-                .collect(Collectors.toSet());
-        Map<Long, Product> productsById = productIds.isEmpty()
-                ? Collections.emptyMap()
-                : productRepository.findAllById(productIds).stream()
-                        .filter(product -> product.getId() != null)
-                        .collect(Collectors.toMap(Product::getId, Function.identity(), (left, right) -> left));
-        items.forEach(item -> attachSelectionRequirement(item, productsById.get(item.getProductId())));
+        Set<Long> productIds = new HashSet<>(items.size());
+        for (Wishlist item : items) {
+            Long productId = item.getProductId();
+            if (productId != null) {
+                productIds.add(productId);
+            }
+        }
+        Map<Long, Product> productsById;
+        if (productIds.isEmpty()) {
+            productsById = Collections.emptyMap();
+        } else {
+            productsById = new HashMap<>(productIds.size());
+            for (Product product : productRepository.findAllById(productIds)) {
+                if (product.getId() != null) {
+                    productsById.putIfAbsent(product.getId(), product);
+                }
+            }
+        }
+        for (Wishlist item : items) {
+            attachSelectionRequirement(item, productsById.get(item.getProductId()));
+        }
     }
 
     private void attachSelectionRequirement(Wishlist item, Product product) {
@@ -163,13 +173,20 @@ public class WishlistService {
         item.setStock(product.getStock());
         item.setProductStatus(product.getStatus());
         Map<String, String> specs = product.getSpecificationsMap();
-        boolean hasOptions = specs != null && specs.entrySet().stream()
-                .anyMatch(entry -> entry.getKey() != null
-                        && entry.getKey().startsWith("options.")
-                        && entry.getValue() != null
-                        && !entry.getValue().trim().isEmpty());
-        boolean hasVariants = product.getVariantsList() != null && !product.getVariantsList().isEmpty();
-        boolean hasBundle = specs != null && "true".equalsIgnoreCase(specs.getOrDefault("bundle.enabled", "false"));
+        boolean hasOptions = false;
+        if (specs != null) {
+            for (Map.Entry<String, String> entry : specs.entrySet()) {
+                String key = entry.getKey();
+                String value = entry.getValue();
+                if (key != null && key.startsWith("options.") && value != null && !value.trim().isEmpty()) {
+                    hasOptions = true;
+                    break;
+                }
+            }
+        }
+        List<?> variants = product.getVariantsList();
+        boolean hasVariants = variants != null && !variants.isEmpty();
+        boolean hasBundle = specs != null && "true".equalsIgnoreCase(specs.get("bundle.enabled"));
         item.setRequiresSelection(hasOptions || hasVariants || hasBundle);
     }
 
@@ -177,12 +194,19 @@ public class WishlistService {
         if (product == null) {
             return null;
         }
-        if (product.getImageUrl() != null && !product.getImageUrl().trim().isEmpty()) {
-            return product.getImageUrl().trim();
+        String primaryImage = product.getImageUrl();
+        if (primaryImage != null) {
+            String normalizedPrimaryImage = primaryImage.trim();
+            if (!normalizedPrimaryImage.isEmpty()) {
+                return normalizedPrimaryImage;
+            }
         }
         for (String image : product.getImagesList()) {
-            if (image != null && !image.trim().isEmpty()) {
-                return image.trim();
+            if (image != null) {
+                String normalizedImage = image.trim();
+                if (!normalizedImage.isEmpty()) {
+                    return normalizedImage;
+                }
             }
         }
         return null;

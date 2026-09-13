@@ -21,12 +21,14 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class OrderEmailNotificationService {
+    private static final String DEFAULT_STOREFRONT_BASE_URL = "https://petsanything.com";
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
     private final MailAccountProperties mailAccountProperties;
     private final Map<String, JavaMailSenderImpl> mailSenderCache = new ConcurrentHashMap<>();
 
@@ -36,7 +38,9 @@ public class OrderEmailNotificationService {
     @Transactional(rollbackFor = Exception.class, propagation = Propagation.NOT_SUPPORTED)
     public boolean trySendOrderStatusEmail(String email, String title, String message) {
         String normalizedEmail = normalizeEmail(email);
-        if (normalizedEmail == null || isBlank(title) || isBlank(message)) {
+        String normalizedTitle = title == null ? "" : title.trim();
+        String normalizedMessage = message == null ? "" : message.trim();
+        if (normalizedEmail == null || normalizedTitle.isEmpty() || normalizedMessage.isEmpty()) {
             return false;
         }
         List<MailAccountProperties.Account> accounts = randomizedConfiguredAccounts();
@@ -46,7 +50,7 @@ public class OrderEmailNotificationService {
         Exception lastFailure = null;
         for (MailAccountProperties.Account account : accounts) {
             try {
-                sendMailWithAccount(account, normalizedEmail, title.trim(), message.trim());
+                sendMailWithAccount(account, normalizedEmail, normalizedTitle, normalizedMessage);
                 return true;
             } catch (Exception e) {
                 lastFailure = e;
@@ -65,7 +69,8 @@ public class OrderEmailNotificationService {
             MimeMessage message = sender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
             String brandName = brandName();
-            helper.setFrom(account.getFrom().trim(), brandName);
+            String from = account.getFrom().trim();
+            helper.setFrom(from, brandName);
             helper.setTo(to);
             helper.setSubject(brandName + " - " + title);
             helper.setText(messageText, renderHtml(brandName, title, messageText));
@@ -80,8 +85,9 @@ public class OrderEmailNotificationService {
         String safeBrand = escapeHtml(brandName);
         String safeTitle = escapeHtml(title);
         String safeMessage = escapeHtml(messageText).replace("\n", "<br/>");
-        String ordersUrl = escapeHtml(storefrontOrdersUrl());
-        String trackUrl = escapeHtml(storefrontTrackUrl());
+        String storefrontBaseUrl = storefrontBaseUrl();
+        String ordersUrl = escapeHtml(storefrontBaseUrl + "/profile?tab=orders");
+        String trackUrl = escapeHtml(storefrontBaseUrl + "/track-order");
         String eyebrow = emailCopy(language, "ORDER_UPDATE", "订单动态", "Actualización del pedido");
         String ordersCta = emailCopy(language, "View my orders", "查看我的订单", "Ver mis pedidos");
         String trackCta = emailCopy(language, "Track order", "物流查询", "Rastrear pedido");
@@ -102,16 +108,16 @@ public class OrderEmailNotificationService {
                 + "<div style=\"background:#ffffff;border:1px solid #e4ebe4;border-radius:10px;padding:28px 24px;\">"
                 + "<div style=\"font-size:22px;font-weight:800;color:#ee4d2d;margin-bottom:6px;\">" + safeBrand + "</div>"
                 + "<div style=\"font-size:12px;letter-spacing:0.04em;text-transform:uppercase;color:#7a8a80;margin-bottom:16px;\">"
-                + escapeHtml(eyebrow) + "</div>"
+                + eyebrow + "</div>"
                 + "<div style=\"font-size:18px;font-weight:700;margin-bottom:12px;color:#173f2b;\">" + safeTitle + "</div>"
                 + "<div style=\"font-size:15px;line-height:1.65;color:#3d4f44;margin-bottom:22px;\">" + safeMessage + "</div>"
                 + "<div style=\"margin:0 0 18px 0;\">"
                 + "<a href=\"" + ordersUrl + "\" style=\"display:inline-block;background:#ee4d2d;color:#ffffff;"
                 + "text-decoration:none;font-weight:700;font-size:14px;padding:12px 18px;border-radius:8px;\">"
-                + escapeHtml(ordersCta) + "</a>"
+                + ordersCta + "</a>"
                 + "<a href=\"" + trackUrl + "\" style=\"display:inline-block;margin-left:10px;background:#ffffff;color:#173f2b;"
                 + "text-decoration:none;font-weight:700;font-size:14px;padding:11px 16px;border-radius:8px;"
-                + "border:1px solid #d5e0d7;\">" + escapeHtml(trackCta) + "</a>"
+                + "border:1px solid #d5e0d7;\">" + trackCta + "</a>"
                 + "</div>"
                 + "<div style=\"font-size:12px;line-height:1.55;color:#7a8a80;border-top:1px solid #eef3ef;padding-top:14px;\">"
                 + escapeHtml(footer)
@@ -164,17 +170,21 @@ public class OrderEmailNotificationService {
     }
 
     private String storefrontBaseUrl() {
-        String configured = storefrontBaseUrlConfig;
-        if (isBlank(configured)) {
-            configured = System.getProperty("app.storefront-base-url");
+        String configured = trimmedOrNull(storefrontBaseUrlConfig);
+        if (configured == null) {
+            configured = trimmedOrNull(System.getProperty("app.storefront-base-url"));
         }
-        if (isBlank(configured)) {
-            configured = System.getenv("STOREFRONT_BASE_URL");
+        if (configured == null) {
+            configured = trimmedOrNull(System.getenv("STOREFRONT_BASE_URL"));
         }
-        if (isBlank(configured)) {
-            configured = "https://petsanything.com";
+        if (configured == null) {
+            configured = DEFAULT_STOREFRONT_BASE_URL;
         }
-        return configured.trim().replaceAll("/+$", "");
+        int end = configured.length();
+        while (end > 0 && configured.charAt(end - 1) == '/') {
+            end--;
+        }
+        return end == configured.length() ? configured : configured.substring(0, end);
     }
 
     private List<MailAccountProperties.Account> randomizedConfiguredAccounts() {
@@ -182,22 +192,26 @@ public class OrderEmailNotificationService {
         if (accounts.isEmpty()) {
             return accounts;
         }
-        List<MailAccountProperties.Account> randomized = new ArrayList<>(accounts);
-        Collections.shuffle(randomized);
-        return randomized;
+        Collections.shuffle(accounts);
+        return accounts;
     }
 
     private List<MailAccountProperties.Account> configuredAccounts() {
         if (mailAccountProperties.getAccounts() == null) {
             return Collections.emptyList();
         }
-        return mailAccountProperties.getAccounts().stream()
-                .filter(account -> !isBlank(account.getHost()))
-                .filter(account -> account.getPort() != null && account.getPort() > 0)
-                .filter(account -> !isBlank(account.getUsername()))
-                .filter(account -> !isBlank(account.getPassword()))
-                .filter(account -> !isBlank(account.getFrom()))
-                .collect(Collectors.toList());
+        List<MailAccountProperties.Account> configured = mailAccountProperties.getAccounts();
+        List<MailAccountProperties.Account> valid = new ArrayList<>(configured.size());
+        for (MailAccountProperties.Account account : configured) {
+            if (!isBlank(account.getHost())
+                    && account.getPort() != null && account.getPort() > 0
+                    && !isBlank(account.getUsername())
+                    && !isBlank(account.getPassword())
+                    && !isBlank(account.getFrom())) {
+                valid.add(account);
+            }
+        }
+        return valid;
     }
 
     private JavaMailSenderImpl mailSenderFor(MailAccountProperties.Account account) {
@@ -230,15 +244,19 @@ public class OrderEmailNotificationService {
                 + "|" + normalizeForKey(account.getFrom())
                 + "|" + account.isSsl()
                 + "|" + account.isStarttls()
-                + "|" + Integer.toHexString(account.getPassword().hashCode());
+                + "|" + Integer.toHexString(account.getPassword().trim().hashCode());
     }
 
     private String normalizeEmail(String email) {
-        if (isBlank(email)) {
+        if (email == null) {
             return null;
         }
-        String normalized = email.trim().toLowerCase(Locale.ROOT);
-        return normalized.matches("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$") ? normalized : null;
+        String trimmed = email.trim();
+        if (trimmed.isEmpty()) {
+            return null;
+        }
+        String normalized = trimmed.toLowerCase(Locale.ROOT);
+        return EMAIL_PATTERN.matcher(normalized).matches() ? normalized : null;
     }
 
     private String normalizeForKey(String value) {
@@ -246,7 +264,12 @@ public class OrderEmailNotificationService {
     }
 
     private String brandName() {
-        return isBlank(mailAccountProperties.getBrandName()) ? "ShopMX" : mailAccountProperties.getBrandName().trim();
+        String configuredBrand = mailAccountProperties.getBrandName();
+        if (configuredBrand == null) {
+            return "ShopMX";
+        }
+        String normalizedBrand = configuredBrand.trim();
+        return normalizedBrand.isEmpty() ? "ShopMX" : normalizedBrand;
     }
 
     private String maskEmail(String value) {
@@ -265,6 +288,18 @@ public class OrderEmailNotificationService {
         if (value == null) {
             return "";
         }
+        boolean requiresEscaping = false;
+        for (int i = 0; i < value.length(); i++) {
+            char character = value.charAt(i);
+            if (character == '&' || character == '<' || character == '>'
+                    || character == '"' || character == '\'') {
+                requiresEscaping = true;
+                break;
+            }
+        }
+        if (!requiresEscaping) {
+            return value;
+        }
         return value
                 .replace("&", "&amp;")
                 .replace("<", "&lt;")
@@ -275,5 +310,13 @@ public class OrderEmailNotificationService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private String trimmedOrNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

@@ -34,11 +34,12 @@ public class RuntimeConfigService {
 
     public BigDecimal getBigDecimal(String key, BigDecimal defaultValue) {
         String value = environment.getProperty(key);
-        if (value == null || value.trim().isEmpty()) {
+        String normalized = value == null ? "" : value.trim();
+        if (normalized.isEmpty()) {
             return defaultValue;
         }
         try {
-            return new BigDecimal(value.trim());
+            return new BigDecimal(normalized);
         } catch (NumberFormatException e) {
             return defaultValue;
         }

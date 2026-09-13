@@ -51,6 +51,7 @@ public class SitemapController {
     @RequestMapping(value = "/sitemap.xml", method = {RequestMethod.GET, RequestMethod.HEAD}, produces = MediaType.APPLICATION_XML_VALUE)
     public ResponseEntity<String> sitemap() {
         String base = storefrontBaseUrl();
+        String productBase = base + "/products/";
         StringBuilder xml = new StringBuilder(8_192);
         xml.append("<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n");
         xml.append("<urlset xmlns=\"http://www.sitemaps.org/schemas/sitemap/0.9\">\n");
@@ -61,7 +62,7 @@ public class SitemapController {
 
         for (Map.Entry<Long, LocalDateTime> product : loadPublicProductEntries()) {
             String lastmod = product.getValue() == null ? null : LASTMOD_FORMAT.format(product.getValue().toLocalDate());
-            appendUrl(xml, base + "/products/" + product.getKey(), lastmod, "weekly", "0.8");
+            appendUrl(xml, productBase + product.getKey(), lastmod, "weekly", "0.8");
         }
 
         xml.append("</urlset>\n");
@@ -72,7 +73,8 @@ public class SitemapController {
     }
 
     private List<Map.Entry<Long, LocalDateTime>> loadPublicProductEntries() {
-        List<Map.Entry<Long, LocalDateTime>> entries = new ArrayList<>();
+        List<Map.Entry<Long, LocalDateTime>> entries = new ArrayList<>(
+                Math.min(PRODUCT_PAGE_SIZE, MAX_PRODUCT_URLS));
         int page = 0;
         while (entries.size() < MAX_PRODUCT_URLS) {
             ProductListQuery query = new ProductListQuery();
@@ -88,8 +90,10 @@ public class SitemapController {
                 if (product == null || product.getId() == null) {
                     continue;
                 }
-                LocalDateTime updated = product.getUpdatedAt() != null ? product.getUpdatedAt() : product.getCreatedAt();
-                entries.add(Map.entry(product.getId(), updated));
+                Long productId = product.getId();
+                LocalDateTime updatedAt = product.getUpdatedAt();
+                LocalDateTime updated = updatedAt != null ? updatedAt : product.getCreatedAt();
+                entries.add(Map.entry(productId, updated));
                 if (entries.size() >= MAX_PRODUCT_URLS) {
                     break;
                 }
@@ -100,10 +104,11 @@ public class SitemapController {
             page += 1;
         }
         // Stable order for crawlers / smoke diffs.
-        Map<Long, LocalDateTime> ordered = new LinkedHashMap<>();
-        entries.stream()
-                .sorted(Map.Entry.comparingByKey())
-                .forEach(entry -> ordered.putIfAbsent(entry.getKey(), entry.getValue()));
+        entries.sort(Map.Entry.comparingByKey());
+        Map<Long, LocalDateTime> ordered = new LinkedHashMap<>(entries.size());
+        for (Map.Entry<Long, LocalDateTime> entry : entries) {
+            ordered.putIfAbsent(entry.getKey(), entry.getValue());
+        }
         return new ArrayList<>(ordered.entrySet());
     }
 
@@ -112,7 +117,12 @@ public class SitemapController {
         if (configured == null || configured.isBlank()) {
             configured = DEFAULT_STOREFRONT_BASE_URL;
         }
-        return configured.trim().replaceAll("/+$", "");
+        String normalized = configured.trim();
+        int end = normalized.length();
+        while (end > 0 && normalized.charAt(end - 1) == '/') {
+            end--;
+        }
+        return end == normalized.length() ? normalized : normalized.substring(0, end);
     }
 
     private static void appendUrl(StringBuilder xml, String loc, String lastmod, String changefreq, String priority) {
@@ -129,6 +139,17 @@ public class SitemapController {
     private static String escapeXml(String value) {
         if (value == null || value.isEmpty()) {
             return "";
+        }
+        boolean requiresEscaping = false;
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            if (ch == '&' || ch == '<' || ch == '>' || ch == '"' || ch == '\'') {
+                requiresEscaping = true;
+                break;
+            }
+        }
+        if (!requiresEscaping) {
+            return value;
         }
         StringBuilder escaped = new StringBuilder(value.length() + 16);
         for (int i = 0; i < value.length(); i++) {

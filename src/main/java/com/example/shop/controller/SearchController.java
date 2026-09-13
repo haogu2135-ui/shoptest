@@ -16,8 +16,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequiredArgsConstructor
@@ -107,9 +107,14 @@ public class SearchController {
     }
 
     private List<ProductPublicListItemResponse> toPublicListItems(List<Product> products) {
-        return products == null ? List.of() : products.stream()
-                .map(ProductPublicListItemResponse::from)
-                .collect(Collectors.toList());
+        if (products == null || products.isEmpty()) {
+            return List.of();
+        }
+        List<ProductPublicListItemResponse> responses = new ArrayList<>(products.size());
+        for (Product product : products) {
+            responses.add(ProductPublicListItemResponse.from(product));
+        }
+        return responses;
     }
 
     private void validateExplicitBlankSearch(String q,
@@ -163,6 +168,14 @@ public class SearchController {
     }
 
     private boolean hasAnyValue(List<String> values) {
-        return values != null && values.stream().anyMatch(value -> value != null && !value.isBlank());
+        if (values == null || values.isEmpty()) {
+            return false;
+        }
+        for (String value : values) {
+            if (value != null && !value.isBlank()) {
+                return true;
+            }
+        }
+        return false;
     }
 }

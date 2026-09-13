@@ -14,12 +14,12 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.function.Function;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -55,7 +55,8 @@ public class CartService {
         Product product = requirePurchasableProductForUpdate(productId, normalizedQuantity);
         String normalizedSpecs = normalizeSelectedSpecs(selectedSpecs);
         productVariantService.validateSelection(product, normalizedSpecs);
-        if (productVariantService.resolvePrice(product, normalizedSpecs) == null) {
+        BigDecimal resolvedPrice = productVariantService.resolvePrice(product, normalizedSpecs);
+        if (resolvedPrice == null) {
             throw new IllegalStateException("Invalid product price");
         }
         CartItem existingItem = cartItemMapper.findByUserIdAndProductIdAndSelectedSpecsForUpdate(userId, productId, normalizedSpecs);
@@ -67,7 +68,7 @@ public class CartService {
         }
         if (existingItem != null) {
             existingItem.setQuantity(requestedQuantity);
-            existingItem.setPrice(productVariantService.resolvePrice(product, normalizedSpecs));
+            existingItem.setPrice(resolvedPrice);
             existingItem.setUpdatedAt(LocalDateTime.now());
             cartItemMapper.update(existingItem);
             return;
@@ -78,10 +79,11 @@ public class CartService {
         cartItem.setUserId(userId);
         cartItem.setProductId(productId);
         cartItem.setQuantity(normalizedQuantity);
-        cartItem.setPrice(productVariantService.resolvePrice(product, normalizedSpecs));
+        cartItem.setPrice(resolvedPrice);
         cartItem.setSelectedSpecs(normalizedSpecs);
-        cartItem.setCreatedAt(LocalDateTime.now());
-        cartItem.setUpdatedAt(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        cartItem.setCreatedAt(now);
+        cartItem.setUpdatedAt(now);
         cartItemMapper.insert(cartItem);
     }
 
@@ -100,13 +102,14 @@ public class CartService {
         if (!cartItemSnapshot.getProductId().equals(cartItem.getProductId())) {
             throw new IllegalStateException("Cart item changed while updating");
         }
-        productVariantService.validateSelection(product, cartItem.getSelectedSpecs());
-        Integer availableStock = productVariantService.resolveStock(product, cartItem.getSelectedSpecs());
+        String selectedSpecs = cartItem.getSelectedSpecs();
+        productVariantService.validateSelection(product, selectedSpecs);
+        Integer availableStock = productVariantService.resolveStock(product, selectedSpecs);
         if (availableStock == null || availableStock < normalizedQuantity) {
             throw new IllegalStateException("Insufficient stock for product: " + product.getName());
         }
         cartItem.setQuantity(normalizedQuantity);
-        cartItem.setPrice(productVariantService.resolvePrice(product, cartItem.getSelectedSpecs()));
+        cartItem.setPrice(productVariantService.resolvePrice(product, selectedSpecs));
         cartItem.setUpdatedAt(LocalDateTime.now());
         cartItemMapper.update(cartItem);
         return true;
@@ -119,24 +122,32 @@ public class CartService {
 
     @Transactional(rollbackFor = Exception.class)
     public void removeFromCart(List<Long> cartItemIds, Authentication authentication) {
-        List<Long> normalizedIds = cartItemIds.stream()
-                .filter(id -> id != null && id > 0)
-                .distinct()
-                .collect(Collectors.toList());
+        int maxBatchSize = maxBatchDeleteSize();
+        List<Long> normalizedIds = new ArrayList<>(Math.min(cartItemIds.size(), maxBatchSize));
+        Set<Long> seenIds = new LinkedHashSet<>(Math.min(cartItemIds.size(), maxBatchSize));
+        for (Long id : cartItemIds) {
+            if (id == null || id <= 0 || !seenIds.add(id)) {
+                continue;
+            }
+            normalizedIds.add(id);
+            if (normalizedIds.size() > maxBatchSize) {
+                throw new IllegalArgumentException("Too many cart items selected");
+            }
+        }
         if (normalizedIds.isEmpty()) {
             throw new IllegalArgumentException("No cart items selected");
-        }
-        int maxBatchSize = maxBatchDeleteSize();
-        if (normalizedIds.size() > maxBatchSize) {
-            throw new IllegalArgumentException("Too many cart items selected");
         }
         List<CartItem> items = cartItemMapper.findByIds(normalizedIds);
         if (items.size() != normalizedIds.size()) {
             throw new IllegalStateException("Some cart items were not found");
         }
-        Set<Long> ownerIds = items.stream()
-                .map(CartItem::getUserId)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        Set<Long> ownerIds = new LinkedHashSet<>(Math.min(items.size(), 2));
+        for (CartItem item : items) {
+            ownerIds.add(item.getUserId());
+            if (ownerIds.size() > 1) {
+                break;
+            }
+        }
         if (ownerIds.size() != 1) {
             throw new IllegalStateException("Cart items must belong to one user");
         }
@@ -155,10 +166,11 @@ public class CartService {
 
     public BigDecimal calculateTotalAmount(Long userId) {
         List<CartItem> items = getCartItems(userId);
-        return items.stream()
-                .map(this::calculateLineAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(2, RoundingMode.HALF_UP);
+        BigDecimal total = BigDecimal.ZERO;
+        for (CartItem item : items) {
+            total = total.add(calculateLineAmount(item));
+        }
+        return total.setScale(2, RoundingMode.HALF_UP);
     }
 
     private BigDecimal calculateLineAmount(CartItem item) {
@@ -174,14 +186,20 @@ public class CartService {
         if (items == null || items.isEmpty()) {
             return;
         }
-        List<Long> productIds = items.stream()
-                .map(CartItem::getProductId)
-                .filter(id -> id != null && id > 0)
-                .distinct()
-                .collect(Collectors.toList());
-        Map<Long, Product> productById = productRepository.findAllById(productIds).stream()
-                .collect(Collectors.toMap(Product::getId, Function.identity()));
-        items.forEach(item -> refreshCartItemSnapshot(item, productById.get(item.getProductId())));
+        Set<Long> productIds = new LinkedHashSet<>(items.size());
+        for (CartItem item : items) {
+            Long productId = item.getProductId();
+            if (productId != null && productId > 0) {
+                productIds.add(productId);
+            }
+        }
+        Map<Long, Product> productById = new HashMap<>(productIds.size());
+        for (Product product : productRepository.findAllById(productIds)) {
+            productById.put(product.getId(), product);
+        }
+        for (CartItem item : items) {
+            refreshCartItemSnapshot(item, productById.get(item.getProductId()));
+        }
     }
 
     private void refreshCartItemSnapshot(CartItem item, Product product) {
@@ -209,12 +227,19 @@ public class CartService {
         if (product == null) {
             return null;
         }
-        if (product.getImageUrl() != null && !product.getImageUrl().trim().isEmpty()) {
-            return product.getImageUrl().trim();
+        String primaryImage = product.getImageUrl();
+        if (primaryImage != null) {
+            String normalizedPrimaryImage = primaryImage.trim();
+            if (!normalizedPrimaryImage.isEmpty()) {
+                return normalizedPrimaryImage;
+            }
         }
         for (String image : product.getImagesList()) {
-            if (image != null && !image.trim().isEmpty()) {
-                return image.trim();
+            if (image != null) {
+                String normalizedImage = image.trim();
+                if (!normalizedImage.isEmpty()) {
+                    return normalizedImage;
+                }
             }
         }
         return null;

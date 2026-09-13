@@ -15,12 +15,18 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Locale;
 import java.util.Set;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class AdminBugAttachmentService {
     private static final String PUBLIC_ATTACHMENT_PATH = "/api/admin/bugs/attachments";
+    private static final long DEFAULT_MAX_FILE_SIZE_BYTES = 8388608L;
+    private static final int DEFAULT_MAX_IMAGE_WIDTH = 10000;
+    private static final int DEFAULT_MAX_IMAGE_HEIGHT = 10000;
+    private static final Pattern ATTACHMENT_FILENAME_PATTERN =
+            Pattern.compile("[0-9a-f-]{36}\\.(jpg|png)");
     private static final Set<String> SUPPORTED_IMAGE_CONTENT_TYPES = Set.of(
             "image/jpeg",
             "image/png",
@@ -49,7 +55,8 @@ public class AdminBugAttachmentService {
 
     public AttachmentResource load(String filename) {
         String safeFilename = normalizeFilename(filename);
-        Path uploadPath = Paths.get(uploadDir()).toAbsolutePath().normalize();
+        String configuredUploadDir = uploadDir();
+        Path uploadPath = Paths.get(configuredUploadDir).toAbsolutePath().normalize();
         Path target = uploadPath.resolve(safeFilename).normalize();
         if (!target.startsWith(uploadPath) || !Files.isRegularFile(target)) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Bug attachment not found");
@@ -77,20 +84,25 @@ public class AdminBugAttachmentService {
     }
 
     private long maxFileSizeBytes() {
-        return Math.max(1, runtimeConfig.getLong("admin.bugs.attachment-max-file-size-bytes", 8388608));
+        return Math.max(1, runtimeConfig.getLong(
+                "admin.bugs.attachment-max-file-size-bytes", DEFAULT_MAX_FILE_SIZE_BYTES));
     }
 
     private int maxImageWidth() {
-        return Math.max(1, runtimeConfig.getInt("admin.bugs.attachment-max-width", 10000));
+        return Math.max(1, runtimeConfig.getInt("admin.bugs.attachment-max-width", DEFAULT_MAX_IMAGE_WIDTH));
     }
 
     private int maxImageHeight() {
-        return Math.max(1, runtimeConfig.getInt("admin.bugs.attachment-max-height", 10000));
+        return Math.max(1, runtimeConfig.getInt("admin.bugs.attachment-max-height", DEFAULT_MAX_IMAGE_HEIGHT));
     }
 
     private String normalizeFilename(String filename) {
-        String value = filename == null ? "" : filename.trim().toLowerCase(Locale.ROOT);
-        if (!value.matches("[0-9a-f-]{36}\\.(jpg|png)")) {
+        String trimmed = filename == null ? "" : filename.trim();
+        if (trimmed.length() != 40) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Bug attachment not found");
+        }
+        String value = trimmed.toLowerCase(Locale.ROOT);
+        if (!ATTACHMENT_FILENAME_PATTERN.matcher(value).matches()) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Bug attachment not found");
         }
         return value;

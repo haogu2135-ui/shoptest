@@ -59,8 +59,9 @@ class CartMoneyPrecisionContractTest {
         String total = methodBlock(source, "public BigDecimal calculateTotal(Long userId)");
 
         assertFalse(source.contains("public double calculateTotal("));
-        assertTrue(totalAmount.contains(".map(this::calculateLineAmount)"));
-        assertTrue(totalAmount.contains(".reduce(BigDecimal.ZERO, BigDecimal::add)"));
+        assertTrue(totalAmount.contains("BigDecimal total = BigDecimal.ZERO;"));
+        assertTrue(totalAmount.contains("total = total.add(calculateLineAmount(item));"));
+        assertTrue(totalAmount.contains("return total.setScale(2, RoundingMode.HALF_UP);"));
         assertFalse(totalAmount.contains("mapToDouble"));
         assertFalse(totalAmount.contains(".doubleValue()"));
         assertTrue(total.contains("return calculateTotalAmount(userId);"));

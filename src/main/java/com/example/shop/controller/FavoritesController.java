@@ -16,9 +16,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 import javax.validation.Valid;
 import javax.validation.constraints.Min;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/favorites")
@@ -55,9 +55,14 @@ public class FavoritesController {
     }
 
     private List<WishlistItemResponse> toResponses(List<Wishlist> items) {
-        return items.stream()
-                .map(WishlistItemResponse::from)
-                .collect(Collectors.toList());
+        if (items.isEmpty()) {
+            return List.of();
+        }
+        List<WishlistItemResponse> responses = new ArrayList<>(items.size());
+        for (Wishlist item : items) {
+            responses.add(WishlistItemResponse.from(item));
+        }
+        return responses;
     }
 
     public static class FavoriteRequest {

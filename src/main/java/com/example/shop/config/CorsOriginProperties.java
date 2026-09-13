@@ -5,10 +5,10 @@ import com.example.shop.util.GatewayUrlValidator;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
-import java.util.Arrays;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
-import java.util.stream.Collectors;
 
 @Component
 public class CorsOriginProperties {
@@ -23,7 +23,10 @@ public class CorsOriginProperties {
     }
 
     public List<String> getCorsAllowedOriginPatterns() {
-        return parseOriginPatterns(runtimeConfig.getString("app.cors.allowed-origin-patterns", defaultOriginFallback()), defaultOriginFallback());
+        boolean productionMode = isProductionMode();
+        String fallback = defaultOriginFallback(productionMode);
+        return parseOriginPatterns(
+                runtimeConfig.getString("app.cors.allowed-origin-patterns", fallback), fallback, productionMode);
     }
 
     public String[] getCorsAllowedOriginPatternArray() {
@@ -32,27 +35,37 @@ public class CorsOriginProperties {
 
     public String[] getWebSocketAllowedOriginPatternArray() {
         String fallback = String.join(",", getCorsAllowedOriginPatterns());
-        return parseOriginPatterns(runtimeConfig.getString("app.websocket.allowed-origin-patterns", ""), fallback).toArray(new String[0]);
+        return parseOriginPatterns(
+                runtimeConfig.getString("app.websocket.allowed-origin-patterns", ""),
+                fallback,
+                isProductionMode()).toArray(new String[0]);
     }
 
-    private List<String> parseOriginPatterns(String rawPatterns, String fallbackPatterns) {
+    private List<String> parseOriginPatterns(String rawPatterns, String fallbackPatterns, boolean productionMode) {
         String source = hasText(rawPatterns) ? rawPatterns : fallbackPatterns;
-        List<String> patterns = Arrays.stream(source.split(","))
-                .map(String::trim)
-                .filter(this::hasText)
-                .filter(pattern -> !"*".equals(pattern))
-                .filter(pattern -> !isProductionMode() || isSafeProductionOrigin(pattern))
-                .distinct()
-                .collect(Collectors.toList());
+        LinkedHashSet<String> uniquePatterns = new LinkedHashSet<>();
+        int start = 0;
+        for (int index = 0; index <= source.length(); index++) {
+            if (index != source.length() && source.charAt(index) != ',') {
+                continue;
+            }
+            String pattern = source.substring(start, index).trim();
+            if (!pattern.isEmpty() && !"*".equals(pattern)
+                    && (!productionMode || isSafeProductionOrigin(pattern))) {
+                uniquePatterns.add(pattern);
+            }
+            start = index + 1;
+        }
+        List<String> patterns = new ArrayList<>(uniquePatterns);
 
         if (patterns.isEmpty()) {
-            return Arrays.asList(defaultOriginFallback().split(","));
+            return List.of(fallbackPatterns.split(","));
         }
         return patterns;
     }
 
-    private String defaultOriginFallback() {
-        return isProductionMode() ? PRODUCTION_ORIGINS : LOCAL_DEVELOPMENT_ORIGINS;
+    private String defaultOriginFallback(boolean productionMode) {
+        return productionMode ? PRODUCTION_ORIGINS : LOCAL_DEVELOPMENT_ORIGINS;
     }
 
     private boolean isProductionMode() {
@@ -62,15 +75,16 @@ public class CorsOriginProperties {
     }
 
     private boolean isSafeProductionOrigin(String value) {
-        if (!hasText(value)) {
+        String trimmed = value == null ? "" : value.trim();
+        if (trimmed.isEmpty()) {
             return false;
         }
-        String normalized = value.trim().toLowerCase(Locale.ROOT);
+        String normalized = trimmed.toLowerCase(Locale.ROOT);
         if ("*".equals(normalized) || normalized.contains("*")) {
             return false;
         }
         try {
-            URI uri = new URI(value.trim());
+            URI uri = new URI(trimmed);
             String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
             String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
             return "https".equals(scheme)

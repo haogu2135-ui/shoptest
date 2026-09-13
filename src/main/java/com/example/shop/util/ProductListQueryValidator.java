@@ -45,8 +45,9 @@ public final class ProductListQueryValidator {
         if (values.size() > MAX_FILTER_VALUE_COUNT) {
             throw new IllegalArgumentException(field + " must contain at most " + MAX_FILTER_VALUE_COUNT + " values");
         }
-        for (String value : values) {
-            requireMaxLength(value, MAX_FILTER_VALUE_LENGTH, field);
+        int valueCount = values.size();
+        for (int index = 0; index < valueCount; index++) {
+            requireMaxLength(values.get(index), MAX_FILTER_VALUE_LENGTH, field);
         }
     }
 
@@ -63,7 +64,11 @@ public final class ProductListQueryValidator {
     }
 
     private static void requireMaxLength(String value, int maxLength, String field) {
-        if (value != null && value.length() > maxLength) {
+        if (value == null) {
+            return;
+        }
+        int length = value.length();
+        if (length > maxLength) {
             throw new IllegalArgumentException(field + " must be " + maxLength + " characters or fewer");
         }
     }

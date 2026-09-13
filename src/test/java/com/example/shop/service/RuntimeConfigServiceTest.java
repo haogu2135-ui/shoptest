@@ -27,8 +27,9 @@ class RuntimeConfigServiceTest {
         String source = Files.readString(SOURCE, StandardCharsets.UTF_8);
 
         assertTrue(source.contains("String value = environment.getProperty(key);"));
-        assertTrue(source.contains("if (value == null || value.trim().isEmpty())"));
-        assertTrue(source.contains("return new BigDecimal(value.trim());"));
+        assertTrue(source.contains("String normalized = value == null ? \"\" : value.trim();"));
+        assertTrue(source.contains("if (normalized.isEmpty())"));
+        assertTrue(source.contains("return new BigDecimal(normalized);"));
         assertTrue(source.contains("catch (NumberFormatException e)"));
         assertTrue(source.contains("return defaultValue;"));
     }

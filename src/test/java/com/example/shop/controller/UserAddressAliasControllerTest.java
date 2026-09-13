@@ -17,6 +17,7 @@ class UserAddressAliasControllerTest {
 
         assertTrue(source.contains("@GetMapping(\"/user/addresses\")"));
         assertTrue(source.contains("userAddressService.getAddresses(SecurityUtils.requireUser(authentication).getId())"));
-        assertTrue(source.contains("UserAddressResponse::from"));
+        assertTrue(source.contains("List<UserAddressResponse> responses = new ArrayList<>(addresses.size());"));
+        assertTrue(source.contains("responses.add(UserAddressResponse.from(address));"));
     }
 }

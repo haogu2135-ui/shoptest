@@ -8,6 +8,7 @@ import java.util.regex.Pattern;
 
 public final class ImageUrlValidator {
     private static final Pattern IPV4_HOST_PATTERN = Pattern.compile("^\\d{1,3}(?:\\.\\d{1,3}){3}$");
+    private static final Pattern NUMERIC_HOST_PATTERN = Pattern.compile("^\\d+$");
 
     private ImageUrlValidator() {
     }
@@ -91,7 +92,7 @@ public final class ImageUrlValidator {
                 || normalized.endsWith(".lan")) {
             return true;
         }
-        if (normalized.matches("^\\d+$")) {
+        if (NUMERIC_HOST_PATTERN.matcher(normalized).matches()) {
             return true;
         }
         if (isAmbiguousNumericHost(normalized)) {
@@ -122,11 +123,12 @@ public final class ImageUrlValidator {
         String[] rawParts = hostname.split("\\.");
         int[] parts = new int[rawParts.length];
         for (int index = 0; index < rawParts.length; index += 1) {
-            if (rawParts[index].length() > 1 && rawParts[index].startsWith("0")) {
+            String rawPart = rawParts[index];
+            if (rawPart.length() > 1 && rawPart.charAt(0) == '0') {
                 return true;
             }
             try {
-                parts[index] = Integer.parseInt(rawParts[index]);
+                parts[index] = Integer.parseInt(rawPart);
             } catch (NumberFormatException ex) {
                 return true;
             }
@@ -149,17 +151,20 @@ public final class ImageUrlValidator {
         if (!hostname.contains(".")) {
             return false;
         }
-        String[] rawParts = hostname.split("\\.", -1);
-        for (String part : rawParts) {
-            if (part.isEmpty() || !part.matches("^\\d+$")) {
+        int segmentCount = 0;
+        int segmentStart = 0;
+        for (int index = 0; index <= hostname.length(); index++) {
+            if (index != hostname.length() && hostname.charAt(index) != '.') {
+                continue;
+            }
+            if (index == segmentStart) {
                 return false;
             }
-        }
-        if (rawParts.length != 4) {
-            return true;
-        }
-        for (String part : rawParts) {
-            if (part.length() > 1 && part.startsWith("0")) {
+            String part = hostname.substring(segmentStart, index);
+            if (part.isEmpty() || !NUMERIC_HOST_PATTERN.matcher(part).matches()) {
+                return false;
+            }
+            if (part.length() > 1 && part.charAt(0) == '0') {
                 return true;
             }
             try {
@@ -169,8 +174,10 @@ public final class ImageUrlValidator {
             } catch (NumberFormatException ex) {
                 return true;
             }
+            segmentCount++;
+            segmentStart = index + 1;
         }
-        return false;
+        return segmentCount != 4;
     }
 
     private static String ipv4FromMappedIpv6Host(String hostname) {
@@ -181,13 +188,13 @@ public final class ImageUrlValidator {
         if (IPV4_HOST_PATTERN.matcher(tail).matches()) {
             return tail;
         }
-        String[] parts = tail.split(":");
-        if (parts.length != 2) {
+        int separator = tail.indexOf(':');
+        if (separator < 0 || tail.indexOf(':', separator + 1) >= 0) {
             return null;
         }
         try {
-            int high = Integer.parseInt(parts[0], 16);
-            int low = Integer.parseInt(parts[1], 16);
+            int high = Integer.parseInt(tail.substring(0, separator), 16);
+            int low = Integer.parseInt(tail.substring(separator + 1), 16);
             if (high < 0 || high > 0xffff || low < 0 || low > 0xffff) {
                 return null;
             }

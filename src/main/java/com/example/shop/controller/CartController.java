@@ -16,7 +16,7 @@ import javax.validation.constraints.Min;
 import javax.validation.constraints.Size;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
 import org.springframework.validation.annotation.Validated;
 
 @RestController
@@ -164,8 +164,13 @@ public class CartController {
     }
 
     private List<CartItemResponse> toResponses(List<CartItem> items) {
-        return items.stream()
-                .map(CartItemResponse::from)
-                .collect(Collectors.toList());
+        if (items.isEmpty()) {
+            return List.of();
+        }
+        List<CartItemResponse> responses = new ArrayList<>(items.size());
+        for (CartItem item : items) {
+            responses.add(CartItemResponse.from(item));
+        }
+        return responses;
     }
 }

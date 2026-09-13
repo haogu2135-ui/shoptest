@@ -4,8 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 public final class ReviewImageUrlCodec {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
@@ -24,10 +24,14 @@ public final class ReviewImageUrlCodec {
             if (items == null) {
                 return List.of();
             }
-            return items.stream()
-                    .map(item -> item == null ? "" : item.trim())
-                    .filter(item -> !item.isEmpty())
-                    .collect(Collectors.toList());
+            List<String> normalizedItems = new ArrayList<>(items.size());
+            for (String item : items) {
+                String normalizedItem = item == null ? "" : item.trim();
+                if (!normalizedItem.isEmpty()) {
+                    normalizedItems.add(normalizedItem);
+                }
+            }
+            return normalizedItems.isEmpty() ? List.of() : normalizedItems;
         } catch (JsonProcessingException ignored) {
             return List.of();
         }

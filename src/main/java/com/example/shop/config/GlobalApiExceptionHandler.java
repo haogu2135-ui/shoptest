@@ -185,21 +185,22 @@ public class GlobalApiExceptionHandler {
         if (fieldError == null) {
             return null;
         }
+        String field = fieldError.getField();
         String message = fieldError.getDefaultMessage();
         if (message == null || message.isBlank()) {
-            return fieldError.getField() + " is invalid";
+            return field + " is invalid";
         }
-        return fieldError.getField() + ": " + message;
+        return field + ": " + message;
     }
 
     private String firstConstraintViolationMessage(ConstraintViolationException exception) {
         if (exception == null || exception.getConstraintViolations() == null) {
             return null;
         }
-        return exception.getConstraintViolations().stream()
-                .findFirst()
-                .map(this::constraintViolationMessage)
-                .orElse(null);
+        for (ConstraintViolation<?> violation : exception.getConstraintViolations()) {
+            return constraintViolationMessage(violation);
+        }
+        return null;
     }
 
     private String constraintViolationMessage(ConstraintViolation<?> violation) {
@@ -207,7 +208,8 @@ public class GlobalApiExceptionHandler {
             return null;
         }
         String path = violation.getPropertyPath() == null ? "" : violation.getPropertyPath().toString();
-        String field = path.contains(".") ? path.substring(path.lastIndexOf('.') + 1) : path;
+        int separator = path.lastIndexOf('.');
+        String field = separator >= 0 ? path.substring(separator + 1) : path;
         String message = violation.getMessage();
         if (message == null || message.isBlank()) {
             return field.isBlank() ? "Request validation failed" : field + " is invalid";
@@ -224,11 +226,12 @@ public class GlobalApiExceptionHandler {
             ResponseStatusException exception,
             HttpServletRequest request
     ) {
-        String safeReason = safeClientMessage(exception.getReason());
+        String reason = exception.getReason();
+        String safeReason = safeClientMessage(reason);
         if (safeReason != null) {
             return safeReason;
         }
-        if (exception.getReason() != null && !exception.getReason().isBlank()) {
+        if (reason != null && !reason.isBlank()) {
             logFilteredClientError(status, exception, request);
         }
         if (status.is5xxServerError()) {
