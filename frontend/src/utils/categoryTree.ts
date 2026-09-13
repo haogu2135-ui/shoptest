@@ -18,9 +18,9 @@ export const buildCategoryTree = <T extends CategoryPublic>(categories: T[]): Ca
   const nodeMap = new Map<number, CategoryTreeNode<T>>();
   const roots: CategoryTreeNode<T>[] = [];
 
-  categories.forEach((category) => {
+  for (const category of categories) {
     nodeMap.set(category.id, { ...category, children: [] });
-  });
+  }
 
   nodeMap.forEach((category) => {
     if (category.parentId && nodeMap.has(category.parentId)) {
@@ -32,7 +32,7 @@ export const buildCategoryTree = <T extends CategoryPublic>(categories: T[]): Ca
 
   const sortTree = (nodes: CategoryTreeNode<T>[]) => {
     nodes.sort((left, right) => left.id - right.id);
-    nodes.forEach((node) => sortTree(node.children || []));
+    for (const node of nodes) sortTree(node.children || []);
   };
 
   sortTree(roots);
@@ -42,10 +42,10 @@ export const buildCategoryTree = <T extends CategoryPublic>(categories: T[]): Ca
 export const flattenCategoryTree = <T extends CategoryPublic>(categories: CategoryTreeNode<T>[]): CategoryTreeNode<T>[] => {
   const result: CategoryTreeNode<T>[] = [];
   const visit = (nodes: CategoryTreeNode<T>[]) => {
-    nodes.forEach((node) => {
+    for (const node of nodes) {
       result.push(node);
       visit(node.children || []);
-    });
+    }
   };
 
   visit(categories);
@@ -110,18 +110,21 @@ export const toTreeOptions = <T extends CategoryPublic>(
   categories: CategoryTreeNode<T>[],
   disabledPredicate?: (category: CategoryTreeNode<T>) => boolean,
   language?: Language,
-): CategoryTreeOption[] =>
-  categories.map((category) => {
+): CategoryTreeOption[] => {
+  const result: CategoryTreeOption[] = [];
+  for (const category of categories) {
     const label = language ? getLocalizedCategoryValue(category, language, 'name') : category.name;
-    return {
+    result.push({
       value: category.id,
       label,
       title: label,
       key: category.id,
       disabled: disabledPredicate?.(category),
       children: category.children?.length ? toTreeOptions(category.children, disabledPredicate, language) : undefined,
-    };
-  });
+    });
+  }
+  return result;
+};
 
 export const descendantIdSet = (category: CategoryTreeNode<CategoryPublic>): Set<number> => {
   const ids = new Set<number>([category.id]);

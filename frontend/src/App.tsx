@@ -73,6 +73,18 @@ const loadNavbar = () => import(/* webpackChunkName: "navbar" */ './components/N
 const LazyNavbar = lazy(loadNavbar);
 const LazyCookieConsentBanner = lazy(() => import(/* webpackChunkName: "cookie-consent" */ './components/CookieConsentBanner'));
 const BOTTOM_RAIL_CONFLICT_BODY_CLASS = 'shop-bottom-rail-conflict';
+const BOTTOM_RAIL_INTERACTIVE_SELECTOR = [
+  'button',
+  'a[href]',
+  'input',
+  'textarea',
+  '[role="button"]',
+  '.ant-select-selector',
+  '.ant-checkbox-wrapper',
+  '.ant-radio-wrapper',
+  '.ant-pagination-item',
+].join(',');
+const AUTH_FLOW_PATHS = new Set(['/login', '/register', '/forgot-password']);
 const LazyNativeMobileUpdateGate = lazy(() => import(/* webpackChunkName: "mobile-update-gate" */ './components/NativeMobileUpdateGate'));
 const AdminDashboard = lazy(() => import('./pages/AdminDashboard'));
 const AdminLayout = lazy(() => import('./components/AdminLayout'));
@@ -1148,6 +1160,16 @@ const StorefrontLayout: React.FC = () => {
       return;
     }
 
+    const overlapsBottomRail = (element: HTMLElement, possibleBottomRailTop: number) => {
+      const style = window.getComputedStyle(element);
+      if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity || 1) === 0) return false;
+      if (element.closest('[data-cookie-consent-visible="true"]')) return false;
+      if (style.position !== 'fixed' && style.position !== 'sticky') return false;
+      const rect = element.getBoundingClientRect();
+      if (rect.width <= 0 || rect.height <= 0 || rect.top >= window.innerHeight) return false;
+      return Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, possibleBottomRailTop) > 0.5;
+    };
+
     const updateScrolledState = () => {
       const metrics = getAppScrollMetrics();
       const nextScrolled = metrics.scrollTop > 24;
@@ -1155,26 +1177,17 @@ const StorefrontLayout: React.FC = () => {
 
       const mainContent = document.getElementById(MAIN_CONTENT_ID);
       const possibleBottomRailTop = window.innerHeight - 76 - Math.max(0, Number.parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--safe-area-inset-bottom') || '0'));
-      const interactiveSelector = [
-        'button',
-        'a[href]',
-        'input',
-        'textarea',
-        '[role="button"]',
-        '.ant-select-selector',
-        '.ant-checkbox-wrapper',
-        '.ant-radio-wrapper',
-        '.ant-pagination-item',
-      ].join(',');
-      const nextBottomRailConflict = Boolean(mainContent && Array.from(mainContent.querySelectorAll<HTMLElement>(interactiveSelector)).some((element) => {
-        const style = window.getComputedStyle(element);
-        if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity || 1) === 0) return false;
-        if (element.closest('[data-cookie-consent-visible="true"]')) return false;
-        if (style.position !== 'fixed' && style.position !== 'sticky') return false;
-        const rect = element.getBoundingClientRect();
-        if (rect.width <= 0 || rect.height <= 0 || rect.top >= window.innerHeight) return false;
-        return Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, possibleBottomRailTop) > 0.5;
-      }));
+      let nextBottomRailConflict = false;
+      if (mainContent) {
+        const interactiveElements = mainContent.querySelectorAll<HTMLElement>(BOTTOM_RAIL_INTERACTIVE_SELECTOR);
+        for (let index = 0; index < interactiveElements.length; index += 1) {
+          const element = interactiveElements[index];
+          if (overlapsBottomRail(element, possibleBottomRailTop)) {
+            nextBottomRailConflict = true;
+            break;
+          }
+        }
+      }
       setBottomRailConflict((current) => (current === nextBottomRailConflict ? current : nextBottomRailConflict));
     };
 
@@ -1215,7 +1228,7 @@ const StorefrontLayout: React.FC = () => {
     location.pathname === '/pet-finder' ? 'shop-app-shell--pet-finder' : '',
     location.pathname === '/pet-gallery' ? 'shop-app-shell--pet-gallery' : '',
     location.pathname === '/checkout' ? 'shop-app-shell--checkout-flow' : '',
-    ['/login', '/register', '/forgot-password'].includes(location.pathname) ? 'shop-app-shell--auth-flow' : '',
+    AUTH_FLOW_PATHS.has(location.pathname) ? 'shop-app-shell--auth-flow' : '',
   ].filter(Boolean).join(' ');
   const footerActionCards = [
     {

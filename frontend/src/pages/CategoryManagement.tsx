@@ -69,26 +69,30 @@ const CategoryManagement: React.FC = () => {
 
   const categoryTree = useMemo(() => buildCategoryTree(categories), [categories]);
   const flatCategories = useMemo(() => flattenCategoryTree(categoryTree), [categoryTree]);
-  const byId = useMemo(() => new Map(flatCategories.map((category) => [category.id, category])), [flatCategories]);
+  const byId = useMemo(() => {
+    const next = new Map<number, Category>();
+    for (const category of flatCategories) next.set(category.id, category);
+    return next;
+  }, [flatCategories]);
   const categoryHealth = useMemo(() => {
-    const metrics = flatCategories.reduce((summary, category) => {
-      const isRoot = !category.parentId;
-      const isLeaf = !category.children?.length;
-      if (isRoot) summary.rootCategories += 1;
-      if (isLeaf) summary.leafCategories += 1;
-      if (!category.imageUrl?.trim()) summary.missingImages += 1;
-      if (!category.localizedContent?.en?.name?.trim()) summary.missingEnglish += 1;
-      if (!category.localizedContent?.es?.name?.trim()) summary.missingSpanish += 1;
-      if (isRoot && isLeaf) summary.shallowRoots += 1;
-      return summary;
-    }, {
+    const metrics = {
       rootCategories: 0,
       leafCategories: 0,
       missingImages: 0,
       missingEnglish: 0,
       missingSpanish: 0,
       shallowRoots: 0,
-    });
+    };
+    for (const category of flatCategories) {
+      const isRoot = !category.parentId;
+      const isLeaf = !category.children?.length;
+      if (isRoot) metrics.rootCategories += 1;
+      if (isLeaf) metrics.leafCategories += 1;
+      if (!category.imageUrl?.trim()) metrics.missingImages += 1;
+      if (!category.localizedContent?.en?.name?.trim()) metrics.missingEnglish += 1;
+      if (!category.localizedContent?.es?.name?.trim()) metrics.missingSpanish += 1;
+      if (isRoot && isLeaf) metrics.shallowRoots += 1;
+    }
     const { rootCategories, leafCategories, missingImages, missingEnglish, missingSpanish, shallowRoots } = metrics;
     const localizationGaps = missingEnglish + missingSpanish;
     const score = Math.max(0, 100 - missingImages * 10 - localizationGaps * 7 - shallowRoots * 14);
@@ -131,38 +135,42 @@ const CategoryManagement: React.FC = () => {
     localizationGaps: `${categoryPageLabel}: ${t('pages.categoryAdmin.localizationGaps')} ${categoryHealth.localizationGaps}`,
   };
 
-  const getCategoryReadiness = (category: Category) => [
-    category.name?.trim(),
-    category.imageUrl?.trim(),
-    category.localizedContent?.en?.name?.trim(),
-    category.localizedContent?.es?.name?.trim(),
-    category.description?.trim() || category.localizedContent?.en?.description?.trim(),
-  ].filter(Boolean).length;
+  const getCategoryReadiness = (category: Category) => {
+    let count = 0;
+    if (category.name?.trim()) count += 1;
+    if (category.imageUrl?.trim()) count += 1;
+    if (category.localizedContent?.en?.name?.trim()) count += 1;
+    if (category.localizedContent?.es?.name?.trim()) count += 1;
+    if (category.description?.trim() || category.localizedContent?.en?.description?.trim()) count += 1;
+    return count;
+  };
 
   const displayCategoryTree = useMemo(() => {
     const text = keyword.trim().toLowerCase();
     if (!text) return categoryTree;
 
-    const matches = (category: Category) => [
-      category.name,
-      category.description,
-      category.localizedContent?.en?.name,
-      category.localizedContent?.en?.description,
-      category.localizedContent?.es?.name,
-      category.localizedContent?.es?.description,
-      category.localizedContent?.zh?.name,
-      category.localizedContent?.zh?.description,
-      category.imageUrl,
-      getCategoryPath(flatCategories, category.id, language),
-    ].some((value) => String(value || '').toLowerCase().includes(text));
+    const matches = (category: Category) => {
+      const contains = (value?: string | null) => Boolean(value && value.toLowerCase().includes(text));
+      return contains(category.name)
+        || contains(category.description)
+        || contains(category.localizedContent?.en?.name)
+        || contains(category.localizedContent?.en?.description)
+        || contains(category.localizedContent?.es?.name)
+        || contains(category.localizedContent?.es?.description)
+        || contains(category.localizedContent?.zh?.name)
+        || contains(category.localizedContent?.zh?.description)
+        || contains(category.imageUrl)
+        || contains(getCategoryPath(flatCategories, category.id, language));
+    };
 
-    const filterTree = (items: Category[]): Category[] => items.reduce<Category[]>((result, category) => {
-      const children = filterTree(category.children || []);
-      if (matches(category) || children.length) {
-        result.push({ ...category, children });
+    const filterTree = (items: Category[]): Category[] => {
+      const result: Category[] = [];
+      for (const category of items) {
+        const children = filterTree(category.children || []);
+        if (matches(category) || children.length) result.push({ ...category, children });
       }
       return result;
-    }, []);
+    };
 
     return filterTree(categoryTree);
   }, [categoryTree, flatCategories, keyword, language]);
@@ -303,24 +311,26 @@ const CategoryManagement: React.FC = () => {
       const values = await form.validateFields();
       if (!mountedRef.current) return;
       setSaving(true);
-      const localizedContent = ['en', 'es', 'zh'].reduce<Record<string, { name?: string; description?: string }>>((result, locale) => {
+      const localizedContent: Record<string, { name?: string; description?: string }> = {};
+      let hasLocalizedContent = false;
+      for (const locale of ['en', 'es', 'zh']) {
         const localized = values.localizedContent?.[locale] || {};
         const name = localized.name?.trim();
         const description = localized.description?.trim();
         if (name || description) {
-          result[locale] = {
+          hasLocalizedContent = true;
+          localizedContent[locale] = {
             ...(name ? { name } : {}),
             ...(description ? { description } : {}),
           };
         }
-        return result;
-      }, {});
+      }
       const payload = {
         name: values.name.trim(),
         parentId: values.parentId || null,
         imageUrl: values.imageUrl?.trim() || null,
         description: values.description?.trim() || null,
-        localizedContent: Object.keys(localizedContent).length > 0 ? localizedContent : null,
+        localizedContent: hasLocalizedContent ? localizedContent : null,
       };
 
       if (editingCategory) {

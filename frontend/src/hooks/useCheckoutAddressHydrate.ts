@@ -45,7 +45,14 @@ export const useCheckoutAddressHydrate = ({
       return;
     }
     if (selectedAddressId !== 'new') {
-      const address = addresses.find((item) => String(item.id) === String(selectedAddressId));
+      const selectedId = String(selectedAddressId);
+      let address: UserAddress | undefined;
+      for (const item of addresses) {
+        if (String(item.id) === selectedId) {
+          address = item;
+          break;
+        }
+      }
       if (!address) return;
       const hydrateKey = `saved:${address.id}:${address.recipientName}:${address.phone}:${address.region}:${address.postalCode}:${address.detailAddress || address.address}`;
       if (lastHydratedKeyRef.current === hydrateKey) return;

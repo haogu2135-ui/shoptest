@@ -12,7 +12,16 @@ export const preventCsvFormulaInjection = (value: string) => {
 
 export const csvCell = (value: unknown) => {
   const safeValue = preventCsvFormulaInjection(String(value ?? ''));
-  return `"${safeValue.replace(/"/g, '""')}"`;
+  let escapedValue = '';
+  for (const char of safeValue) escapedValue += char === '"' ? '""' : char;
+  return `"${escapedValue}"`;
 };
 
-export const csvRow = (values: unknown[]) => values.map(csvCell).join(',');
+export const csvRow = (values: unknown[]) => {
+  let row = '';
+  for (let index = 0; index < values.length; index += 1) {
+    if (index > 0) row += ',';
+    row += csvCell(values[index]);
+  }
+  return row;
+};

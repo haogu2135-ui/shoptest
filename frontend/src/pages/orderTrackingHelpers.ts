@@ -4,11 +4,15 @@ import { productImageFallback, resolveProductImage } from '../utils/productMedia
 export const orderTrackingImageFallback = productImageFallback;
 export const resolveOrderTrackingImage = resolveProductImage;
 
-export const cleanTrackingParam = (value: string | null, maxLength = 120) =>
-  Array.from(String(value || ''), (char) => {
+export const cleanTrackingParam = (value: string | null, maxLength = 120) => {
+  const raw = String(value || '');
+  let cleaned = '';
+  for (const char of raw) {
     const code = char.charCodeAt(0);
-    return code <= 31 || code === 127 ? ' ' : char;
-  }).join('').trim().slice(0, maxLength);
+    cleaned += code <= 31 || code === 127 ? ' ' : char;
+  }
+  return cleaned.trim().slice(0, maxLength);
+};
 
 export const statusColor: Record<string, string> = {
   PENDING_PAYMENT: 'orange',
@@ -21,6 +25,16 @@ export const statusColor: Record<string, string> = {
   RETURN_SHIPPED: 'cyan',
   RETURN_REFUNDING: 'magenta',
   RETURNED: 'purple',
+};
+
+const TRACKING_STEP_BY_STATUS: Record<string, number> = {
+  PENDING_SHIPMENT: 1,
+  RETURN_APPROVED: 1,
+  SHIPPED: 2,
+  RETURN_SHIPPED: 2,
+  COMPLETED: 3,
+  RETURN_REFUNDING: 3,
+  RETURNED: 3,
 };
 
 export const ORDER_STATUS_LABEL_KEYS = new Set([
@@ -42,10 +56,7 @@ export const ORDER_STATUS_LABEL_KEYS = new Set([
 export const normalizeStatusCode = (status?: string) => String(status || '').trim().toUpperCase();
 
 export const getTrackingStep = (status?: string) => {
-  if (status === 'COMPLETED' || status === 'RETURN_REFUNDING' || status === 'RETURNED') return 3;
-  if (status === 'SHIPPED' || status === 'RETURN_SHIPPED') return 2;
-  if (status === 'PENDING_SHIPMENT' || status === 'RETURN_APPROVED') return 1;
-  return 0;
+  return TRACKING_STEP_BY_STATUS[status || ''] || 0;
 };
 
 export const ORDER_TRACKING_AUTO_REFRESH_MS = 30_000;
@@ -117,11 +128,12 @@ export const resolveOrderTrackingAccessFlags = (params: {
   detailsRestricted: boolean;
   isAdmin: boolean;
 }) => {
-  const canUseGuestActions = Boolean(isGuestTrackedOrder(params.order) && params.trackedEmail && params.order?.orderNo);
+  const guestTrackedOrder = isGuestTrackedOrder(params.order);
+  const canUseGuestActions = Boolean(guestTrackedOrder && params.trackedEmail && params.order?.orderNo);
   const canUseSignedInActions = Boolean(
     params.isSignedIn
     && params.order
-    && !isGuestTrackedOrder(params.order)
+    && !guestTrackedOrder
     && (params.isAdmin || !params.detailsRestricted),
   );
   const canOperateTrackedOrder = !params.detailsRestricted && (canUseSignedInActions || canUseGuestActions);
@@ -209,7 +221,8 @@ export const resolveOrderTrackingAssurancePlanDescriptor = (params: {
   items: Array<{ quantity?: number | null }>;
 }): OrderTrackingAssurancePlanDescriptor | null => {
   if (!params.order || params.detailsRestricted) return null;
-  const itemCount = params.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
+  let itemCount = 0;
+  for (const item of params.items) itemCount += Number(item.quantity || 0);
   const isDelivered = params.order.status === 'COMPLETED';
   const isShipped = Boolean(params.order.trackingNumber);
   return {

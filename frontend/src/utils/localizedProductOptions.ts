@@ -62,9 +62,8 @@ const SIZE_OPTION_ALIASES = new Set([
   '尺寸',
 ]);
 
-const NORMALIZED_SIZE_OPTION_ALIASES = new Set(
-  Array.from(SIZE_OPTION_ALIASES, (value) => normalizeOptionName(value)),
-);
+const NORMALIZED_SIZE_OPTION_ALIASES = new Set<string>();
+SIZE_OPTION_ALIASES.forEach((value) => NORMALIZED_SIZE_OPTION_ALIASES.add(normalizeOptionName(value)));
 Object.values(PRODUCT_OPTION_LABELS).forEach((labels) => {
   const localizedSize = normalizeOptionName(labels?.Size || '');
   if (localizedSize) NORMALIZED_SIZE_OPTION_ALIASES.add(localizedSize);

@@ -273,17 +273,28 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
     };
   }, []);
 
-  const checkoutItems = useMemo(() => items.filter(canCheckout), [items]);
-  const blockedItems = useMemo(() => items.filter((item) => !canCheckout(item)), [items]);
+  const { checkoutItems, blockedItems } = useMemo(() => {
+    const purchasable: CartItem[] = [];
+    const blocked: CartItem[] = [];
+    for (const item of items) {
+      (canCheckout(item) ? purchasable : blocked).push(item);
+    }
+    return { checkoutItems: purchasable, blockedItems: blocked };
+  }, [items]);
   const hasStaleCartData = Boolean(loadError && items.length > 0);
   const subtotal = useMemo(() => roundCartMoney(
     checkoutItems.reduce((sum, item) => sum + getCartLineAmount(item), 0),
   ), [checkoutItems]);
   const blockedCount = blockedItems.length;
   const checkoutUnitCount = checkoutItems.reduce((sum, item) => sum + item.quantity, 0);
-  const lowStockCount = checkoutItems.filter((item) => getCartItemLowStockCount(item) !== null).length;
-  const pendingQuantityCount = Object.values(updatingQuantityIds)
-    .reduce((count, pending) => count + (pending ? 1 : 0), 0);
+  let lowStockCount = 0;
+  for (const item of checkoutItems) {
+    if (getCartItemLowStockCount(item) !== null) lowStockCount += 1;
+  }
+  let pendingQuantityCount = 0;
+  for (const itemId in updatingQuantityIds) {
+    if (updatingQuantityIds[Number(itemId)]) pendingQuantityCount += 1;
+  }
   const hasPendingQuantityUpdates = pendingQuantityCount > 0;
   const freeShippingThreshold = market.freeShippingThreshold;
   const shippingSummary = deriveCartShippingSummary(checkoutItems, freeShippingThreshold, subtotal);
@@ -363,7 +374,16 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
       return;
     }
 
-    setItems((current) => current.map((entry) => entry.id === item.id ? { ...entry, quantity: normalizedQuantity } : entry));
+    setItems((current) => {
+      const next = current.slice();
+      for (let index = 0; index < next.length; index += 1) {
+        if (next[index].id === item.id) {
+          next[index] = { ...next[index], quantity: normalizedQuantity };
+          break;
+        }
+      }
+      return next;
+    });
     scheduleQuantitySync(item.id, normalizedQuantity);
   };
 
@@ -499,13 +519,14 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
           (item) => cartApi.removeItem(item.id),
         );
         if (!mountedRef.current) return;
-        const removedIds = new Set(
-          blockedItems
-            .filter((_, index) => results[index]?.status === 'fulfilled')
-            .map((item) => item.id),
-        );
+        const removedIds = new Set<number>();
+        let firstFailed: PromiseRejectedResult | undefined;
+        for (let index = 0; index < blockedItems.length; index += 1) {
+          const result = results[index];
+          if (result?.status === 'fulfilled') removedIds.add(blockedItems[index].id);
+          else if (result?.status === 'rejected' && !firstFailed) firstFailed = result;
+        }
         if (removedIds.size === 0) {
-          const firstFailed = results.find((result) => result.status === 'rejected') as PromiseRejectedResult | undefined;
           announceAccessibleMessage(getApiErrorMessage(firstFailed?.reason, t('messages.operationFailed'), language), 'error');
           return;
         }
@@ -513,7 +534,9 @@ const CartDrawer: React.FC<CartDrawerProps> = ({ initialOpenRequest, onReady }) 
         dispatchDomEvent('shop:cart-updated');
         announceAccessibleMessage(t('pages.cart.drawerClearedBlocked', { count: removedIds.size }), 'success');
       } else {
-        setItems(removeGuestCartItems(blockedItems.map((item) => item.id)));
+        const blockedIds: number[] = [];
+        for (const item of blockedItems) blockedIds.push(item.id);
+        setItems(removeGuestCartItems(blockedIds));
         announceAccessibleMessage(t('pages.cart.drawerClearedBlocked', { count: blockedItems.length }), 'success');
       }
     } catch (err: unknown) {

@@ -45,15 +45,21 @@ const META_SELECTORS: Record<ManagedMetaKey, MetaSelector> = {
   'twitter:description': { attr: 'name', key: 'twitter:description' },
   'twitter:image': { attr: 'name', key: 'twitter:image' },
 };
+const MANAGED_META_KEYS = Object.keys(META_SELECTORS) as ManagedMetaKey[];
 
 const DEFAULT_SOCIAL_IMAGE_PATH = '/logo512.png';
 const JSON_LD_PREFIX = 'shop-jsonld-';
+const HTTP_PROTOCOLS = new Set(['http:', 'https:']);
 
-const cleanMetaText = (value: unknown, maxLength = 320) =>
-  Array.from(String(value || ''), (char) => {
+const cleanMetaText = (value: unknown, maxLength = 320) => {
+  const raw = String(value || '');
+  let cleaned = '';
+  for (const char of raw) {
     const code = char.charCodeAt(0);
-    return code <= 31 || code === 127 ? ' ' : char;
-  }).join('').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+    cleaned += code <= 31 || code === 127 ? ' ' : char;
+  }
+  return cleaned.replace(/\s+/g, ' ').trim().slice(0, maxLength);
+};
 
 const hasUnsafeUrlShape = (value: string) => {
   const normalized = value.toLowerCase();
@@ -65,7 +71,7 @@ export const resolveSiteOrigin = (origin?: string | null) => {
   if (configured) {
     try {
       const parsed = new URL(configured);
-      if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) {
+      if (!HTTP_PROTOCOLS.has(parsed.protocol) || parsed.username || parsed.password) {
         return '';
       }
       return parsed.origin;
@@ -93,7 +99,7 @@ export const resolveAbsoluteUrl = (pathOrUrl?: string | null, origin?: string | 
   try {
     if (/^https?:\/\//i.test(value)) {
       const parsed = new URL(value);
-      if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password) {
+      if (!HTTP_PROTOCOLS.has(parsed.protocol) || parsed.username || parsed.password) {
         return '';
       }
       return parsed.toString();
@@ -174,16 +180,16 @@ export const captureDocumentMeta = (): DocumentMetaSnapshot => ({
 });
 
 export const restoreDocumentMeta = (snapshot: DocumentMetaSnapshot) => {
-  (Object.keys(META_SELECTORS) as ManagedMetaKey[]).forEach((metaKey) => {
+  for (const metaKey of MANAGED_META_KEYS) {
     const value = snapshot.values[metaKey];
     if (value) {
       upsertMetaContent(metaKey, value);
-      return;
+      continue;
     }
     if (typeof document !== 'undefined') {
       document.head.querySelector(selectorFor(metaKey))?.remove();
     }
-  });
+  }
   if (snapshot.canonical) {
     upsertCanonicalLink(snapshot.canonical);
     return;
@@ -253,7 +259,8 @@ export const removeJsonLd = (id: string) => applyJsonLd(id, null);
 
 export const removeJsonLdByPrefix = (prefix = JSON_LD_PREFIX) => {
   if (typeof document === 'undefined') return;
-  Array.from(document.head.querySelectorAll(`script[type="application/ld+json"][id^="${prefix}"]`)).forEach((node) => {
-    node.remove();
-  });
+  const nodes = document.head.querySelectorAll(`script[type="application/ld+json"][id^="${prefix}"]`);
+  for (let index = 0; index < nodes.length; index += 1) {
+    nodes[index].remove();
+  }
 };

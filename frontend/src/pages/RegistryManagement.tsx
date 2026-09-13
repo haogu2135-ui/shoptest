@@ -30,6 +30,37 @@ const boolTag = (value: boolean | undefined, labels: { enabled: string; disabled
   <ShopTag color={value ? 'green' : 'red'}>{value ? labels.enabled : labels.disabled}</ShopTag>
 );
 
+const renderProfileTags = (profiles?: string[]) => {
+  if (!profiles?.length) return <ShopTag key="default">default</ShopTag>;
+  const tags: React.ReactNode[] = [];
+  for (const profile of profiles) tags.push(<ShopTag key={profile}>{profile}</ShopTag>);
+  return tags;
+};
+
+const renderInstanceTags = (instances: AdminRegistryInstance[]) => {
+  const tags: React.ReactNode[] = [];
+  for (const instance of instances) {
+    tags.push(
+      <ShopTag key={`${instance.host}:${instance.port}`}>
+        {instance.host}:{instance.port}
+      </ShopTag>,
+    );
+  }
+  return tags;
+};
+
+const renderMetadataTags = (metadata?: Record<string, string>) => {
+  const tags: React.ReactNode[] = [];
+  if (metadata) {
+    for (const key in metadata) {
+      if (Object.prototype.hasOwnProperty.call(metadata, key)) {
+        tags.push(<ShopTag key={key}>{key}: {metadata[key]}</ShopTag>);
+      }
+    }
+  }
+  return tags;
+};
+
 const RegistryManagement: React.FC = () => {
   const navigate = useNavigate();
   const { t, language } = useLanguage();
@@ -93,13 +124,15 @@ const RegistryManagement: React.FC = () => {
   const filteredServiceSummaries = useMemo(() => {
     const text = serviceKeyword.trim().toLowerCase();
     if (!text) return serviceSummaries;
-    return serviceSummaries.filter((service) => {
+    const filtered: AdminRegistryServiceSummary[] = [];
+    for (const service of serviceSummaries) {
       let haystack = `${service.serviceId || ''}`;
-      (service.instances || []).forEach((instance) => {
+      for (const instance of service.instances || []) {
         haystack += ` ${instance.host || ''} ${instance.port || ''} ${instance.uri || ''}`;
-      });
-      return haystack.toLowerCase().includes(text);
-    });
+      }
+      if (haystack.toLowerCase().includes(text)) filtered.push(service);
+    }
+    return filtered;
   }, [serviceKeyword, serviceSummaries]);
   const frontendGatewayReady = apiGatewayEnabled || apiBaseUrl === '/api' || apiBaseUrl.endsWith('/api');
   const boolLabels = {
@@ -218,9 +251,7 @@ const RegistryManagement: React.FC = () => {
                   <ShopDescriptions.Item label={t('pages.registryAdmin.registryPort')}>{status.configuredPort || status.serverPort || '-'}</ShopDescriptions.Item>
                   <ShopDescriptions.Item label="DiscoveryClient">{status.discoveryClientDescription || '-'}</ShopDescriptions.Item>
                   <ShopDescriptions.Item label={t('pages.registryAdmin.profiles')}>
-                    {(status.profiles || []).length
-                      ? status.profiles?.map((profile) => <ShopTag key={profile}>{profile}</ShopTag>)
-                      : <ShopTag>default</ShopTag>}
+                    {renderProfileTags(status.profiles)}
                   </ShopDescriptions.Item>
                 </ShopDescriptions>
               </ShopCard>
@@ -280,11 +311,7 @@ const RegistryManagement: React.FC = () => {
                       dataIndex: 'instances',
                       render: (instances: AdminRegistryInstance[]) => (
                         <ShopSpace wrap size={[6, 6]}>
-                          {instances.map((instance) => (
-                            <ShopTag key={`${instance.host}:${instance.port}`}>
-                              {instance.host}:{instance.port}
-                            </ShopTag>
-                          ))}
+                          {renderInstanceTags(instances)}
                         </ShopSpace>
                       ),
                     },
@@ -312,13 +339,11 @@ const RegistryManagement: React.FC = () => {
                   },
                   {
                     title: t('pages.registryAdmin.metadata'),
-                    dataIndex: 'metadata',
-                    render: (metadata?: Record<string, string>) => (
-                      <ShopSpace wrap size={[4, 4]}>
-                        {Object.entries(metadata || {}).map(([key, value]) => (
-                          <ShopTag key={key}>{key}: {value}</ShopTag>
-                        ))}
-                      </ShopSpace>
+                      dataIndex: 'metadata',
+                      render: (metadata?: Record<string, string>) => (
+                        <ShopSpace wrap size={[4, 4]}>
+                          {renderMetadataTags(metadata)}
+                        </ShopSpace>
                     ),
                   },
                 ]}

@@ -55,10 +55,10 @@ const normalizeSavedItem = (item: Partial<SavedForLaterItem>): SavedForLaterItem
 const normalizeSavedItems = (items: unknown): SavedForLaterItem[] => {
   if (!Array.isArray(items)) return [];
   const normalized: SavedForLaterItem[] = [];
-  items.forEach((item) => {
+  for (const item of items) {
     const savedItem = normalizeSavedItem(item as Partial<SavedForLaterItem>);
     if (savedItem) normalized.push(savedItem);
-  });
+  }
   return normalized;
 };
 
@@ -80,9 +80,9 @@ const writeSavedItems = (items: SavedForLaterItem[]) => {
   return stored;
 };
 
-export const getSavedForLaterItems = (): SavedForLaterItem[] => normalizeSavedItems(readSavedItems());
+export const getSavedForLaterItems = (): SavedForLaterItem[] => readSavedItems();
 
-export const replaceSavedForLaterItems = (items: SavedForLaterItem[]) => writeSavedItems(normalizeSavedItems(items));
+export const replaceSavedForLaterItems = (items: SavedForLaterItem[]) => writeSavedItems(items);
 
 export const saveCartItemForLater = (item: CartItem) => {
   const items = readSavedItems();
@@ -91,9 +91,14 @@ export const saveCartItemForLater = (item: CartItem) => {
     return null;
   }
   const selectedSpecs = normalizedItem.selectedSpecs || '';
-  const existingIndex = items.findIndex(
-    (savedItem) => savedItem.productId === normalizedItem.productId && (savedItem.selectedSpecs || '') === selectedSpecs,
-  );
+  let existingIndex = -1;
+  for (let index = 0; index < items.length; index += 1) {
+    const savedItem = items[index];
+    if (savedItem.productId === normalizedItem.productId && (savedItem.selectedSpecs || '') === selectedSpecs) {
+      existingIndex = index;
+      break;
+    }
+  }
   const existingIds = new Set<number>();
   for (const item of items) existingIds.add(item.id);
   const savedItem: SavedForLaterItem = {
@@ -121,7 +126,14 @@ export const saveCartItemForLater = (item: CartItem) => {
 export const removeSavedForLaterItem = (itemId: number) => {
   const normalizedItemId = normalizeSafeInteger(itemId);
   const storedItems = readSavedItems();
-  const items = normalizedItemId === null ? storedItems : storedItems.filter((item) => item.id !== normalizedItemId);
+  if (normalizedItemId === null) {
+    writeSavedItems(storedItems);
+    return storedItems;
+  }
+  const items: SavedForLaterItem[] = [];
+  for (const item of storedItems) {
+    if (item.id !== normalizedItemId) items.push(item);
+  }
   writeSavedItems(items);
   return items;
 };
@@ -131,9 +143,10 @@ export const removeSavedForLaterProduct = (productId: number, selectedSpecs?: st
   const normalizedSpecs = selectedSpecs ? String(selectedSpecs).trim().slice(0, 600) : '';
   if (normalizedProductId === null) return readSavedItems();
   const storedItems = readSavedItems();
-  const items = storedItems.filter(
-    (item) => !(item.productId === normalizedProductId && (item.selectedSpecs || '') === normalizedSpecs),
-  );
+  const items: SavedForLaterItem[] = [];
+  for (const item of storedItems) {
+    if (item.productId !== normalizedProductId || (item.selectedSpecs || '') !== normalizedSpecs) items.push(item);
+  }
   writeSavedItems(items);
   return items;
 };

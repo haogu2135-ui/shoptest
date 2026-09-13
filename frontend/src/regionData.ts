@@ -73,11 +73,11 @@ const buildChinaRegionData = (chinaLevelData: ChinaLevelItem[]): RegionOption =>
 };
 
 const buildMexicoRegionData = (mexicoMunicipalitiesData: MexicoMunicipalities): RegionOption => {
-  const stateEntries = Object.entries(mexicoMunicipalitiesData);
-  stateEntries.sort(([stateA], [stateB]) => stateA.localeCompare(stateB, 'es-MX'));
+  const statesByName = Object.keys(mexicoMunicipalitiesData);
+  statesByName.sort((stateA, stateB) => stateA.localeCompare(stateB, 'es-MX'));
   const states: RegionOption[] = [];
-  for (const [state, municipalities] of stateEntries) {
-    const sortedMunicipalities = [...municipalities].sort((a, b) => a.localeCompare(b, 'es-MX'));
+  for (const state of statesByName) {
+    const sortedMunicipalities = mexicoMunicipalitiesData[state].slice().sort((a, b) => a.localeCompare(b, 'es-MX'));
     const municipalityOptions: RegionOption[] = [];
     for (const municipality of sortedMunicipalities) {
       municipalityOptions.push(option(municipality, streets(localityFallback)));
@@ -103,10 +103,14 @@ const assembledRegionData = (): RegionOption[] => {
 
 const localizeRegionData = (regions: RegionOption[], language?: string): RegionOption[] => {
   const normalizedLanguage = normalizeRegionLanguage(language);
-  return regions.map((region) => ({
-    ...region,
-    label: localizedCountryLabels[region.value]?.[normalizedLanguage] || region.label,
-  }));
+  const localizedRegions: RegionOption[] = [];
+  for (const region of regions) {
+    localizedRegions.push({
+      ...region,
+      label: localizedCountryLabels[region.value]?.[normalizedLanguage] || region.label,
+    });
+  }
+  return localizedRegions;
 };
 
 const loadMexicoRegionOption = async (): Promise<RegionOption> => {
@@ -175,12 +179,18 @@ export const findRegionPath = (address: string, regions: RegionOption[] = assemb
   }
 
   for (let end = Math.min(parts.length, 5); end >= 3; end -= 1) {
-    const candidate = parts.slice(0, end);
     let current = regions;
     let matched = true;
 
-    for (const part of candidate) {
-      const item = current.find((region) => region.value === part);
+    for (let index = 0; index < end; index += 1) {
+      const part = parts[index];
+      let item: RegionOption | undefined;
+      for (const region of current) {
+        if (region.value === part) {
+          item = region;
+          break;
+        }
+      }
       if (!item) {
         matched = false;
         break;
@@ -189,7 +199,7 @@ export const findRegionPath = (address: string, regions: RegionOption[] = assemb
     }
 
     if (matched) {
-      return { region: candidate, detail: parts.slice(end).join(' ') };
+      return { region: parts.slice(0, end), detail: parts.slice(end).join(' ') };
     }
   }
 

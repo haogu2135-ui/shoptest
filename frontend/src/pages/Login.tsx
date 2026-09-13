@@ -95,7 +95,8 @@ const Login: React.FC = () => {
   });
   const { config: appConfig, loading: appConfigLoading } = useAppConfig();
   const guestCartItemsSnapshot = useMemo(() => getGuestCartItems(), []);
-  const guestCartCount = guestCartItemsSnapshot.reduce((sum, item) => sum + item.quantity, 0);
+  let guestCartCount = 0;
+  for (const item of guestCartItemsSnapshot) guestCartCount += item.quantity;
   const emailCodeLength = normalizeEmailCode(watchedEmailCode).length;
   const emailCodeEnabled = appConfig.emailCodeEnabled === true;
   const canSubmitEmailCode = emailCodeEnabled && emailCodeLength === 6 && verifyRetryCountdown <= 0;
@@ -159,21 +160,25 @@ const Login: React.FC = () => {
   const mergeGuestCart = async (userId: number, guestItems: CartItem[]) => {
     if (!mountedRef.current || guestItems.length === 0) return;
 
-    const mergeResults = await Promise.all(guestItems.map(async (item) => {
-      try {
-        await cartApi.addItem(userId, item.productId, item.quantity, item.selectedSpecs);
-        return { item, mergedQuantity: item.quantity, failed: false };
-      } catch (error) {
-        reportNonBlockingError('Login.mergeGuestCartItem', error);
-        return { item, mergedQuantity: 0, failed: true };
-      }
-    }));
-    const mergeSummary = mergeResults.reduce<{ failedItems: CartItem[]; mergedCount: number }>((summary, result) => {
-      if (result.failed) summary.failedItems.push(result.item);
-      summary.mergedCount += result.mergedQuantity;
-      return summary;
-    }, { failedItems: [], mergedCount: 0 });
-    const { failedItems, mergedCount } = mergeSummary;
+    const mergeTasks: Array<Promise<{ item: CartItem; mergedQuantity: number; failed: boolean }>> = [];
+    for (const item of guestItems) {
+      mergeTasks.push((async () => {
+        try {
+          await cartApi.addItem(userId, item.productId, item.quantity, item.selectedSpecs);
+          return { item, mergedQuantity: item.quantity, failed: false };
+        } catch (error) {
+          reportNonBlockingError('Login.mergeGuestCartItem', error);
+          return { item, mergedQuantity: 0, failed: true };
+        }
+      })());
+    }
+    const mergeResults = await Promise.all(mergeTasks);
+    const failedItems: CartItem[] = [];
+    let mergedCount = 0;
+    for (const result of mergeResults) {
+      if (result.failed) failedItems.push(result.item);
+      mergedCount += result.mergedQuantity;
+    }
     replaceGuestCartItems(failedItems);
     if (!mountedRef.current) return;
     if (mergedCount > 0 && failedItems.length === 0) {
@@ -268,6 +273,7 @@ const Login: React.FC = () => {
       const { email } = await emailForm.validateFields(['email']);
       if (!mountedRef.current) return;
       const normalizedEmail = normalizeEmail(email);
+      const maskedEmail = maskEmail(normalizedEmail);
       emailForm.setFieldValue('email', normalizedEmail);
       setCodeSending(true);
       const response = await userApi.sendEmailLoginCode(normalizedEmail);
@@ -279,11 +285,11 @@ const Login: React.FC = () => {
       emailForm.setFieldValue('code', '');
       emailForm.setFields([{ name: 'code', errors: [] }]);
       setVerifyRetryCountdown(0);
-      setSentEmailHint(maskEmail(normalizedEmail));
+      setSentEmailHint(maskedEmail);
       window.setTimeout(() => {
         if (mountedRef.current) codeInputRef.current?.focus?.();
       }, 0);
-      announceAccessibleMessage(t('pages.auth.emailCodeSentTo', { email: maskEmail(normalizedEmail) }), 'success');
+      announceAccessibleMessage(t('pages.auth.emailCodeSentTo', { email: maskedEmail }), 'success');
     } catch (error: unknown) {
       if (!mountedRef.current) return;
       if (!asApiError(error).errorFields) {

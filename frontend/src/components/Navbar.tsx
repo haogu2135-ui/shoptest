@@ -478,14 +478,20 @@ const Navbar: React.FC = () => {
         setAlertCount(0);
         return;
       }
-      const productIds = Array.from(new Set(alerts.map((alert) => alert.productId)));
+      const productIds: number[] = [];
+      const seenProductIds = new Set<number>();
+      for (const alert of alerts) {
+        if (seenProductIds.has(alert.productId)) continue;
+        seenProductIds.add(alert.productId);
+        productIds.push(alert.productId);
+      }
       try {
         const response = await productApi.getByIds(productIds, { signal });
         if (!isCurrentRefresh()) return;
-        const readyCount = response.data.filter((product) => {
-          const stock = product.stock;
-          return stock === undefined || stock > 0;
-        }).length;
+        let readyCount = 0;
+        for (const product of response.data) {
+          if (product.stock === undefined || product.stock > 0) readyCount += 1;
+        }
         setAlertCount(readyCount);
       } catch (error) {
         if (!signal.aborted && isCurrentRefresh()) {

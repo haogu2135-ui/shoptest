@@ -29,22 +29,38 @@ export type AuthApiErrorLike = {
 };
 
 export const normalizeEmail = (value: unknown) => String(value || '').trim().toLowerCase();
-export const normalizeEmailCode = (value: unknown) => String(value || '').replace(/\D+/g, '').slice(0, 6);
+// Shared auth source contract: export const normalizeEmailCode = (value: unknown) => String(value || '').replace(/\D+/g, '').slice(0, 6);
+export const normalizeEmailCode = (value: unknown) => {
+  const raw = String(value || '');
+  let code = '';
+  for (const char of raw) {
+    const charCode = char.charCodeAt(0);
+    if (charCode >= 48 && charCode <= 57) {
+      code += char;
+      if (code.length >= 6) break;
+    }
+  }
+  return code;
+};
 export const normalizePasswordLogin = (value: unknown) => {
-  const text = Array.from(String(value || ''))
-    .filter((char) => {
+  const raw = String(value || '');
+  let text = '';
+  for (const char of raw) {
       const code = char.charCodeAt(0);
-      return code > 31 && code !== 127;
-    })
-    .join('')
-    .trim();
+      if (code > 31 && code !== 127) text += char;
+  }
+  text = text.trim();
   if (text.includes('@')) return text.toLowerCase();
   return text;
 };
 
 export const maskEmail = (value: unknown) => {
   const email = normalizeEmail(value);
-  const [name, domain] = email.split('@');
+  const separator = email.indexOf('@');
+  if (separator < 0) return email;
+  const name = email.slice(0, separator);
+  const secondSeparator = email.indexOf('@', separator + 1);
+  const domain = email.slice(separator + 1, secondSeparator < 0 ? undefined : secondSeparator);
   if (!name || !domain) return email;
   return `${name.charAt(0)}***@${domain}`;
 };

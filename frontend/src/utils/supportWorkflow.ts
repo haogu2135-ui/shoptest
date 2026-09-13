@@ -321,7 +321,7 @@ const fallbackTemplates: Record<SupportWorkflowLanguage, WorkflowCopy> = {
 };
 
 const interpolate = (template: string, orderRef: string, statusLabel: string) =>
-  template.replace(/\{orderRef\}/g, orderRef).replace(/\{statusLabel\}/g, statusLabel);
+  template.replace(/\{(orderRef|statusLabel)\}/g, (_match, key: string) => key === 'orderRef' ? orderRef : statusLabel);
 
 export const buildSupportOrderWorkflowActions = (
   order: Pick<OrderCustomer, 'id' | 'orderNo' | 'status'>,
@@ -330,14 +330,18 @@ export const buildSupportOrderWorkflowActions = (
 ): SupportOrderWorkflowAction[] => {
   const orderRef = order.orderNo || `#${order.id}`;
   const copies = templates[languageKey][order.status] || [fallbackTemplates[languageKey]];
-
-  return copies.map((copy, index) => ({
-    key: `${order.status}-${copy.label}-${index}`,
-    label: copy.label,
-    helper: copy.helper,
-    customerPrefill: interpolate(copy.customer, orderRef, statusLabel),
-    adminReply: interpolate(copy.admin, orderRef, statusLabel),
-  }));
+  const actions: SupportOrderWorkflowAction[] = [];
+  for (let index = 0; index < copies.length; index += 1) {
+    const copy = copies[index];
+    actions.push({
+      key: `${order.status}-${copy.label}-${index}`,
+      label: copy.label,
+      helper: copy.helper,
+      customerPrefill: interpolate(copy.customer, orderRef, statusLabel),
+      adminReply: interpolate(copy.admin, orderRef, statusLabel),
+    });
+  }
+  return actions;
 };
 
 export const findSupportOrderWorkflowActionByMessage = (
@@ -348,8 +352,9 @@ export const findSupportOrderWorkflowActionByMessage = (
   const normalizedMessage = normalizeSupportWorkflowText(content);
   if (!normalizedMessage) return null;
 
-  return actions.find((action) => {
+  for (const action of actions) {
     const candidate = actor === 'admin' ? action.adminReply : action.customerPrefill;
-    return normalizeSupportWorkflowText(candidate) === normalizedMessage;
-  }) || null;
+    if (normalizeSupportWorkflowText(candidate) === normalizedMessage) return action;
+  }
+  return null;
 };

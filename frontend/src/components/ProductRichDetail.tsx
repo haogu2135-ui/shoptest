@@ -32,22 +32,22 @@ export const resolveRichMediaUrl = (value?: string) => {
 };
 
 export const parseDetailContent = (value?: ProductRichDetailProps['detailContent']): ProductDetailBlock[] => {
-  const normalizeBlocks = (items: unknown[]) =>
-    items
-      .map((item) => {
-        const block = item as Partial<ProductDetailBlock>;
-        if (block?.type === 'text') {
-          const content = String(block.content || '').trim();
-          return content ? { type: 'text' as const, content } : null;
-        }
-        if (block?.type === 'image' || block?.type === 'video') {
-          const url = String(block.url || '').trim();
-          const caption = String(block.caption || '').trim();
-          return url ? { type: block.type, url, caption } : null;
-        }
-        return null;
-      })
-      .filter(Boolean) as ProductDetailBlock[];
+  const normalizeBlocks = (items: unknown[]) => {
+    const normalized: ProductDetailBlock[] = [];
+    for (const item of items) {
+      const block = item as Partial<ProductDetailBlock>;
+      if (block?.type === 'text') {
+        const content = String(block.content || '').trim();
+        if (content) normalized.push({ type: 'text', content });
+        continue;
+      }
+      if (block?.type === 'image' || block?.type === 'video') {
+        const url = String(block.url || '').trim();
+        if (url) normalized.push({ type: block.type, url, caption: String(block.caption || '').trim() });
+      }
+    }
+    return normalized;
+  };
   if (Array.isArray(value)) return normalizeBlocks(value);
   if (typeof value !== 'string' || !value.trim()) return [];
   try {
@@ -67,17 +67,18 @@ export const toEmbeddableVideoUrl = (value: string) => {
     const url = new URL(resolvedValue, window.location.origin);
     const hostname = url.hostname.replace(/^www\./, '').toLowerCase();
     if (hostname === 'youtube.com' || hostname.endsWith('.youtube.com')) {
-      const parts = url.pathname.split('/').filter(Boolean);
-      const videoId = url.searchParams.get('v') || (['embed', 'shorts'].includes(parts[0]) ? parts[1] : undefined);
+      const parts = url.pathname.split('/');
+      const videoId = url.searchParams.get('v')
+        || ((parts[1] === 'embed' || parts[1] === 'shorts') ? parts[2] : undefined);
       return videoId ? `https://www.youtube.com/embed/${videoId}` : value;
     }
     if (hostname === 'youtu.be') {
-      const videoId = url.pathname.replace('/', '');
+      const videoId = url.pathname.slice(1);
       return videoId ? `https://www.youtube.com/embed/${videoId}` : value;
     }
     if (hostname === 'vimeo.com' || hostname.endsWith('.vimeo.com')) {
-      const parts = url.pathname.split('/').filter(Boolean);
-      const videoId = hostname === 'player.vimeo.com' && parts[0] === 'video' ? parts[1] : parts[0];
+      const parts = url.pathname.split('/');
+      const videoId = hostname === 'player.vimeo.com' && parts[1] === 'video' ? parts[2] : parts[1];
       return videoId ? `https://player.vimeo.com/video/${videoId}` : value;
     }
     return resolvedValue;
@@ -122,10 +123,10 @@ const ProductRichDetail: React.FC<ProductRichDetailProps> = ({
     openVideo: labels?.openVideo ?? t('pages.productDetail.openRichVideo'),
     unsupported: labels?.unsupported ?? t('pages.productDetail.unsupportedRichContent'),
   };
-  const blocks = parseDetailContent(detailContent).filter((block) => {
-    if (block.type === 'text') return !!block.content?.trim();
-    return isHttpMediaUrl(block.url);
-  });
+  const blocks: ProductDetailBlock[] = [];
+  for (const block of parseDetailContent(detailContent)) {
+    if (block.type === 'text' ? block.content?.trim() : isHttpMediaUrl(block.url)) blocks.push(block);
+  }
 
   if (blocks.length === 0) {
     return fallback ? <p className="product-rich-detail__text">{fallback}</p> : <div className="product-rich-detail__empty" role="status">{resolvedEmptyText}</div>;

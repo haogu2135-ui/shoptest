@@ -244,7 +244,7 @@ const Notifications: React.FC = () => {
     () => filterNotificationsByQuickFilter(notifications, quickFilter),
     [notifications, quickFilter],
   );
-  const notificationQuickFilterLabels = buildNotificationQuickFilterLabels(t);
+  const notificationQuickFilterLabels = useMemo(() => buildNotificationQuickFilterLabels(t), [t]);
   const {
     markAllActionLabel,
     clearFilterActionLabel,

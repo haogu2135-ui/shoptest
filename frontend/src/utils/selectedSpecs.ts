@@ -5,26 +5,32 @@ import { formatProductSpecLabel } from './productSpecLabels';
 
 const LEGACY_SELECTED_SPEC_PAIR_PATTERN = /(?:^|[;/|,]\s*|\s+)([^:=;/|,][^:=;/|,]*?)\s*[:=]\s*([^:=;/|,]+?)(?=\s*(?:[;/|,]|\s+[^:=;/|,]+?\s*[:=]|$))/g;
 
-const normalizeSelectedSpecEntries = (entries: Array<[string, unknown]>): Record<string, string> => entries.reduce((result: Record<string, string>, [key, option]) => {
-  const normalizedKey = String(key || '').trim();
-  if (!normalizedKey || option === undefined || option === null) return result;
-  if (typeof option === 'object') return result;
-  const normalizedOption = String(option).trim();
-  if (normalizedOption) result[normalizedKey] = normalizedOption;
+const normalizeSelectedSpecObject = (value: Record<string, unknown>): Record<string, string> => {
+  const result: Record<string, string> = {};
+  for (const key in value) {
+    if (!Object.prototype.hasOwnProperty.call(value, key)) continue;
+    const option = value[key];
+    const normalizedKey = String(key || '').trim();
+    if (!normalizedKey || option === undefined || option === null || typeof option === 'object') continue;
+    const normalizedOption = String(option).trim();
+    if (normalizedOption) result[normalizedKey] = normalizedOption;
+  }
   return result;
-}, {});
+};
 
 const parseLegacySelectedSpecs = (value: string): Record<string, string> => {
   const normalizedValue = value.replace(/\s+/g, ' ').trim();
   if (!normalizedValue) return {};
 
-  const entries: Array<[string, string]> = [];
+  const result: Record<string, string> = {};
   let match: RegExpExecArray | null;
   LEGACY_SELECTED_SPEC_PAIR_PATTERN.lastIndex = 0;
   while ((match = LEGACY_SELECTED_SPEC_PAIR_PATTERN.exec(normalizedValue)) !== null) {
-    entries.push([match[1], match[2]]);
+    const normalizedKey = match[1].trim();
+    const normalizedOption = match[2].trim();
+    if (normalizedKey && normalizedOption) result[normalizedKey] = normalizedOption;
   }
-  return normalizeSelectedSpecEntries(entries);
+  return result;
 };
 
 export const parseSelectedSpecs = (value?: string | null): Record<string, string> => {
@@ -37,7 +43,7 @@ export const parseSelectedSpecs = (value?: string | null): Record<string, string
   try {
     const parsed = JSON.parse(normalizedValue);
     if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return {};
-    return normalizeSelectedSpecEntries(Object.entries(parsed));
+    return normalizeSelectedSpecObject(parsed as Record<string, unknown>);
   } catch (error) {
     reportNonBlockingError('selectedSpecs.parseSelectedSpecs', error);
     return parseLegacySelectedSpecs(normalizedValue);
@@ -75,10 +81,12 @@ export const formatSelectedSpecs = (value?: string | null, t?: Translate, langua
   {
     const specs = parseSelectedSpecs(value);
     const parts: string[] = [];
-    Object.entries(specs).forEach(([name, option]) => {
-      if (name.startsWith('_') || !option) return;
+    for (const name in specs) {
+      if (!Object.prototype.hasOwnProperty.call(specs, name)) continue;
+      const option = specs[name];
+      if (name.startsWith('_') || !option) continue;
       parts.push(`${formatSelectedSpecName(name, t, language)}: ${formatSelectedSpecValue(option, language)}`);
-    });
+    }
     if (specs._purchaseMode === 'bundle') {
       const bundleLabel = t ? t('bundle.bundleDeal') : 'Bundle deal';
       if (bundleLabel) parts.push(bundleLabel);

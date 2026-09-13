@@ -14,17 +14,17 @@ export const typeColors: Record<string, string> = {
 
 export const NOTIFICATION_TYPE_KEYS = new Set(['ORDER', 'PROMOTION', 'SYSTEM', 'DELIVERY']);
 export const NOTIFICATION_PAGE_SIZE = 50;
+const NOTIFICATION_ORDER_PATTERNS = [
+  /\border\s+([A-Za-z0-9_-]{4,})/i,
+  /\bpedido\s+([A-Za-z0-9_-]{4,})/i,
+  /\b订单\s*([A-Za-z0-9_-]{4,})/i,
+  /\border\s*#?\s*([A-Za-z0-9_-]{4,})/i,
+  /\b(SO\d{6,})\b/i,
+];
 
 export const extractOrderNoFromNotification = (item: Pick<AppNotification, 'title' | 'message' | 'type'>) => {
   const haystack = `${item.title || ''} ${item.message || ''}`;
-  const patterns = [
-    /\border\s+([A-Za-z0-9_-]{4,})/i,
-    /\bpedido\s+([A-Za-z0-9_-]{4,})/i,
-    /\b订单\s*([A-Za-z0-9_-]{4,})/i,
-    /\border\s*#?\s*([A-Za-z0-9_-]{4,})/i,
-    /\b(SO\d{6,})\b/i,
-  ];
-  for (const pattern of patterns) {
+  for (const pattern of NOTIFICATION_ORDER_PATTERNS) {
     const match = haystack.match(pattern);
     if (match?.[1]) {
       return match[1].replace(/[.,;:!?]+$/, '');
@@ -49,27 +49,34 @@ export const notifyNavbarChanged = () => {
   dispatchDomEvent('shop:notifications-updated');
 };
 
-export const sortNotifications = (items: AppNotification[]) => items
-  .map((item, index) => {
+export const sortNotifications = (items: AppNotification[]) => {
+  const decorated: Array<{ item: AppNotification; index: number; isRead: boolean; time: number }> = [];
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
     const parsedTime = item.createdAt ? new Date(item.createdAt).getTime() : 0;
-    return {
+    decorated.push({
       item,
       index,
       isRead: item.isRead,
       time: Number.isNaN(parsedTime) ? 0 : parsedTime,
-    };
-  })
-  .sort((left, right) => {
+    });
+  }
+  decorated.sort((left, right) => {
     if (left.isRead !== right.isRead) return left.isRead ? 1 : -1;
     return right.time - left.time || left.index - right.index;
-  })
-  .map(({ item }) => item);
+  });
+  const sorted: AppNotification[] = [];
+  for (const entry of decorated) sorted.push(entry.item);
+  return sorted;
+};
 
 export const mergeNotificationPages = (current: AppNotification[], next: AppNotification[]) => {
   const itemsById = new Map<number, AppNotification>();
-  current.forEach((item) => itemsById.set(item.id, item));
-  next.forEach((item) => itemsById.set(item.id, item));
-  return sortNotifications(Array.from(itemsById.values()));
+  for (const item of current) itemsById.set(item.id, item);
+  for (const item of next) itemsById.set(item.id, item);
+  const merged: AppNotification[] = [];
+  itemsById.forEach((item) => merged.push(item));
+  return sortNotifications(merged);
 };
 
 export const formatNotificationType = (type: string | undefined, t: NotificationsTranslate) => {
@@ -89,22 +96,26 @@ export type NotificationInsights = {
 };
 
 export const deriveNotificationInsights = (notifications: AppNotification[]): NotificationInsights => {
-  return notifications.reduce((summary, item) => {
+  const summary: NotificationInsights = { unread: 0, promotions: 0, orders: 0, deliveries: 0 };
+  for (const item of notifications) {
     if (!item.isRead) summary.unread += 1;
     if (item.type === 'PROMOTION') summary.promotions += 1;
     if (item.type === 'ORDER') summary.orders += 1;
     if (item.type === 'DELIVERY') summary.deliveries += 1;
-    return summary;
-  }, { unread: 0, promotions: 0, orders: 0, deliveries: 0 });
+  }
+  return summary;
 };
 
 export const filterNotificationsByQuickFilter = (
   notifications: AppNotification[],
   quickFilter: NotificationQuickFilter,
 ) => {
-  if (quickFilter === 'UNREAD') return notifications.filter((item) => !item.isRead);
   if (quickFilter === 'ALL') return notifications;
-  return notifications.filter((item) => item.type === quickFilter);
+  const filtered: AppNotification[] = [];
+  for (const item of notifications) {
+    if (quickFilter === 'UNREAD' ? !item.isRead : item.type === quickFilter) filtered.push(item);
+  }
+  return filtered;
 };
 
 export type NotificationRelatedPathIntent =
@@ -229,6 +240,7 @@ export const buildNotificationItemActionLabels = (params: {
   relatedType: string;
 }) => {
   const { t, notificationName, relatedOrderNo, relatedType } = params;
+  const deleteLabel = t('common.delete');
   const openRelatedLabel = relatedOrderNo
     ? `${relatedType === 'DELIVERY' ? t('pages.notifications.actionTrackOrder') : t('pages.notifications.actionOpenOrders')}: ${relatedOrderNo}`
     : relatedType === 'DELIVERY'
@@ -241,8 +253,8 @@ export const buildNotificationItemActionLabels = (params: {
   return {
     openRelatedLabel,
     markReadActionLabel: `${t('pages.notifications.markRead')}: ${notificationName}`,
-    deleteActionLabel: `${t('common.delete')}: ${notificationName}`,
-    cancelDeleteActionLabel: `${t('common.cancel')}: ${t('common.delete')}: ${notificationName}`,
+    deleteActionLabel: `${deleteLabel}: ${notificationName}`,
+    cancelDeleteActionLabel: `${t('common.cancel')}: ${deleteLabel}: ${notificationName}`,
   };
 };
 

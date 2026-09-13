@@ -19,8 +19,10 @@ export interface PaymentMethodDetail {
 
 const normalizePaymentMarket = (market?: string) => {
     const normalized = String(market || 'GLOBAL').trim().toUpperCase();
-    return ['MX', 'CN', 'GLOBAL'].includes(normalized) ? normalized : 'GLOBAL';
+    return PAYMENT_MARKETS.has(normalized) ? normalized : 'GLOBAL';
 };
+
+const PAYMENT_MARKETS = new Set(['MX', 'CN', 'GLOBAL']);
 
 /** Market badge for conversion honesty (do not label GLOBAL rails as Mexico). */
 export const badgeKeyForPaymentMarket = (market?: string) => {
@@ -88,12 +90,11 @@ export const filterPaymentChannelsForMarket = (
     const filtered: PaymentChannel[] = [];
     for (const channel of channels) {
         const market = normalizePaymentMarket(channel.market);
-        if (!['MX', 'CN', 'GLOBAL'].includes(market)) continue;
         // Mexico-first: do not surface Alipay/WeChat/UnionPay for MXN shoppers.
         if (hideForeign && market === 'CN') continue;
         filtered.push(channel);
     }
-    return preservePaymentChannelOrder(filtered);
+    return filtered;
 };
 
 export const createPaymentMethodOptions = (

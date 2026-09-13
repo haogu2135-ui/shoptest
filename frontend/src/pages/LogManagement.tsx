@@ -31,6 +31,7 @@ const Text = ShopTypography.Text;
 const Title = ShopTypography.Title;
 
 const DEFAULT_LOGGER = 'com.example.shop';
+const LOG_LEVEL_OPTIONS = ['ALL', 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR'].map((value) => ({ value, label: value }));
 
 const LogManagement: React.FC = () => {
   const navigate = useNavigate();
@@ -46,6 +47,7 @@ const LogManagement: React.FC = () => {
   const [downloading, setDownloading] = useState(false);
   const [currentRole, setCurrentRole] = useState('');
   const [adminPermissions, setAdminPermissions] = useState<string[]>([]);
+  const normalizedKeyword = keyword.trim();
   const mountedRef = useRef(true);
   const statusAbortRef = useRef<AbortController | null>(null);
   const permissionsAbortRef = useRef<AbortController | null>(null);
@@ -178,7 +180,7 @@ const LogManagement: React.FC = () => {
       const response = await adminApi.downloadLogs({
         start: range[0].toISOString(),
         end: range[1].toISOString(),
-        keyword: keyword.trim() || undefined,
+        keyword: normalizedKeyword || undefined,
         level: level === 'ALL' ? undefined : level,
       });
       if (!mountedRef.current) return;
@@ -204,7 +206,7 @@ const LogManagement: React.FC = () => {
     }
   };
   const activeLoggerName = loggerName.trim() || DEFAULT_LOGGER;
-  const logDownloadContext = `${t('pages.logAdmin.loggerName')} ${activeLoggerName}, ${t('pages.logAdmin.currentLevel')} ${level}${keyword.trim() ? `, ${keyword.trim()}` : ''}`;
+  const logDownloadContext = `${t('pages.logAdmin.loggerName')} ${activeLoggerName}, ${t('pages.logAdmin.currentLevel')} ${level}${normalizedKeyword ? `, ${normalizedKeyword}` : ''}`;
   const refreshLogsActionLabel = `${t('common.refresh')}: ${t('pages.logAdmin.loggerName')} ${activeLoggerName}`;
   const downloadLogsActionLabel = `${t('pages.logAdmin.downloadLogs')}: ${logDownloadContext}`;
   const loggerNameInputLabel = `${t('pages.logAdmin.loggerName')}: ${t('pages.logAdmin.loadLogger')}`;
@@ -218,6 +220,7 @@ const LogManagement: React.FC = () => {
   const nextDebugEnabled = !Boolean(status?.debugEnabled);
   const debugTargetStatusLabel = nextDebugEnabled ? t('pages.logAdmin.debugEnabled') : t('pages.logAdmin.debugDisabled');
   const debugConfirmActionLabel = `${debugTargetStatusLabel}: ${activeLoggerName}`;
+  const availableLogFiles = status?.availableFiles || [];
 
   return (
     <div className="log-management">
@@ -378,7 +381,7 @@ const LogManagement: React.FC = () => {
                       <ShopSelect
                         value={level}
                         onChange={(value) => setLevel(value || 'ALL')} popupClassName="shop-mobile-popup-layer"
-                        options={['ALL', 'TRACE', 'DEBUG', 'INFO', 'WARN', 'ERROR'].map((value) => ({ value, label: value }))}
+                        options={LOG_LEVEL_OPTIONS}
                       />
                       <ShopInput
                         value={keyword}
@@ -406,9 +409,9 @@ const LogManagement: React.FC = () => {
             </div>
 
             <ShopCard title={t('pages.logAdmin.availableLogFiles')} className="log-management__card">
-              {(status?.availableFiles || []).length ? (
+              {availableLogFiles.length ? (
                 <ShopSpace wrap size={[8, 8]}>
-                  {status?.availableFiles.map((file) => <ShopTag key={file}>{file}</ShopTag>)}
+                  {availableLogFiles.map((file) => <ShopTag key={file}>{file}</ShopTag>)}
                 </ShopSpace>
               ) : (
                 <ShopEmpty description={t('pages.logAdmin.noLogFiles')} />

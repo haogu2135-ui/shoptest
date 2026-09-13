@@ -18,12 +18,24 @@ import { PaymentInstructionsStickyBars } from './paymentInstructionsStickyBars';
 import './PaymentInstructions.css';
 
 const PAYMENT_STATUS_POLL_MS = 12000;
+const FULFILLED_ORDER_STATUSES = new Set([
+  'PENDING_SHIPMENT',
+  'SHIPPED',
+  'COMPLETED',
+  'RETURN_REQUESTED',
+  'RETURN_APPROVED',
+  'RETURN_SHIPPED',
+]);
 
-const cleanParam = (value: string | null, maxLength = 120) =>
-  Array.from(String(value || ''), (char) => {
-    const code = char.charCodeAt(0);
-    return code <= 31 || code === 127 ? ' ' : char;
-  }).join('').trim().slice(0, maxLength);
+const cleanParam = (value: string | null, maxLength = 120) => {
+  const raw = String(value || '');
+  let cleaned = '';
+  for (let index = 0; index < raw.length; index += 1) {
+    const code = raw.charCodeAt(index);
+    cleaned += code <= 31 || code === 127 ? ' ' : raw[index];
+  }
+  return cleaned.trim().slice(0, maxLength);
+};
 
 const normalizeCurrencyCode = (value?: string | null) => {
   const currency = String(value || '').trim().toUpperCase();
@@ -53,6 +65,21 @@ const formatPaymentAmount = (amount: number, currency: string, language: string)
 };
 
 const normalizePaymentStatus = (value?: string | null) => String(value || '').trim().toUpperCase();
+
+const findOrderByNumber = (orders: OrderCustomer[], normalizedOrderNo: string) => {
+  const target = normalizedOrderNo.toUpperCase();
+  for (const item of orders) {
+    if (String(item.orderNo || '').toUpperCase() === target) return item;
+  }
+  return null;
+};
+
+const findChannelCurrency = (channels: PaymentChannel[], code: string) => {
+  for (const item of channels) {
+    if (item.code === code) return item.currency;
+  }
+  return undefined;
+};
 
 const PaymentInstructions: React.FC = () => {
   const navigate = useNavigate();
@@ -224,7 +251,7 @@ const PaymentInstructions: React.FC = () => {
           nextOrder = response.data.order;
         } else {
           const response = await orderApi.getMine({ signal: abortController.signal });
-          nextOrder = (response.data || []).find((item) => String(item.orderNo || '').toUpperCase() === normalizedOrderNo.toUpperCase()) || null;
+          nextOrder = findOrderByNumber(response.data || [], normalizedOrderNo);
           if (!nextOrder) {
             throw new Error('Order not found');
           }
@@ -237,8 +264,10 @@ const PaymentInstructions: React.FC = () => {
         }
         if (disposed || abortController.signal.aborted || verifyRequestSeqRef.current !== requestSeq) return;
         let nextPayment: PaymentCustomer | null = null;
+        const guestEmailParam = guestEmail || undefined;
+        const requestOrderNo = nextOrder.orderNo || normalizedOrderNo;
         try {
-          const paymentResponse = await paymentApi.getLatestByOrder(nextOrder.id, guestEmail || undefined, nextOrder.orderNo || normalizedOrderNo, { signal: abortController.signal });
+          const paymentResponse = await paymentApi.getLatestByOrder(nextOrder.id, guestEmailParam, requestOrderNo, { signal: abortController.signal });
           nextPayment = paymentResponse.data;
         } catch (error) {
           const responseStatus = Number((error as { response?: { status?: number } })?.response?.status);
@@ -251,8 +280,8 @@ const PaymentInstructions: React.FC = () => {
               const createdPayment = await paymentApi.create(
                 nextOrder.id,
                 paymentMethod,
-                guestEmail || undefined,
-                nextOrder.orderNo || normalizedOrderNo,
+                guestEmailParam,
+                requestOrderNo,
                 { signal: abortController.signal },
               );
               nextPayment = createdPayment.data;
@@ -300,16 +329,19 @@ const PaymentInstructions: React.FC = () => {
       && refreshRequestSeqRef.current === requestSeq
       && !abortController.signal.aborted;
     setRefreshing(true);
+    const guestEmailParam = guestEmail || undefined;
+    const requestOrderNo = order.orderNo || normalizedOrderNo;
     try {
       if (payment?.id) {
-        const response = await paymentApi.sync(payment.id, guestEmail || undefined, order.orderNo || normalizedOrderNo, { signal: abortController.signal });
+        const response = await paymentApi.sync(payment.id, guestEmailParam, requestOrderNo, { signal: abortController.signal });
         if (!isCurrentRequest()) return;
         setPayment(response.data);
-        if (normalizePaymentStatus(response.data?.status) === 'PAID') {
+        const nextPaymentStatus = normalizePaymentStatus(response.data?.status);
+        if (nextPaymentStatus === 'PAID') {
           announceAccessibleMessage(t('pages.paymentInstructions.paidTitle'), 'success');
         }
       } else {
-        const paymentResponse = await paymentApi.getLatestByOrder(order.id, guestEmail || undefined, order.orderNo || normalizedOrderNo, { signal: abortController.signal });
+        const paymentResponse = await paymentApi.getLatestByOrder(order.id, guestEmailParam, requestOrderNo, { signal: abortController.signal });
         if (!isCurrentRequest()) return;
         setPayment(paymentResponse.data);
       }
@@ -325,9 +357,10 @@ const PaymentInstructions: React.FC = () => {
     }
   }, [guestEmail, normalizedOrderNo, order, payment?.id, t]);
 
-  const channel = payment?.channel || order?.paymentMethod || t('pages.paymentInstructions.manualChannel');
-  const normalizedChannel = String(payment?.channel || order?.paymentMethod || '').trim().toUpperCase();
-  const channelCurrency = paymentChannels.find((item) => item.code === normalizedChannel)?.currency;
+  const rawChannel = payment?.channel || order?.paymentMethod || '';
+  const channel = rawChannel || t('pages.paymentInstructions.manualChannel');
+  const normalizedChannel = String(rawChannel).trim().toUpperCase();
+  const channelCurrency = findChannelCurrency(paymentChannels, normalizedChannel);
   const currency = normalizeCurrencyCode(payment?.currency || order?.currency || channelCurrency);
   const verifiedAmount = Number(payment?.amount ?? order?.totalAmount);
   const amountText = order && Number.isFinite(verifiedAmount) ? formatPaymentAmount(verifiedAmount, currency, language) : '-';
@@ -340,11 +373,10 @@ const PaymentInstructions: React.FC = () => {
   const isReconcileRequired = paymentStatus === 'RECONCILE_REQUIRED';
   const isFailed = paymentStatus === 'FAILED';
   const isExpiredOrFailed = recovery.isExpired || isFailed;
-  const fulfilledOrderStatuses = new Set(['PENDING_SHIPMENT', 'SHIPPED', 'COMPLETED', 'RETURN_REQUESTED', 'RETURN_APPROVED', 'RETURN_SHIPPED']);
   const isPaid = !isRefunded && !isRefunding && !isReconcileRequired && !isFailed && (
     recovery.isPaid
     || paymentStatus === 'PAID'
-    || fulfilledOrderStatuses.has(orderStatusCode)
+    || FULFILLED_ORDER_STATUSES.has(orderStatusCode)
   );
   const paymentContextLabel = `${t('pages.paymentInstructions.orderNo')}: ${normalizedOrderNo || '-'} · ${t('pages.paymentInstructions.amount')}: ${amountText}`;
   const trackOrderActionLabel = `${t('nav.trackOrder')}: ${paymentContextLabel}`;

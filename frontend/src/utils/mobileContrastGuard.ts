@@ -2583,6 +2583,8 @@ const MIN_TEXT_CONTRAST = 4.5;
 const MIN_LARGE_TEXT_CONTRAST = 3.2;
 const CONTRAST_SCAN_DELAY_MS = 140;
 const CONTRAST_SCROLL_QUIET_MS = 220;
+const HEX_COLOR_LENGTHS = new Set([3, 4, 6, 8]);
+const CONTRAST_EXCLUDED_TAGS = new Set(['script', 'style', 'noscript', 'svg', 'path', 'textarea', 'input', 'select', 'option']);
 const MOBILE_SHELL_ROOT_SELECTOR = [
   '.shop-app-shell',
   '.admin-layout',
@@ -2664,11 +2666,13 @@ const clampChannel = (value: number) => Math.max(0, Math.min(255, value));
 
 const parseHexColor = (value: string): Rgba | null => {
   const hex = value.replace('#', '').trim();
-  if (![3, 4, 6, 8].includes(hex.length)) return null;
+  if (!HEX_COLOR_LENGTHS.has(hex.length)) return null;
 
-  const expanded = hex.length <= 4
-    ? hex.split('').map((part) => `${part}${part}`).join('')
-    : hex;
+  let expanded = hex;
+  if (hex.length <= 4) {
+    expanded = '';
+    for (const part of hex) expanded += `${part}${part}`;
+  }
   const r = Number.parseInt(expanded.slice(0, 2), 16);
   const g = Number.parseInt(expanded.slice(2, 4), 16);
   const b = Number.parseInt(expanded.slice(4, 6), 16);
@@ -2684,10 +2688,15 @@ const parseCssColor = (value: string | null | undefined): Rgba | null => {
   if (trimmed.startsWith('#')) return parseHexColor(trimmed);
   if (!trimmed.startsWith('rgb')) return null;
 
-  const parts = trimmed.match(/[\d.]+/g)?.map(Number);
-  if (!parts || parts.length < 3 || parts.slice(0, 3).some((part) => !Number.isFinite(part))) {
+  const rawParts = trimmed.match(/[\d.]+/g);
+  if (!rawParts || rawParts.length < 3) {
     return null;
   }
+  const parts: number[] = [];
+  for (let index = 0; index < Math.min(rawParts.length, 4); index += 1) {
+    parts.push(Number(rawParts[index]));
+  }
+  if (!Number.isFinite(parts[0]) || !Number.isFinite(parts[1]) || !Number.isFinite(parts[2])) return null;
 
   return {
     r: clampChannel(parts[0]),
@@ -2711,38 +2720,39 @@ const blendOver = (foreground: Rgba, background: Rgba): Rgba => {
 };
 
 const averageColors = (colors: Rgba[]): Rgba | null => {
-  const opaqueColors = colors.filter((color) => color.a > 0.05);
-  if (!opaqueColors.length) return null;
-  const total = opaqueColors.reduce(
-    (sum, color) => ({
-      r: sum.r + color.r,
-      g: sum.g + color.g,
-      b: sum.b + color.b,
-      a: sum.a + color.a,
-    }),
-    { r: 0, g: 0, b: 0, a: 0 },
-  );
+  const total = { r: 0, g: 0, b: 0, a: 0 };
+  let count = 0;
+  for (const color of colors) {
+    if (color.a <= 0.05) continue;
+    total.r += color.r;
+    total.g += color.g;
+    total.b += color.b;
+    total.a += color.a;
+    count += 1;
+  }
+  if (!count) return null;
 
   return {
-    r: total.r / opaqueColors.length,
-    g: total.g / opaqueColors.length,
-    b: total.b / opaqueColors.length,
-    a: Math.max(0, Math.min(1, total.a / opaqueColors.length)),
+    r: total.r / count,
+    g: total.g / count,
+    b: total.b / count,
+    a: Math.max(0, Math.min(1, total.a / count)),
   };
 };
 
 const extractImageTone = (backgroundImage: string): Rgba | null => {
   if (!backgroundImage || backgroundImage === 'none') return null;
-  const functionColors = backgroundImage
-    .match(/rgba?\([^)]*\)/gi)
-    ?.map(parseCssColor)
-    .filter((color): color is Rgba => Boolean(color)) || [];
-  const hexColors = backgroundImage
-    .match(/#[0-9a-f]{3,8}\b/gi)
-    ?.map(parseCssColor)
-    .filter((color): color is Rgba => Boolean(color)) || [];
-
-  return averageColors([...functionColors, ...hexColors]);
+  const colors: Rgba[] = [];
+  const appendMatches = (matches: RegExpMatchArray | null) => {
+    if (!matches) return;
+    for (const match of matches) {
+      const color = parseCssColor(match);
+      if (color) colors.push(color);
+    }
+  };
+  appendMatches(backgroundImage.match(/rgba?\([^)]*\)/gi));
+  appendMatches(backgroundImage.match(/#[0-9a-f]{3,8}\b/gi));
+  return averageColors(colors);
 };
 
 const channelToLinear = (value: number) => {
@@ -2810,7 +2820,7 @@ const shouldScanTextElement = (
   styleCache: WeakMap<Element, CSSStyleDeclaration>,
 ) => {
   const tagName = element.tagName.toLowerCase();
-  if (['script', 'style', 'noscript', 'svg', 'path', 'textarea', 'input', 'select', 'option'].includes(tagName)) {
+  if (CONTRAST_EXCLUDED_TAGS.has(tagName)) {
     return false;
   }
   if (element.closest('svg, .anticon, .ant-scroll-number')) {
@@ -2897,7 +2907,7 @@ const scanRootForContrast = (
 
 const applyMobileContrastFixes = (state: MobileContrastGuardState) => {
   if (!isBrowser() || !document.body?.classList.contains('shop-mobile-app')) return;
-  const roots = Array.from(document.querySelectorAll(MOBILE_SHELL_ROOT_SELECTOR));
+  const roots = document.querySelectorAll(MOBILE_SHELL_ROOT_SELECTOR);
   if (!roots.length) return;
 
   const styleCache = new WeakMap<Element, CSSStyleDeclaration>();
@@ -2906,11 +2916,11 @@ const applyMobileContrastFixes = (state: MobileContrastGuardState) => {
   const scanned = new Set<HTMLElement>();
   const remaining = { count: MAX_CONTRAST_TEXT_NODES };
 
-  roots.forEach((root) => {
+  for (let index = 0; index < roots.length; index += 1) {
     if (remaining.count > 0) {
-      scanRootForContrast(root, styleCache, backgroundCache, nextMarkedElements, scanned, remaining);
+      scanRootForContrast(roots[index], styleCache, backgroundCache, nextMarkedElements, scanned, remaining);
     }
-  });
+  }
 
   state.markedElements.forEach((element) => {
     if (!nextMarkedElements.has(element)) {

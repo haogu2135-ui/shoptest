@@ -27,12 +27,16 @@ export const publicAssetUrl = (path: string) => `${process.env.PUBLIC_URL || ''}
 
 export const mergeProductsById = (...groups: Product[][]) => {
   const productsById = new Map<number, Product>();
-  groups.flat().forEach((product) => {
-    if (Number.isSafeInteger(product.id) && !productsById.has(product.id)) {
-      productsById.set(product.id, product);
+  for (const group of groups) {
+    for (const product of group) {
+      if (Number.isSafeInteger(product.id) && !productsById.has(product.id)) {
+        productsById.set(product.id, product);
+      }
     }
-  });
-  return Array.from(productsById.values());
+  }
+  const products: Product[] = [];
+  productsById.forEach((product) => products.push(product));
+  return products;
 };
 
 export const ugcImages = [
@@ -47,7 +51,10 @@ export const ugcImages = [
 export const readLocalPetGalleryLikes = () => {
   try {
     const parsed = JSON.parse(getLocalStorageItem(PET_GALLERY_LOCAL_LIKES_KEY) || '[]');
-    return Array.isArray(parsed) ? parsed.map(String) : [];
+    if (!Array.isArray(parsed)) return [];
+    const likes: string[] = [];
+    for (const key of parsed) likes.push(String(key));
+    return likes;
   } catch (error) {
     reportNonBlockingError('Home.readLocalPetGalleryLikes', error);
     return [];
@@ -55,7 +62,9 @@ export const readLocalPetGalleryLikes = () => {
 };
 
 export const writeLocalPetGalleryLikes = (keys: string[]) => {
-  setLocalStorageItem(PET_GALLERY_LOCAL_LIKES_KEY, JSON.stringify(Array.from(new Set(keys))));
+  const uniqueKeys = new Set<string>();
+  for (const key of keys) uniqueKeys.add(key);
+  setLocalStorageItem(PET_GALLERY_LOCAL_LIKES_KEY, JSON.stringify(Array.from(uniqueKeys)));
 };
 
 export const resolveAssetImage = (imageUrl: string, fallback = '') => resolveApiAssetUrl(imageUrl, fallback);
@@ -87,7 +96,8 @@ export const resolveHomeCatalogBootstrap = (language: Language): HomeCatalogBoot
       ? snapshot.products
       : loadFallbackProductCatalog();
     if (!sourceProducts.length) return null;
-    const products = sourceProducts.map((product) => localizeProduct(product, language));
+    const products: Product[] = [];
+    for (const product of sourceProducts) products.push(localizeProduct(product, language));
     const featuredFromFlag: Product[] = [];
     for (const product of products) {
       if (!product.isFeatured) continue;
@@ -268,15 +278,20 @@ export const buildHomeMobileQuickActionDescriptors = (params: {
   },
 ];
 
-export const deriveHomePromoProducts = (products: Product[]) =>
-  products
-    .filter((product) =>
-      product.activeLimitedTimeDiscount ||
-      getHomeDiscountPercent(product) > 0 ||
-      product.tag === 'discount' ||
-      (product.originalPrice !== undefined && product.originalPrice > getHomeProductPrice(product))
-    )
-    .slice(0, 6);
+export const deriveHomePromoProducts = (products: Product[]) => {
+  const promos: Product[] = [];
+  for (const product of products) {
+    if (!(
+      product.activeLimitedTimeDiscount
+      || getHomeDiscountPercent(product) > 0
+      || product.tag === 'discount'
+      || (product.originalPrice !== undefined && product.originalPrice > getHomeProductPrice(product))
+    )) continue;
+    promos.push(product);
+    if (promos.length >= 6) break;
+  }
+  return promos;
+};
 
 export const deriveHomeBestSellers = (products: Product[]) => {
   const best: Array<{ product: Product; index: number; reviewCount: number; positiveRate: number }> = [];
@@ -293,7 +308,9 @@ export const deriveHomeBestSellers = (products: Product[]) => {
     best.splice(insertAt, 0, entry);
     if (best.length > HOME_BEST_SELLER_LIMIT) best.pop();
   });
-  return best.map((entry) => entry.product);
+  const result: Product[] = [];
+  for (const entry of best) result.push(entry.product);
+  return result;
 };
 
 export const deriveHomeDiscoveryProducts = (params: {
@@ -302,12 +319,15 @@ export const deriveHomeDiscoveryProducts = (params: {
   viewPreferences: ProductViewPreferences;
 }) => {
   const productsById = new Map<number, Product>();
-  params.featured.forEach((product) => productsById.set(product.id, product));
-  params.products.forEach((product) => productsById.set(product.id, product));
-  const uniqueProducts = Array.from(productsById.values());
+  for (const product of params.featured) productsById.set(product.id, product);
+  for (const product of params.products) productsById.set(product.id, product);
+  const uniqueProducts: Product[] = [];
+  productsById.forEach((product) => uniqueProducts.push(product));
   const recentSet = new Set(params.viewPreferences.recent);
-  return uniqueProducts
-    .map((product, index) => ({
+  const scored: Array<{ product: Product; index: number; score: number }> = [];
+  for (let index = 0; index < uniqueProducts.length; index += 1) {
+    const product = uniqueProducts[index];
+    scored.push({
       product,
       index,
       score:
@@ -316,9 +336,12 @@ export const deriveHomeDiscoveryProducts = (params: {
         (product.tag ? (params.viewPreferences.tags[String(product.tag)] || 0) * 3 : 0) +
         (recentSet.has(product.id) ? 2 : 0) +
         (product.isFeatured ? 1 : 0),
-    }))
-    .sort((left, right) => right.score - left.score || left.index - right.index)
-    .map((entry) => entry.product);
+    });
+  }
+  scored.sort((left, right) => right.score - left.score || left.index - right.index);
+  const result: Product[] = [];
+  for (const entry of scored) result.push(entry.product);
+  return result;
 };
 
 export const deriveHomeLocalPersonalizedProducts = (params: {
@@ -342,7 +365,9 @@ export const deriveHomeLocalPersonalizedProducts = (params: {
       if (scored.length > 8) scored.pop();
     }
   });
-  return scored.map((entry) => entry.product);
+  const result: Product[] = [];
+  for (const entry of scored) result.push(entry.product);
+  return result;
 };
 
 export const resolveHomePetUploadButtonLabel = (params: {
@@ -364,18 +389,23 @@ export const resolveHomePersonalizedPreferenceLabel = (params: {
   const resolveTopPreference = (scores: Record<string, number>) => {
     let topKey = '';
     let topScore = Number.NEGATIVE_INFINITY;
-    Object.entries(scores).forEach(([key, score]) => {
+    for (const key in scores) {
+      if (!Object.prototype.hasOwnProperty.call(scores, key)) continue;
+      const score = scores[key];
       if (score > topScore) {
         topKey = key;
         topScore = score;
       }
-    });
+    }
     return topKey;
   };
   const topCategoryKey = resolveTopPreference(params.viewPreferences.categories);
   if (topCategoryKey) {
-    const category = params.categories.find((item) => String(item.id) === topCategoryKey);
-    if (category) return getLocalizedCategoryValue(category, params.language, 'name');
+    for (const category of params.categories) {
+      if (String(category.id) === topCategoryKey) {
+        return getLocalizedCategoryValue(category, params.language, 'name');
+      }
+    }
   }
   const topBrandKey = resolveTopPreference(params.viewPreferences.brands);
   if (topBrandKey) return topBrandKey;
@@ -389,7 +419,7 @@ export const buildHomePetGalleryItems = (params: {
   const photoItems: HomePetGalleryItem[] = [];
   const existingImages = new Set<string>();
   const existingLabels = new Set<string>();
-  params.petGalleryPhotos.forEach((photo) => {
+  for (const photo of params.petGalleryPhotos) {
     const image = resolvePetGalleryImage(photo.imageUrl);
     const label = `@${photo.username || 'pet_parent'}`;
     photoItems.push({
@@ -403,10 +433,10 @@ export const buildHomePetGalleryItems = (params: {
     });
     existingImages.add(image);
     existingLabels.add(label.toLowerCase());
-  });
+  }
   const fallbackItems: HomePetGalleryItem[] = [];
-  ugcImages.forEach((item) => {
-    if (existingImages.has(item.image) || existingLabels.has(item.label.toLowerCase())) return;
+  for (const item of ugcImages) {
+    if (existingImages.has(item.image) || existingLabels.has(item.label.toLowerCase())) continue;
     fallbackItems.push({
       ...item,
       likeCount: 0,
@@ -414,10 +444,13 @@ export const buildHomePetGalleryItems = (params: {
       canDelete: false,
       isSample: true,
     });
-  });
-  return [...photoItems, ...fallbackItems]
-    .sort((left, right) => right.likeCount - left.likeCount || left.label.localeCompare(right.label))
-    .slice(0, 24);
+  }
+  const items: HomePetGalleryItem[] = [];
+  for (const item of photoItems) items.push(item);
+  for (const item of fallbackItems) items.push(item);
+  items.sort((left, right) => right.likeCount - left.likeCount || left.label.localeCompare(right.label));
+  if (items.length > 24) items.length = 24;
+  return items;
 };
 
 
@@ -470,13 +503,13 @@ export const buildHomeHeroFeaturedTag = (params: {
   product: Product | null;
 }): string => {
   if (!params.product) return '';
-  return [
-    params.product.brand,
-    getHomeDiscountPercent(params.product) > 0 ? params.t('home.flashOffers') : '',
-    params.product.stock !== undefined && params.product.stock > 0
-      ? params.t('home.stockAvailable', { count: params.product.stock })
-      : '',
-  ].filter(Boolean).join(' / ');
+  const parts: string[] = [];
+  if (params.product.brand) parts.push(params.product.brand);
+  if (getHomeDiscountPercent(params.product) > 0) parts.push(params.t('home.flashOffers'));
+  if (params.product.stock !== undefined && params.product.stock > 0) {
+    parts.push(params.t('home.stockAvailable', { count: params.product.stock }));
+  }
+  return parts.join(' / ');
 };
 
 export const buildHomeHeroSpotlightDescriptors = (params: {

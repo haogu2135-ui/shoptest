@@ -874,6 +874,198 @@ are kept in addition to the original 130-item record:
 632. Sum Cart saved-item totals with a direct accumulator.
 633. Build BrowsingHistory viewed-time indexes with direct Map collection.
 
+## Optimization Round 634-663
+
+634. Collect focus-trap candidates directly from the query result.
+635. Check excluded focus-trap classes without a class-list array.
+636. Clean document metadata text with one bounded character pass.
+637. Reuse one HTTP protocol set for configured origins.
+638. Reuse one HTTP protocol set for absolute metadata URLs.
+639. Restore managed metadata with a direct key traversal.
+640. Remove matching JSON-LD nodes without a temporary array.
+641. Serialize CSV rows with direct cell accumulation.
+642. Normalize compare IDs with one bounded direct scan.
+643. Remove compare IDs without a filter allocation.
+644. Build support workflow actions with direct result collection.
+645. Find support workflow messages with an early direct match.
+646. Validate short and long hex colors through a reusable length set.
+647. Expand short hex colors without split/map/join intermediates.
+648. Parse CSS color channels with one bounded numeric collector.
+649. Average visible colors with direct totals and a count.
+650. Extract image tones with one accepted-color collector.
+651. Reuse a constant excluded-tag set during contrast scans.
+652. Scan contrast roots without converting the NodeList.
+653. Normalize forgot-password login text with a direct pass.
+654. Aggregate inventory health with one mutable product scan.
+655. Clean tracking parameters without a mapped character array.
+656. Sum tracking assurance quantities with a direct accumulator.
+657. Merge Home product groups without flattening the inputs.
+658. Read local Home gallery likes through direct string collection.
+659. Deduplicate local Home gallery likes during persistence.
+660. Stop Home promotional-product collection at its six-item bound.
+661. Build best-seller output without a second mapped result.
+662. Localize Home bootstrap products through direct collection.
+663. Build Home discovery score records through direct collection.
+
+## Optimization Round 664-693
+
+664. Merge featured Home products into the discovery identity map directly.
+665. Merge catalog Home products into the discovery identity map directly.
+666. Score Home discovery products without a mapped temporary array.
+667. Materialize sorted Home discovery products through direct output collection.
+668. Materialize local personalized Home products through direct output collection.
+669. Find Home preference leaders from direct score-key traversal.
+670. Resolve the preferred Home category with an early direct scan.
+671. Build Home gallery photo entries with a direct source loop.
+672. Build Home gallery fallback entries with a direct source loop.
+673. Combine Home gallery entries with a bounded in-place sort and trim.
+674. Build the Home hero tag with direct accepted-part collection.
+675. Filter Registry service summaries with a direct result collector.
+676. Accumulate Registry instance search text without a callback array.
+677. Build Inventory category options with direct object collection.
+678. Filter visible Inventory products with a direct bounded scan.
+679. Build CategoryManagement ID lookup maps with direct insertion.
+680. Aggregate category health metrics with one mutable scan.
+681. Count category readiness signals without a boolean array.
+682. Match category search fields without a values array.
+683. Filter category trees with direct recursive result loops.
+684. Serialize localized category content with direct locale collection.
+685. Find the newest support message ID with an early numeric scan.
+686. Merge support messages through direct map insertion.
+687. Trim the sorted support-message window in place.
+688. Decorate support sessions with one direct sort-buffer pass.
+689. Materialize sorted support sessions without a mapped result.
+690. Reconcile the selected support session with a direct item scan.
+691. Check duplicate WebSocket messages with an early direct scan.
+692. Update the support queue remainder with direct item collection.
+693. Aggregate local support-session metrics with one mutable scan.
+
+## Optimization Round 694-723
+
+694. Render Registry profile tags through direct element collection.
+695. Render Registry instance tags through direct element collection.
+696. Render Registry metadata tags without an entries array.
+697. Hoist Inventory stock-level colors out of component renders.
+698. Centralize Inventory stock normalization in one reusable helper.
+699. Reuse normalized stock values when opening the adjust form.
+700. Reuse normalized stock values in the stock-count cell.
+701. Reuse normalized stock values in stock-value calculation.
+702. Reuse normalized stock values in the adjust preview.
+703. Centralize inventory helper unit normalization.
+704. Reuse normalized current stock during adjustment resolution.
+705. Reuse normalized adjustment amounts during adjustment resolution.
+706. Reuse normalized product stock in health totals.
+707. Reuse normalized summary counters across inventory fields.
+708. Reuse normalized summary units for total inventory units.
+709. Normalize forgot-password codes with a bounded digit scan.
+710. Mask email addresses without split-array allocation.
+711. Resolve OrderTracking steps through a status lookup table.
+712. Cache the guest-order classification across access flags.
+713. Cache managed document metadata keys once at module load.
+714. Interpolate support workflow placeholders in one replacement pass.
+715. Materialize merged Home products through direct map-value collection.
+716. Materialize Home discovery identity values through direct map-value collection.
+717. Traverse Home preference records without an Object.keys array.
+718. Track localized category presence without Object.keys allocation.
+719. Check compare membership with an early direct ID scan.
+720. Append compare IDs without spread allocation.
+721. Escape CSV quotes with direct character accumulation.
+722. Validate preferred focus targets with an early direct scan.
+723. Remove stale mobile contrast marks through direct Set cleanup.
+
+## Optimization Round 724-813
+
+724. Build Mexico state names with `Object.keys` instead of entry tuples.
+725. Avoid allocating state name/value pairs during Mexico sorting.
+726. Read Mexico municipalities directly by the sorted state key.
+727. Clone municipality arrays with `slice` before sorting.
+728. Keep caller-owned municipality arrays untouched while building options.
+729. Replace region localization `map` with a direct result collector.
+730. Push localized region records without per-item callback closures.
+731. Delay region candidate slicing until a path actually matches.
+732. Replace nested region `.find` callbacks with an early lookup loop.
+733. Walk candidate region parts by index while reusing the current child list.
+734. Scan media URL characters directly instead of creating an `Array.from` result.
+735. Stop media control-character validation at the first invalid code unit.
+736. Parse private IPv4 host segments without `split` allocation.
+737. Accumulate IPv4 numeric values without a `map(Number)` pass.
+738. Remove IPv4 range validation's temporary `some` callback array.
+739. Validate IPv4 segment count and ranges during one bounded scan.
+740. Validate mapped IPv6 numeric halves without an intermediate array.
+741. Short-circuit unreliable-image rule matching through a direct loop.
+742. Assemble SVG placeholder framing with direct string interpolation.
+743. Build responsive image candidates with a direct output collector.
+744. Avoid a per-width `map` callback while generating image URLs.
+745. Sanitize guest-support text with a direct character scan.
+746. Avoid the intermediate mapped character array in guest context cleanup.
+747. Convert stored guest-context timestamps once before TTL validation.
+748. Scan safe URL control characters by index instead of `Array.from`.
+749. Return immediately on the first unsafe safe-URL control code unit.
+750. Share one parsed URL between safe-URL validation and normalization.
+751. Remove normalization's second `URL` construction after validation.
+752. Replace selected-spec entry reduction with a mutable accumulator loop.
+753. Skip invalid selected-spec values during the same normalization pass.
+754. Read JSON selected-spec keys directly instead of `Object.entries`.
+755. Avoid building a JSON entry tuple array before normalization.
+756. Format selected specs through direct key iteration.
+757. Sanitize payment parameters with a direct character scan.
+758. Remove the payment parameter character-mapping array allocation.
+759. Resolve member orders through an early direct order-number scan.
+760. Normalize the target order number once per member-order lookup.
+761. Resolve payment channel currency with an early direct scan.
+762. Avoid a temporary callback result for channel lookup.
+763. Reuse the guest-email request argument across payment verification calls.
+764. Reuse the normalized order number across payment creation calls.
+765. Reuse the guest-email request argument during payment refresh.
+766. Reuse the order number during payment refresh requests.
+767. Normalize a refreshed payment status once before the paid announcement check.
+768. Hoist fulfilled-order statuses out of PaymentInstructions renders.
+769. Derive the raw payment channel once for label and lookup paths.
+770. Count login guest-cart quantities with a direct accumulator.
+771. Build guest-cart merge promises through a direct task collector.
+772. Aggregate guest-cart merge failures and quantities in one scan.
+773. Compute the masked login email once for state and announcement output.
+774. Hoist the bottom-rail interactive selector out of scroll updates.
+775. Iterate the bottom-rail NodeList directly without `Array.from`.
+776. Remove the bottom-rail `.some` callback allocation.
+777. Stop bottom-rail conflict scanning immediately after the first overlap.
+778. Hoist authentication-flow paths into a reusable `Set`.
+779. Hoist log-level option objects out of LogManagement renders.
+780. Reuse the normalized log keyword for the download request.
+781. Reuse the normalized log keyword in the accessibility context label.
+782. Materialize available log files once for the count branch.
+783. Reuse the same available-file collection for tag rendering.
+784. Hoist notification order-number regexes out of each extraction call.
+785. Decorate notification sort input with a direct loop.
+786. Avoid a per-notification sort decoration callback closure.
+787. Materialize sorted notifications without a final `map` pass.
+788. Merge current notification pages with direct Map insertion.
+789. Apply next-page notification replacements with direct Map insertion.
+790. Materialize merged Map values with a direct collector.
+791. Derive notification insights with one mutable scan.
+792. Remove the insights reduction callback and accumulator allocation path.
+793. Collect unread notifications through a bounded direct filter scan.
+794. Collect typed notifications through the same bounded scan.
+795. Reuse the translated delete label when building notification actions.
+796. Reuse notification insight unread count instead of scanning the list in panels.
+797. Compute the notification date locale once per panel render.
+798. Reuse one normalized notification type for tag color lookup.
+799. Reuse one formatted notification type for name fallback and tag text.
+800. Reuse normalized notification type for related-action visibility checks.
+801. Avoid rebuilding the delete-cancel label translation in JSX.
+802. Memoize translated quick-filter labels until the translator changes.
+803. Drive the mark-all action from already-derived unread insight state.
+804. Use one locale string for every notification timestamp in a render.
+805. Avoid formatting a notification type twice in one item row.
+806. Pass the helper-provided cancel label directly to the popconfirm.
+807. Apply bottom-rail visibility guards before reading layout rectangles.
+808. Keep bottom-rail overlap math inside one reusable predicate.
+809. Share normalized log keyword derivation across download and label paths.
+810. Share available-log-file derivation across empty and populated branches.
+811. Preserve notification sort stability while eliminating the result-map pass.
+812. Preserve newest-page-wins semantics while eliminating page-loop callbacks.
+813. Preserve notification action-label text while reusing helper-derived strings.
+
 ## Verification
 
 The final verification record is maintained here after the post-change checks:
@@ -1085,6 +1277,41 @@ The final verification record is maintained here after the post-change checks:
 - Round 604-633 cleanup: `git diff --check` passed; no test, TypeScript, or
   build processes remained, and the pre-existing `127.0.0.1:4200` listener was
   unchanged.
+
+- Round 634-663 focused helper regression: 9 suites and 40 tests passed, with
+  the Home helper follow-up passing separately after the initial source naming
+  correction.
+- Round 664-693 focused admin regression: 7 suites and 35 tests passed across
+  CategoryManagement, InventoryManagement, RegistryManagement,
+  SupportManagement, Home helpers, OrderTracking, and frontend type-safety
+  contracts.
+- Round 694-723 final focused regression: 12 suites and 46 tests passed across
+  focus trapping, document metadata, CSV export, product compare, support
+  workflow, mobile contrast, ForgotPassword, inventory, order tracking,
+  registry, and SupportManagement contracts.
+- Round 634-723 TypeScript: bounded frontend `npx tsc --noEmit --pretty false
+  --skipLibCheck` passed with `NODE_OPTIONS=--max-old-space-size=768`.
+- Round 634-723 production: bounded frontend `npm run build` passed (exit code
+  0).
+- Round 634-723 cleanup: `git diff --check` passed; no test, TypeScript,
+  build, or bounded-runner processes remained, and the existing
+  `127.0.0.1:4200` listener remained owned by PID `3314802`.
+
+- Round 724-813 focused regression: 15 suites and 375 tests passed across
+  region loading, media assets, safe URLs, selected specs, guest support,
+  PaymentInstructions, Login, LogManagement, App, Checkout, Notifications,
+  and Storefront loading accessibility.
+- Round 724-813 TypeScript: bounded `env NODE_OPTIONS=--max-old-space-size=768
+  npx tsc --noEmit --pretty false --skipLibCheck` passed after adapting the
+  direct scans to the repository's ES5 target.
+- Round 724-813 production: bounded frontend `npm run build` passed and
+  completed the safe staging-to-build sync.
+- Round 724-813 cleanup: `git diff --check` passed; no Jest, TypeScript,
+  build, or bounded-runner processes remained, and the existing
+  `127.0.0.1:4200` listener remained owned by PID `3314802`.
+- Two additional historical source-contract guard failures remain unrelated
+  to this round: the existing ProductDetailGallery timer-comment expectation
+  and the existing Home pet-gallery live-item expression expectation.
 
 All tests and builds are run through `scripts/run-bounded-task.sh` in
 accordance with the repository resource-safety instructions.

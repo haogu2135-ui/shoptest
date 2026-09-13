@@ -159,14 +159,17 @@ export const NotificationsMainPanels: React.FC<NotificationsPanelsProps> = ({
   hasMoreNotifications,
   notificationPage,
   loadingMore,
-}) => (
+}) => {
+  const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
+  const hasUnreadNotifications = notificationInsights.unread > 0;
+  return (
   <div className="notifications-page">
     <div className="notifications-page__header">
       <div className="notifications-page__title">
         <ShopIcon path={SI.bell} />
         <h1 className="notifications-page__title">{t('pages.notifications.title')}</h1>
       </div>
-      {notifications.some(n => !n.isRead) && (
+      {hasUnreadNotifications && (
         <ShopButton
           icon={<ShopIcon path={SI.check} />}
           aria-label={markAllActionLabel}
@@ -381,13 +384,15 @@ export const NotificationsMainPanels: React.FC<NotificationsPanelsProps> = ({
           <>
             <ul className="notifications-page__itemList" role="list">
               {filteredNotifications.map((item) => {
-                const notificationName = item.title || formatNotificationType(item.type, t) || `#${item.id}`;
+                const notificationType = formatNotificationType(item.type, t);
+                const notificationName = item.title || notificationType || `#${item.id}`;
                 const relatedOrderNo = extractOrderNoFromNotification(item);
                 const relatedType = String(item.type || '').trim().toUpperCase();
                 const {
                   openRelatedLabel,
                   markReadActionLabel,
                   deleteActionLabel,
+                  cancelDeleteActionLabel,
                 } = buildNotificationItemActionLabels({
                   t,
                   notificationName,
@@ -403,8 +408,8 @@ export const NotificationsMainPanels: React.FC<NotificationsPanelsProps> = ({
                     <div className="notifications-page__itemMeta">
                       <div className="notifications-page__itemBody">
                         <div className="notifications-page__itemActions">
-                          <ShopTag color={typeColors[String(item.type || '').trim().toUpperCase()] || 'default'}>
-                            {formatNotificationType(item.type, t)}
+                          <ShopTag color={typeColors[relatedType] || 'default'}>
+                            {notificationType}
                           </ShopTag>
                           <button
                             type="button"
@@ -420,7 +425,7 @@ export const NotificationsMainPanels: React.FC<NotificationsPanelsProps> = ({
                         <div>
                           {renderMessage(item)}
                           <span className="notifications-page__text notifications-page__text--secondary notifications-page__timestamp">
-                            {item.createdAt ? new Date(item.createdAt).toLocaleString(language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US') : ''}
+                            {item.createdAt ? new Date(item.createdAt).toLocaleString(dateLocale) : ''}
                           </span>
                         </div>
                       </div>
@@ -459,7 +464,7 @@ export const NotificationsMainPanels: React.FC<NotificationsPanelsProps> = ({
                         okText={t('common.confirm')}
                         cancelText={t('common.cancel')}
                         okButtonProps={{ danger: true, 'aria-label': deleteActionLabel, title: deleteActionLabel }}
-                        cancelButtonProps={{ 'aria-label': `${t('common.cancel')}: ${deleteActionLabel}`, title: `${t('common.cancel')}: ${deleteActionLabel}` }}
+                        cancelButtonProps={{ 'aria-label': cancelDeleteActionLabel, title: cancelDeleteActionLabel }}
                         disabled={notificationActionsDisabled}
                       >
                         <ShopButton
@@ -497,4 +502,5 @@ export const NotificationsMainPanels: React.FC<NotificationsPanelsProps> = ({
       </>
     )}
   </div>
-);
+  );
+};

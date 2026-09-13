@@ -11,22 +11,22 @@ const OPTION_VALUE_DELIMITER = /[,\uFF0C\u3001;\uFF1B\n]/;
 
 const splitOptionValues = (value: unknown) => {
   const normalized: string[] = [];
-  String(value || '').split(OPTION_VALUE_DELIMITER).forEach((item) => {
+  for (const item of String(value || '').split(OPTION_VALUE_DELIMITER)) {
     const next = item.trim();
     if (next) normalized.push(next);
-  });
+  }
   return normalized;
 };
 
 const normalizeOptionValues = (values: unknown[]) => {
   const normalized: string[] = [];
   const seen = new Set<string>();
-  values.forEach((value) => {
+  for (const value of values) {
     const item = String(value || '').trim();
-    if (!item || seen.has(item)) return;
+    if (!item || seen.has(item)) continue;
     seen.add(item);
     normalized.push(item);
-  });
+  }
   return normalized;
 };
 
@@ -34,26 +34,27 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
   Boolean(value && typeof value === 'object' && !Array.isArray(value));
 
 const parseVariantOptionText = (value: unknown): Record<string, string> =>
-  String(value || '')
-    .split(OPTION_VALUE_DELIMITER)
-    .reduce((result: Record<string, string>, item) => {
-      const [rawKey, ...rawValue] = item.split('=');
-      const key = String(rawKey || '').trim();
-      const optionValue = rawValue.join('=').trim();
-      if (key && optionValue) result[key] = optionValue;
-      return result;
-    }, {});
+  String(value || '').split(OPTION_VALUE_DELIMITER).reduce((result: Record<string, string>, item) => {
+    const separatorIndex = item.indexOf('=');
+    if (separatorIndex < 0) return result;
+    const key = item.slice(0, separatorIndex).trim();
+    const optionValue = item.slice(separatorIndex + 1).trim();
+    if (key && optionValue) result[key] = optionValue;
+    return result;
+  }, {});
 
 const normalizeVariantOptions = (variant: unknown): Record<string, string> => {
   if (!isRecord(variant)) return {};
   if (isRecord(variant.options)) {
-    return Object.entries(variant.options).reduce((result: Record<string, string>, [key, value]) => {
+    const result: Record<string, string> = {};
+    for (const key of Object.keys(variant.options)) {
+      const value = variant.options[key];
       const normalizedKey = String(key || '').trim();
-      if (value && typeof value === 'object') return result;
+      if (value && typeof value === 'object') continue;
       const normalizedValue = String(value || '').trim();
       if (normalizedKey && normalizedValue) result[normalizedKey] = normalizedValue;
-      return result;
-    }, {});
+    }
+    return result;
   }
   return parseVariantOptionText(variant?.optionText);
 };
@@ -93,23 +94,24 @@ export const getProductOptionGroups = (product?: ProductOptionInput | null): Pro
   if (!product) return [];
   const directGroups: ProductOptionGroup[] = [];
   if (Array.isArray(product.optionGroups)) {
-    product.optionGroups.forEach((group) => {
+    for (const group of product.optionGroups) {
       const normalized = normalizeOptionGroup(group);
       if (normalized) directGroups.push(normalized);
-    });
+    }
   }
   if (directGroups.length > 0) return directGroups;
 
   const specs = product.specifications || {};
   const configured: ProductOptionGroup[] = [];
-  Object.entries(specs).forEach(([key, value]) => {
-    if (!key.startsWith('options.')) return;
+  for (const key of Object.keys(specs)) {
+    const value = specs[key];
+    if (!key.startsWith('options.')) continue;
     const group = {
       name: key.replace(/^options\./, ''),
       values: normalizeOptionValues(splitOptionValues(value)),
     };
     if (group.name && group.values.length > 0) configured.push(group);
-  });
+  }
 
   if (configured.length > 0) return configured;
 
@@ -124,10 +126,10 @@ export const getProductVariants = (product?: ProductOptionInput | null): Product
   const rawVariants = (product as { variants?: ProductVariant[] | string }).variants;
   const normalizeVariants = (items: unknown[]) => {
     const normalized: ProductVariant[] = [];
-    items.forEach((item) => {
+    for (const item of items) {
       const variant = normalizeVariant(item);
       if (variant) normalized.push(variant);
-    });
+    }
     return normalized;
   };
   if (Array.isArray(rawVariants)) return normalizeVariants(rawVariants);
@@ -148,10 +150,19 @@ export const variantMatchesSelectedOptions = (
   variants: ProductVariant[],
   selectedOptions: Record<string, string>,
 ) => {
-  const selectedEntries = Object.entries(selectedOptions);
-  return variants.some((variant) => selectedEntries.every(([key, selectedValue]) => (
-    !selectedValue || variant.options?.[key] === selectedValue
-  )));
+  const selectedKeys = Object.keys(selectedOptions);
+  for (const variant of variants) {
+    let matches = true;
+    for (const key of selectedKeys) {
+      const selectedValue = selectedOptions[key];
+      if (selectedValue && variant.options?.[key] !== selectedValue) {
+        matches = false;
+        break;
+      }
+    }
+    if (matches) return true;
+  }
+  return false;
 };
 
 export const optionValueHasVariant = (
@@ -160,7 +171,10 @@ export const optionValueHasVariant = (
   value: string,
 ) => {
   if (!variants.length) return true;
-  return variants.some((variant) => variant.options?.[groupName] === value);
+  for (const variant of variants) {
+    if (variant.options?.[groupName] === value) return true;
+  }
+  return false;
 };
 
 export const optionValueIsCompatible = (
@@ -183,13 +197,13 @@ export const selectCompatibleProductOption = (
 ) => {
   const nextOptions = { ...selectedOptions, [groupName]: value };
   if (variants.length > 0) {
-    optionGroups.forEach((group) => {
-      if (group.name === groupName || !nextOptions[group.name]) return;
+    for (const group of optionGroups) {
+      if (group.name === groupName || !nextOptions[group.name]) continue;
       const candidate = { ...nextOptions };
       if (!variantMatchesSelectedOptions(variants, candidate)) {
         delete nextOptions[group.name];
       }
-    });
+    }
   }
   return nextOptions;
 };

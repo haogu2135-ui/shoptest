@@ -40,8 +40,8 @@ export const resolveAdjustedStock = (
   mode: StockAdjustMode,
   amount: number | null | undefined,
 ): number => {
-  const safeCurrent = Math.max(0, Math.trunc(Number(currentStock ?? 0) || 0));
-  const safeAmount = Math.max(0, Math.trunc(Number(amount ?? 0) || 0));
+  const safeCurrent = normalizeStockUnits(currentStock);
+  const safeAmount = normalizeStockUnits(amount);
   if (mode === 'set') return safeAmount;
   if (mode === 'increase') return safeCurrent + safeAmount;
   return Math.max(0, safeCurrent - safeAmount);
@@ -49,14 +49,11 @@ export const resolveAdjustedStock = (
 
 export const deriveInventoryHealth = (products: Product[]): InventoryHealth => {
   const rows = Array.isArray(products) ? products : [];
-  const counts = rows.reduce(
-    (acc, product) => {
-      acc[getStockLevel(product.stock)] += 1;
-      acc.totalUnits += Math.max(0, Math.trunc(Number(product.stock ?? 0) || 0));
-      return acc;
-    },
-    { out: 0, critical: 0, low: 0, healthy: 0, totalUnits: 0 },
-  );
+  const counts = { out: 0, critical: 0, low: 0, healthy: 0, totalUnits: 0 };
+  for (const product of rows) {
+    counts[getStockLevel(product.stock)] += 1;
+    counts.totalUnits += normalizeStockUnits(product.stock);
+  }
   const score = rows.length === 0
     ? 100
     : Math.max(0, Math.round(((counts.healthy + counts.low * 0.5) / rows.length) * 100));
@@ -72,10 +69,12 @@ export const deriveInventoryHealth = (products: Product[]): InventoryHealth => {
 };
 
 export const normalizeInventorySummary = (summary?: Partial<AdminInventorySummary> | null): InventoryHealth => ({
-  outOfStock: Math.max(0, Math.trunc(Number(summary?.outOfStock ?? 0) || 0)),
-  critical: Math.max(0, Math.trunc(Number(summary?.critical ?? 0) || 0)),
-  low: Math.max(0, Math.trunc(Number(summary?.low ?? 0) || 0)),
-  healthy: Math.max(0, Math.trunc(Number(summary?.healthy ?? 0) || 0)),
-  totalUnits: Math.max(0, Math.trunc(Number(summary?.totalUnits ?? 0) || 0)),
+  outOfStock: normalizeStockUnits(summary?.outOfStock),
+  critical: normalizeStockUnits(summary?.critical),
+  low: normalizeStockUnits(summary?.low),
+  healthy: normalizeStockUnits(summary?.healthy),
+  totalUnits: normalizeStockUnits(summary?.totalUnits),
   score: Math.max(0, Math.min(100, Math.trunc(Number(summary?.score ?? 100) || 0))),
 });
+
+const normalizeStockUnits = (value?: number | null) => Math.max(0, Math.trunc(Number(value ?? 0) || 0));

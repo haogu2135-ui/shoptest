@@ -56,7 +56,8 @@ export const useCheckoutCouponQuote = ({
 
   useEffect(() => {
     const hasToken = hasAuthenticatedCartSession();
-    const couponQuoteCartKey = `${cartItems.map((item) => item.id).join(',')}|${cartTotal}`;
+    const cartItemIds = cartItems.map((item) => item.id);
+    const couponQuoteCartKey = `${cartItemIds.join(',')}|${cartTotal}`;
     if (!hasToken || cartItems.length === 0) {
       couponQuoteSeqRef.current += 1;
       couponAutoSelectedQuoteRef.current = null;
@@ -86,7 +87,7 @@ export const useCheckoutCouponQuote = ({
     }
     let disposed = false;
     couponApi.quote({
-      cartItemIds: cartItems.map((item) => item.id),
+      cartItemIds,
       userCouponId: selectedUserCouponId,
     }, { signal: abortController.signal })
       .then((res) => {

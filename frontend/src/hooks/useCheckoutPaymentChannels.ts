@@ -75,14 +75,17 @@ export const useCheckoutPaymentChannels = ({
       .then((res) => {
         if (!isCurrentPaymentChannelsRequest()) return;
         const channels = res.data;
+        const paymentMethodDetails = createPaymentMethodDetails(channels, { currency });
+        const allowedPaymentMethods = new Set<string>();
+        for (const method of paymentMethodDetails) allowedPaymentMethods.add(method.value);
         setPaymentChannels(channels);
         setPaymentChannelsError(null);
-        setPaymentChannelsAvailable(createPaymentMethodDetails(channels, { currency }).length > 0);
+        setPaymentChannelsAvailable(paymentMethodDetails.length > 0);
         const current = form.getFieldValue('paymentMethod');
         const rememberedMethod = getSessionStorageItem('checkoutPaymentMethod');
         const bootstrapCandidate = rememberedMethod || (current && current !== 'STRIPE' ? current : null);
         const nextMethod = resolveCheckoutPaymentMethod(bootstrapCandidate, channels, currency);
-        const allowed = createPaymentMethodDetails(channels, { currency }).some((method) => method.value === current);
+        const allowed = allowedPaymentMethods.has(current);
         if (nextMethod && (nextMethod !== current || !allowed)) {
           form.setFieldsValue({ paymentMethod: nextMethod });
           setSessionStorageItem('checkoutPaymentMethod', nextMethod);

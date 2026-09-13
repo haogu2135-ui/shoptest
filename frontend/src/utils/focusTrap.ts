@@ -22,14 +22,28 @@ export const getFocusableElements = (
 ): HTMLElement[] => {
   if (!root) return [];
   const excluded = new Set(options?.excludeClassNames || []);
-  return Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR)).filter((element) => {
-    if (element.getAttribute('aria-hidden') === 'true') return false;
-    if (element.hasAttribute('disabled')) return false;
-    if (Array.from(element.classList).some((className) => excluded.has(className))) return false;
-    if (typeof window === 'undefined') return true;
-    const style = window.getComputedStyle(element);
-    return style.visibility !== 'hidden' && style.display !== 'none';
-  });
+  const focusables: HTMLElement[] = [];
+  const candidates = root.querySelectorAll<HTMLElement>(FOCUSABLE_SELECTOR);
+  for (let index = 0; index < candidates.length; index += 1) {
+    const element = candidates[index];
+    if (element.getAttribute('aria-hidden') === 'true') continue;
+    if (element.hasAttribute('disabled')) continue;
+    let isExcluded = false;
+    for (let classIndex = 0; classIndex < element.classList.length; classIndex += 1) {
+      const className = element.classList[classIndex];
+      if (excluded.has(className)) {
+        isExcluded = true;
+        break;
+      }
+    }
+    if (isExcluded) continue;
+    if (typeof window !== 'undefined') {
+      const style = window.getComputedStyle(element);
+      if (style.visibility === 'hidden' || style.display === 'none') continue;
+    }
+    focusables.push(element);
+  }
+  return focusables;
 };
 
 export type ActivateFocusTrapOptions = {
@@ -80,7 +94,16 @@ export const activateFocusTrap = (options: ActivateFocusTrapOptions): (() => voi
     if (!panel) return;
     const focusables = getFocusableElements(panel, { excludeClassNames });
     const preferred = getInitialFocus?.();
-    const target = preferred && (preferred === panel || focusables.includes(preferred))
+    let preferredIsFocusable = preferred === panel;
+    if (preferred && !preferredIsFocusable) {
+      for (const focusable of focusables) {
+        if (focusable === preferred) {
+          preferredIsFocusable = true;
+          break;
+        }
+      }
+    }
+    const target = preferred && preferredIsFocusable
       ? preferred
       : focusables[0] || panel;
     target.focus();

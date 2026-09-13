@@ -186,7 +186,7 @@ export const useCartItemMutations = ({
           const nextItems = normalizeCartItems(response.data);
           setCartItems(nextItems);
           clearRecentProductsCache();
-          setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
+          setSelectedIds(getCheckoutableItemIds(nextItems, canCheckout));
         }
       } else {
         addGuestCartItem(
@@ -251,8 +251,8 @@ export const useCartItemMutations = ({
         );
         if (!mountedRef.current) return;
         restoredItems = targetItems.filter((_, index) => results[index].status === 'fulfilled');
+        const failedResult = results.find((result) => result.status === 'rejected') as PromiseRejectedResult | undefined;
         if (restoredItems.length === 0) {
-          const failedResult = results.find((result) => result.status === 'rejected') as PromiseRejectedResult | undefined;
           announceAccessibleMessage(getApiErrorMessage(failedResult?.reason, t('messages.operationFailed'), language), 'error');
           return;
         }
@@ -262,10 +262,10 @@ export const useCartItemMutations = ({
           const nextItems = normalizeCartItems(response.data);
           setCartItems(nextItems);
           clearRecentProductsCache();
-          setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
+              setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
         }
       } else {
-        targetItems.forEach((item) => {
+        for (const item of targetItems) {
           addGuestCartItem(
             {
               ...item,
@@ -277,13 +277,13 @@ export const useCartItemMutations = ({
             item.selectedSpecs,
             item.price,
           );
-        });
+        }
         const nextItems = normalizeCartItems(getGuestCartItems());
         setCartItems(nextItems);
         clearRecentProductsCache();
-        setSelectedIds(getCheckoutableItemIds(nextItems, canCheckout));
+              setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
       }
-      restoredItems.forEach((item) => removeSavedForLaterProduct(item.productId, item.selectedSpecs));
+      for (const item of restoredItems) removeSavedForLaterProduct(item.productId, item.selectedSpecs);
       setSavedItems(getSavedForLaterItemsSnapshot());
       if (restoredItems.length === targetItems.length) {
         announceAccessibleMessage(t('pages.cart.movedSavedBatch', { count: restoredItems.length }), 'success');
@@ -321,11 +321,23 @@ export const useCartItemMutations = ({
   const removeItems = useCallback(async (itemIds: number[], successMessage: string) => {
     if (hasStaleCartData) return;
     if (itemIds.length === 0) return;
-    const normalizedIds = Array.from(new Set(itemIds));
+    const normalizedIds: number[] = [];
+    const normalizedIdSet = new Set<number>();
+    for (const itemId of itemIds) {
+      if (normalizedIdSet.has(itemId)) continue;
+      normalizedIdSet.add(itemId);
+      normalizedIds.push(itemId);
+    }
     invalidateCartSnapshotRequests();
     cancelPendingQuantitySync(normalizedIds);
     try {
-      setRemovingItemIds((ids) => Array.from(new Set([...ids, ...normalizedIds])));
+      setRemovingItemIds((ids) => {
+        const next = ids.slice();
+        for (const id of normalizedIds) {
+          if (!next.includes(id)) next.push(id);
+        }
+        return next;
+      });
       const authenticated = hasAuthenticatedCartSession();
       if (authenticated) {
         await cartApi.removeItems(normalizedIds);
@@ -334,7 +346,7 @@ export const useCartItemMutations = ({
       } else {
         setCartItems(normalizeCartItems(removeGuestCartItems(normalizedIds)));
       }
-      setSelectedIds((ids) => ids.filter((id) => !normalizedIds.includes(id)));
+      setSelectedIds((ids) => ids.filter((id) => !normalizedIdSet.has(id)));
       resetCheckoutStateAfterCartMutation();
       announceAccessibleMessage(successMessage, 'success');
       dispatchDomEvent('shop:cart-updated');
@@ -343,7 +355,7 @@ export const useCartItemMutations = ({
       announceAccessibleMessage(getApiErrorMessage(err, t('messages.deleteFailed'), language), 'error');
     } finally {
       if (mountedRef.current) {
-        setRemovingItemIds((ids) => ids.filter((id) => !normalizedIds.includes(id)));
+        setRemovingItemIds((ids) => ids.filter((id) => !normalizedIdSet.has(id)));
       }
     }
   }, [

@@ -14,11 +14,15 @@ type StoredGuestSupportContext = GuestSupportContext & {
   savedAt: number;
 };
 
-const cleanText = (value: unknown, maxLength = 160) =>
-  Array.from(String(value || ''), (char) => {
-    const code = char.charCodeAt(0);
-    return code <= 31 || code === 127 ? ' ' : char;
-  }).join('').trim().slice(0, maxLength);
+const cleanText = (value: unknown, maxLength = 160) => {
+  const raw = String(value || '');
+  let cleaned = '';
+  for (let index = 0; index < raw.length; index += 1) {
+    const code = raw.charCodeAt(index);
+    cleaned += code <= 31 || code === 127 ? ' ' : raw[index];
+  }
+  return cleaned.trim().slice(0, maxLength);
+};
 
 export const normalizeGuestSupportContext = (value: unknown): GuestSupportContext | null => {
   if (!value || typeof value !== 'object') return null;
@@ -42,7 +46,8 @@ export const loadGuestSupportContext = (): GuestSupportContext | null => {
   try {
     const parsed = JSON.parse(getLocalStorageItem(GUEST_SUPPORT_CONTEXT_KEY) || 'null') as StoredGuestSupportContext | null;
     const normalized = normalizeGuestSupportContext(parsed);
-    if (!normalized || !parsed?.savedAt || Date.now() - Number(parsed.savedAt) > GUEST_SUPPORT_CONTEXT_TTL_MS) {
+    const savedAt = Number(parsed?.savedAt);
+    if (!normalized || !parsed?.savedAt || !Number.isFinite(savedAt) || Date.now() - savedAt > GUEST_SUPPORT_CONTEXT_TTL_MS) {
       removeLocalStorageItem(GUEST_SUPPORT_CONTEXT_KEY);
       return null;
     }

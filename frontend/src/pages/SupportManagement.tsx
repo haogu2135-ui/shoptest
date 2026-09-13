@@ -77,19 +77,26 @@ const SUPPORT_MANAGEMENT_STATUS_LABEL_KEYS = new Set([
   'CLOSED',
 ]);
 
-const newestSupportMessageId = (items: SupportMessage[]) =>
-  items.reduce((maxId, item) => Math.max(maxId, Number(item.id) || 0), 0) || undefined;
+const newestSupportMessageId = (items: SupportMessage[]) => {
+  let maxId = 0;
+  for (const item of items) maxId = Math.max(maxId, Number(item.id) || 0);
+  return maxId || undefined;
+};
 
 const mergeSupportMessages = (current: SupportMessage[], incoming: SupportMessage[]) => {
   const byId = new Map<number, SupportMessage>();
-  const addMessages = (items: SupportMessage[]) => items.forEach((item) => {
-    if (Number.isSafeInteger(item.id) && item.id > 0) byId.set(item.id, item);
-  });
+  const addMessages = (items: SupportMessage[]) => {
+    for (const item of items) {
+      if (Number.isSafeInteger(item.id) && item.id > 0) byId.set(item.id, item);
+    }
+  };
   addMessages(current);
   addMessages(incoming);
-  return Array.from(byId.values())
-    .sort((left, right) => left.id - right.id)
-    .slice(-SUPPORT_MESSAGE_WINDOW);
+  const merged: SupportMessage[] = [];
+  byId.forEach((item) => merged.push(item));
+  merged.sort((left, right) => left.id - right.id);
+  if (merged.length > SUPPORT_MESSAGE_WINDOW) merged.splice(0, merged.length - SUPPORT_MESSAGE_WINDOW);
+  return merged;
 };
 
 const readAdminSupportToken = () => {
@@ -380,13 +387,23 @@ const SupportManagement: React.FC = () => {
             : t('pages.adminSupport.replyNeedsContext');
 
   const sortSupportSessions = (items: SupportSession[]) => {
-    const decorated = items.map((item, index) => ({
-      item,
-      index,
-      unread: Number(item.unreadByAdmin || 0),
-      open: item.status === 'OPEN' ? 1 : 0,
-      updatedAt: getSafeTime(item.updatedAt),
-    }));
+    const decorated: Array<{
+      item: SupportSession;
+      index: number;
+      unread: number;
+      open: number;
+      updatedAt: number;
+    }> = [];
+    for (let index = 0; index < items.length; index += 1) {
+      const item = items[index];
+      decorated.push({
+        item,
+        index,
+        unread: Number(item.unreadByAdmin || 0),
+        open: item.status === 'OPEN' ? 1 : 0,
+        updatedAt: getSafeTime(item.updatedAt),
+      });
+    }
     decorated.sort((left, right) => (
       right.unread - left.unread
       || right.open - left.open
@@ -394,7 +411,9 @@ const SupportManagement: React.FC = () => {
       || right.item.id - left.item.id
       || left.index - right.index
     ));
-    return decorated.map((entry) => entry.item);
+    const sorted: SupportSession[] = [];
+    for (const entry of decorated) sorted.push(entry.item);
+    return sorted;
   };
 
   useEffect(() => {
@@ -427,10 +446,10 @@ const SupportManagement: React.FC = () => {
     const currentItems = sessionsRef.current;
     let existed = false;
     const remaining: SupportSession[] = [];
-    currentItems.forEach((item) => {
+    for (const item of currentItems) {
       if (item.id === session.id) existed = true;
       else remaining.push(item);
-    });
+    }
     setSelectedSession((current) => current?.id === session.id ? session : current);
     const nextItems = matchesQueue ? sortSupportSessions([session, ...remaining]) : remaining;
     sessionsRef.current = nextItems;
@@ -487,8 +506,12 @@ const SupportManagement: React.FC = () => {
       setSummary(summaryRes?.data || null);
       const currentSession = selectedSessionRef.current;
       if (currentSession) {
-        const fresh = sessionsRes.data.items.find((item) => item.id === currentSession.id);
-        if (fresh) setSelectedSession(fresh);
+        for (const item of sessionsRes.data.items) {
+          if (item.id === currentSession.id) {
+            setSelectedSession(item);
+            break;
+          }
+        }
       }
     } catch (err: unknown) {
       if (shouldApply()) {
@@ -589,8 +612,8 @@ const SupportManagement: React.FC = () => {
         mergeSessionIntoCurrentQueue(payload.session, { countNewMatch: true });
         if (selectedSessionRef.current?.id === payload.message.sessionId) {
           setMessages((items) => {
-            if (items.some((item) => item.id === payload.message.id)) {
-              return items;
+            for (const item of items) {
+              if (item.id === payload.message.id) return items;
             }
             if (payload.message.senderRole === 'USER') {
               playTone();
@@ -798,19 +821,22 @@ const SupportManagement: React.FC = () => {
 
   const dateLocale = language === 'zh' ? 'zh-CN' : language === 'es' ? 'es-MX' : 'en-US';
 
-  const localSessionMetrics = useMemo(() => sessions.reduce((metrics, item) => {
-    if (item.status === 'OPEN') {
-      metrics.open += 1;
-      if (currentAdminId && Number(item.assignedAdminId) === currentAdminId) metrics.myOpen += 1;
-      if (!item.assignedAdminId) metrics.unassignedOpen += 1;
-    } else if (item.status === 'CLOSED') {
-      metrics.closed += 1;
+  const localSessionMetrics = useMemo(() => {
+    const metrics = { open: 0, closed: 0, unreadSessions: 0, unreadMessages: 0, myOpen: 0, unassignedOpen: 0 };
+    for (const item of sessions) {
+      if (item.status === 'OPEN') {
+        metrics.open += 1;
+        if (currentAdminId && Number(item.assignedAdminId) === currentAdminId) metrics.myOpen += 1;
+        if (!item.assignedAdminId) metrics.unassignedOpen += 1;
+      } else if (item.status === 'CLOSED') {
+        metrics.closed += 1;
+      }
+      const unread = Number(item.unreadByAdmin || 0);
+      metrics.unreadMessages += unread;
+      if (unread > 0) metrics.unreadSessions += 1;
     }
-    const unread = Number(item.unreadByAdmin || 0);
-    metrics.unreadMessages += unread;
-    if (unread > 0) metrics.unreadSessions += 1;
     return metrics;
-  }, { open: 0, closed: 0, unreadSessions: 0, unreadMessages: 0, myOpen: 0, unassignedOpen: 0 }), [currentAdminId, sessions]);
+  }, [currentAdminId, sessions]);
   const localOpenSessionCount = localSessionMetrics.open;
   const localClosedSessionCount = localSessionMetrics.closed;
   const localUnreadSessionCount = localSessionMetrics.unreadSessions;

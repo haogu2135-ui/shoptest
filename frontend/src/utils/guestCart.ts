@@ -75,9 +75,16 @@ const normalizeProductStatus = (status: unknown) => {
 const resolveProductSnapshotImage = (product: GuestCartProductInput) => {
   const primary = String(product.imageUrl || '').trim();
   if (primary) return primary;
-  const galleryImage = Array.isArray(product.images)
-    ? product.images.find((image) => String(image || '').trim())
-    : '';
+  let galleryImage = '';
+  if (Array.isArray(product.images)) {
+    for (const image of product.images) {
+      const candidate = String(image || '').trim();
+      if (candidate) {
+        galleryImage = candidate;
+        break;
+      }
+    }
+  }
   return String(galleryImage || '').trim();
 };
 
@@ -118,13 +125,13 @@ const readGuestCart = (): NormalizedGuestCartItem[] => {
     if (!Array.isArray(parsed)) return [];
     const normalizedItems: NormalizedGuestCartItem[] = [];
     let hasLegacyNestedProduct = false;
-    parsed.forEach((item) => {
+    for (const item of parsed) {
       if (isRecord(item) && Object.prototype.hasOwnProperty.call(item, 'product')) {
         hasLegacyNestedProduct = true;
       }
       const normalized = normalizeCartItem(item);
       if (isNormalizedGuestCartItem(normalized)) normalizedItems.push(normalized);
-    });
+    }
     if (hasLegacyNestedProduct) {
       setLocalStorageItem(GUEST_CART_KEY, JSON.stringify(normalizedItems));
     }
@@ -137,10 +144,10 @@ const readGuestCart = (): NormalizedGuestCartItem[] => {
 
 const writeGuestCart = (items: CartItem[]) => {
   const normalizedItems: NormalizedGuestCartItem[] = [];
-  items.forEach((item) => {
+  for (const item of items) {
     const normalized = normalizeCartItem(item);
     if (isNormalizedGuestCartItem(normalized)) normalizedItems.push(normalized);
-  });
+  }
   const persisted = setLocalStorageItem(GUEST_CART_KEY, JSON.stringify(normalizedItems));
   if (!persisted && hasLocalStorage()) {
     reportNonBlockingError('guestCart.writeGuestCart persistence failed', new Error('Unable to persist guest cart'));
@@ -172,7 +179,14 @@ export const addGuestCartItem = (product: unknown, quantity = 1, selectedSpecs?:
   const productStock = normalizeOptionalStock(productInput.stock);
   const productPrice = normalizePrice(price ?? productInput.effectivePrice ?? productInput.price);
   const normalizedQuantity = normalizeGuestCartQuantity(quantity, stockLimit);
-  const existingIndex = items.findIndex((item) => item.productId === productId && (item.selectedSpecs || '') === (normalizedSpecs || ''));
+  let existingIndex = -1;
+  for (let index = 0; index < items.length; index += 1) {
+    const item = items[index];
+    if (item.productId === productId && (item.selectedSpecs || '') === (normalizedSpecs || '')) {
+      existingIndex = index;
+      break;
+    }
+  }
   if (existingIndex >= 0) {
     const existing = items[existingIndex];
     const updatedExisting: CartItem = {
@@ -233,7 +247,10 @@ export const removeGuestCartItem = (itemId: number) => {
 
 export const removeGuestCartItems = (itemIds: number[]) => {
   const targetIds = new Set(itemIds);
-  const items = readGuestCart().filter((item) => !targetIds.has(item.id));
+  const items: NormalizedGuestCartItem[] = [];
+  for (const item of readGuestCart()) {
+    if (!targetIds.has(item.id)) items.push(item);
+  }
   writeGuestCart(items);
   return items;
 };

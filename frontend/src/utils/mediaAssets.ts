@@ -11,11 +11,13 @@ const sanitizeSvgColor = (value: unknown, fallback: string) => {
   return /^#[0-9a-f]{3}(?:[0-9a-f]{3})?$/i.test(color) || /^[a-z]+$/i.test(color) ? color : fallback;
 };
 
-const hasUnsafeUrlCharacter = (value: string) =>
-  Array.from(value).some((char) => {
-    const code = char.charCodeAt(0);
-    return code <= 31 || code === 127;
-  });
+const hasUnsafeUrlCharacter = (value: string) => {
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    if (code <= 31 || code === 127) return true;
+  }
+  return false;
+};
 
 const IPV4_HOST_PATTERN = /^\d{1,3}(?:\.\d{1,3}){3}$/;
 const unreliableRemoteImageRules = [
@@ -24,9 +26,26 @@ const unreliableRemoteImageRules = [
 
 const isPrivateIpv4Host = (hostname: string) => {
   if (!IPV4_HOST_PATTERN.test(hostname)) return false;
-  const parts = hostname.split('.').map((part) => Number(part));
-  if (parts.some((part) => !Number.isInteger(part) || part < 0 || part > 255)) return true;
-  const [first, second] = parts;
+  let partIndex = 0;
+  let partValue = 0;
+  let digitCount = 0;
+  let first = 0;
+  let second = 0;
+  for (let index = 0; index <= hostname.length; index += 1) {
+    const char = hostname[index];
+    if (char === '.' || index === hostname.length) {
+      if (digitCount === 0 || partValue > 255) return true;
+      if (partIndex === 0) first = partValue;
+      if (partIndex === 1) second = partValue;
+      partIndex += 1;
+      partValue = 0;
+      digitCount = 0;
+      continue;
+    }
+    partValue = partValue * 10 + Number(char);
+    digitCount += 1;
+  }
+  if (partIndex !== 4) return true;
   return first === 0
     || first === 10
     || first === 127
@@ -44,7 +63,7 @@ const ipv4FromMappedIpv6Host = (hostname: string) => {
   if (parts.length !== 2) return null;
   const high = Number.parseInt(parts[0], 16);
   const low = Number.parseInt(parts[1], 16);
-  if (![high, low].every((part) => Number.isInteger(part) && part >= 0 && part <= 0xffff)) {
+  if (!Number.isInteger(high) || high < 0 || high > 0xffff || !Number.isInteger(low) || low < 0 || low > 0xffff) {
     return null;
   }
   return `${(high >> 8) & 0xff}.${high & 0xff}.${(low >> 8) & 0xff}.${low & 0xff}`;
@@ -76,9 +95,10 @@ const isUnsafeImageHost = (hostname: string) => {
 const isKnownUnreliableRemoteImageUrl = (url: URL) => {
   const hostname = url.hostname.toLowerCase();
   const pathname = url.pathname.toLowerCase();
-  return unreliableRemoteImageRules.some((rule) =>
-    hostname === rule.hostname && pathname.includes(rule.pathIncludes),
-  );
+  for (const rule of unreliableRemoteImageRules) {
+    if (hostname === rule.hostname && pathname.includes(rule.pathIncludes)) return true;
+  }
+  return false;
 };
 
 const isSafeImageUrlValue = (value: string) => {
@@ -116,12 +136,7 @@ export const createSvgPlaceholder = ({
         `<circle cx="${centerX}" cy="${centerY}" r="${iconRadius}" fill="none" stroke="${safeForeground}" stroke-width="${iconStrokeWidth}" opacity="0.45"/>`,
         `<path d="M ${centerX - iconRadius} ${centerY + Math.round(iconRadius * 0.35)} L ${centerX - Math.round(iconRadius * 0.28)} ${centerY - Math.round(iconRadius * 0.15)} L ${centerX + Math.round(iconRadius * 0.05)} ${centerY + Math.round(iconRadius * 0.12)} L ${centerX + iconRadius} ${centerY - Math.round(iconRadius * 0.45)}" fill="none" stroke="${safeForeground}" stroke-width="${iconStrokeWidth}" stroke-linecap="round" stroke-linejoin="round" opacity="0.55"/>`,
       ].join('');
-  const svg = [
-    `<svg xmlns="http://www.w3.org/2000/svg" width="${safeWidth}" height="${safeHeight}" viewBox="0 0 ${safeWidth} ${safeHeight}">`,
-    `<rect width="100%" height="100%" rx="12" fill="${safeBackground}"/>`,
-    iconMarkup,
-    '</svg>',
-  ].join('');
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${safeWidth}" height="${safeHeight}" viewBox="0 0 ${safeWidth} ${safeHeight}"><rect width="100%" height="100%" rx="12" fill="${safeBackground}"/>${iconMarkup}</svg>`;
   return `data:image/svg+xml;charset=UTF-8,${encodeURIComponent(svg)}`;
 };
 
@@ -191,15 +206,15 @@ export const buildResponsiveImageSrcSet = (
     }
     safeWidths.sort((left, right) => left - right);
     if (!safeWidths.length) return undefined;
-    return safeWidths
-      .map((width) => {
-        const nextUrl = new URL(url.toString());
-        nextUrl.searchParams.set('auto', 'format');
-        nextUrl.searchParams.set('w', String(width));
-        nextUrl.searchParams.set('q', width >= 960 ? '80' : '76');
-        return `${nextUrl.toString()} ${width}w`;
-      })
-      .join(', ');
+    const srcSet: string[] = [];
+    for (const width of safeWidths) {
+      const nextUrl = new URL(url.toString());
+      nextUrl.searchParams.set('auto', 'format');
+      nextUrl.searchParams.set('w', String(width));
+      nextUrl.searchParams.set('q', width >= 960 ? '80' : '76');
+      srcSet.push(`${nextUrl.toString()} ${width}w`);
+    }
+    return srcSet.join(', ');
   } catch (_error) {
     return undefined;
   }

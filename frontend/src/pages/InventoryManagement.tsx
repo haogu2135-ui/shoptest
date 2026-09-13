@@ -47,6 +47,14 @@ const Title = ShopTypography.Title;
 const Text = ShopTypography.Text;
 
 const INVENTORY_PAGE_SIZE = 20;
+const STOCK_LEVEL_COLORS: Record<StockLevel, string> = {
+  out: 'red',
+  critical: 'volcano',
+  low: 'orange',
+  healthy: 'green',
+};
+
+const normalizeStockValue = (stock?: number | null) => Math.max(0, Math.trunc(Number(stock ?? 0) || 0));
 
 type StockAdjustFormValues = {
   mode: StockAdjustMode;
@@ -175,10 +183,14 @@ const InventoryManagement: React.FC = () => {
     adminApi.getProductCategories({ signal: abortController.signal })
       .then((response) => {
         if (disposed || abortController.signal.aborted) return;
-        setCategories(response.data.map((category) => ({
-          value: String(category.id),
-          label: String(category.name || '').trim() || `#${category.id}`,
-        })));
+        const nextCategories: Array<{ value: string; label: string }> = [];
+        for (const category of response.data) {
+          nextCategories.push({
+            value: String(category.id),
+            label: String(category.name || '').trim() || `#${category.id}`,
+          });
+        }
+        setCategories(nextCategories);
       })
       .catch(() => {
         if (disposed || abortController.signal.aborted) return;
@@ -190,10 +202,14 @@ const InventoryManagement: React.FC = () => {
     };
   }, []);
 
-  const visibleProducts = useMemo(
-    () => (levelFilter === 'all' ? products : products.filter((product) => getStockLevel(product.stock) === levelFilter)),
-    [levelFilter, products],
-  );
+  const visibleProducts = useMemo(() => {
+    if (levelFilter === 'all') return products;
+    const visible: Product[] = [];
+    for (const product of products) {
+      if (getStockLevel(product.stock) === levelFilter) visible.push(product);
+    }
+    return visible;
+  }, [levelFilter, products]);
 
   const stockLevelLabels = useMemo<Record<StockLevel, string>>(() => ({
     out: t('pages.inventoryAdmin.outOfStock'),
@@ -201,13 +217,6 @@ const InventoryManagement: React.FC = () => {
     low: t('pages.inventoryAdmin.low'),
     healthy: t('pages.inventoryAdmin.healthy'),
   }), [t]);
-
-  const stockLevelColors: Record<StockLevel, string> = {
-    out: 'red',
-    critical: 'volcano',
-    low: 'orange',
-    healthy: 'green',
-  };
 
   const productLabel = useCallback((product?: Product | null) => {
     const name = String(product?.name || '').trim();
@@ -226,7 +235,7 @@ const InventoryManagement: React.FC = () => {
     }
     setAdjustTarget(product);
     form.resetFields();
-    form.setFieldsValue({ mode: 'set', amount: Math.max(0, Math.trunc(Number(product.stock ?? 0) || 0)) });
+    form.setFieldsValue({ mode: 'set', amount: normalizeStockValue(product.stock) });
   };
 
   const closeAdjustModal = () => {
@@ -476,7 +485,7 @@ const InventoryManagement: React.FC = () => {
                 width: 130,
                 align: 'right',
                 onCell: () => inventoryTableCell(t('pages.inventoryAdmin.currentStock')),
-                render: (stock: number) => <strong>{Math.max(0, Math.trunc(Number(stock ?? 0) || 0))}</strong>,
+                  render: (stock: number) => <strong>{normalizeStockValue(stock)}</strong>,
               },
               {
                 title: t('pages.inventoryAdmin.stockLevel'),
@@ -485,7 +494,7 @@ const InventoryManagement: React.FC = () => {
                 onCell: () => inventoryTableCell(t('pages.inventoryAdmin.stockLevel')),
                 render: (_: unknown, product: Product) => {
                   const level = getStockLevel(product.stock);
-                  return <ShopTag color={stockLevelColors[level]}>{stockLevelLabels[level]}</ShopTag>;
+                  return <ShopTag color={STOCK_LEVEL_COLORS[level]}>{stockLevelLabels[level]}</ShopTag>;
                 },
               },
               {
@@ -495,7 +504,7 @@ const InventoryManagement: React.FC = () => {
                 align: 'right',
                 onCell: () => inventoryTableCell(t('pages.inventoryAdmin.stockValue')),
                 render: (_: unknown, product: Product) => formatMoney(
-                  Math.max(0, Math.trunc(Number(product.stock ?? 0) || 0)) * Number(product.price || 0),
+                  normalizeStockValue(product.stock) * Number(product.price || 0),
                 ),
               },
               {
@@ -586,7 +595,7 @@ const InventoryManagement: React.FC = () => {
           </Form.Item>
           <div className="inventory-page__preview" role="status" aria-live="polite">
             <Text type="secondary">{t('pages.inventoryAdmin.currentStock')}</Text>
-            <strong>{Math.max(0, Math.trunc(Number(adjustTarget?.stock ?? 0) || 0))}</strong>
+            <strong>{normalizeStockValue(adjustTarget?.stock)}</strong>
             <Text type="secondary">{t('pages.inventoryAdmin.resultingStock')}</Text>
             <strong className="inventory-page__previewResult">{previewStock}</strong>
           </div>
