@@ -4,11 +4,15 @@ import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Locale;
+import java.util.Set;
+import java.util.regex.Pattern;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public final class GatewayUrlValidator {
     private static final Logger log = LoggerFactory.getLogger(GatewayUrlValidator.class);
+    private static final Set<String> LOCAL_HOST_NAMES = Set.of("localhost", "0.0.0.0", "::1");
+    private static final Pattern IPV4_LITERAL_PATTERN = Pattern.compile("\\d+\\.\\d+\\.\\d+\\.\\d+");
 
     private GatewayUrlValidator() {
     }
@@ -32,10 +36,11 @@ public final class GatewayUrlValidator {
             throw new IllegalStateException(label + " must not include credentials");
         }
         String host = uri.getHost();
-        if (host == null || host.trim().isEmpty()) {
+        String normalizedHost = host == null ? "" : host.trim();
+        if (normalizedHost.isEmpty()) {
             throw new IllegalStateException(label + " host is required");
         }
-        boolean localOrPrivateHost = isLocalOrPrivateHost(host);
+        boolean localOrPrivateHost = isLocalOrPrivateHost(normalizedHost);
         if ("http".equals(scheme) && (!allowLocal || !localOrPrivateHost)) {
             throw new IllegalStateException(label + " must use https unless explicitly using a local development gateway");
         }
@@ -46,14 +51,15 @@ public final class GatewayUrlValidator {
     }
 
     public static boolean isLocalOrPrivateHost(String host) {
-        if (host == null || host.trim().isEmpty()) {
+        String trimmedHost = host == null ? "" : host.trim();
+        if (trimmedHost.isEmpty()) {
             return true;
         }
-        String normalized = host.trim().toLowerCase(Locale.ROOT);
+        String normalized = trimmedHost.toLowerCase(Locale.ROOT);
         if (normalized.startsWith("[") && normalized.endsWith("]")) {
             normalized = normalized.substring(1, normalized.length() - 1);
         }
-        if ("localhost".equals(normalized) || "0.0.0.0".equals(normalized) || "::1".equals(normalized)) {
+        if (LOCAL_HOST_NAMES.contains(normalized)) {
             return true;
         }
         if (normalized.endsWith(".localhost") || normalized.endsWith(".local")) {
@@ -92,6 +98,6 @@ public final class GatewayUrlValidator {
     }
 
     private static boolean isIpLiteral(String host) {
-        return host.contains(":") || host.matches("\\d+\\.\\d+\\.\\d+\\.\\d+");
+        return host.contains(":") || IPV4_LITERAL_PATTERN.matcher(host).matches();
     }
 }

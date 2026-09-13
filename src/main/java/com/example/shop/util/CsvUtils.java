@@ -11,7 +11,7 @@ public final class CsvUtils {
     }
 
     public static List<Record> parseRecords(Reader reader) throws IOException {
-        List<Record> records = new ArrayList<>();
+        List<Record> records = new ArrayList<>(16);
         PushbackReader pushbackReader = new PushbackReader(reader, 1);
         StringBuilder record = new StringBuilder();
         boolean quoted = false;
@@ -40,7 +40,7 @@ public final class CsvUtils {
                 continue;
             }
             if (ch == '\r' || ch == '\n') {
-                String newline = String.valueOf(ch);
+                String newline = ch == '\r' ? "\r" : "\n";
                 if (ch == '\r') {
                     int next = pushbackReader.read();
                     if (next == '\n') {
@@ -52,10 +52,11 @@ public final class CsvUtils {
                 if (quoted) {
                     record.append(newline);
                 } else if (record.length() > 0) {
+                    String line = record.toString();
                     if (delimiter == null) {
-                        delimiter = detectDelimiter(record.toString());
+                        delimiter = detectDelimiter(line);
                     }
-                    records.add(new Record(recordStartLine, parseLine(record.toString(), delimiter)));
+                    records.add(new Record(recordStartLine, parseLine(line, delimiter)));
                     record.setLength(0);
                     recordStartLine = lineNumber + 1;
                 } else {
@@ -71,10 +72,11 @@ public final class CsvUtils {
             throw new IllegalArgumentException("CSV contains an unterminated quoted field");
         }
         if (record.length() > 0) {
+            String line = record.toString();
             if (delimiter == null) {
-                delimiter = detectDelimiter(record.toString());
+                delimiter = detectDelimiter(line);
             }
-            records.add(new Record(recordStartLine, parseLine(record.toString(), delimiter)));
+            records.add(new Record(recordStartLine, parseLine(line, delimiter)));
         }
         return records;
     }
@@ -84,7 +86,7 @@ public final class CsvUtils {
     }
 
     private static List<String> parseLine(String line, char delimiter) {
-        List<String> values = new ArrayList<>();
+        List<String> values = new ArrayList<>(8);
         StringBuilder current = new StringBuilder();
         boolean quoted = false;
 
@@ -110,13 +112,8 @@ public final class CsvUtils {
     }
 
     private static char detectDelimiter(String record) {
-        int commas = countDelimiter(record, ',');
-        int semicolons = countDelimiter(record, ';');
-        return semicolons > commas ? ';' : ',';
-    }
-
-    private static int countDelimiter(String record, char delimiter) {
-        int count = 0;
+        int commas = 0;
+        int semicolons = 0;
         boolean quoted = false;
         for (int i = 0; i < record.length(); i++) {
             char ch = record.charAt(i);
@@ -126,15 +123,19 @@ public final class CsvUtils {
                 } else {
                     quoted = !quoted;
                 }
-            } else if (ch == delimiter && !quoted) {
-                count++;
+            } else if (!quoted) {
+                if (ch == ',') {
+                    commas++;
+                } else if (ch == ';') {
+                    semicolons++;
+                }
             }
         }
-        return count;
+        return semicolons > commas ? ';' : ',';
     }
 
     public static String row(List<?> values) {
-        StringBuilder row = new StringBuilder();
+        StringBuilder row = new StringBuilder(Math.min(4096, values.size() * 16));
         for (int i = 0; i < values.size(); i++) {
             if (i > 0) {
                 row.append(',');
@@ -149,10 +150,20 @@ public final class CsvUtils {
             return "";
         }
         String text = preventFormulaInjection(String.valueOf(value));
-        if (text.contains(",") || text.contains("\"") || text.contains("\r") || text.contains("\n")) {
+        if (containsCsvSpecialCharacter(text)) {
             return "\"" + text.replace("\"", "\"\"") + "\"";
         }
         return text;
+    }
+
+    private static boolean containsCsvSpecialCharacter(String value) {
+        for (int i = 0; i < value.length(); i++) {
+            char ch = value.charAt(i);
+            if (ch == ',' || ch == '"' || ch == '\r' || ch == '\n') {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static String preventFormulaInjection(String value) {

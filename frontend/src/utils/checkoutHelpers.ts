@@ -87,8 +87,10 @@ export const getCheckoutCouponErrorMessage = (
     return apiMessage;
   }
 
-  const matched = couponErrorMatchers.find(([matcher]) => matcher.test(signal));
-  return matched ? t(matched[1]) : apiMessage;
+  for (const [matcher, translationKey] of couponErrorMatchers) {
+    if (matcher.test(signal)) return t(translationKey);
+  }
+  return apiMessage;
 };
 
 export const isValidCheckoutPostalCode = isValidRegionalPostalCode;
@@ -133,11 +135,14 @@ export const normalizeCouponQuote = (quote?: CouponQuote | null): CouponQuote | 
   quote ? { ...quote, availableCoupons: Array.isArray(quote.availableCoupons) ? quote.availableCoupons : [] } : null
 );
 
-export const sanitizeCheckoutControlChars = (value: string) =>
-  Array.from(value, (char) => {
-    const code = char.charCodeAt(0);
-    return code <= 31 || code === 127 ? ' ' : char;
-  }).join('');
+export const sanitizeCheckoutControlChars = (value: string) => {
+  let sanitized = '';
+  for (let index = 0; index < value.length; index += 1) {
+    const code = value.charCodeAt(index);
+    sanitized += code <= 31 || code === 127 ? ' ' : value[index];
+  }
+  return sanitized;
+};
 
 export const normalizeCheckoutText = (value: unknown, maxLength: number) =>
   sanitizeCheckoutControlChars(String(value || '')).trim().replace(/\s+/g, ' ').slice(0, maxLength);
@@ -169,17 +174,19 @@ export const normalizeLikelyCheckoutPhone = (value: unknown) =>
 export const getRecommendedPaymentMethod = (channels: PaymentChannel[], currency: string) => {
   // Always recommend within market-filtered rails so MXN never lands on CN methods.
   const marketChannels = filterPaymentChannelsForMarket(channels, { currency });
-  const backendRecommended = marketChannels.find((channel) => channel.recommended)?.code;
-  if (backendRecommended) {
-    return backendRecommended;
+  for (const channel of marketChannels) {
+    if (channel.recommended) return channel.code;
   }
   if (!conversionConfig.paymentRecommendation.enabled) return null;
   const preferredCodes = conversionConfig.paymentRecommendation.byCurrency[
     currency as keyof typeof conversionConfig.paymentRecommendation.byCurrency
   ] || conversionConfig.paymentRecommendation.fallback;
-  return preferredCodes.find((code) => marketChannels.some((channel) => channel.code === code))
-    || marketChannels[0]?.code
-    || null;
+  const marketCodes = new Set<string>();
+  for (const channel of marketChannels) marketCodes.add(channel.code);
+  for (const code of preferredCodes) {
+    if (marketCodes.has(code)) return code;
+  }
+  return marketChannels[0]?.code || null;
 };
 
 export const resolveCheckoutPaymentMethod = (
@@ -188,8 +195,10 @@ export const resolveCheckoutPaymentMethod = (
   currency: string,
 ) => {
   const marketChannels = filterPaymentChannelsForMarket(channels, { currency });
-  if (candidate && marketChannels.some((channel) => channel.code === candidate)) {
-    return candidate;
+  if (candidate) {
+    for (const channel of marketChannels) {
+      if (channel.code === candidate) return candidate;
+    }
   }
   return getRecommendedPaymentMethod(channels, currency) || marketChannels[0]?.code || '';
 };
@@ -197,7 +206,11 @@ export const resolveCheckoutPaymentMethod = (
 export const areSameIds = (left: number[], right: number[]) => {
   const leftIds = new Set(left);
   const rightIds = new Set(right);
-  return leftIds.size === rightIds.size && Array.from(leftIds).every((id) => rightIds.has(id));
+  if (leftIds.size !== rightIds.size) return false;
+  for (const id of left) {
+    if (!rightIds.has(id)) return false;
+  }
+  return true;
 };
 
 
@@ -279,21 +292,25 @@ export type CheckoutMessageType = 'error' | 'warning' | 'success' | 'info';
 
 export const mergeDefinedCheckoutFields = (current: CheckoutFormSnapshot, updates: CheckoutFormSnapshot) => {
   const next = { ...current };
-  Object.entries(updates || {}).forEach(([key, value]) => {
+  for (const key in updates || {}) {
+    if (!Object.prototype.hasOwnProperty.call(updates, key)) continue;
+    const value = updates[key as CheckoutFormFieldName];
     if (value !== undefined) {
       next[key as CheckoutFormFieldName] = value;
     }
-  });
+  }
   return next;
 };
 
 export const mergeHydratableCheckoutFields = (current: CheckoutFormSnapshot, updates: CheckoutFormSnapshot) => {
   const next = { ...current };
-  Object.entries(updates || {}).forEach(([key, value]) => {
+  for (const key in updates || {}) {
+    if (!Object.prototype.hasOwnProperty.call(updates, key)) continue;
+    const value = updates[key as CheckoutFormFieldName];
     if (hasHydratableCheckoutValue(value)) {
       next[key as CheckoutFormFieldName] = value;
     }
-  });
+  }
   return next;
 };
 
@@ -308,8 +325,13 @@ export const firstFilledCheckoutText = (...values: unknown[]): string => {
 };
 
 export const firstCheckoutRegionPath = (...values: unknown[]): string[] | undefined => {
-  const matched = values.find((value): value is unknown[] => Array.isArray(value) && value.length > 0);
-  return matched ? matched.map((part) => String(part)) : undefined;
+  for (const value of values) {
+    if (!Array.isArray(value) || value.length === 0) continue;
+    const path: string[] = [];
+    for (const part of value) path.push(String(part));
+    return path;
+  }
+  return undefined;
 };
 
 export const normalizeCheckoutIdempotencyKey = (value: unknown) =>

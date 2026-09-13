@@ -10,11 +10,16 @@ import lombok.RequiredArgsConstructor;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class UserAddressService {
+    private static final int MAX_ADDRESSES_PER_USER = 100;
+    private static final Pattern CONTROL_TEXT_PATTERN = Pattern.compile("[\\p{Cntrl}&&[^\\r\\n\\t]]");
+    private static final Pattern WHITESPACE_TEXT_PATTERN = Pattern.compile("\\s+");
+
     private final UserAddressMapper userAddressMapper;
     private final UserMapper userMapper;
     private final RuntimeConfigService runtimeConfig;
@@ -45,8 +50,9 @@ public class UserAddressService {
             userAddressMapper.clearDefault(address.getUserId());
         }
         address.setIsDefault(shouldBeDefault);
-        address.setCreatedAt(LocalDateTime.now());
-        address.setUpdatedAt(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        address.setCreatedAt(now);
+        address.setUpdatedAt(now);
         userAddressMapper.insert(address);
         return address;
     }
@@ -108,10 +114,11 @@ public class UserAddressService {
         if (address == null) {
             throw new IllegalArgumentException("Address is required");
         }
-        if (address.getUserId() == null) {
+        Long userId = address.getUserId();
+        if (userId == null) {
             throw new IllegalArgumentException("User is required");
         }
-        if (address.getUserId() <= 0) {
+        if (userId <= 0) {
             throw new IllegalArgumentException("User is required");
         }
         address.setRecipientName(normalizeRequiredText(address.getRecipientName(), "Recipient name",
@@ -128,18 +135,23 @@ public class UserAddressService {
         address.setPostalCode(postalCode);
         address.setDetailAddress(detailAddress);
         String combinedAddress = address.getAddress();
-        if (combinedAddress == null || combinedAddress.trim().isEmpty()) {
+        if (combinedAddress == null) {
             combinedAddress = (region.replace('|', ' ') + " " + postalCode + " " + detailAddress).trim();
+        } else {
+            String trimmedAddress = combinedAddress.trim();
+            if (trimmedAddress.isEmpty()) {
+                combinedAddress = (region.replace('|', ' ') + " " + postalCode + " " + detailAddress).trim();
+            }
         }
         address.setAddress(normalizeRequiredText(combinedAddress, "Address",
                 runtimeConfig.getInt("user-address.address-max-chars", 500)));
     }
 
     private String normalizeRequiredText(String value, String field, int maxLength) {
-        String normalized = value == null ? "" : value
-                .replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", " ")
-                .trim()
-                .replaceAll("\\s+", " ");
+        String normalized = value == null ? "" : WHITESPACE_TEXT_PATTERN
+                .matcher(CONTROL_TEXT_PATTERN.matcher(value).replaceAll(" "))
+                .replaceAll(" ")
+                .trim();
         if (normalized.isEmpty()) {
             throw new IllegalArgumentException(field + " is required");
         }
@@ -160,6 +172,6 @@ public class UserAddressService {
     }
 
     private int normalizedMaxAddressesPerUser() {
-        return Math.max(1, Math.min(runtimeConfig.getInt("user-address.max-per-user", 20), 100));
+        return Math.max(1, Math.min(runtimeConfig.getInt("user-address.max-per-user", 20), MAX_ADDRESSES_PER_USER));
     }
 }

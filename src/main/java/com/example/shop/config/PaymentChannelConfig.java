@@ -6,11 +6,12 @@ import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.Set;
 
 @Data
 @Component
@@ -27,21 +28,27 @@ public class PaymentChannelConfig {
     private Geo geo = new Geo();
 
     public List<Channel> configuredChannels() {
-        List<Channel> configured = channels.stream()
-                .sorted(Comparator.comparingInt(Channel::getSortOrder).thenComparing(Channel::getCode))
-                .collect(Collectors.toList());
+        List<Channel> configured = new ArrayList<>(channels);
+        configured.sort(Comparator.comparingInt(Channel::getSortOrder).thenComparing(Channel::getCode));
         if (!configured.isEmpty()) {
             return configured;
         }
-        return defaultChannels().stream()
-                .filter(channel -> supportedChannelSet().contains(channel.getCode()))
-                .collect(Collectors.toList());
+        Set<String> supported = supportedChannelSet();
+        List<Channel> defaults = defaultChannels();
+        List<Channel> result = new ArrayList<>(defaults.size());
+        for (Channel channel : defaults) {
+            if (supported.contains(channel.getCode())) result.add(channel);
+        }
+        return result;
     }
 
     public List<Channel> enabledChannels() {
-        return configuredChannels().stream()
-                .filter(Channel::isEnabled)
-                .collect(Collectors.toList());
+        List<Channel> configured = configuredChannels();
+        List<Channel> enabled = new ArrayList<>(configured.size());
+        for (Channel channel : configured) {
+            if (channel.isEnabled()) enabled.add(channel);
+        }
+        return enabled;
     }
 
     public Channel requireEnabled(String code) {
@@ -58,23 +65,30 @@ public class PaymentChannelConfig {
 
     public Optional<Channel> findEnabled(String code) {
         String normalized = normalize(code);
-        return enabledChannels().stream()
-                .filter(channel -> channel.getCode().equals(normalized))
-                .findFirst();
+        for (Channel channel : configuredChannels()) {
+            if (channel.isEnabled() && channel.getCode().equals(normalized)) return Optional.of(channel);
+        }
+        return Optional.empty();
     }
 
     public Optional<Channel> findConfigured(String code) {
         String normalized = normalize(code);
-        return configuredChannels().stream()
-                .filter(channel -> channel.getCode().equals(normalized))
-                .findFirst();
+        for (Channel channel : configuredChannels()) {
+            if (channel.getCode().equals(normalized)) return Optional.of(channel);
+        }
+        return Optional.empty();
     }
 
-    private List<String> supportedChannelSet() {
-        return List.of(supportedChannels.split(",")).stream()
-                .map(this::normalize)
-                .filter(item -> !item.isEmpty())
-                .collect(Collectors.toList());
+    private Set<String> supportedChannelSet() {
+        Set<String> supported = new HashSet<>();
+        int tokenStart = 0;
+        for (int index = 0; index <= supportedChannels.length(); index++) {
+            if (index != supportedChannels.length() && supportedChannels.charAt(index) != ',') continue;
+            String item = normalize(supportedChannels.substring(tokenStart, index));
+            if (!item.isEmpty()) supported.add(item);
+            tokenStart = index + 1;
+        }
+        return supported;
     }
 
     private String normalize(String code) {

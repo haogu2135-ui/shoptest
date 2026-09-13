@@ -14,6 +14,11 @@ import java.util.Set;
 @RequiredArgsConstructor
 @Slf4j
 public class ReviewImageService {
+    private static final String DEFAULT_UPLOAD_DIR = "uploads/reviews";
+    private static final String DEFAULT_PUBLIC_PATH = "/uploads/reviews";
+    private static final long DEFAULT_MAX_FILE_SIZE_BYTES = 5_242_880L;
+    private static final int DEFAULT_MAX_IMAGE_WIDTH = 8_000;
+    private static final int DEFAULT_MAX_IMAGE_HEIGHT = 8_000;
     private static final Set<String> SUPPORTED_IMAGE_CONTENT_TYPES = Set.of(
             "image/jpeg",
             "image/png",
@@ -73,14 +78,14 @@ public class ReviewImageService {
     }
 
     private String uploadDir() {
-        return runtimeConfig.getString("review.image.upload-dir", "uploads/reviews");
+        return runtimeConfig.getString("review.image.upload-dir", DEFAULT_UPLOAD_DIR);
     }
 
     private String publicPath() {
-        String configured = runtimeConfig.getString("review.image.public-path", "/uploads/reviews");
-        String normalized = configured == null ? "/uploads/reviews" : configured.trim();
+        String configured = runtimeConfig.getString("review.image.public-path", DEFAULT_PUBLIC_PATH);
+        String normalized = configured == null ? DEFAULT_PUBLIC_PATH : configured.trim();
         if (normalized.isEmpty()) {
-            normalized = "/uploads/reviews";
+            normalized = DEFAULT_PUBLIC_PATH;
         }
         if (!normalized.startsWith("/")) {
             normalized = "/" + normalized;
@@ -89,15 +94,15 @@ public class ReviewImageService {
     }
 
     private long maxFileSizeBytes() {
-        return Math.max(1, runtimeConfig.getLong("review.image.max-file-size-bytes", 5242880));
+        return Math.max(1, runtimeConfig.getLong("review.image.max-file-size-bytes", DEFAULT_MAX_FILE_SIZE_BYTES));
     }
 
     private int maxImageWidth() {
-        return Math.max(1, runtimeConfig.getInt("review.image.max-width", 8000));
+        return Math.max(1, runtimeConfig.getInt("review.image.max-width", DEFAULT_MAX_IMAGE_WIDTH));
     }
 
     private int maxImageHeight() {
-        return Math.max(1, runtimeConfig.getInt("review.image.max-height", 8000));
+        return Math.max(1, runtimeConfig.getInt("review.image.max-height", DEFAULT_MAX_IMAGE_HEIGHT));
     }
 
     private String normalizeContentType(String contentType) {

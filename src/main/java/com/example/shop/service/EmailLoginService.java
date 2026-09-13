@@ -32,7 +32,6 @@ import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -52,7 +51,11 @@ public class EmailLoginService {
     private static final int MAX_EMAIL_LENGTH = 180;
     private static final int MAX_ACCOUNT_ENUMERATION_PADDING_MS = 5_000;
     private static final int MAX_IN_MEMORY_RATE_BUCKETS = 100_000;
+    private static final int VERIFICATION_CODE_BOUND = 1_000_000;
+    private static final char[] HEX_DIGITS = "0123456789abcdef".toCharArray();
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$");
+    private static final Pattern CLIENT_KEY_UNSAFE_PATTERN = Pattern.compile("[^a-z0-9:._-]");
+    private static final Pattern REDIS_PREFIX_UNSAFE_PATTERN = Pattern.compile("[^a-zA-Z0-9:._-]");
 
     public void sendLoginCode(String email) {
         sendLoginCode(email, "unknown");
@@ -145,12 +148,15 @@ public class EmailLoginService {
 
     private void sendLoginCodeInMemory(String normalizedEmail, String clientKey) {
         Instant now = Instant.now(clock);
-        consumeRate(sendBuckets, rateKey("send-email", normalizedEmail), sendWindow(), maxSendAttemptsPerWindow(), now, "RATE_LIMITED");
-        consumeRate(sendBuckets, rateKey("send-client", normalizeClientKey(clientKey)), sendWindow(), maxSendAttemptsPerWindow() * 3, now, "RATE_LIMITED");
+        Duration sendWindow = sendWindow();
+        int maxSendAttempts = maxSendAttemptsPerWindow();
+        consumeRate(sendBuckets, rateKey("send-email", normalizedEmail), sendWindow, maxSendAttempts, now, "RATE_LIMITED");
+        consumeRate(sendBuckets, rateKey("send-client", normalizeClientKey(clientKey)), sendWindow, maxSendAttempts * 3, now, "RATE_LIMITED");
 
         Instant previousSend = sendCooldowns.get(normalizedEmail);
-        if (previousSend != null && Duration.between(previousSend, now).compareTo(resendInterval()) < 0) {
-            throw rateLimited("RATE_LIMITED", previousSend.plus(resendInterval()), now);
+        Duration resendInterval = resendInterval();
+        if (previousSend != null && Duration.between(previousSend, now).compareTo(resendInterval) < 0) {
+            throw rateLimited("RATE_LIMITED", previousSend.plus(resendInterval), now);
         }
         Instant lookupStartedAt = Instant.now(clock);
         User user = userService.findByUsernameOrPhoneOrEmail(normalizedEmail);
@@ -161,12 +167,13 @@ public class EmailLoginService {
         }
 
         VerificationCode existing = codes.get(normalizedEmail);
-        if (existing != null && Duration.between(existing.sentAt, now).compareTo(resendInterval()) < 0) {
-            throw rateLimited("RATE_LIMITED", existing.sentAt.plus(resendInterval()), now);
+        if (existing != null && Duration.between(existing.sentAt, now).compareTo(resendInterval) < 0) {
+            throw rateLimited("RATE_LIMITED", existing.sentAt.plus(resendInterval), now);
         }
 
-        String code = String.format("%06d", random.nextInt(1_000_000));
-        VerificationCode pendingCode = new VerificationCode(hashCode(normalizedEmail, code), now.plus(codeTtl()), now);
+        String code = newVerificationCode();
+        Duration codeTtl = codeTtl();
+        VerificationCode pendingCode = new VerificationCode(hashCode(normalizedEmail, code), now.plus(codeTtl), now);
         codes.put(normalizedEmail, pendingCode);
         try {
             sendMail(normalizedEmail, code);
@@ -180,11 +187,14 @@ public class EmailLoginService {
     private void sendLoginCodeWithRedis(String normalizedEmail, String clientKey) {
         StringRedisTemplate redisTemplate = redisTemplate();
         Instant now = Instant.now(clock);
-        consumeRedisRate(redisTemplate, redisRateKey("send-email", normalizedEmail), sendWindow(), maxSendAttemptsPerWindow(), now, "RATE_LIMITED");
-        consumeRedisRate(redisTemplate, redisRateKey("send-client", normalizeClientKey(clientKey)), sendWindow(), maxSendAttemptsPerWindow() * 3, now, "RATE_LIMITED");
+        Duration sendWindow = sendWindow();
+        int maxSendAttempts = maxSendAttemptsPerWindow();
+        consumeRedisRate(redisTemplate, redisRateKey("send-email", normalizedEmail), sendWindow, maxSendAttempts, now, "RATE_LIMITED");
+        consumeRedisRate(redisTemplate, redisRateKey("send-client", normalizeClientKey(clientKey)), sendWindow, maxSendAttempts * 3, now, "RATE_LIMITED");
 
         String cooldownKey = redisKey("cooldown", normalizedEmail);
         Long cooldownTtl = redisTemplate.getExpire(cooldownKey);
+        Duration resendInterval = resendInterval();
         if (cooldownTtl != null && cooldownTtl > 0) {
             throw rateLimited("RATE_LIMITED", now.plusSeconds(cooldownTtl), now);
         }
@@ -192,20 +202,21 @@ public class EmailLoginService {
         Instant lookupStartedAt = Instant.now(clock);
         User user = userService.findByUsernameOrPhoneOrEmail(normalizedEmail);
         if (user == null || isDisabled(user)) {
-            redisTemplate.opsForValue().set(cooldownKey, Long.toString(now.toEpochMilli()), resendInterval());
+            redisTemplate.opsForValue().set(cooldownKey, Long.toString(now.toEpochMilli()), resendInterval);
             padAccountEnumerationResponse(lookupStartedAt);
             return;
         }
 
-        String code = String.format("%06d", random.nextInt(1_000_000));
+        String code = newVerificationCode();
         String codeKey = redisKey("code", normalizedEmail);
         redisTemplate.opsForHash().put(codeKey, "hash", hashCode(normalizedEmail, code));
         redisTemplate.opsForHash().put(codeKey, "sentAt", Long.toString(now.toEpochMilli()));
         redisTemplate.opsForHash().put(codeKey, "failedAttempts", "0");
-        redisTemplate.expire(codeKey, codeTtl());
+        Duration codeTtl = codeTtl();
+        redisTemplate.expire(codeKey, codeTtl);
         try {
             sendMail(normalizedEmail, code);
-            redisTemplate.opsForValue().set(cooldownKey, Long.toString(now.toEpochMilli()), resendInterval());
+            redisTemplate.opsForValue().set(cooldownKey, Long.toString(now.toEpochMilli()), resendInterval);
         } catch (RuntimeException e) {
             redisTemplate.delete(codeKey);
             throw e;
@@ -222,12 +233,15 @@ public class EmailLoginService {
 
     private void sendPurposeCodeInMemory(String purposeKey, String normalizedEmail, String clientKey, String purposeLabel, boolean deliverCode) {
         Instant now = Instant.now(clock);
-        consumeRate(sendBuckets, rateKey("send-purpose", purposeKey), sendWindow(), maxSendAttemptsPerWindow(), now, "RATE_LIMITED");
-        consumeRate(sendBuckets, rateKey("send-client", normalizeClientKey(clientKey)), sendWindow(), maxSendAttemptsPerWindow() * 3, now, "RATE_LIMITED");
+        Duration sendWindow = sendWindow();
+        int maxSendAttempts = maxSendAttemptsPerWindow();
+        consumeRate(sendBuckets, rateKey("send-purpose", purposeKey), sendWindow, maxSendAttempts, now, "RATE_LIMITED");
+        consumeRate(sendBuckets, rateKey("send-client", normalizeClientKey(clientKey)), sendWindow, maxSendAttempts * 3, now, "RATE_LIMITED");
 
         Instant previousSend = sendCooldowns.get(purposeKey);
-        if (previousSend != null && Duration.between(previousSend, now).compareTo(resendInterval()) < 0) {
-            throw rateLimited("RATE_LIMITED", previousSend.plus(resendInterval()), now);
+        Duration resendInterval = resendInterval();
+        if (previousSend != null && Duration.between(previousSend, now).compareTo(resendInterval) < 0) {
+            throw rateLimited("RATE_LIMITED", previousSend.plus(resendInterval), now);
         }
         if (!deliverCode) {
             sendCooldowns.put(purposeKey, now);
@@ -235,8 +249,9 @@ public class EmailLoginService {
             return;
         }
 
-        String code = String.format("%06d", random.nextInt(1_000_000));
-        VerificationCode pendingCode = new VerificationCode(hashCode(purposeKey, code), now.plus(codeTtl()), now);
+        String code = newVerificationCode();
+        Duration codeTtl = codeTtl();
+        VerificationCode pendingCode = new VerificationCode(hashCode(purposeKey, code), now.plus(codeTtl), now);
         codes.put(purposeKey, pendingCode);
         try {
             sendMail(normalizedEmail, code, purposeLabel);
@@ -258,29 +273,33 @@ public class EmailLoginService {
     private void sendPurposeCodeWithRedis(String purposeKey, String normalizedEmail, String clientKey, String purposeLabel, boolean deliverCode) {
         StringRedisTemplate redisTemplate = redisTemplate();
         Instant now = Instant.now(clock);
-        consumeRedisRate(redisTemplate, redisRateKey("send-purpose", purposeKey), sendWindow(), maxSendAttemptsPerWindow(), now, "RATE_LIMITED");
-        consumeRedisRate(redisTemplate, redisRateKey("send-client", normalizeClientKey(clientKey)), sendWindow(), maxSendAttemptsPerWindow() * 3, now, "RATE_LIMITED");
+        Duration sendWindow = sendWindow();
+        int maxSendAttempts = maxSendAttemptsPerWindow();
+        consumeRedisRate(redisTemplate, redisRateKey("send-purpose", purposeKey), sendWindow, maxSendAttempts, now, "RATE_LIMITED");
+        consumeRedisRate(redisTemplate, redisRateKey("send-client", normalizeClientKey(clientKey)), sendWindow, maxSendAttempts * 3, now, "RATE_LIMITED");
 
         String cooldownKey = redisKey("cooldown", purposeKey);
         Long cooldownTtl = redisTemplate.getExpire(cooldownKey);
+        Duration resendInterval = resendInterval();
         if (cooldownTtl != null && cooldownTtl > 0) {
             throw rateLimited("RATE_LIMITED", now.plusSeconds(cooldownTtl), now);
         }
         if (!deliverCode) {
-            redisTemplate.opsForValue().set(cooldownKey, Long.toString(now.toEpochMilli()), resendInterval());
+            redisTemplate.opsForValue().set(cooldownKey, Long.toString(now.toEpochMilli()), resendInterval);
             padAccountEnumerationResponse(now);
             return;
         }
 
-        String code = String.format("%06d", random.nextInt(1_000_000));
+        String code = newVerificationCode();
         String codeKey = redisKey("code", purposeKey);
         redisTemplate.opsForHash().put(codeKey, "hash", hashCode(purposeKey, code));
         redisTemplate.opsForHash().put(codeKey, "sentAt", Long.toString(now.toEpochMilli()));
         redisTemplate.opsForHash().put(codeKey, "failedAttempts", "0");
-        redisTemplate.expire(codeKey, codeTtl());
+        Duration codeTtl = codeTtl();
+        redisTemplate.expire(codeKey, codeTtl);
         try {
             sendMail(normalizedEmail, code, purposeLabel);
-            redisTemplate.opsForValue().set(cooldownKey, Long.toString(now.toEpochMilli()), resendInterval());
+            redisTemplate.opsForValue().set(cooldownKey, Long.toString(now.toEpochMilli()), resendInterval);
         } catch (RuntimeException e) {
             redisTemplate.delete(codeKey);
             throw e;
@@ -328,8 +347,11 @@ public class EmailLoginService {
 
     private User verifyLoginCodeInMemory(String normalizedEmail, String normalizedCode, String clientKey) {
         Instant now = Instant.now(clock);
-        consumeRate(verifyBuckets, rateKey("verify-email", normalizedEmail), verifyWindow(), maxVerifyFailuresPerWindow(), now, "TOO_MANY_ATTEMPTS");
-        consumeRate(verifyBuckets, rateKey("verify-client", normalizeClientKey(clientKey)), verifyWindow(), maxVerifyFailuresPerWindow() * 3, now, "TOO_MANY_ATTEMPTS");
+        Duration verifyWindow = verifyWindow();
+        int maxVerifyFailures = maxVerifyFailuresPerWindow();
+        int maxCodeAttempts = maxCodeAttempts();
+        consumeRate(verifyBuckets, rateKey("verify-email", normalizedEmail), verifyWindow, maxVerifyFailures, now, "TOO_MANY_ATTEMPTS");
+        consumeRate(verifyBuckets, rateKey("verify-client", normalizeClientKey(clientKey)), verifyWindow, maxVerifyFailures * 3, now, "TOO_MANY_ATTEMPTS");
         if (normalizedCode.length() != 6) {
             throw invalidCode();
         }
@@ -340,7 +362,7 @@ public class EmailLoginService {
         }
         if (!matchesCodeHash(verificationCode.codeHash, normalizedEmail, normalizedCode)) {
             verificationCode.failedAttempts++;
-            if (verificationCode.failedAttempts >= maxCodeAttempts()) {
+            if (verificationCode.failedAttempts >= maxCodeAttempts) {
                 codes.remove(normalizedEmail);
                 throw tooManyAttempts(now);
             }
@@ -359,8 +381,11 @@ public class EmailLoginService {
     private User verifyLoginCodeWithRedis(String normalizedEmail, String normalizedCode, String clientKey) {
         StringRedisTemplate redisTemplate = redisTemplate();
         Instant now = Instant.now(clock);
-        consumeRedisRate(redisTemplate, redisRateKey("verify-email", normalizedEmail), verifyWindow(), maxVerifyFailuresPerWindow(), now, "TOO_MANY_ATTEMPTS");
-        consumeRedisRate(redisTemplate, redisRateKey("verify-client", normalizeClientKey(clientKey)), verifyWindow(), maxVerifyFailuresPerWindow() * 3, now, "TOO_MANY_ATTEMPTS");
+        Duration verifyWindow = verifyWindow();
+        int maxVerifyFailures = maxVerifyFailuresPerWindow();
+        int maxCodeAttempts = maxCodeAttempts();
+        consumeRedisRate(redisTemplate, redisRateKey("verify-email", normalizedEmail), verifyWindow, maxVerifyFailures, now, "TOO_MANY_ATTEMPTS");
+        consumeRedisRate(redisTemplate, redisRateKey("verify-client", normalizeClientKey(clientKey)), verifyWindow, maxVerifyFailures * 3, now, "TOO_MANY_ATTEMPTS");
         if (normalizedCode.length() != 6) {
             throw invalidCode();
         }
@@ -373,7 +398,7 @@ public class EmailLoginService {
         }
         if (!matchesCodeHash(storedHash.toString(), normalizedEmail, normalizedCode)) {
             Long failedAttempts = redisTemplate.opsForHash().increment(codeKey, "failedAttempts", 1);
-            if (failedAttempts != null && failedAttempts >= maxCodeAttempts()) {
+            if (failedAttempts != null && failedAttempts >= maxCodeAttempts) {
                 redisTemplate.delete(codeKey);
                 throw tooManyAttempts(now);
             }
@@ -393,8 +418,11 @@ public class EmailLoginService {
 
     private void verifyPurposeCodeInMemory(String purposeKey, String normalizedEmail, String normalizedCode, String clientKey) {
         Instant now = Instant.now(clock);
-        consumeRate(verifyBuckets, rateKey("verify-purpose", purposeKey), verifyWindow(), maxVerifyFailuresPerWindow(), now, "TOO_MANY_ATTEMPTS");
-        consumeRate(verifyBuckets, rateKey("verify-client", normalizeClientKey(clientKey)), verifyWindow(), maxVerifyFailuresPerWindow() * 3, now, "TOO_MANY_ATTEMPTS");
+        Duration verifyWindow = verifyWindow();
+        int maxVerifyFailures = maxVerifyFailuresPerWindow();
+        int maxCodeAttempts = maxCodeAttempts();
+        consumeRate(verifyBuckets, rateKey("verify-purpose", purposeKey), verifyWindow, maxVerifyFailures, now, "TOO_MANY_ATTEMPTS");
+        consumeRate(verifyBuckets, rateKey("verify-client", normalizeClientKey(clientKey)), verifyWindow, maxVerifyFailures * 3, now, "TOO_MANY_ATTEMPTS");
         if (normalizedCode.length() != 6) {
             throw invalidCode();
         }
@@ -405,7 +433,7 @@ public class EmailLoginService {
         }
         if (!matchesCodeHash(verificationCode.codeHash, purposeKey, normalizedCode)) {
             verificationCode.failedAttempts++;
-            if (verificationCode.failedAttempts >= maxCodeAttempts()) {
+            if (verificationCode.failedAttempts >= maxCodeAttempts) {
                 codes.remove(purposeKey);
                 throw tooManyAttempts(now);
             }
@@ -419,8 +447,11 @@ public class EmailLoginService {
     private void verifyPurposeCodeWithRedis(String purposeKey, String normalizedEmail, String normalizedCode, String clientKey) {
         StringRedisTemplate redisTemplate = redisTemplate();
         Instant now = Instant.now(clock);
-        consumeRedisRate(redisTemplate, redisRateKey("verify-purpose", purposeKey), verifyWindow(), maxVerifyFailuresPerWindow(), now, "TOO_MANY_ATTEMPTS");
-        consumeRedisRate(redisTemplate, redisRateKey("verify-client", normalizeClientKey(clientKey)), verifyWindow(), maxVerifyFailuresPerWindow() * 3, now, "TOO_MANY_ATTEMPTS");
+        Duration verifyWindow = verifyWindow();
+        int maxVerifyFailures = maxVerifyFailuresPerWindow();
+        int maxCodeAttempts = maxCodeAttempts();
+        consumeRedisRate(redisTemplate, redisRateKey("verify-purpose", purposeKey), verifyWindow, maxVerifyFailures, now, "TOO_MANY_ATTEMPTS");
+        consumeRedisRate(redisTemplate, redisRateKey("verify-client", normalizeClientKey(clientKey)), verifyWindow, maxVerifyFailures * 3, now, "TOO_MANY_ATTEMPTS");
         if (normalizedCode.length() != 6) {
             throw invalidCode();
         }
@@ -433,7 +464,7 @@ public class EmailLoginService {
         }
         if (!matchesCodeHash(storedHash.toString(), purposeKey, normalizedCode)) {
             Long failedAttempts = redisTemplate.opsForHash().increment(codeKey, "failedAttempts", 1);
-            if (failedAttempts != null && failedAttempts >= maxCodeAttempts()) {
+            if (failedAttempts != null && failedAttempts >= maxCodeAttempts) {
                 redisTemplate.delete(codeKey);
                 throw tooManyAttempts(now);
             }
@@ -457,8 +488,17 @@ public class EmailLoginService {
     @Scheduled(fixedDelayString = "${app.mail.cleanup-interval-ms:300000}")
     public void cleanupExpiredCodes() {
         Instant now = Instant.now(clock);
-        codes.entrySet().removeIf(entry -> entry.getValue().expiresAt.isBefore(now));
-        sendCooldowns.entrySet().removeIf(entry -> entry.getValue().plus(resendInterval()).isBefore(now));
+        for (Map.Entry<String, VerificationCode> entry : codes.entrySet()) {
+            if (entry.getValue().expiresAt.isBefore(now)) {
+                codes.remove(entry.getKey(), entry.getValue());
+            }
+        }
+        Duration resendInterval = resendInterval();
+        for (Map.Entry<String, Instant> entry : sendCooldowns.entrySet()) {
+            if (entry.getValue().plus(resendInterval).isBefore(now)) {
+                sendCooldowns.remove(entry.getKey(), entry.getValue());
+            }
+        }
         cleanupBuckets(sendBuckets, sendWindow(), now);
         cleanupBuckets(verifyBuckets, verifyWindow(), now);
     }
@@ -494,11 +534,12 @@ public class EmailLoginService {
             JavaMailSenderImpl sender = mailSenderFor(account);
             MimeMessage message = sender.createMimeMessage();
             MimeMessageHelper helper = new MimeMessageHelper(message, true, "UTF-8");
-            String brandName = mailAccountProperties.getBrandName();
+            String configuredBrandName = mailAccountProperties.getBrandName();
+            String brandName = isBlank(configuredBrandName) ? "ShopMX" : configuredBrandName.trim();
             String safePurpose = isBlank(purposeLabel) ? "login" : purposeLabel.trim();
-            helper.setFrom(account.getFrom().trim(), isBlank(brandName) ? "ShopMX" : brandName.trim());
+            helper.setFrom(account.getFrom().trim(), brandName);
             helper.setTo(to);
-            helper.setSubject((isBlank(brandName) ? "ShopMX" : brandName.trim()) + " " + safePurpose + " verification code");
+            helper.setSubject(brandName + " " + safePurpose + " verification code");
             helper.setText(renderEmailText(code, safePurpose), renderEmailHtml(code, safePurpose));
             sender.send(message);
         } catch (MessagingException | UnsupportedEncodingException e) {
@@ -517,19 +558,26 @@ public class EmailLoginService {
         if (accounts.isEmpty()) {
             throw new IllegalStateException("Email service is not configured");
         }
-        List<MailAccountProperties.Account> randomized = new ArrayList<>(accounts);
-        Collections.shuffle(randomized, random);
-        return randomized;
+        Collections.shuffle(accounts, random);
+        return accounts;
     }
 
     private List<MailAccountProperties.Account> configuredAccounts() {
-        return mailAccountProperties.getAccounts().stream()
-                .filter(account -> !isBlank(account.getHost()))
-                .filter(account -> account.getPort() != null && account.getPort() > 0)
-                .filter(account -> !isBlank(account.getUsername()))
-                .filter(account -> !isBlank(account.getPassword()))
-                .filter(account -> !isBlank(account.getFrom()))
-                .collect(Collectors.toList());
+        List<MailAccountProperties.Account> configured = mailAccountProperties.getAccounts();
+        if (configured == null || configured.isEmpty()) {
+            return List.of();
+        }
+        List<MailAccountProperties.Account> accounts = new ArrayList<>(configured.size());
+        for (MailAccountProperties.Account account : configured) {
+            if (account != null && !isBlank(account.getHost())
+                    && account.getPort() != null && account.getPort() > 0
+                    && !isBlank(account.getUsername())
+                    && !isBlank(account.getPassword())
+                    && !isBlank(account.getFrom())) {
+                accounts.add(account);
+            }
+        }
+        return accounts;
     }
 
     private JavaMailSenderImpl mailSenderFor(MailAccountProperties.Account account) {
@@ -625,10 +673,14 @@ public class EmailLoginService {
     }
 
     private String normalizeEmail(String email) {
-        if (email == null || email.trim().isEmpty()) {
+        if (email == null) {
             throw new IllegalArgumentException("Email is required");
         }
-        String normalized = email.trim().toLowerCase(Locale.ROOT);
+        String trimmed = email.trim();
+        if (trimmed.isEmpty()) {
+            throw new IllegalArgumentException("Email is required");
+        }
+        String normalized = trimmed.toLowerCase(Locale.ROOT);
         if (normalized.length() > MAX_EMAIL_LENGTH || !EMAIL_PATTERN.matcher(normalized).matches()) {
             throw new IllegalArgumentException("Valid email is required");
         }
@@ -639,7 +691,14 @@ public class EmailLoginService {
         if (code == null) {
             return "";
         }
-        return code.replaceAll("\\D+", "").trim();
+        StringBuilder digits = new StringBuilder(code.length());
+        for (int index = 0; index < code.length(); index++) {
+            char character = code.charAt(index);
+            if (character >= '0' && character <= '9') {
+                digits.append(character);
+            }
+        }
+        return digits.toString();
     }
 
     private boolean isBlank(String value) {
@@ -654,7 +713,7 @@ public class EmailLoginService {
         if (isBlank(value)) {
             return "unknown";
         }
-        String normalized = value.trim().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9:._-]", "");
+        String normalized = CLIENT_KEY_UNSAFE_PATTERN.matcher(value.trim().toLowerCase(Locale.ROOT)).replaceAll("");
         if (normalized.isEmpty()) {
             return "unknown";
         }
@@ -695,7 +754,7 @@ public class EmailLoginService {
         if (isBlank(prefix)) {
             return "shop:mail-code";
         }
-        return prefix.trim().replaceAll("[^a-zA-Z0-9:._-]", "_");
+        return REDIS_PREFIX_UNSAFE_PATTERN.matcher(prefix.trim()).replaceAll("_");
     }
 
     private void consumeRedisRate(StringRedisTemplate redisTemplate, String key, Duration window, int maxAttempts, Instant now, String errorCode) {
@@ -765,7 +824,11 @@ public class EmailLoginService {
     }
 
     private void cleanupBuckets(Map<String, RateBucket> buckets, Duration window, Instant now) {
-        buckets.entrySet().removeIf(entry -> entry.getValue().windowStart.plus(window).isBefore(now));
+        for (Map.Entry<String, RateBucket> entry : buckets.entrySet()) {
+            if (entry.getValue().windowStart.plus(window).isBefore(now)) {
+                buckets.remove(entry.getKey(), entry.getValue());
+            }
+        }
     }
 
     private String maskEmail(String email) {
@@ -860,6 +923,19 @@ public class EmailLoginService {
                 .replace("'", "&#39;");
     }
 
+    private String newVerificationCode() {
+        int value = random.nextInt(VERIFICATION_CODE_BOUND);
+        String digits = Integer.toString(value);
+        if (digits.length() == 6) {
+            return digits;
+        }
+        StringBuilder code = new StringBuilder(6);
+        for (int index = digits.length(); index < 6; index++) {
+            code.append('0');
+        }
+        return code.append(digits).toString();
+    }
+
     private String hashCode(String email, String code) {
         return digestCode("SHA-512", email, code);
     }
@@ -882,7 +958,9 @@ public class EmailLoginService {
             byte[] hashed = digest.digest((email + ":" + code).getBytes(StandardCharsets.UTF_8));
             StringBuilder builder = new StringBuilder(hashed.length * 2);
             for (byte value : hashed) {
-                builder.append(String.format("%02x", value));
+                int unsigned = value & 0xff;
+                builder.append(HEX_DIGITS[unsigned >>> 4]);
+                builder.append(HEX_DIGITS[unsigned & 0x0f]);
             }
             return builder.toString();
         } catch (NoSuchAlgorithmException e) {
@@ -896,7 +974,9 @@ public class EmailLoginService {
             byte[] hashed = digest.digest(value.getBytes(StandardCharsets.UTF_8));
             StringBuilder builder = new StringBuilder(hashed.length * 2);
             for (byte current : hashed) {
-                builder.append(String.format("%02x", current));
+                int unsigned = current & 0xff;
+                builder.append(HEX_DIGITS[unsigned >>> 4]);
+                builder.append(HEX_DIGITS[unsigned & 0x0f]);
             }
             return builder.toString();
         } catch (NoSuchAlgorithmException e) {

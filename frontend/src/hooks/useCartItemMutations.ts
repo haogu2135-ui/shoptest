@@ -262,7 +262,7 @@ export const useCartItemMutations = ({
           const nextItems = normalizeCartItems(response.data);
           setCartItems(nextItems);
           clearRecentProductsCache();
-              setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
+          setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
         }
       } else {
         for (const item of targetItems) {
@@ -281,7 +281,7 @@ export const useCartItemMutations = ({
         const nextItems = normalizeCartItems(getGuestCartItems());
         setCartItems(nextItems);
         clearRecentProductsCache();
-              setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
+        setSelectedIds(nextItems.filter(canCheckout).map((cartItem) => cartItem.id));
       }
       for (const item of restoredItems) removeSavedForLaterProduct(item.productId, item.selectedSpecs);
       setSavedItems(getSavedForLaterItemsSnapshot());

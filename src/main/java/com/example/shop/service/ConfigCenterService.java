@@ -24,7 +24,6 @@ import java.io.StringReader;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
@@ -36,7 +35,6 @@ import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -88,6 +86,9 @@ public class ConfigCenterService {
                     + "app\\.jwt|app\\.cors\\.|app\\.websocket\\.|admin\\.bootstrap-token|"
                     + "security\\.jwt\\.|security\\.cors\\.|security\\.session\\.).*",
             Pattern.CASE_INSENSITIVE);
+    private static final Pattern ALLOWED_KEY_PATTERN = Pattern.compile("[A-Za-z0-9_.\\-\\[\\]]+");
+    private static final Pattern ALLOWED_PREFIX_PATTERN = Pattern.compile("[A-Za-z0-9_.\\-]+");
+    private static final Pattern SANITIZE_TEXT_PATTERN = Pattern.compile("[\\r\\n\\t]+");
     private static final String DEFAULT_CONTENT = String.join("\n",
             "# Shop runtime properties",
             "# 修改后点击发布，会同步到 Nacos 并应用到当前后台运行环境。",
@@ -353,8 +354,9 @@ public class ConfigCenterService {
     }
 
     private void putIfPresent(Properties props, String key, String value) {
-        if (value != null && !value.trim().isEmpty()) {
-            props.put(key, value.trim());
+        String normalized = trimToNull(value);
+        if (normalized != null) {
+            props.put(key, normalized);
         }
     }
 
@@ -393,13 +395,13 @@ public class ConfigCenterService {
             errors.add("properties 格式解析失败: " + sanitizeError(e));
             return Map.of();
         }
-        return props.stringPropertyNames().stream()
-                .sorted(Comparator.naturalOrder())
-                .collect(Collectors.toMap(
-                        key -> key,
-                        props::getProperty,
-                        (left, right) -> right,
-                        LinkedHashMap::new));
+        List<String> keys = new ArrayList<>(props.stringPropertyNames());
+        keys.sort(Comparator.naturalOrder());
+        Map<String, String> parsed = new LinkedHashMap<>(keys.size());
+        for (String key : keys) {
+            parsed.put(key, props.getProperty(key));
+        }
+        return parsed;
     }
 
     private void validateTarget(String dataId, String group, List<String> warnings, List<String> errors) {
@@ -415,11 +417,13 @@ public class ConfigCenterService {
     }
 
     private void validateParsedProperties(Map<String, String> parsed, List<String> warnings, List<String> errors, boolean publishing) {
-        if (parsed.size() > maxProperties()) {
-            errors.add("Too many config properties. Maximum properties: " + maxProperties());
+        int maxProperties = maxProperties();
+        if (parsed.size() > maxProperties) {
+            errors.add("Too many config properties. Maximum properties: " + maxProperties);
         }
+        Set<String> allowedPrefixes = allowedKeyPrefixes();
         parsed.forEach((key, value) -> {
-            if (!isAllowedKey(key)) {
+            if (!isAllowedKey(key, allowedPrefixes)) {
                 errors.add("Key " + key + " is not allowed in admin config center.");
             }
             if (publishing && isSensitive(key) && looksMasked(value)) {
@@ -437,21 +441,24 @@ public class ConfigCenterService {
     private String normalizeContent(String content, List<String> errors) {
         String normalized = content == null ? "" : content.replace("\r\n", "\n").replace('\r', '\n');
         int bytes = normalized.getBytes(StandardCharsets.UTF_8).length;
-        if (bytes > maxContentBytes()) {
-            errors.add("Config content is too large. Maximum bytes: " + maxContentBytes());
+        int maxContentBytes = maxContentBytes();
+        if (bytes > maxContentBytes) {
+            errors.add("Config content is too large. Maximum bytes: " + maxContentBytes);
         }
         return normalized;
     }
 
     private Map<String, String> runtimeApplicableProperties(Map<String, String> parsed) {
-        return parsed.entrySet().stream()
-                .filter(entry -> isAllowedKey(entry.getKey()))
-                .filter(entry -> !PROTECTED_CONFIG_KEY_PATTERN.matcher(entry.getKey()).matches())
-                .collect(Collectors.toMap(
-                        Map.Entry::getKey,
-                        Map.Entry::getValue,
-                        (left, right) -> right,
-                        LinkedHashMap::new));
+        Set<String> allowedPrefixes = allowedKeyPrefixes();
+        Map<String, String> applicable = new LinkedHashMap<>();
+        for (Map.Entry<String, String> entry : parsed.entrySet()) {
+            String key = entry.getKey();
+            if (isAllowedKey(key, allowedPrefixes)
+                    && !PROTECTED_CONFIG_KEY_PATTERN.matcher(key).matches()) {
+                applicable.put(key, entry.getValue());
+            }
+        }
+        return applicable;
     }
 
     private String preserveMaskedSensitiveValues(
@@ -463,11 +470,13 @@ public class ConfigCenterService {
             List<String> warnings,
             List<String> errors
     ) {
-        List<String> maskedKeys = parsed.entrySet().stream()
-                .filter(entry -> isSensitive(entry.getKey()) && looksMasked(entry.getValue()))
-                .map(Map.Entry::getKey)
-                .sorted()
-                .collect(Collectors.toList());
+        List<String> maskedKeys = new ArrayList<>();
+        for (Map.Entry<String, String> entry : parsed.entrySet()) {
+            if (isSensitive(entry.getKey()) && looksMasked(entry.getValue())) {
+                maskedKeys.add(entry.getKey());
+            }
+        }
+        maskedKeys.sort(Comparator.naturalOrder());
         if (maskedKeys.isEmpty()) {
             return content;
         }
@@ -510,29 +519,53 @@ public class ConfigCenterService {
 
     private Map<String, String> rawLineValuesByKey(String content) {
         Map<String, String> values = new LinkedHashMap<>();
-        Arrays.stream((content == null ? "" : content).split("\\n", -1))
-                .forEach(line -> {
-                    if (line == null || line.trim().isEmpty() || line.trim().startsWith("#") || line.trim().startsWith("!")) {
-                        return;
-                    }
-                    int separator = separatorIndex(line);
-                    if (separator < 0) {
-                        return;
-                    }
-                    String key = line.substring(0, separator).trim();
-                    values.put(key, separator + 1 >= line.length() ? "" : line.substring(separator + 1).trim());
-                });
+        String source = content == null ? "" : content;
+        int lineStart = 0;
+        for (int index = 0; index <= source.length(); index++) {
+            if (index < source.length() && source.charAt(index) != '\n') {
+                continue;
+            }
+            addRawLineValue(source.substring(lineStart, index), values);
+            lineStart = index + 1;
+        }
         return values;
     }
 
+    private void addRawLineValue(String line, Map<String, String> values) {
+        String trimmed = line.trim();
+        if (trimmed.isEmpty() || trimmed.startsWith("#") || trimmed.startsWith("!")) {
+            return;
+        }
+        int separator = separatorIndex(line);
+        if (separator >= 0) {
+            String key = line.substring(0, separator).trim();
+            values.put(key, separator + 1 >= line.length() ? "" : line.substring(separator + 1).trim());
+        }
+    }
+
     private String replaceMaskedSensitiveLines(String content, Map<String, String> replacements) {
-        return Arrays.stream((content == null ? "" : content).split("\\n", -1))
-                .map(line -> replaceMaskedSensitiveLine(line, replacements))
-                .collect(Collectors.joining("\n"));
+        String source = content == null ? "" : content;
+        StringBuilder result = new StringBuilder(source.length());
+        int lineStart = 0;
+        for (int index = 0; index <= source.length(); index++) {
+            if (index < source.length() && source.charAt(index) != '\n') {
+                continue;
+            }
+            result.append(replaceMaskedSensitiveLine(source.substring(lineStart, index), replacements));
+            if (index < source.length()) {
+                result.append('\n');
+            }
+            lineStart = index + 1;
+        }
+        return result.toString();
     }
 
     private String replaceMaskedSensitiveLine(String line, Map<String, String> replacements) {
-        if (line == null || line.trim().isEmpty() || line.trim().startsWith("#") || line.trim().startsWith("!")) {
+        if (line == null) {
+            return null;
+        }
+        String trimmed = line.trim();
+        if (trimmed.isEmpty() || trimmed.startsWith("#") || trimmed.startsWith("!")) {
             return line;
         }
         int separator = separatorIndex(line);
@@ -587,7 +620,14 @@ public class ConfigCenterService {
         response.setProperties(maskSensitive(parsed));
         response.setEffectiveProperties(maskSensitive(effectiveValues(parsed.keySet())));
         response.setAppliedKeys(appliedKeys);
-        response.setSensitiveKeys(parsed.keySet().stream().filter(this::isSensitive).sorted().collect(Collectors.toList()));
+        List<String> sensitiveKeys = new ArrayList<>();
+        for (String key : parsed.keySet()) {
+            if (isSensitive(key)) {
+                sensitiveKeys.add(key);
+            }
+        }
+        sensitiveKeys.sort(Comparator.naturalOrder());
+        response.setSensitiveKeys(sensitiveKeys);
         response.setAllowedKeyPrefixes(new ArrayList<>(allowedKeyPrefixes()));
         response.setMaxContentBytes(maxContentBytes());
         response.setMaxProperties(maxProperties());
@@ -612,19 +652,36 @@ public class ConfigCenterService {
         if (content == null || content.isEmpty() || parsed.isEmpty()) {
             return content;
         }
-        Set<String> sensitiveKeys = parsed.keySet().stream()
-                .filter(this::isSensitive)
-                .collect(Collectors.toSet());
+        Set<String> sensitiveKeys = new java.util.HashSet<>();
+        for (String key : parsed.keySet()) {
+            if (isSensitive(key)) {
+                sensitiveKeys.add(key);
+            }
+        }
         if (sensitiveKeys.isEmpty()) {
             return content;
         }
-        return Arrays.stream(content.split("\\n", -1))
-                .map(line -> maskSensitiveLine(line, sensitiveKeys))
-                .collect(Collectors.joining("\n"));
+        StringBuilder masked = new StringBuilder(content.length());
+        int lineStart = 0;
+        for (int index = 0; index <= content.length(); index++) {
+            if (index < content.length() && content.charAt(index) != '\n') {
+                continue;
+            }
+            masked.append(maskSensitiveLine(content.substring(lineStart, index), sensitiveKeys));
+            if (index < content.length()) {
+                masked.append('\n');
+            }
+            lineStart = index + 1;
+        }
+        return masked.toString();
     }
 
     private String maskSensitiveLine(String line, Set<String> sensitiveKeys) {
-        if (line == null || line.trim().isEmpty() || line.trim().startsWith("#") || line.trim().startsWith("!")) {
+        if (line == null) {
+            return null;
+        }
+        String trimmed = line.trim();
+        if (trimmed.isEmpty() || trimmed.startsWith("#") || trimmed.startsWith("!")) {
             return line;
         }
         int separator = separatorIndex(line);
@@ -651,8 +708,11 @@ public class ConfigCenterService {
     }
 
     private Map<String, String> maskSensitive(Map<String, String> values) {
-        Map<String, String> masked = new LinkedHashMap<>();
-        values.forEach((key, value) -> masked.put(key, isSensitive(key) ? maskValue(value) : value));
+        Map<String, String> masked = new LinkedHashMap<>(values.size());
+        for (Map.Entry<String, String> entry : values.entrySet()) {
+            String key = entry.getKey();
+            masked.put(key, isSensitive(key) ? maskValue(entry.getValue()) : entry.getValue());
+        }
         return masked;
     }
 
@@ -660,14 +720,19 @@ public class ConfigCenterService {
         return key != null && SENSITIVE_KEY_PATTERN.matcher(key).matches();
     }
 
-    private boolean isAllowedKey(String key) {
-        if (key == null || key.isBlank() || key.length() > 160 || !key.matches("[A-Za-z0-9_.\\-\\[\\]]+")) {
+    private boolean isAllowedKey(String key, Set<String> prefixes) {
+        if (key == null || key.isBlank() || key.length() > 160 || !ALLOWED_KEY_PATTERN.matcher(key).matches()) {
             return false;
         }
         if (PROTECTED_CONFIG_KEY_PATTERN.matcher(key).matches()) {
             return false;
         }
-        return allowedKeyPrefixes().stream().anyMatch(key::startsWith);
+        for (String prefix : prefixes) {
+            if (key.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private boolean looksMasked(String value) {
@@ -675,17 +740,31 @@ public class ConfigCenterService {
     }
 
     private Set<String> allowedKeyPrefixes() {
-        Set<String> prefixes = Arrays.stream(environment.getProperty("admin.config-center.allowed-key-prefixes", DEFAULT_ALLOWED_KEY_PREFIXES).split(","))
-                .map(String::trim)
-                .filter(item -> !item.isEmpty())
-                .filter(item -> item.matches("[A-Za-z0-9_.\\-]+"))
-                .filter(item -> !PROTECTED_CONFIG_KEY_PATTERN.matcher(item).matches())
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        String configured = environment.getProperty("admin.config-center.allowed-key-prefixes", DEFAULT_ALLOWED_KEY_PREFIXES);
+        Set<String> prefixes = parseAllowedPrefixes(configured);
         if (!prefixes.isEmpty()) {
             return prefixes;
         }
-        return Arrays.stream(DEFAULT_ALLOWED_KEY_PREFIXES.split(","))
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        return parseAllowedPrefixes(DEFAULT_ALLOWED_KEY_PREFIXES);
+    }
+
+    private Set<String> parseAllowedPrefixes(String value) {
+        String source = value == null ? "" : value;
+        Set<String> prefixes = new LinkedHashSet<>();
+        int tokenStart = 0;
+        for (int index = 0; index <= source.length(); index++) {
+            if (index < source.length() && source.charAt(index) != ',') {
+                continue;
+            }
+            String prefix = source.substring(tokenStart, index).trim();
+            if (!prefix.isEmpty()
+                    && ALLOWED_PREFIX_PATTERN.matcher(prefix).matches()
+                    && !PROTECTED_CONFIG_KEY_PATTERN.matcher(prefix).matches()) {
+                prefixes.add(prefix);
+            }
+            tokenStart = index + 1;
+        }
+        return prefixes;
     }
 
     private int maxContentBytes() {
@@ -698,11 +777,12 @@ public class ConfigCenterService {
 
     private int intProperty(String key, int defaultValue, int min, int max) {
         String value = environment.getProperty(key);
-        if (value == null || value.trim().isEmpty()) {
+        String normalized = trimToNull(value);
+        if (normalized == null) {
             return defaultValue;
         }
         try {
-            return Math.max(min, Math.min(max, Integer.parseInt(value.trim())));
+            return Math.max(min, Math.min(max, Integer.parseInt(normalized)));
         } catch (NumberFormatException ignored) {
             return defaultValue;
         }
@@ -728,8 +808,8 @@ public class ConfigCenterService {
         if (value == null) {
             return "";
         }
-        String normalized = SensitiveDataMasker.mask(value)
-                .replaceAll("[\\r\\n\\t]+", " ")
+        String normalized = SANITIZE_TEXT_PATTERN.matcher(SensitiveDataMasker.mask(value))
+                .replaceAll(" ")
                 .trim();
         if (normalized.length() > maxLength) {
             return normalized.substring(0, maxLength);

@@ -14,12 +14,15 @@ import org.springframework.web.client.RestTemplate;
 import javax.servlet.http.HttpServletRequest;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.Comparator;
+import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -43,41 +46,48 @@ public class PaymentChannelRecommendationService {
     public List<PaymentChannelResponse> buildChannelResponses(List<PaymentChannelConfig.Channel> channels, HttpServletRequest request) {
         String clientCountry = resolveClientCountry(request);
         String preferredMarket = marketForCountry(clientCountry);
-        List<PaymentChannelConfig.Channel> sortedChannels = channels.stream()
-                .sorted(channelComparator(preferredMarket))
-                .collect(Collectors.toList());
-        String recommendedCode = resolveRecommendedCode(sortedChannels, preferredMarket);
-        return sortedChannels.stream()
-                .map(channel -> PaymentChannelResponse.from(
-                        channel,
-                        channel.getCode().equals(recommendedCode),
-                        clientCountry))
-                .collect(Collectors.toList());
+        List<PaymentChannelConfig.Channel> sortedChannels = new ArrayList<>(channels);
+        Map<PaymentChannelConfig.Channel, String> normalizedMarkets = normalizedMarkets(sortedChannels, preferredMarket);
+        Collections.sort(sortedChannels, channelComparator(preferredMarket, normalizedMarkets));
+        String recommendedCode = resolveRecommendedCode(sortedChannels, preferredMarket, normalizedMarkets);
+        List<PaymentChannelResponse> responses = new ArrayList<>(sortedChannels.size());
+        for (PaymentChannelConfig.Channel channel : sortedChannels) {
+            String channelCode = channel.getCode();
+            responses.add(PaymentChannelResponse.from(
+                    channel,
+                    channelCode.equals(recommendedCode),
+                    clientCountry));
+        }
+        return responses;
     }
 
-    private String resolveRecommendedCode(List<PaymentChannelConfig.Channel> channels, String preferredMarket) {
+    private String resolveRecommendedCode(List<PaymentChannelConfig.Channel> channels, String preferredMarket,
+                                          Map<PaymentChannelConfig.Channel, String> normalizedMarkets) {
         if (preferredMarket == null) {
             return null;
         }
-        return channels.stream()
-                .filter(channel -> preferredMarket.equals(normalizeMarket(channel.getMarket())))
-                .map(PaymentChannelConfig.Channel::getCode)
-                .findFirst()
-                .orElse(null);
+        for (PaymentChannelConfig.Channel channel : channels) {
+            if (preferredMarket.equals(normalizedMarkets.get(channel))) {
+                return channel.getCode();
+            }
+        }
+        return null;
     }
 
-    private Comparator<PaymentChannelConfig.Channel> channelComparator(String preferredMarket) {
+    private Comparator<PaymentChannelConfig.Channel> channelComparator(String preferredMarket,
+                                                                        Map<PaymentChannelConfig.Channel, String> normalizedMarkets) {
         return Comparator
-                .comparingInt((PaymentChannelConfig.Channel channel) -> recommendationRank(channel, preferredMarket))
+                .comparingInt((PaymentChannelConfig.Channel channel) -> recommendationRank(channel, preferredMarket, normalizedMarkets))
                 .thenComparingInt(PaymentChannelConfig.Channel::getSortOrder)
                 .thenComparing(PaymentChannelConfig.Channel::getCode);
     }
 
-    private int recommendationRank(PaymentChannelConfig.Channel channel, String preferredMarket) {
+    private int recommendationRank(PaymentChannelConfig.Channel channel, String preferredMarket,
+                                    Map<PaymentChannelConfig.Channel, String> normalizedMarkets) {
         if (preferredMarket == null) {
             return 0;
         }
-        String market = normalizeMarket(channel.getMarket());
+        String market = normalizedMarkets.get(channel);
         if (preferredMarket.equals(market)) {
             return 0;
         }
@@ -85,6 +95,16 @@ public class PaymentChannelRecommendationService {
             return 1;
         }
         return 2;
+    }
+
+    private Map<PaymentChannelConfig.Channel, String> normalizedMarkets(List<PaymentChannelConfig.Channel> channels,
+                                                                          String preferredMarket) {
+        if (preferredMarket == null) return Map.of();
+        Map<PaymentChannelConfig.Channel, String> markets = new IdentityHashMap<>();
+        for (PaymentChannelConfig.Channel channel : channels) {
+            markets.put(channel, normalizeMarket(channel.getMarket()));
+        }
+        return markets;
     }
 
     private String resolveClientCountry(HttpServletRequest request) {
@@ -117,10 +137,11 @@ public class PaymentChannelRecommendationService {
             return null;
         }
         for (String headerName : headerNames) {
-            if (headerName == null || headerName.trim().isEmpty()) {
+            String normalizedHeaderName = headerName == null ? null : headerName.trim();
+            if (normalizedHeaderName == null || normalizedHeaderName.isEmpty()) {
                 continue;
             }
-            String value = request.getHeader(headerName.trim());
+            String value = request.getHeader(normalizedHeaderName);
             String country = normalizeCountryCode(value);
             if (country != null) {
                 return country;
@@ -131,7 +152,7 @@ public class PaymentChannelRecommendationService {
 
     private String lookupCountryByIp(String clientIp, PaymentChannelConfig.Geo geoConfig) {
         String lookupUrl = trimToNull(geoConfig.getLookupUrl());
-        if (lookupUrl == null || isBlank(clientIp) || isLocalIp(clientIp)) {
+        if (lookupUrl == null || clientIp == null || isLocalIp(clientIp)) {
             return null;
         }
         String resolvedUrl = lookupUrl.replace("{ip}", URLEncoder.encode(clientIp, StandardCharsets.UTF_8));
@@ -203,12 +224,16 @@ public class PaymentChannelRecommendationService {
         if (!ip.startsWith("172.")) {
             return false;
         }
-        String[] segments = ip.split("\\.");
-        if (segments.length < 2) {
+        int firstDot = ip.indexOf('.');
+        if (firstDot < 0 || firstDot == ip.length() - 1) {
             return false;
         }
+        int secondDot = ip.indexOf('.', firstDot + 1);
+        String secondSegment = secondDot < 0
+                ? ip.substring(firstDot + 1)
+                : ip.substring(firstDot + 1, secondDot);
         try {
-            int second = Integer.parseInt(segments[1]);
+            int second = Integer.parseInt(secondSegment);
             return second >= 16 && second <= 31;
         } catch (NumberFormatException e) {
             return false;
@@ -238,7 +263,11 @@ public class PaymentChannelRecommendationService {
         if ("MX".equals(upper) || "MEX".equals(upper) || "MEXICO".equals(upper)) {
             return "MX";
         }
-        return upper.matches("[A-Z]{2}") ? upper : null;
+        if (upper.length() != 2 || upper.charAt(0) < 'A' || upper.charAt(0) > 'Z'
+                || upper.charAt(1) < 'A' || upper.charAt(1) > 'Z') {
+            return null;
+        }
+        return upper;
     }
 
     private String normalizeMarket(String market) {
@@ -254,7 +283,4 @@ public class PaymentChannelRecommendationService {
         return trimmed.isEmpty() ? null : trimmed;
     }
 
-    private boolean isBlank(String value) {
-        return trimToNull(value) == null;
-    }
 }

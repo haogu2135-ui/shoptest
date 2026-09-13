@@ -9,11 +9,21 @@ import org.springframework.stereotype.Service;
 import java.util.List;
 import java.util.Locale;
 import java.util.Objects;
+import java.util.regex.Pattern;
 
 @Service
 @Slf4j
 public class CheckoutIdempotencyService {
     private static final int MAX_KEY_LENGTH = 120;
+    private static final Pattern IDEMPOTENCY_KEY_PATTERN = Pattern.compile("[A-Za-z0-9._:-]+");
+    private static final String INSERT_CLAIM_SQL = "INSERT INTO checkout_idempotency_keys "
+            + "(checkout_scope, principal, idempotency_key, request_fingerprint, status, created_at, updated_at) "
+            + "VALUES (?, ?, ?, ?, 'PROCESSING', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)";
+    private static final String COMPLETE_CLAIM_SQL = "UPDATE checkout_idempotency_keys "
+            + "SET order_id = ?, status = 'COMPLETED', updated_at = CURRENT_TIMESTAMP "
+            + "WHERE checkout_scope = ? AND principal = ? AND idempotency_key = ?";
+    private static final String FIND_CLAIM_SQL = "SELECT order_id, request_fingerprint, status FROM checkout_idempotency_keys "
+            + "WHERE checkout_scope = ? AND principal = ? AND idempotency_key = ? LIMIT 1";
 
     private final JdbcTemplate jdbcTemplate;
 
@@ -30,10 +40,7 @@ public class CheckoutIdempotencyService {
         String normalizedPrincipal = normalizeRequired(principal, "Idempotency principal");
         String normalizedFingerprint = normalizeRequired(requestFingerprint, "Idempotency fingerprint");
         try {
-            jdbcTemplate.update(
-                    "INSERT INTO checkout_idempotency_keys "
-                            + "(checkout_scope, principal, idempotency_key, request_fingerprint, status, created_at, updated_at) "
-                            + "VALUES (?, ?, ?, ?, 'PROCESSING', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+            jdbcTemplate.update(INSERT_CLAIM_SQL,
                     normalizedScope,
                     normalizedPrincipal,
                     normalizedKey,
@@ -48,10 +55,7 @@ public class CheckoutIdempotencyService {
         if (claim == null || !claim.isOwner() || orderId == null || orderId <= 0) {
             return;
         }
-        jdbcTemplate.update(
-                "UPDATE checkout_idempotency_keys "
-                        + "SET order_id = ?, status = 'COMPLETED', updated_at = CURRENT_TIMESTAMP "
-                        + "WHERE checkout_scope = ? AND principal = ? AND idempotency_key = ?",
+        jdbcTemplate.update(COMPLETE_CLAIM_SQL,
                 orderId,
                 claim.getScope(),
                 claim.getPrincipal(),
@@ -64,8 +68,7 @@ public class CheckoutIdempotencyService {
                                 String requestFingerprint,
                                 DataIntegrityViolationException duplicate) {
         List<ExistingClaim> existing = jdbcTemplate.query(
-                "SELECT order_id, request_fingerprint, status FROM checkout_idempotency_keys "
-                        + "WHERE checkout_scope = ? AND principal = ? AND idempotency_key = ? LIMIT 1",
+                FIND_CLAIM_SQL,
                 (rs, rowNum) -> new ExistingClaim(
                         rs.getObject("order_id") == null ? null : rs.getLong("order_id"),
                         rs.getString("request_fingerprint"),
@@ -94,17 +97,18 @@ public class CheckoutIdempotencyService {
         if (trimmed.isEmpty()) {
             return null;
         }
-        if (trimmed.length() > MAX_KEY_LENGTH || !trimmed.matches("[A-Za-z0-9._:-]+")) {
+        if (trimmed.length() > MAX_KEY_LENGTH || !IDEMPOTENCY_KEY_PATTERN.matcher(trimmed).matches()) {
             throw new IllegalArgumentException("Invalid Idempotency-Key");
         }
         return trimmed;
     }
 
     private String normalizeRequired(String value, String label) {
-        if (value == null || value.trim().isEmpty()) {
+        String normalized = value == null ? "" : value.trim();
+        if (normalized.isEmpty()) {
             throw new IllegalArgumentException(label + " is required");
         }
-        return value.trim();
+        return normalized;
     }
 
     private static class ExistingClaim {

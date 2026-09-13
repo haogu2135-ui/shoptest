@@ -20,6 +20,7 @@ public class SupportWebSocketTicketService {
     private static final long DEFAULT_TICKET_TTL_MS = 60_000L;
     private static final long MIN_TICKET_TTL_MS = 5_000L;
     private static final long MAX_TICKET_TTL_MS = 300_000L;
+    private static final String BEARER_PREFIX = "Bearer ";
 
     private final RuntimeConfigService runtimeConfig;
     private final JwtService jwtService;
@@ -57,7 +58,12 @@ public class SupportWebSocketTicketService {
     }
 
     private void cleanupExpired(long now) {
-        tickets.entrySet().removeIf(entry -> entry.getValue().isExpired(now));
+        for (Map.Entry<String, Ticket> entry : tickets.entrySet()) {
+            Ticket ticket = entry.getValue();
+            if (ticket.isExpired(now)) {
+                tickets.remove(entry.getKey(), ticket);
+            }
+        }
     }
 
     private long ticketTtlMs() {
@@ -90,17 +96,18 @@ public class SupportWebSocketTicketService {
             return null;
         }
         String normalized = authorizationHeader.trim();
-        if (normalized.startsWith("Bearer ")) {
-            normalized = normalized.substring(7).trim();
+        if (normalized.startsWith(BEARER_PREFIX)) {
+            normalized = normalized.substring(BEARER_PREFIX.length()).trim();
         }
-        return normalized.isBlank() ? null : normalized;
+        return normalized.isEmpty() ? null : normalized;
     }
 
     private String normalizeTicket(String value) {
-        if (value == null || value.isBlank()) {
+        if (value == null) {
             return null;
         }
-        return value.trim();
+        String normalized = value.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 
     public static final class Ticket {

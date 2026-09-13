@@ -20,8 +20,8 @@ import java.net.URISyntaxException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
-import java.util.Objects;
-import java.util.stream.Collectors;
+import java.util.ArrayList;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 @Service
@@ -41,6 +41,8 @@ public class SiteAnnouncementService {
     private static final Pattern LONG_ALPHANUMERIC_TOKEN_PATTERN = Pattern.compile("(?i)\\b[a-z0-9]{18,}\\b");
     private static final Pattern KEYBOARD_MASH_PATTERN = Pattern.compile(
             "(?i)(qwerty|asdfgh|zxcvbn|123456789|987654321|abcdefg|aabbcc|abcabc)");
+    private static final Pattern ANNOUNCEMENT_WHITESPACE_PATTERN = Pattern.compile("\\s+");
+    private static final Pattern ANNOUNCEMENT_CONTROL_PATTERN = Pattern.compile("[\\r\\n\\t]+");
 
     private final SiteAnnouncementRepository repository;
     private final RuntimeConfigService runtimeConfig;
@@ -56,21 +58,24 @@ public class SiteAnnouncementService {
             if (batch == null || batch.isEmpty()) {
                 return;
             }
-            List<SiteAnnouncement> invalidActiveAnnouncements = batch.stream()
-                    .filter(this::hasPlaceholderOrGibberishCopy)
-                    .collect(Collectors.toList());
+            List<SiteAnnouncement> invalidActiveAnnouncements = new ArrayList<>();
+            for (SiteAnnouncement announcement : batch) {
+                if (hasPlaceholderOrGibberishCopy(announcement)) invalidActiveAnnouncements.add(announcement);
+            }
             if (!invalidActiveAnnouncements.isEmpty()) {
-                invalidActiveAnnouncements.forEach(announcement -> announcement.setStatus("INACTIVE"));
+                for (SiteAnnouncement announcement : invalidActiveAnnouncements) {
+                    announcement.setStatus("INACTIVE");
+                }
                 repository.saveAll(invalidActiveAnnouncements);
                 log.warn("Deactivated {} active site announcement(s) that matched QA/test placeholder content guards",
                         invalidActiveAnnouncements.size());
             }
             long scanAfterId = lastId;
-            Long nextId = batch.stream()
-                    .map(SiteAnnouncement::getId)
-                    .filter(id -> id != null && id > scanAfterId)
-                    .max(Long::compareTo)
-                    .orElse(null);
+            Long nextId = null;
+            for (SiteAnnouncement announcement : batch) {
+                Long id = announcement.getId();
+                if (id != null && id > scanAfterId && (nextId == null || id > nextId)) nextId = id;
+            }
             if (nextId == null || batch.size() < PLACEHOLDER_SCAN_BATCH_SIZE) {
                 return;
             }
@@ -103,12 +108,14 @@ public class SiteAnnouncementService {
     public List<SiteAnnouncementPublicResponse> findActive(int limit) {
         int safeLimit = clamp(limit, 1, activeLimit());
         int fetchLimit = Math.max(safeLimit, Math.min(activeLimit(), safeLimit * 4));
-        return repository.findActive(LocalDateTime.now(), PageRequest.of(0, fetchLimit)).stream()
-                .filter(Objects::nonNull)
-                .filter(this::isPubliclyDisplayable)
-                .map(this::toPublicAnnouncement)
-                .limit(safeLimit)
-                .collect(Collectors.toList());
+        List<SiteAnnouncement> announcements = repository.findActive(LocalDateTime.now(), PageRequest.of(0, fetchLimit));
+        List<SiteAnnouncementPublicResponse> result = new ArrayList<>(Math.min(safeLimit, announcements.size()));
+        for (SiteAnnouncement announcement : announcements) {
+            if (announcement == null || !isPubliclyDisplayable(announcement)) continue;
+            result.add(toPublicAnnouncement(announcement));
+            if (result.size() >= safeLimit) break;
+        }
+        return result;
     }
 
     @Transactional(rollbackFor = Exception.class, readOnly = true)
@@ -180,16 +187,20 @@ public class SiteAnnouncementService {
     }
 
     private void validate(SiteAnnouncement announcement) {
-        if (announcement.getTitle() == null || announcement.getTitle().trim().isEmpty()) {
+        String title = announcement.getTitle();
+        String content = announcement.getContent();
+        String trimmedTitle = title == null ? "" : title.trim();
+        String trimmedContent = content == null ? "" : content.trim();
+        if (trimmedTitle.isEmpty()) {
             throw new IllegalArgumentException("Title is required");
         }
-        if (announcement.getContent() == null || announcement.getContent().trim().isEmpty()) {
+        if (trimmedContent.isEmpty()) {
             throw new IllegalArgumentException("Content is required");
         }
-        if (announcement.getTitle().trim().length() > titleMaxChars()) {
+        if (trimmedTitle.length() > titleMaxChars()) {
             throw new IllegalArgumentException("Title is too long");
         }
-        if (announcement.getContent().trim().length() > contentMaxChars()) {
+        if (trimmedContent.length() > contentMaxChars()) {
             throw new IllegalArgumentException("Content is too long");
         }
         String status = normalizeStatus(announcement.getStatus());
@@ -200,8 +211,8 @@ public class SiteAnnouncementService {
             throw new IllegalArgumentException("Active announcement appears to contain QA/test placeholder content");
         }
         String linkUrl = announcement.getLinkUrl();
-        if (linkUrl != null && !linkUrl.trim().isEmpty()) {
-            String trimmedLink = linkUrl.trim();
+        String trimmedLink = linkUrl == null ? "" : linkUrl.trim();
+        if (!trimmedLink.isEmpty()) {
             if (trimmedLink.length() > linkUrlMaxChars()) {
                 throw new IllegalArgumentException("Link URL is too long");
             }
@@ -229,17 +240,19 @@ public class SiteAnnouncementService {
     }
 
     private String normalizeStatus(String status) {
-        if (status == null || status.trim().isEmpty()) {
+        String trimmed = status == null ? "" : status.trim();
+        if (trimmed.isEmpty()) {
             return "ACTIVE";
         }
-        return status.trim().toUpperCase(Locale.ROOT);
+        return trimmed.toUpperCase(Locale.ROOT);
     }
 
     private String normalizeStatusFilter(String status) {
-        if (status == null || status.trim().isEmpty()) {
+        String trimmed = status == null ? "" : status.trim();
+        if (trimmed.isEmpty()) {
             return null;
         }
-        String normalized = status.trim().toUpperCase(Locale.ROOT);
+        String normalized = trimmed.toUpperCase(Locale.ROOT);
         return "ACTIVE".equals(normalized) || "INACTIVE".equals(normalized) ? normalized : null;
     }
 
@@ -247,11 +260,13 @@ public class SiteAnnouncementService {
         if (keyword == null) {
             return null;
         }
-        String normalized = keyword.chars()
-                .mapToObj(ch -> ch <= 31 || ch == 127 ? " " : String.valueOf((char) ch))
-                .collect(Collectors.joining())
-                .trim()
-                .replaceAll("\\s+", " ")
+        StringBuilder cleaned = new StringBuilder(keyword.length());
+        for (int index = 0; index < keyword.length(); index++) {
+            char character = keyword.charAt(index);
+            cleaned.append(character <= 31 || character == 127 ? ' ' : character);
+        }
+        String normalized = ANNOUNCEMENT_WHITESPACE_PATTERN.matcher(cleaned.toString().trim())
+                .replaceAll(" ")
                 .toLowerCase(Locale.ROOT);
         if (normalized.isEmpty()) {
             return null;
@@ -283,13 +298,18 @@ public class SiteAnnouncementService {
                 || KEYBOARD_MASH_PATTERN.matcher(text).find()) {
             return true;
         }
-        return LONG_ALPHANUMERIC_TOKEN_PATTERN.matcher(text).results()
-                .map(match -> match.group())
-                .anyMatch(this::looksLikeGibberishToken);
+        Matcher matcher = LONG_ALPHANUMERIC_TOKEN_PATTERN.matcher(text);
+        while (matcher.find()) {
+            if (looksLikeGibberishToken(matcher.group())) return true;
+        }
+        return false;
     }
 
     private String normalizeCopy(String value) {
-        return value == null ? "" : value.replaceAll("[\\r\\n\\t]+", " ").replaceAll("\\s+", " ").trim();
+        if (value == null) return "";
+        return ANNOUNCEMENT_WHITESPACE_PATTERN.matcher(
+                ANNOUNCEMENT_CONTROL_PATTERN.matcher(value).replaceAll(" "))
+                .replaceAll(" ").trim();
     }
 
     private boolean looksLikeGibberishToken(String token) {
@@ -327,10 +347,16 @@ public class SiteAnnouncementService {
 
     private boolean isSafeLinkUrl(String value) {
         String normalizedValue = value.toLowerCase(Locale.ROOT);
-        if (value.indexOf('\\') >= 0
-                || value.chars().anyMatch(ch -> ch <= 31 || ch == 127)
-                || normalizedValue.contains("%00")
-                || normalizedValue.contains("%5c")) {
+        boolean hasControl = false;
+        for (int index = 0; index < value.length(); index++) {
+            char character = value.charAt(index);
+            if (character <= 31 || character == 127) {
+                hasControl = true;
+                break;
+            }
+        }
+        if (value.indexOf('\\') >= 0 || hasControl
+                || normalizedValue.contains("%00") || normalizedValue.contains("%5c")) {
             return false;
         }
         if (value.startsWith("/")) {

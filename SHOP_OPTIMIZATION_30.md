@@ -1066,6 +1066,99 @@ are kept in addition to the original 130-item record:
 812. Preserve newest-page-wins semantics while eliminating page-loop callbacks.
 813. Preserve notification action-label text while reusing helper-derived strings.
 
+## Optimization Round 814-903
+
+814. Scan phone control characters by index without an intermediate character array.
+815. Count phone digits with one bounded ASCII scan.
+816. Normalize phone digits through direct character accumulation.
+817. Build category nodes through direct input traversal.
+818. Recurse category sorting without a per-node callback closure.
+819. Flatten category trees through direct depth-first traversal.
+820. Materialize tree options with a direct result collector.
+821. Hoist payment-market membership into a reusable Set.
+822. Return already-filtered payment channels without a second ordering clone.
+823. Reuse the token-derived checkout-storage key during reads.
+824. Reuse the token-derived checkout-storage key during synchronization.
+825. Reuse the token-derived checkout-storage key during cleanup.
+826. Read checkout IDs with one bounded normalization scan.
+827. Sync checkout IDs with one bounded normalization scan.
+828. Reuse checkout coupon item IDs for both keying and the request payload.
+829. Build payment method details once per channel response.
+830. Reuse payment method availability for the checkout form decision.
+831. Replace selected-address lookup callbacks with an early direct scan.
+832. Centralize checkoutable cart-ID collection for saved-item restoration.
+833. Reuse checkoutable cart-ID collection for guest restoration state.
+834. Restore guest saved items through direct iteration.
+835. Remove restored saved items through direct iteration.
+836. Deduplicate bulk-removal IDs while collecting them.
+837. Merge pending-removal IDs with one mutable result copy.
+838. Reuse the bulk-removal ID Set for selected-state cleanup.
+839. Reuse the bulk-removal ID Set for pending-state cleanup.
+840. Preserve scoped cart-session fallback order while avoiding repeated token reads.
+841. Preserve coupon quote cart identity while avoiding a second ID map.
+842. Preserve payment channel availability while avoiding repeated detail creation.
+843. Preserve saved-cart selection while reusing the canonical checkoutable-ID helper.
+844. Normalize rich-detail blocks with a direct typed collector.
+845. Drop empty rich-detail entries during collection instead of mapping then filtering.
+846. Parse YouTube path segments without a filtered path-array allocation.
+847. Read short YouTube IDs by slicing the known leading slash.
+848. Parse Vimeo path segments without a filtered path-array allocation.
+849. Filter renderable rich-detail blocks through one direct pass.
+850. Resolve guest-cart gallery images with an early direct match.
+851. Normalize stored guest-cart rows through direct iteration.
+852. Normalize guest-cart writes through direct iteration.
+853. Find an existing guest-cart line with an early indexed scan.
+854. Remove multiple guest-cart lines through a direct result collector.
+855. Normalize saved-for-later rows without a callback allocation.
+856. Find duplicate saved-for-later products with an early indexed scan.
+857. Remove saved-for-later IDs through a direct result collector.
+858. Remove matching saved-for-later products through one direct scan.
+859. Avoid renormalizing rows already normalized by saved-item reads.
+860. Avoid a second saved-item normalization pass before persistence.
+861. Split product option values through a direct normalized collector.
+862. Deduplicate product option values without a callback closure.
+863. Parse variant option text without a rest-array and join pass.
+864. Normalize variant option records through direct key traversal.
+865. Collect direct option groups without a callback wrapper.
+866. Read configured specification groups through direct key traversal.
+867. Collect normalized variants through direct iteration.
+868. Match selected variant options with early nested-loop exits.
+869. Check variant option availability with an early direct match.
+870. Reconcile compatible option groups through direct iteration.
+871. Build localized size aliases without an intermediate Array.from result.
+872. Normalize JSON selected specs through own-key iteration.
+873. Parse legacy selected specs directly into the normalized result object.
+874. Format selected specs through direct own-key traversal.
+875. Collect Navbar stock-alert product IDs with one deduplication scan.
+876. Count ready stock-alert products without filter-result allocation.
+877. Update a cart-drawer quantity through one indexed copy and early exit.
+878. Collect successfully cleared drawer item IDs in one bounded scan.
+879. Capture the first drawer failure while collecting successful removals.
+880. Partition drawer items into checkoutable and blocked groups in one pass.
+881. Count drawer low-stock items without a filtered temporary array.
+882. Count pending drawer quantities without Object.values allocation.
+883. Collect guest blocked-item IDs without a map pass.
+884. Update cart quantity actions through an indexed optimistic copy.
+885. Share recovery-added checkoutable-ID collection across auth and guest paths.
+886. Merge recovery selections with a reusable deduplicating collector.
+887. Scan authenticated recovery snapshots directly for added IDs.
+888. Scan guest recovery snapshots directly for added IDs.
+889. Start async-batch workers through a direct promise collector.
+890. Scan announcement-link control characters by index.
+891. Filter public coupons through a direct result collector.
+892. Resolve coupon error matchers with an early direct scan.
+893. Sanitize checkout control characters with direct accumulation.
+894. Resolve recommended payment rails with an early channel scan.
+895. Build recommended market codes without a map intermediate.
+896. Compare checkout ID sets with an early array scan.
+897. Merge defined checkout fields through own-key iteration.
+898. Merge hydratable checkout fields through own-key iteration.
+899. Resolve the first checkout region path without find/map intermediates.
+900. Choose the nearest cart benefit without a two-item sort allocation.
+901. Reuse coupon claimability logic during coupon sorting.
+902. Resolve a remembered checkout rail with an early direct scan.
+903. Keep checkout rail membership in a hoisted Set-free direct collector.
+
 ## Verification
 
 The final verification record is maintained here after the post-change checks:
@@ -1313,5 +1406,404 @@ The final verification record is maintained here after the post-change checks:
   to this round: the existing ProductDetailGallery timer-comment expectation
   and the existing Home pet-gallery live-item expression expectation.
 
+- Round 814-903 focused helper/component regression: 7 suites and 75 tests
+  passed across rich detail, guest cart, saved-for-later, product options,
+  selected specs, CartDrawer, and Navbar coverage.
+- Round 814-903 checkout/recovery regression: 6 suites and 119 tests passed
+  across CartCheckoutFlow, Checkout, announcement links, async batching, cart
+  benefits, and CouponCenter.
+- Round 814-903 final checkout regression: 4 suites and 114 tests passed after
+  the last checkout rail and coupon sorting adjustments.
+- Round 814-903 TypeScript: bounded frontend `npx tsc --noEmit --pretty false
+  --skipLibCheck` passed with `NODE_OPTIONS=--max-old-space-size=768`.
+- Round 814-903 production: bounded frontend `npm run build` passed and
+  synchronized the safe staging build into `frontend/build`.
+- Round 814-903 cleanup: `git diff --check` passed; no test, TypeScript,
+  build, or bounded-runner processes remained, and the existing
+  `127.0.0.1:4200` listener remained owned by PID `3314802`.
+
+904. Scan public variant candidates with an early direct match.
+905. Reject nonmatching selected SKUs before parsing variant options.
+906. Delegate public variant lookup to the parsed-selection helper.
+907. Resolve variant prices without Optional map and filter allocations.
+908. Return the first positive variant price through direct branching.
+909. Resolve variant stock through direct optional handling.
+910. Preserve product-stock fallback for invalid variant stock values.
+911. Parse selected specs once across price and bundle resolution.
+912. Parse selected specs once for stock lookup.
+913. Reuse parsed selections during variant validation matching.
+914. Reuse parsed selections during variant stock decreases.
+915. Reuse parsed selections during variant stock increases.
+916. Build required-option membership once during catalog validation.
+917. Build required-option membership once during selected-key rejection.
+918. Build variant combination keys with a reusable StringBuilder path.
+919. Append combination separators directly without stream joining.
+920. Split option values through one bounded character scan.
+921. Classify localized option delimiters without regex token arrays.
+922. Collect configured option groups through direct map traversal.
+923. Derive configured option names with substring instead of regex replacement.
+924. Collect fallback option names through direct variant traversal.
+925. Deduplicate fallback option names with an insertion set.
+926. Match private variant candidates with an early direct scan.
+927. Skip private SKU mismatches before option-map parsing.
+928. Normalize selected JSON entries through direct map iteration.
+929. Normalize map-backed variant options through direct entry iteration.
+930. Tokenize legacy option text in one bounded pass.
+931. Find legacy option separators with index lookup instead of split.
+932. Convert decimal values after one normalized text extraction.
+933. Convert integer values after one normalized text extraction.
+934. Materialize payment channels into one sortable response input list.
+935. Use stable in-place channel sorting after the defensive copy.
+936. Pre-size payment response storage from the sorted channel count.
+937. Resolve recommended channels with an early direct scan.
+938. Normalize payment markets once per response build.
+939. Key normalized markets by channel identity without equality collisions.
+940. Reuse cached markets during every comparator rank lookup.
+941. Trim each country header name once before reading its value.
+942. Reuse the already-normalized client IP during geo lookup guards.
+943. Locate private-172 octets by index without split arrays.
+944. Parse only the bounded second private-172 segment.
+945. Validate country-code length directly before accepting it.
+946. Validate country-code characters directly without a regex matcher.
+947. Sort configured payment channels from one mutable copy.
+948. Keep configured-channel ordering through direct stable sort.
+949. Build the supported-channel membership set once for fallback selection.
+950. Collect supported default channels through direct iteration.
+951. Pre-size the configured fallback result list.
+952. Filter enabled channels through a direct result collector.
+953. Pre-size enabled-channel result storage.
+954. Find enabled channels without an Optional stream pipeline.
+955. Find configured channels without a filter and find pipeline.
+956. Return empty channel optionals directly after lookup scans.
+957. Parse supported-channel text with a delimiter index scan.
+958. Deduplicate supported channel codes in a set during parsing.
+959. Normalize each supported token exactly once.
+960. Avoid split, List.of, and stream intermediates for channel support.
+961. Preserve configured channel order while serving direct lookups.
+962. Avoid rebuilding the enabled list inside enabled lookup.
+963. Cache each response channel code for recommendation checks.
+964. Normalize circuit names from one trimmed input value.
+965. Replace circuit-name separator runs with a direct character scan.
+966. Join normalized circuit segments with one direct builder.
+967. Trim circuit-name suffix separators without regex compilation.
+968. Snapshot circuit entries before status ordering.
+969. Pre-size circuit status responses from the snapshot size.
+970. Filter circuit eviction candidates through one direct loop.
+971. Limit eviction removals with an indexed bound.
+972. Reuse the normalized circuit name in open-circuit errors.
+973. Reuse one clock read across circuit failure bookkeeping.
+974. Scan trusted-proxy entries directly between commas.
+975. Match trusted entries without configured-address split arrays.
+976. Locate CIDR separators by index instead of split.
+977. Parse CIDR prefixes directly while preserving signed integer forms.
+978. Read the first forwarded address without split allocation.
+979. Validate normalized addresses through the already-cleaned value.
+980. Validate address characters with one direct whitelist scan.
+981. Scan IPv4 segments by delimiter index.
+982. Reject non-ASCII IPv4 digits before numeric accumulation.
+983. Accumulate IPv4 octets without substring or parse allocation.
+984. Reuse the closing bracket index while cleaning addresses.
+985. Remove control characters with a lazy cleanup builder.
+986. Return unchanged address strings when no controls are present.
+987. Aggregate system-alert summary rows through direct iteration.
+988. Build batch SQL placeholders with one indexed builder.
+989. Reuse one batch argument list for either status update.
+990. Normalize alert IDs with direct filtering and deduplication.
+991. Return the first alert row without a stream wrapper.
+992. Read each alert timestamp column once during mapping.
+993. Precompile and reuse alert category, path, fingerprint, and text patterns.
+
+994. Map public product questions through one direct response traversal.
+995. Pre-size the public question response list from the query result.
+996. Reuse a named hard cap for public question rows.
+997. Reuse one observation timestamp across the admin question summary.
+998. Derive the summary response instant from the captured observation time.
+999. Precompile product-question control-character matching.
+1000. Precompile product-question whitespace matching.
+1001. Share one whitespace normalizer between question and search text.
+1002. Reuse a named maximum length when bounding question searches.
+1003. Escape question-search LIKE literals with one builder pass.
+1004. Reuse the fixed product-question rate-window duration.
+1005. Read the question rate-bucket bound once before cleanup.
+1006. Remove stale question rate buckets through direct traversal.
+1007. Capture the answer timestamp once before assigning the entity field.
+1008. Normalize a null question status without String.valueOf allocation.
+1009. Reuse named admin-row lower and upper bounds.
+1010. Reuse the bounded stale-question hours constant.
+
+1011. Reuse a static membership set for supported pet types.
+1012. Reuse a static membership set for supported pet sizes.
+1013. Keep the default pet weight as one immutable value.
+1014. Precompile pet profile control-character matching.
+1015. Precompile pet profile whitespace matching.
+1016. Reuse one timestamp for pet create and update fields.
+1017. Read the pet profile creation limit once per create operation.
+1018. Trim optional pet text through one stored intermediate.
+1019. Replace pet control characters through the compiled pattern.
+1020. Collapse pet whitespace through the compiled pattern.
+1021. Reuse the immutable default weight when configuration is invalid.
+
+1022. Reuse a named bearer-token prefix.
+1023. Clean expired support tickets through direct concurrent-map traversal.
+1024. Derive bearer-token substring length from the shared prefix.
+1025. Avoid a second blank scan after trimming bearer tokens.
+1026. Normalize ticket values with one trim operation.
+
+1027. Reuse a character table for rate-limit hexadecimal encoding.
+1028. Precompile rate-limit Redis-prefix sanitization.
+1029. Precompile rate-limit Redis-segment sanitization.
+1030. Precompile numeric rate-limit path-segment matching.
+1031. Precompile UUID rate-limit path-segment matching.
+1032. Precompile long-hex rate-limit path-segment matching.
+1033. Precompile order-number rate-limit path-segment matching.
+1034. Store sensitive authentication paths in one immutable set.
+1035. Store payment-sync paths in one immutable set.
+1036. Store payment-callback paths in one immutable set.
+1037. Store admin-order list paths in one immutable set.
+1038. Capture the rate-limit clock value once per request.
+1039. Normalize a request path once for all rate-limit decisions.
+1040. Reuse the normalized path during skip-prefix checks.
+1041. Reuse the normalized path during scope resolution.
+1042. Reuse the normalized path during endpoint-limit resolution.
+1043. Pre-size resolved rate-limit keys for the three possible policies.
+1044. Pre-size consumed-limit storage from resolved policy count.
+1045. Select rejected limits with one direct scan.
+1046. Select the most constrained accepted limit during the same scan.
+1047. Precompute the Redis scan pattern before entering its callback.
+1048. Read an authenticated principal name once for client-key selection.
+1049. Resolve sensitive authentication membership without a comparison chain.
+1050. Resolve payment-sync membership without a comparison chain.
+1051. Resolve payment-callback membership without a comparison chain.
+1052. Resolve admin-order membership without a comparison chain.
+1053. Collapse repeated request slashes with one character scan.
+1054. Build normalized rate-limit paths without split and stream arrays.
+1055. Match numeric path segments through the compiled pattern.
+1056. Match UUID path segments through the compiled pattern.
+1057. Match long-hex path segments through the compiled pattern.
+1058. Match order-number path segments through the compiled pattern.
+1059. Parse rate-limit skip prefixes with one delimiter scan.
+1060. Remove expired local rate-limit buckets through direct traversal.
+1061. Sort rate-limit eviction candidates from one snapshot.
+1062. Bound rate-limit eviction removals by candidate count.
+1063. Collect hot rate-limit buckets without a stream pipeline.
+1064. Sort only the collected hot-bucket candidates.
+1065. Pre-size hot-bucket status responses to the ten-item cap.
+1066. Encode local rate-limit hashes without per-byte String.format calls.
+
+1067. Precompile config-center key validation.
+1068. Precompile config-center prefix validation.
+1069. Precompile config-center error-text sanitization.
+1070. Trim optional Nacos properties once before insertion.
+1071. Sort parsed property names through one mutable list.
+1072. Pre-size the parsed property map from its sorted keys.
+1073. Read the config-center property limit once per validation.
+1074. Snapshot allowed prefixes once during property validation.
+1075. Read the config-center content limit once per normalization.
+1076. Collect runtime properties through one direct entry traversal.
+1077. Reuse one prefix snapshot during runtime-property filtering.
+1078. Collect masked sensitive keys without a stream pipeline.
+1079. Scan raw config lines without split-array allocation.
+1080. Replace masked config lines through one direct line scan.
+1081. Mask sensitive content through one direct line scan.
+1082. Pre-size masked property maps from their source size.
+1083. Parse configured key prefixes with one delimiter scan.
+
+1084. Reuse a named six-digit verification-code bound.
+1085. Reuse a character table for email-code hexadecimal encoding.
+1086. Precompile email client-key sanitization.
+1087. Precompile email Redis-prefix sanitization.
+1088. Generate six-digit email codes without formatter allocation.
+1089. Route in-memory login codes through the shared generator.
+1090. Route Redis login codes through the shared generator.
+1091. Route in-memory purpose codes through the shared generator.
+1092. Route Redis purpose codes through the shared generator.
+1093. Remove expired email codes through direct map traversal.
+1094. Read the resend interval once during cooldown cleanup.
+1095. Remove expired email cooldowns with conditional map removal.
+1096. Clean email rate buckets through direct concurrent-map traversal.
+1097. Return immediately for an empty configured-account list.
+1098. Pre-size filtered SMTP account storage.
+1099. Filter configured SMTP accounts through one direct traversal.
+1100. Cache send-window and attempt settings for memory login sends.
+1101. Reuse the memory login resend interval for both checks.
+1102. Cache the memory login code TTL before storing its hash.
+1103. Cache send-window and attempt settings for Redis login sends.
+1104. Reuse the Redis login resend interval for cooldown writes.
+1105. Cache the Redis login code TTL before expiration setup.
+1106. Cache send-window and attempt settings for memory purpose sends.
+1107. Reuse the memory purpose resend interval for cooldown checks.
+1108. Cache the memory purpose code TTL before storing its hash.
+1109. Cache send-window and attempt settings for Redis purpose sends.
+1110. Reuse the Redis purpose resend interval for cooldown writes.
+1111. Cache the Redis purpose code TTL before expiration setup.
+1112. Cache verification-window and failure settings for memory login checks.
+1113. Cache maximum code attempts for memory login verification.
+1114. Cache verification-window and failure settings for Redis login checks.
+1115. Cache maximum code attempts for Redis login verification.
+1116. Cache verification-window and failure settings for memory purpose checks.
+1117. Cache maximum code attempts for memory purpose verification.
+1118. Cache verification-window and failure settings for Redis purpose checks.
+1119. Cache maximum code attempts for Redis purpose verification.
+1120. Encode email verification digests without per-byte formatting.
+1121. Encode email Redis hashes without per-byte formatting.
+1122. Normalize email input through one stored trim result.
+1123. Reuse direct configured-account filtering for mail delivery.
+
+1124. Reuse a named upper bound for blacklist search rows.
+1125. Precompile blacklist control-text matching.
+1126. Precompile blacklist whitespace matching.
+1127. Return the first blocking blacklist row without a stream wrapper.
+1128. Match protected blacklist paths through one direct prefix scan.
+1129. Sanitize failure reasons once before the insert/update branch.
+1130. Collect database release IDs without filter intermediates.
+1131. Build release SQL placeholders through a reusable helper.
+1132. Bound placeholder-builder capacity to the requested ID count.
+1133. Release legacy login IDs through one direct traversal.
+1134. Clear released legacy IPs through direct iteration.
+1135. Process database legacy-clear results without a stream callback.
+1136. Pre-size merged blacklist results from the requested limit.
+1137. Pre-size missing legacy blacklist entries from snapshot count.
+1138. Build active login IP membership with one direct result pass.
+1139. Count legacy blacklist statuses with a direct counter.
+1140. Match legacy entries without Optional value allocation.
+1141. Resolve legacy IDs through an early-return snapshot scan.
+1142. Normalize batch blacklist IDs through direct traversal.
+1143. Deduplicate batch blacklist IDs with one membership set.
+1144. Read blacklist ResultSet metadata once per mapped row.
+1145. Normalize available column labels once for row mapping.
+1146. Apply status fallback through direct null branching.
+1147. Apply source fallback through direct null branching.
+1148. Read optional blacklist strings from one column set.
+1149. Read optional blacklist integers from one column set.
+1150. Read optional blacklist timestamps from one column set.
+1151. Avoid repeated ResultSet metadata scans across blacklist fields.
+1152. Parse protected path prefixes with one delimiter scan.
+1153. Sanitize blacklist text through compiled patterns.
+1154. Cache the normalized reason in manual block operations.
+1155. Cache the normalized actor in manual block operations.
+1156. Cache the normalized actor in release operations.
+1157. Return active blacklist rows through direct first-row branching.
+1158. Return ID lookup rows through direct first-row branching.
+1159. Preserve merge capacity while avoiding oversized temporary lists.
+1160. Keep mapped status/source defaults free of Optional wrappers.
+1161. Build active-IP membership without stream collection.
+1162. Clear released IPs without method-reference callback allocation.
+1163. Reuse direct list traversal across legacy release branches.
+
+1164. Reuse one timestamp for address creation fields.
+1165. Reuse a named address-per-user hard cap.
+1166. Precompile address control-character matching.
+1167. Precompile address whitespace matching.
+1168. Validate and reuse the address user ID once.
+1169. Avoid repeated address trim checks during fallback construction.
+1170. Preserve the combined-address fallback with one blank classification.
+1171. Normalize address whitespace through the compiled matcher.
+1172. Normalize address controls through the compiled matcher.
+1173. Reuse the bounded address cap in the configuration helper.
+
 All tests and builds are run through `scripts/run-bounded-task.sh` in
 accordance with the repository resource-safety instructions.
+
+1174. Cache the validated guest JWT signing key.
+1175. Trim guest access tokens once before parsing.
+1176. Reuse one parsed guest-token expiration value.
+1177. Reuse the normalized order number during email matching.
+1178. Skip guest fingerprint work for invalid normalized emails.
+1179. Reuse normalized order and fingerprint values in fingerprint matching.
+1180. Reuse a thread-local SHA-256 digest for guest fingerprints.
+1181. Encode guest fingerprints with a direct hexadecimal lookup.
+1182. Precompile guest fingerprint validation.
+1183. Convert guest token TTLs without an intermediate Duration object.
+
+1184. Precompile checkout idempotency-key validation.
+1185. Reuse the checkout idempotency insert SQL constant.
+1186. Reuse the checkout idempotency completion SQL constant.
+1187. Reuse the checkout idempotency lookup SQL constant.
+1188. Trim required idempotency fields once per value.
+
+1189. Evaluate non-Stripe production mode once per availability decision.
+1190. Normalize the runtime mode once before comparison.
+1191. Trim gateway URLs once before URI parsing.
+1192. Reuse the placeholder gateway host constant.
+1193. Remove storefront trailing slashes without regex compilation.
+1194. Use a fixed-arity first-nonblank helper for two candidates.
+1195. Avoid varargs-array allocation in payment URL fallback selection.
+
+1196. Reject blank refresh tokens before Redis key construction.
+1197. Reject blank access-token IDs before blacklist lookup.
+1198. Skip blank client IP deletes before Redis access.
+1199. Read the login-failure threshold once per snapshot scan.
+1200. Pre-size login-failure snapshot results from scanned keys.
+1201. Reuse one current-time read while checking local expiration.
+1202. Precompile account control-character sanitization.
+1203. Precompile account whitespace normalization.
+1204. Normalize account keys with `Locale.ROOT`.
+1205. Skip exception-based parsing for blank Redis counters.
+
+1206. Build notification broadcast batches with direct iteration.
+1207. Pre-size notification broadcast batches.
+1208. Normalize broadcast notification type once per batch.
+1209. Trim broadcast titles once per batch.
+1210. Trim notification types once before uppercase conversion.
+1211. Trim notification formats once before uppercase conversion.
+1212. Return plain HTML-free notification text without tag scans.
+1213. Pre-size sanitized HTML attribute maps.
+1214. Reuse the allowed notification URL-scheme set.
+1215. Short-circuit attribute escaping when no escapable characters exist.
+
+1216. Reuse one immutable Spanish notification locale.
+1217. Avoid redundant locale-language null checks.
+1218. Normalize payment amounts once before localized formatting.
+1219. Reuse safe carrier normalization in shipped notices.
+1220. Skip lowercase conversion for locales without a language code.
+
+1221. Reuse local-host name membership for gateway checks.
+1222. Precompile IPv4 literal recognition.
+1223. Normalize the parsed gateway host once.
+1224. Normalize gateway host input once before classification.
+1225. Reuse local-host constants across gateway validation branches.
+1226. Reuse the IPv4 matcher across gateway validations.
+
+1227. Pre-size CSV record storage for ordinary exports.
+1228. Select newline text without per-character string conversion.
+1229. Reuse one CSV line string during record parsing.
+1230. Pre-size parsed CSV field lists.
+1231. Count comma and semicolon delimiters in one pass.
+1232. Remove the second delimiter scan from CSV detection.
+1233. Pre-size CSV output rows for common field counts.
+1234. Detect CSV quoting characters in one pass.
+
+1235. Cache the carrier ID during duplicate-name validation.
+1236. Reuse the cached carrier ID during duplicate-code validation.
+1237. Cache the brand ID during duplicate-name validation.
+1238. Reuse shared review-image default configuration constants.
+1239. Normalize review-image public paths from one trimmed value.
+
+1240. Reuse one category-tree parent lookup.
+1241. Avoid empty child-array allocation during category sorting.
+1242. Avoid empty child-array traversal during category flattening.
+1243. Normalize category fallback names once.
+1244. Avoid empty child-array recursion for descendant collection.
+
+1245. Share checkout cart ID normalization between reads and writes.
+1246. Use an ID selector without an intermediate mapped array.
+1247. Avoid rereading an identical legacy checkout storage key.
+1248. Share legacy checkout-key cleanup between sync and clear flows.
+
+1249. Parse stock-alert timestamps once before validity checks.
+1250. Share product-name normalization across stock-alert flows.
+1251. Share image-URL normalization across stock-alert flows.
+1252. Share stored-alert validation and field construction.
+1253. Normalize stock-alert lookup IDs before scanning.
+1254. Read stock alerts once before removal filtering.
+
+1255. Reuse one compiled whitespace matcher for payment poll text.
+1256. Normalize stored payment-poll order numbers once during parsing.
+1257. Normalize payment-poll order numbers before lock persistence.
+
+1258. Reuse bounded snapshot text normalization across catalog fields.
+1259. Avoid repeated variant stock number conversion.
+1260. Avoid repeated catalog rating number conversion.
+1261. Avoid repeated catalog review-count number conversion.
+1262. Load fallback products through direct iteration.
+1263. Reuse normalized fallback category-name keys.

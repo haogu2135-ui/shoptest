@@ -23,6 +23,8 @@ export const allSettledWithConcurrency = async <T>(
     }
   };
 
-  await Promise.all(Array.from({ length: workerCount }, runWorker));
+  const workers: Promise<void>[] = [];
+  for (let index = 0; index < workerCount; index += 1) workers.push(runWorker());
+  await Promise.all(workers);
   return results;
 };

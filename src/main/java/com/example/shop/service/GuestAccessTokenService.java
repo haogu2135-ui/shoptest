@@ -10,12 +10,13 @@ import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
-import java.time.Duration;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 /**
  * Issues short-lived, order-bound guest access tokens. The token contains an
@@ -30,14 +31,22 @@ public class GuestAccessTokenService {
     private static final String ORDER_NO_CLAIM = "guestOrderNo";
     private static final String EMAIL_FINGERPRINT_CLAIM = "guestEmailFingerprint";
     private static final long DEFAULT_TTL_MINUTES = 30;
+    private static final char[] HEX_DIGITS = "0123456789abcdef".toCharArray();
+    private static final Pattern HEX_FINGERPRINT_PATTERN = Pattern.compile("[0-9a-f]{64}");
+    private static final ThreadLocal<MessageDigest> SHA_256 = ThreadLocal.withInitial(
+            GuestAccessTokenService::newSha256Digest);
 
     private final RuntimeConfigService runtimeConfig;
     private final String jwtSecret;
+    private final SecretKey configuredSigningKey;
 
     public GuestAccessTokenService(RuntimeConfigService runtimeConfig,
                                    @Value("${app.jwtSecret:}") String jwtSecret) {
         this.runtimeConfig = runtimeConfig;
         this.jwtSecret = jwtSecret == null ? "" : jwtSecret.trim();
+        this.configuredSigningKey = hasUsableSecret(this.jwtSecret)
+                ? Keys.hmacShaKeyFor(this.jwtSecret.getBytes(StandardCharsets.UTF_8))
+                : null;
     }
 
     public String issue(String orderNo, String email) {
@@ -63,7 +72,8 @@ public class GuestAccessTokenService {
     }
 
     public Access validate(String token) {
-        if (token == null || token.trim().isEmpty()) {
+        String normalizedToken = token == null ? "" : token.trim();
+        if (normalizedToken.isEmpty()) {
             return null;
         }
         try {
@@ -71,15 +81,16 @@ public class GuestAccessTokenService {
             Claims claims = Jwts.parser()
                     .verifyWith(signingKey())
                     .build()
-                    .parseSignedClaims(token.trim())
+                    .parseSignedClaims(normalizedToken)
                     .getPayload();
             if (!TOKEN_TYPE.equals(String.valueOf(claims.get(TYPE_CLAIM)))) {
                 return null;
             }
             String orderNo = normalizeOrderNo(claims.get(ORDER_NO_CLAIM));
             String emailFingerprint = normalizeFingerprint(claims.get(EMAIL_FINGERPRINT_CLAIM));
-            if (orderNo == null || emailFingerprint == null || claims.getExpiration() == null
-                    || claims.getExpiration().before(new Date())) {
+            Date expiration = claims.getExpiration();
+            if (orderNo == null || emailFingerprint == null || expiration == null
+                    || expiration.before(new Date())) {
                 return null;
             }
             return new Access(orderNo, emailFingerprint, claims.getId());
@@ -90,17 +101,20 @@ public class GuestAccessTokenService {
 
     public boolean matches(String token, String orderNo, String email) {
         Access access = validate(token);
+        String normalizedOrderNo = normalizeOrderNo(orderNo);
         String normalizedEmail = normalizeEmail(email);
-        return access != null
-                && access.getOrderNo().equalsIgnoreCase(normalizeOrderNo(orderNo))
-                && access.getEmailFingerprint().equals(fingerprint(normalizedEmail));
+        return access != null && normalizedOrderNo != null && normalizedEmail != null
+                && access.getOrderNo().equalsIgnoreCase(normalizedOrderNo)
+                && access.getEmailFingerprint().equals(fingerprintNormalized(normalizedEmail));
     }
 
     public boolean matchesFingerprint(String token, String orderNo, String emailFingerprint) {
         Access access = validate(token);
+        String normalizedOrderNo = normalizeOrderNo(orderNo);
         String normalizedFingerprint = normalizeFingerprint(emailFingerprint);
-        return access != null
-                && access.getOrderNo().equalsIgnoreCase(normalizeOrderNo(orderNo))
+        return access != null && normalizedOrderNo != null
+                && normalizedFingerprint != null
+                && access.getOrderNo().equalsIgnoreCase(normalizedOrderNo)
                 && access.getEmailFingerprint().equals(normalizedFingerprint);
     }
 
@@ -114,21 +128,30 @@ public class GuestAccessTokenService {
         if (normalized == null) {
             return null;
         }
+        return fingerprintNormalized(normalized);
+    }
+
+    private String fingerprintNormalized(String normalized) {
+        byte[] digest = SHA_256.get().digest(normalized.getBytes(StandardCharsets.UTF_8));
+        StringBuilder result = new StringBuilder(digest.length * 2);
+        for (byte value : digest) {
+            int unsigned = value & 0xff;
+            result.append(HEX_DIGITS[unsigned >>> 4]);
+            result.append(HEX_DIGITS[unsigned & 0x0f]);
+        }
+        return result.toString();
+    }
+
+    private static MessageDigest newSha256Digest() {
         try {
-            byte[] digest = MessageDigest.getInstance("SHA-256")
-                    .digest(normalized.getBytes(StandardCharsets.UTF_8));
-            StringBuilder result = new StringBuilder(digest.length * 2);
-            for (byte value : digest) {
-                result.append(String.format(Locale.ROOT, "%02x", value));
-            }
-            return result.toString();
+            return MessageDigest.getInstance("SHA-256");
         } catch (NoSuchAlgorithmException ex) {
             throw new IllegalStateException("SHA-256 is unavailable", ex);
         }
     }
 
     private long ttlMillis() {
-        return Duration.ofMinutes(ttlMinutes()).toMillis();
+        return TimeUnit.MINUTES.toMillis(ttlMinutes());
     }
 
     private String normalizeOrderNo(Object value) {
@@ -146,20 +169,23 @@ public class GuestAccessTokenService {
     private String normalizeFingerprint(Object value) {
         if (value == null) return null;
         String normalized = String.valueOf(value).trim().toLowerCase(Locale.ROOT);
-        return normalized.matches("[0-9a-f]{64}") ? normalized : null;
+        return HEX_FINGERPRINT_PATTERN.matcher(normalized).matches() ? normalized : null;
     }
 
     private void ensureSecretConfigured() {
-        if (jwtSecret.isEmpty()
-                || "your-secret-key".equals(jwtSecret)
-                || "your-secret-key-here".equals(jwtSecret)
-                || jwtSecret.length() < 32) {
+        if (configuredSigningKey == null) {
             throw new IllegalStateException("JWT secret is not configured; set JWT_SECRET to at least 32 characters");
         }
     }
 
     private SecretKey signingKey() {
-        return Keys.hmacShaKeyFor(jwtSecret.getBytes(StandardCharsets.UTF_8));
+        return configuredSigningKey;
+    }
+
+    private static boolean hasUsableSecret(String value) {
+        return value.length() >= 32
+                && !"your-secret-key".equals(value)
+                && !"your-secret-key-here".equals(value);
     }
 
     public static final class Access {

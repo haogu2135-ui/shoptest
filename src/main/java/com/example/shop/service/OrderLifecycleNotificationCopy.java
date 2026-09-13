@@ -31,19 +31,25 @@ public final class OrderLifecycleNotificationCopy {
         EN, ZH, ES
     }
 
+    private static final Locale SPANISH_LOCALE = Locale.forLanguageTag("es");
+
     private OrderLifecycleNotificationCopy() {
     }
 
     public static Locale resolveLocale() {
         try {
             Locale locale = LocaleContextHolder.getLocale();
-            if (locale != null && locale.getLanguage() != null) {
-                String language = locale.getLanguage().toLowerCase(Locale.ROOT);
+            if (locale != null) {
+                String language = locale.getLanguage();
+                if (language.isEmpty()) {
+                    return Locale.ENGLISH;
+                }
+                language = language.toLowerCase(Locale.ROOT);
                 if (language.startsWith("zh")) {
                     return Locale.SIMPLIFIED_CHINESE;
                 }
                 if (language.startsWith("es")) {
-                    return new Locale("es");
+                    return SPANISH_LOCALE;
                 }
                 if (language.startsWith("en")) {
                     return Locale.ENGLISH;
@@ -59,9 +65,9 @@ public final class OrderLifecycleNotificationCopy {
     public static Notice paymentReceived(Locale locale, String orderNo, String amountPlain) {
         String safeOrderNo = safe(orderNo);
         Language language = languageOf(locale);
+        String amount = safe(amountPlain);
         String amountText = "";
-        if (amountPlain != null && !amountPlain.trim().isEmpty()) {
-            String amount = amountPlain.trim();
+        if (!amount.isEmpty()) {
             if (language == Language.ZH) {
                 amountText = " 金额：" + amount + "。";
             } else if (language == Language.ES) {
@@ -85,7 +91,7 @@ public final class OrderLifecycleNotificationCopy {
     public static Notice orderShipped(Locale locale, String orderNo, String trackingNumber, String carrierName) {
         String safeOrderNo = safe(orderNo);
         String tracking = safe(trackingNumber);
-        String carrier = carrierName == null ? "" : carrierName.trim();
+        String carrier = safe(carrierName);
         Language language = languageOf(locale);
         if (tracking.isEmpty()) {
             if (language == Language.ZH) {
@@ -242,10 +248,14 @@ public final class OrderLifecycleNotificationCopy {
     }
 
     private static Language languageOf(Locale locale) {
-        if (locale == null || locale.getLanguage() == null) {
+        if (locale == null) {
             return Language.EN;
         }
-        String normalized = locale.getLanguage().toLowerCase(Locale.ROOT);
+        String language = locale.getLanguage();
+        if (language.isEmpty()) {
+            return Language.EN;
+        }
+        String normalized = language.toLowerCase(Locale.ROOT);
         if (normalized.startsWith("zh")) {
             return Language.ZH;
         }

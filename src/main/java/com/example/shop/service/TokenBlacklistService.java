@@ -16,10 +16,12 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
+import java.util.regex.Pattern;
 
 @Service
 @Slf4j
@@ -42,6 +44,8 @@ public class TokenBlacklistService {
     private static final long ACCOUNT_LOCKOUT_MINUTES = 30;
     private static final int DEFAULT_LOGIN_FAILURE_SCAN_COUNT = 500;
     private static final int MAX_LOCAL_REVOCATION_ENTRIES = 10_000;
+    private static final Pattern ACCOUNT_CONTROL_PATTERN = Pattern.compile("\\p{Cntrl}");
+    private static final Pattern ACCOUNT_WHITESPACE_PATTERN = Pattern.compile("\\s+");
     private static final RedisScript<String> CONSUME_REFRESH_TOKEN_SCRIPT = consumeRefreshTokenScript();
     private static final RedisScript<Long> LOGIN_FAILURE_INCREMENT_SCRIPT = loginFailureIncrementScript();
     private final ConcurrentMap<String, Long> localAccessTokenBlacklist = new ConcurrentHashMap<>();
@@ -94,6 +98,9 @@ public class TokenBlacklistService {
     }
 
     public String consumeRefreshToken(String refreshToken) {
+        if (refreshToken == null || refreshToken.isBlank()) {
+            return null;
+        }
         if (isLocallyRevokedRefreshToken(refreshToken)) {
             return null;
         }
@@ -145,6 +152,9 @@ public class TokenBlacklistService {
     }
 
     public boolean isAccessTokenBlacklisted(String tokenJti) {
+        if (tokenJti == null || tokenJti.isBlank()) {
+            return false;
+        }
         if (isLocallyBlacklistedAccessToken(tokenJti)) {
             return true;
         }
@@ -190,6 +200,9 @@ public class TokenBlacklistService {
     }
 
     public void clearLoginFailures(String clientIp) {
+        if (clientIp == null || clientIp.isBlank()) {
+            return;
+        }
         StringRedisTemplate redis = redisTemplate();
         if (redis == null) return;
         redis.delete(LOGIN_ATTEMPT_PREFIX + clientIp);
@@ -200,7 +213,8 @@ public class TokenBlacklistService {
         if (redis == null) return List.of();
         List<String> keys = scanLoginFailureKeys(redis);
         if (keys.isEmpty()) return List.of();
-        List<LoginIpFailureSnapshot> snapshots = new ArrayList<>();
+        int maxAttempts = maxLoginAttemptsPerIp();
+        List<LoginIpFailureSnapshot> snapshots = new ArrayList<>(keys.size());
         for (String key : keys) {
             if (key == null || !key.startsWith(LOGIN_ATTEMPT_PREFIX)) {
                 continue;
@@ -218,7 +232,7 @@ public class TokenBlacklistService {
                     ipAddress,
                     failureCount,
                     ttlSeconds == null ? -1 : ttlSeconds,
-                    failureCount >= maxLoginAttemptsPerIp()));
+                    failureCount >= maxAttempts));
         }
         return snapshots;
     }
@@ -380,7 +394,8 @@ public class TokenBlacklistService {
     }
 
     private boolean isLocalEntryActive(ConcurrentMap<String, Long> entries, String key, long expiresAt) {
-        if (expiresAt <= System.currentTimeMillis()) {
+        long now = System.currentTimeMillis();
+        if (expiresAt <= now) {
             entries.remove(key, expiresAt);
             return false;
         }
@@ -396,8 +411,9 @@ public class TokenBlacklistService {
 
     private void pruneExpiredEntries(ConcurrentMap<String, Long> entries, long now) {
         for (Map.Entry<String, Long> entry : entries.entrySet()) {
-            if (entry.getValue() == null || entry.getValue() <= now) {
-                entries.remove(entry.getKey(), entry.getValue());
+            Long expiresAt = entry.getValue();
+            if (expiresAt == null || expiresAt <= now) {
+                entries.remove(entry.getKey(), expiresAt);
             }
         }
     }
@@ -406,10 +422,10 @@ public class TokenBlacklistService {
         if (username == null || username.isBlank()) {
             return null;
         }
-        String normalized = username.replaceAll("\\p{Cntrl}", " ")
-                .replaceAll("\\s+", " ")
+        String normalized = ACCOUNT_CONTROL_PATTERN.matcher(username).replaceAll(" ");
+        normalized = ACCOUNT_WHITESPACE_PATTERN.matcher(normalized).replaceAll(" ")
                 .trim()
-                .toLowerCase();
+                .toLowerCase(Locale.ROOT);
         if (normalized.isBlank() || normalized.length() > MAX_ACCOUNT_KEY_CHARS) {
             return null;
         }
@@ -417,6 +433,9 @@ public class TokenBlacklistService {
     }
 
     private int parseCounter(String value) {
+        if (value == null || value.isBlank()) {
+            return 0;
+        }
         try {
             return Integer.parseInt(value);
         } catch (RuntimeException ex) {

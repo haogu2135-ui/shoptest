@@ -45,7 +45,16 @@ export const useCartQuantityActions = ({
       return;
     }
 
-    setCartItems((items) => normalizeCartItems(items).map((entry) => (entry.id === item.id ? { ...entry, quantity: normalizedQuantity } : entry)));
+    setCartItems((items) => {
+      const nextItems = normalizeCartItems(items).slice();
+      for (let index = 0; index < nextItems.length; index += 1) {
+        if (nextItems[index].id === item.id) {
+          nextItems[index] = { ...nextItems[index], quantity: normalizedQuantity };
+          break;
+        }
+      }
+      return nextItems;
+    });
     scheduleQuantitySync(item.id, normalizedQuantity);
   };
 

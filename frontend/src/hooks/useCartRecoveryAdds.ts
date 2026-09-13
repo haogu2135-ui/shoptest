@@ -13,6 +13,25 @@ import { needsOptionSelection } from '../utils/productOptions';
 
 const normalizeCartItems = (items: unknown): CartItem[] => (Array.isArray(items) ? items : []);
 
+const getAddedCheckoutableItemIds = (items: CartItem[], productId: number, canCheckout: (item: CartItem) => boolean) => {
+  const ids: number[] = [];
+  for (const item of items) {
+    if (item.productId === productId && canCheckout(item)) ids.push(item.id);
+  }
+  return ids;
+};
+
+const appendUniqueIds = (currentIds: number[], addedIds: number[]) => {
+  const nextIds = currentIds.slice();
+  const seenIds = new Set(nextIds);
+  for (const id of addedIds) {
+    if (seenIds.has(id)) continue;
+    seenIds.add(id);
+    nextIds.push(id);
+  }
+  return nextIds;
+};
+
 type UseCartRecoveryAddsParams = {
   canCheckout: (item: CartItem) => boolean;
   clearRecentProductsCache: () => void;
@@ -79,10 +98,8 @@ export const useCartRecoveryAdds = ({
         if (isCurrentCartSnapshotRequest(cartSnapshotRequestId)) {
           const nextItems = normalizeCartItems(response.data);
           setCartItems(nextItems);
-          const addedItemIds = nextItems
-            .filter((item) => item.productId === productId && canCheckout(item))
-            .map((item) => item.id);
-          setSelectedIds((ids) => Array.from(new Set([...ids, ...addedItemIds])));
+          const addedItemIds = getAddedCheckoutableItemIds(nextItems, productId, canCheckout);
+          setSelectedIds((ids) => appendUniqueIds(ids, addedItemIds));
         }
         dispatchDomEvent('shop:cart-updated');
         return;
@@ -101,10 +118,8 @@ export const useCartRecoveryAdds = ({
     if (!mountedRef.current) return;
     setCartItems(nextItems);
     clearRecentProductsCache();
-    const addedItemIds = nextItems
-      .filter((item) => item.productId === productId && canCheckout(item))
-      .map((item) => item.id);
-    setSelectedIds((ids) => Array.from(new Set([...ids, ...addedItemIds])));
+    const addedItemIds = getAddedCheckoutableItemIds(nextItems, productId, canCheckout);
+    setSelectedIds((ids) => appendUniqueIds(ids, addedItemIds));
     dispatchDomEvent('shop:cart-updated');
   }, [
     canCheckout,

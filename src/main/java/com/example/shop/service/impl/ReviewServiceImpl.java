@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -34,7 +35,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -43,6 +43,9 @@ public class ReviewServiceImpl implements ReviewService {
     private static final Pattern HTML_COMMENT_PATTERN = Pattern.compile("(?is)<!--.*?-->");
     private static final Pattern HTML_BLOCK_PATTERN = Pattern.compile("(?is)<(script|style|iframe|object|embed|svg|math)\\b[^>]*>.*?</\\1\\s*>");
     private static final Pattern HTML_TAG_PATTERN = Pattern.compile("(?is)<[^>]+>");
+    private static final Pattern REVIEW_CONTROL_PATTERN = Pattern.compile("[\\p{Cntrl}&&[^\r\n\t]]");
+    private static final Pattern REVIEW_WHITESPACE_PATTERN = Pattern.compile("\\s+");
+    private static final Pattern REVIEW_IMAGE_FILENAME_PATTERN = Pattern.compile("[0-9a-fA-F-]{36}\\.(jpg|png)");
 
     @Autowired
     private ReviewRepository reviewRepository;
@@ -78,9 +81,9 @@ public class ReviewServiceImpl implements ReviewService {
         } else {
             reviews = reviewRepository.findApprovedPublicByProductId(productId, PageRequest.of(safePage, limit));
         }
-        return reviews.stream()
-                .map(review -> PublicReviewResponse.from(review, currentUserId))
-                .collect(Collectors.toList());
+        List<PublicReviewResponse> result = new ArrayList<>(reviews.size());
+        for (Review review : reviews) result.add(PublicReviewResponse.from(review, currentUserId));
+        return result;
     }
 
     @Override
@@ -113,9 +116,10 @@ public class ReviewServiceImpl implements ReviewService {
     @Override
     @Transactional(rollbackFor = Exception.class, readOnly = true)
     public List<AdminReviewResponse> searchAdminReviewResponses(String status, String search, int page, int size) {
-        return searchAdminReviews(status, search, page, size).stream()
-                .map(AdminReviewResponse::from)
-                .collect(Collectors.toList());
+        List<Review> reviews = searchAdminReviews(status, search, page, size);
+        List<AdminReviewResponse> result = new ArrayList<>(reviews.size());
+        for (Review review : reviews) result.add(AdminReviewResponse.from(review));
+        return result;
     }
 
     @Override
@@ -157,10 +161,13 @@ public class ReviewServiceImpl implements ReviewService {
         }
         LocalDateTime deadline = LocalDateTime.now().minusDays(30);
         int limit = normalizedReviewableOrderMaxRows();
-        return orderRepository.findReviewableOrdersByUserAndProduct(userId, productId, deadline, limit).stream()
-                .limit(limit)
-                .map(ReviewableOrderResponse::from)
-                .collect(Collectors.toList());
+        List<Order> orders = orderRepository.findReviewableOrdersByUserAndProduct(userId, productId, deadline, limit);
+        List<ReviewableOrderResponse> result = new ArrayList<>(Math.min(limit, orders.size()));
+        for (Order order : orders) {
+            if (result.size() >= limit) break;
+            result.add(ReviewableOrderResponse.from(order));
+        }
+        return result;
     }
 
     @Override
@@ -278,10 +285,9 @@ public class ReviewServiceImpl implements ReviewService {
     }
 
     private String normalizeReviewText(String value, int maxChars, String label) {
-        String normalized = stripHtml(String.valueOf(value == null ? "" : value))
-                .replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", " ")
-                .trim()
-                .replaceAll("\\s+", " ");
+        String normalized = REVIEW_WHITESPACE_PATTERN.matcher(
+                REVIEW_CONTROL_PATTERN.matcher(stripHtml(String.valueOf(value == null ? "" : value))).replaceAll(" "))
+                .replaceAll(" ").trim();
         if (normalized.length() > maxChars) {
             throw new IllegalArgumentException(label + " is too long");
         }
@@ -334,7 +340,7 @@ public class ReviewServiceImpl implements ReviewService {
         if (filename.isEmpty() || filename.contains("/") || filename.contains("\\") || filename.contains("..")) {
             throw new IllegalArgumentException("Review image URL is invalid");
         }
-        if (!filename.matches("[0-9a-fA-F-]{36}\\.(jpg|png)")) {
+        if (!REVIEW_IMAGE_FILENAME_PATTERN.matcher(filename).matches()) {
             throw new IllegalArgumentException("Review image URL is invalid");
         }
         return prefix + filename;
@@ -443,6 +449,6 @@ public class ReviewServiceImpl implements ReviewService {
         if (!normalized.startsWith("/")) {
             normalized = "/" + normalized;
         }
-        return normalized.replaceAll("/$", "");
+        return normalized.endsWith("/") ? normalized.substring(0, normalized.length() - 1) : normalized;
     }
 }

@@ -15,6 +15,7 @@ import java.util.Locale;
 @Slf4j
 public class PaymentChannelAvailabilityService {
     private static final String DEFAULT_STOREFRONT_BASE_URL = "https://petsanything.com";
+    private static final String PLACEHOLDER_GATEWAY_HOST = "pay.example.local";
     private final PaymentChannelConfig paymentChannelConfig;
     private final RuntimeConfigService runtimeConfig;
 
@@ -41,7 +42,8 @@ public class PaymentChannelAvailabilityService {
                     && isProductionGatewayUrl(stripeSuccessUrl())
                     && isProductionGatewayUrl(stripeCancelUrl());
         }
-        if (!isProductionMode()) {
+        boolean productionMode = isProductionMode();
+        if (!productionMode) {
             return true;
         }
         if (channelConfig.isGenericApiProvider()) {
@@ -61,15 +63,17 @@ public class PaymentChannelAvailabilityService {
 
     private boolean isProductionMode() {
         String mode = runtimeConfig.getString("app.runtime-mode", "production");
+        mode = mode == null ? "production" : mode.trim().toLowerCase(Locale.ROOT);
         return "production".equals(mode) || "prod".equals(mode);
     }
 
     private boolean isProductionGatewayUrl(String value) {
-        if (isBlank(value)) {
+        String normalized = value == null ? "" : value.trim();
+        if (normalized.isEmpty()) {
             return false;
         }
         try {
-            URI uri = new URI(value.trim());
+            URI uri = new URI(normalized);
             String scheme = uri.getScheme() == null ? "" : uri.getScheme().toLowerCase(Locale.ROOT);
             String host = uri.getHost() == null ? "" : uri.getHost().toLowerCase(Locale.ROOT);
             return "https".equals(scheme)
@@ -82,7 +86,7 @@ public class PaymentChannelAvailabilityService {
     }
 
     private boolean containsPlaceholderGatewayHost(String value) {
-        return value != null && value.toLowerCase(Locale.ROOT).contains("pay.example.local");
+        return value != null && value.toLowerCase(Locale.ROOT).contains(PLACEHOLDER_GATEWAY_HOST);
     }
 
     private String stripeSecretKey() {
@@ -95,8 +99,11 @@ public class PaymentChannelAvailabilityService {
 
     private String storefrontBaseUrl() {
         String configured = runtimeConfig.getString("app.storefront-base-url", DEFAULT_STOREFRONT_BASE_URL);
-        String normalized = configured == null ? null : configured.trim().replaceAll("/+$", "");
-        return isBlank(normalized) ? DEFAULT_STOREFRONT_BASE_URL : normalized;
+        String normalized = configured == null ? "" : configured.trim();
+        while (normalized.endsWith("/")) {
+            normalized = normalized.substring(0, normalized.length() - 1);
+        }
+        return normalized.isEmpty() ? DEFAULT_STOREFRONT_BASE_URL : normalized;
     }
 
     private String stripeSuccessUrl() {
@@ -111,14 +118,13 @@ public class PaymentChannelAvailabilityService {
                 storefrontBaseUrl() + "/profile?payment=cancelled");
     }
 
-    private String firstNonBlank(String... values) {
-        for (String value : values) {
-            String trimmed = value == null ? null : value.trim();
-            if (trimmed != null && !trimmed.isEmpty()) {
-                return trimmed;
-            }
+    private String firstNonBlank(String first, String second) {
+        String normalizedFirst = first == null ? "" : first.trim();
+        if (!normalizedFirst.isEmpty()) {
+            return normalizedFirst;
         }
-        return "";
+        String normalizedSecond = second == null ? "" : second.trim();
+        return normalizedSecond;
     }
 
     private boolean isBlank(String value) {

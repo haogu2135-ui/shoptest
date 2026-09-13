@@ -6,7 +6,7 @@ import com.example.shop.dto.TrafficControlStatusResponse;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -16,7 +16,6 @@ import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Supplier;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -63,32 +62,42 @@ public class CircuitBreakerService {
     }
 
     public String normalizeName(String name) {
-        if (name == null || name.trim().isEmpty()) {
+        if (name == null) {
             return "default";
         }
-        String normalized = name.trim().toLowerCase(Locale.ROOT);
+        String trimmedName = name.trim();
+        if (trimmedName.isEmpty()) return "default";
+        String normalized = trimmedName.toLowerCase(Locale.ROOT);
         normalized = UUID_PATTERN.matcher(normalized).replaceAll("id");
         normalized = LONG_HEX_PATTERN.matcher(normalized).replaceAll("id");
         normalized = ORDER_NUMBER_PATTERN.matcher(normalized).replaceAll("order-no");
         normalized = NUMERIC_ID_PATTERN.matcher(normalized).replaceAll("id");
-        normalized = normalized.replaceAll("[^a-z0-9]+", "-");
-        normalized = Arrays.stream(normalized.split("-"))
-                .filter(segment -> !segment.isEmpty())
-                .map(this::normalizeSegment)
-                .collect(Collectors.joining("-"));
+        normalized = replaceNameSeparators(normalized);
+        String[] segments = normalized.split("-");
+        StringBuilder compactName = new StringBuilder(normalized.length());
+        for (String segment : segments) {
+            if (segment.isEmpty()) continue;
+            if (compactName.length() > 0) compactName.append('-');
+            compactName.append(normalizeSegment(segment));
+        }
+        normalized = compactName.toString();
         if (normalized.isEmpty()) {
             return "default";
         }
-        return normalized.length() <= MAX_NAME_LENGTH ? normalized : normalized.substring(0, MAX_NAME_LENGTH).replaceAll("-+$", "");
+        if (normalized.length() <= MAX_NAME_LENGTH) return normalized;
+        return trimTrailingSeparators(normalized.substring(0, MAX_NAME_LENGTH));
     }
 
     public List<TrafficControlStatusResponse.CircuitStatus> status() {
         Config config = config();
         enforceMaxCircuits(config.maxCircuits, null);
-        return circuits.entrySet().stream()
-                .sorted(Comparator.comparing(entry -> entry.getKey()))
-                .map(entry -> toStatus(entry.getKey(), entry.getValue(), config))
-                .collect(Collectors.toList());
+        List<Map.Entry<String, Circuit>> entries = new ArrayList<>(circuits.entrySet());
+        entries.sort(Comparator.comparing(Map.Entry::getKey));
+        List<TrafficControlStatusResponse.CircuitStatus> statuses = new ArrayList<>(entries.size());
+        for (Map.Entry<String, Circuit> entry : entries) {
+            statuses.add(toStatus(entry.getKey(), entry.getValue(), config));
+        }
+        return statuses;
     }
 
     public TrafficControlStatusResponse.CircuitBreakerConfig configStatus() {
@@ -112,7 +121,7 @@ public class CircuitBreakerService {
             }
             if (circuit.state == State.OPEN) {
                 long retryAfterSeconds = Math.max(1, (circuit.openedUntilMillis - now + 999) / 1000);
-                throw new IllegalStateException("Circuit breaker is open for " + normalizeName(name) + ", retry after " + retryAfterSeconds + "s");
+                throw new IllegalStateException("Circuit breaker is open for " + name + ", retry after " + retryAfterSeconds + "s");
             }
         }
     }
@@ -140,13 +149,14 @@ public class CircuitBreakerService {
     private void onFailure(Circuit circuit, RuntimeException e) {
         Config config = config();
         synchronized (circuit) {
-            touch(circuit, Instant.now().toEpochMilli());
+            long now = Instant.now().toEpochMilli();
+            touch(circuit, now);
             circuit.failureCount++;
             circuit.halfOpenSuccessCount = 0;
             circuit.lastFailureMessage = sanitize(e.getMessage());
             if (circuit.failureCount >= config.failureThreshold || circuit.state == State.HALF_OPEN) {
                 circuit.state = State.OPEN;
-                circuit.openedUntilMillis = Instant.now().plusSeconds(config.openSeconds).toEpochMilli();
+                circuit.openedUntilMillis = Instant.ofEpochMilli(now).plusSeconds(config.openSeconds).toEpochMilli();
             }
         }
     }
@@ -192,14 +202,20 @@ public class CircuitBreakerService {
     }
 
     private void evictCircuits(int limit, String preserveName, boolean closedOnly) {
-        circuits.entrySet().stream()
-                .filter(entry -> preserveName == null || !entry.getKey().equals(preserveName))
-                .filter(entry -> !closedOnly || isClosed(entry.getValue()))
-                .sorted(Comparator
-                        .comparingLong((Map.Entry<String, Circuit> entry) -> lastTouchedSequence(entry.getValue()))
-                        .thenComparing(Map.Entry::getKey))
-                .limit(limit)
-                .forEach(entry -> circuits.remove(entry.getKey(), entry.getValue()));
+        List<Map.Entry<String, Circuit>> candidates = new ArrayList<>();
+        for (Map.Entry<String, Circuit> entry : circuits.entrySet()) {
+            if (preserveName != null && entry.getKey().equals(preserveName)) continue;
+            if (closedOnly && !isClosed(entry.getValue())) continue;
+            candidates.add(entry);
+        }
+        candidates.sort(Comparator
+                .comparingLong((Map.Entry<String, Circuit> entry) -> lastTouchedSequence(entry.getValue()))
+                .thenComparing(Map.Entry::getKey));
+        int count = Math.min(limit, candidates.size());
+        for (int index = 0; index < count; index++) {
+            Map.Entry<String, Circuit> entry = candidates.get(index);
+            circuits.remove(entry.getKey(), entry.getValue());
+        }
     }
 
     private boolean isClosed(Circuit circuit) {
@@ -233,8 +249,39 @@ public class CircuitBreakerService {
         if (value == null || value.isBlank()) {
             return "Request failed";
         }
-        String normalized = value.replaceAll("[\\p{Cntrl}]+", " ").trim();
+        StringBuilder normalizedBuilder = new StringBuilder(value.length());
+        boolean controlPending = false;
+        for (int index = 0; index < value.length(); index++) {
+            char character = value.charAt(index);
+            if (Character.isISOControl(character)) {
+                controlPending = true;
+                continue;
+            }
+            if (controlPending && normalizedBuilder.length() > 0) normalizedBuilder.append(' ');
+            controlPending = false;
+            normalizedBuilder.append(character);
+        }
+        String normalized = normalizedBuilder.toString().trim();
         return normalized.length() > 240 ? normalized.substring(0, 240) : normalized;
+    }
+
+    private String replaceNameSeparators(String value) {
+        StringBuilder normalized = new StringBuilder(value.length());
+        for (int index = 0; index < value.length(); index++) {
+            char character = value.charAt(index);
+            if ((character >= 'a' && character <= 'z') || (character >= '0' && character <= '9')) {
+                normalized.append(character);
+            } else if (normalized.length() > 0 && normalized.charAt(normalized.length() - 1) != '-') {
+                normalized.append('-');
+            }
+        }
+        return normalized.toString();
+    }
+
+    private String trimTrailingSeparators(String value) {
+        int end = value.length();
+        while (end > 0 && value.charAt(end - 1) == '-') end--;
+        return value.substring(0, end);
     }
 
     private enum State {

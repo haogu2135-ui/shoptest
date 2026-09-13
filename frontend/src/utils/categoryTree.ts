@@ -23,8 +23,9 @@ export const buildCategoryTree = <T extends CategoryPublic>(categories: T[]): Ca
   }
 
   nodeMap.forEach((category) => {
-    if (category.parentId && nodeMap.has(category.parentId)) {
-      nodeMap.get(category.parentId)!.children!.push(category);
+    const parent = category.parentId ? nodeMap.get(category.parentId) : undefined;
+    if (parent) {
+      parent.children!.push(category);
       return;
     }
     roots.push(category);
@@ -32,7 +33,9 @@ export const buildCategoryTree = <T extends CategoryPublic>(categories: T[]): Ca
 
   const sortTree = (nodes: CategoryTreeNode<T>[]) => {
     nodes.sort((left, right) => left.id - right.id);
-    for (const node of nodes) sortTree(node.children || []);
+    for (const node of nodes) {
+      if (node.children?.length) sortTree(node.children);
+    }
   };
 
   sortTree(roots);
@@ -44,7 +47,7 @@ export const flattenCategoryTree = <T extends CategoryPublic>(categories: Catego
   const visit = (nodes: CategoryTreeNode<T>[]) => {
     for (const node of nodes) {
       result.push(node);
-      visit(node.children || []);
+      if (node.children?.length) visit(node.children);
     }
   };
 
@@ -77,7 +80,8 @@ const categoryNameFallbacks: Record<string, Partial<Record<Language, string>>> =
 
 const getCategoryNameFallback = (name: string | undefined, language: Language) => {
   if (language === 'en' || !name) return '';
-  return categoryNameFallbacks[name.trim().toLowerCase()]?.[language] || '';
+  const normalizedName = name.trim().toLowerCase();
+  return categoryNameFallbacks[normalizedName]?.[language] || '';
 };
 
 export const getLocalizedCategoryValue = (
@@ -131,7 +135,7 @@ export const descendantIdSet = (category: CategoryTreeNode<CategoryPublic>): Set
   const visit = (nodes: CategoryTreeNode<CategoryPublic>[]) => {
     for (const node of nodes) {
       ids.add(node.id);
-      visit(node.children || []);
+      if (node.children?.length) visit(node.children);
     }
   };
 

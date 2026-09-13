@@ -19,7 +19,8 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +30,9 @@ public class SecurityAuditLogService {
     private static final int DEFAULT_MAX_RANGE_HOURS = 168;
     private static final int DEFAULT_SEARCH_MAX_ROWS = 1000;
     private static final int DEFAULT_EXPORT_MAX_ROWS = 5000;
+    private static final Set<String> GROUP_COLUMNS = Set.of("result", "action", "actor_username", "ip_address");
+    private static final Pattern CONTROL_LOG_PATTERN = Pattern.compile("\\p{Cntrl}");
+    private static final Pattern WHITESPACE_LOG_PATTERN = Pattern.compile("\\s+");
 
     private final SecurityAuditLogMapper auditLogMapper;
     private final JdbcTemplate jdbcTemplate;
@@ -95,7 +99,9 @@ public class SecurityAuditLogService {
                 range.startAt,
                 range.endAt,
                 safeLimit);
-        rows.forEach(this::maskForResponse);
+        for (SecurityAuditLog row : rows) {
+            maskForResponse(row);
+        }
         return rows;
     }
 
@@ -114,7 +120,9 @@ public class SecurityAuditLogService {
                 range.startAt,
                 range.endAt,
                 maxExportRows());
-        rows.forEach(this::maskForResponse);
+        for (SecurityAuditLog row : rows) {
+            maskForResponse(row);
+        }
         return rows;
     }
 
@@ -232,7 +240,7 @@ public class SecurityAuditLogService {
                                                                      LocalDateTime startAt,
                                                                      LocalDateTime endAt,
                                                                      int limit) {
-        if (!List.of("result", "action", "actor_username", "ip_address").contains(column)) {
+        if (!GROUP_COLUMNS.contains(column)) {
             return List.of();
         }
         String sql = "SELECT COALESCE(NULLIF(" + column + ", ''), 'UNKNOWN') AS name, COUNT(*) AS total "
@@ -245,11 +253,13 @@ public class SecurityAuditLogService {
                 .append(", ''), 'UNKNOWN') ORDER BY total DESC, name ASC LIMIT ?");
         params.add(limit);
         List<Map<String, Object>> rows = jdbcTemplate.queryForList(builder.toString(), params.toArray());
-        return rows.stream()
-                .map(row -> new SecurityAuditSummaryResponse.GroupCount(
-                        String.valueOf(row.get("name")),
-                        ((Number) row.get("total")).longValue()))
-                .collect(Collectors.toList());
+        List<SecurityAuditSummaryResponse.GroupCount> grouped = new ArrayList<>(rows.size());
+        for (Map<String, Object> row : rows) {
+            grouped.add(new SecurityAuditSummaryResponse.GroupCount(
+                    String.valueOf(row.get("name")),
+                    ((Number) row.get("total")).longValue()));
+        }
+        return grouped;
     }
 
     private String effectiveResultFilter(String forcedResult, String requestedResult) {
@@ -289,10 +299,11 @@ public class SecurityAuditLogService {
     private Actor actorFrom(Authentication authentication) {
         if (authentication != null && authentication.getPrincipal() instanceof UserDetailsImpl) {
             UserDetailsImpl user = (UserDetailsImpl) authentication.getPrincipal();
-            String role = user.getAuthorities().stream()
-                    .findFirst()
-                    .map(Object::toString)
-                    .orElse(null);
+            String role = null;
+            for (org.springframework.security.core.GrantedAuthority authority : user.getAuthorities()) {
+                role = authority.toString();
+                break;
+            }
             return new Actor(user.getId(), user.getUsername(), role);
         }
         return new Actor(null, null, null);
@@ -331,8 +342,8 @@ public class SecurityAuditLogService {
         if (value == null) {
             return null;
         }
-        return value.replaceAll("\\p{Cntrl}", " ")
-                .replaceAll("\\s+", " ")
+        return WHITESPACE_LOG_PATTERN.matcher(CONTROL_LOG_PATTERN.matcher(value).replaceAll(" "))
+                .replaceAll(" ")
                 .trim();
     }
 
@@ -352,9 +363,10 @@ public class SecurityAuditLogService {
             safeStart = safeEnd;
             safeEnd = temp;
         }
+        int configuredMaxRangeHours = maxRangeHours();
         Duration duration = Duration.between(safeStart, safeEnd);
-        if (duration.compareTo(Duration.ofHours(maxRangeHours())) > 0) {
-            safeStart = safeEnd.minusHours(maxRangeHours());
+        if (duration.compareTo(Duration.ofHours(configuredMaxRangeHours)) > 0) {
+            safeStart = safeEnd.minusHours(configuredMaxRangeHours);
         }
         return new TimeRange(safeStart, safeEnd);
     }

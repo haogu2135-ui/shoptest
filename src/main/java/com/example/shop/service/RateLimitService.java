@@ -19,7 +19,6 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Locale;
@@ -29,11 +28,31 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Collectors;
+import java.util.regex.Pattern;
 
 @Service
 @Slf4j
 public class RateLimitService {
+    private static final char[] HEX_DIGITS = "0123456789abcdef".toCharArray();
+    private static final Pattern REDIS_PREFIX_UNSAFE_PATTERN = Pattern.compile("[^A-Za-z0-9:_-]");
+    private static final Pattern REDIS_SEGMENT_UNSAFE_PATTERN = Pattern.compile("[^a-z0-9:_*-]");
+    private static final Pattern NUMERIC_SEGMENT_PATTERN = Pattern.compile("\\d+");
+    private static final Pattern UUID_SEGMENT_PATTERN = Pattern.compile("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
+    private static final Pattern HEX_SEGMENT_PATTERN = Pattern.compile("[0-9a-f]{16,}");
+    private static final Pattern ORDER_SEGMENT_PATTERN = Pattern.compile("so\\d{10,}[0-9a-z]*");
+    private static final Set<String> SENSITIVE_AUTH_PATHS = Set.of(
+            "/auth/login", "/auth/register", "/auth/forgot-password",
+            "/auth/password-reset-code", "/auth/email-code", "/auth/email-login", "/auth/refresh");
+    private static final Set<String> PAYMENT_SYNC_PATHS = Set.of(
+            "/payment/{id}/sync", "/payment/{orderNo}/sync", "/payment/order/{id}/sync",
+            "/payments/{id}/sync", "/payments/{orderNo}/sync", "/payments/order/{id}/sync");
+    private static final Set<String> PAYMENT_CALLBACK_PATHS = Set.of(
+            "/payment/callback", "/payments/callback", "/payment/stripe/webhook",
+            "/payments/stripe/webhook", "/payment/mercado-pago/webhook",
+            "/payment/mercadopago/webhook", "/payments/mercado-pago/webhook",
+            "/payments/mercadopago/webhook");
+    private static final Set<String> ADMIN_ORDER_LIST_PATHS = Set.of("/admin/orders", "/admin/orders/page");
+
     private final RuntimeConfigService runtimeConfig;
     private final ClientIpResolver clientIpResolver;
     private final ObjectProvider<StringRedisTemplate> redisTemplateProvider;
@@ -57,20 +76,21 @@ public class RateLimitService {
 
     public Decision check(HttpServletRequest request, Authentication authentication) {
         Config config = config();
-        if (!config.enabled || shouldSkip(request, config)) {
+        long now = nowEpochSecond();
+        String path = normalizePath(request);
+        if (!config.enabled || shouldSkip(request, config, path)) {
             acceptedRequests.incrementAndGet();
-            return Decision.allowed(config.limitFor(resolveScope(request, authentication)), config.windowSeconds, nowEpochSecond());
+            return Decision.allowed(config.limitFor(resolveScope(path, authentication)), config.windowSeconds, now);
         }
 
-        Scope scope = resolveScope(request, authentication);
-        List<LimitKey> limits = resolveLimits(request, authentication, config, scope);
+        Scope scope = resolveScope(path, authentication);
+        List<LimitKey> limits = resolveLimits(request, authentication, config, scope, path);
         if (limits.isEmpty()) {
             acceptedRequests.incrementAndGet();
-            return Decision.allowed(config.limitFor(scope), config.windowSeconds, nowEpochSecond());
+            return Decision.allowed(config.limitFor(scope), config.windowSeconds, now);
         }
 
-        long now = nowEpochSecond();
-        List<ConsumedLimit> consumedLimits = new ArrayList<>();
+        List<ConsumedLimit> consumedLimits = new ArrayList<>(limits.size());
         for (LimitKey limitKey : limits) {
             if (limitKey.limit <= 0) {
                 continue;
@@ -84,18 +104,22 @@ public class RateLimitService {
             return Decision.allowed(config.limitFor(scope), config.windowSeconds, now);
         }
 
-        ConsumedLimit rejected = consumedLimits.stream()
-                .filter(limit -> limit.count > limit.limit)
-                .max(Comparator.comparingLong(limit -> limit.retryAfterSeconds))
-                .orElse(null);
+        ConsumedLimit rejected = null;
+        ConsumedLimit mostConstrained = null;
+        for (ConsumedLimit consumedLimit : consumedLimits) {
+            if (consumedLimit.count > consumedLimit.limit
+                    && (rejected == null || consumedLimit.retryAfterSeconds > rejected.retryAfterSeconds)) {
+                rejected = consumedLimit;
+            }
+            if (mostConstrained == null || consumedLimit.remaining < mostConstrained.remaining) {
+                mostConstrained = consumedLimit;
+            }
+        }
         if (rejected != null) {
             rejectedRequests.incrementAndGet();
             return Decision.rejected(rejected.limit, rejected.remaining, rejected.retryAfterSeconds, rejected.resetAtEpochSeconds);
         }
         acceptedRequests.incrementAndGet();
-        ConsumedLimit mostConstrained = consumedLimits.stream()
-                .min(Comparator.comparingLong(limit -> limit.remaining))
-                .orElse(consumedLimits.get(0));
         return Decision.accepted(mostConstrained.limit, mostConstrained.remaining,
                 mostConstrained.retryAfterSeconds, mostConstrained.resetAtEpochSeconds);
     }
@@ -134,9 +158,10 @@ public class RateLimitService {
         }
         try {
             int batchSize = config.redisClearScanCount;
+            String redisPattern = redisPrefix(config.redisKeyPrefix) + ":*";
             redis.execute((RedisCallback<Void>) connection -> {
                 ScanOptions options = ScanOptions.scanOptions()
-                        .match(redisPrefix(config.redisKeyPrefix) + ":*")
+                        .match(redisPattern)
                         .count(batchSize)
                         .build();
                 List<byte[]> batch = new ArrayList<>(batchSize);
@@ -196,16 +221,19 @@ public class RateLimitService {
         return Math.max(0, runtimeConfig.getInt(key, fallback));
     }
 
-    private boolean shouldSkip(HttpServletRequest request, Config config) {
+    private boolean shouldSkip(HttpServletRequest request, Config config, String path) {
         if (request == null || "OPTIONS".equalsIgnoreCase(request.getMethod())) {
             return true;
         }
-        String path = normalizePath(request);
-        return config.skipPrefixes.stream().anyMatch(prefix -> !prefix.isEmpty() && path.startsWith(prefix));
+        for (String prefix : config.skipPrefixes) {
+            if (!prefix.isEmpty() && path.startsWith(prefix)) {
+                return true;
+            }
+        }
+        return false;
     }
 
-    private Scope resolveScope(HttpServletRequest request, Authentication authentication) {
-        String path = normalizePath(request);
+    private Scope resolveScope(String path, Authentication authentication) {
         if (path.startsWith("/admin")) {
             return Scope.ADMIN;
         }
@@ -218,19 +246,20 @@ public class RateLimitService {
     }
 
     private String clientKey(HttpServletRequest request, Authentication authentication) {
+        String authenticatedName = authentication == null ? null : authentication.getName();
         if (authentication != null && authentication.isAuthenticated()
-                && authentication.getName() != null && !"anonymousUser".equals(authentication.getName())) {
-            return "user:" + authentication.getName();
+                && authenticatedName != null && !"anonymousUser".equals(authenticatedName)) {
+            return "user:" + authenticatedName;
         }
         String clientIp = clientIpResolver.resolve(request);
         return "ip:" + (clientIp.isBlank() ? "unknown" : clientIp);
     }
 
-    private List<LimitKey> resolveLimits(HttpServletRequest request, Authentication authentication, Config config, Scope scope) {
-        List<LimitKey> limits = new ArrayList<>();
+    private List<LimitKey> resolveLimits(HttpServletRequest request, Authentication authentication, Config config, Scope scope,
+                                         String path) {
+        List<LimitKey> limits = new ArrayList<>(3);
         String client = clientKey(request, authentication);
         String method = request.getMethod() == null ? "" : request.getMethod().toUpperCase(Locale.ROOT);
-        String path = normalizePath(request);
 
         EndpointLimit endpointLimit = endpointLimitFor(method, path, config);
         if (isSensitiveAuthEndpoint(method, path)) {
@@ -307,13 +336,7 @@ public class RateLimitService {
         if (!path.startsWith("/auth/")) {
             return false;
         }
-        return path.equals("/auth/login")
-                || path.equals("/auth/register")
-                || path.equals("/auth/forgot-password")
-                || path.equals("/auth/password-reset-code")
-                || path.equals("/auth/email-code")
-                || path.equals("/auth/email-login")
-                || path.equals("/auth/refresh");
+        return SENSITIVE_AUTH_PATHS.contains(path);
     }
 
     private EndpointLimit endpointLimitFor(String method, String path, Config config) {
@@ -375,28 +398,15 @@ public class RateLimitService {
     }
 
     private boolean isPaymentSyncPath(String path) {
-        return path.equals("/payment/{id}/sync")
-                || path.equals("/payment/{orderNo}/sync")
-                || path.equals("/payment/order/{id}/sync")
-                || path.equals("/payments/{id}/sync")
-                || path.equals("/payments/{orderNo}/sync")
-                || path.equals("/payments/order/{id}/sync");
+        return PAYMENT_SYNC_PATHS.contains(path);
     }
 
     private boolean isPaymentCallbackPath(String path) {
-        return path.equals("/payment/callback")
-                || path.equals("/payments/callback")
-                || path.equals("/payment/stripe/webhook")
-                || path.equals("/payments/stripe/webhook")
-                || path.equals("/payment/mercado-pago/webhook")
-                || path.equals("/payment/mercadopago/webhook")
-                || path.equals("/payments/mercado-pago/webhook")
-                || path.equals("/payments/mercadopago/webhook");
+        return PAYMENT_CALLBACK_PATHS.contains(path);
     }
 
     private boolean isAdminOrderListPath(String path) {
-        return path.equals("/admin/orders")
-                || path.equals("/admin/orders/page");
+        return ADMIN_ORDER_LIST_PATHS.contains(path);
     }
 
     private boolean isGuestOrderLookupPath(String path) {
@@ -425,17 +435,45 @@ public class RateLimitService {
             return "/";
         }
         String decodedPath = decodePath(path.trim());
-        String normalized = decodedPath.toLowerCase(Locale.ROOT).replaceAll("/{2,}", "/");
+        String lowerPath = decodedPath.toLowerCase(Locale.ROOT);
+        StringBuilder compacted = new StringBuilder(lowerPath.length());
+        boolean previousSlash = false;
+        for (int index = 0; index < lowerPath.length(); index++) {
+            char character = lowerPath.charAt(index);
+            if (character == '/') {
+                if (previousSlash) {
+                    continue;
+                }
+                previousSlash = true;
+            } else {
+                previousSlash = false;
+            }
+            compacted.append(character);
+        }
+        String normalized = compacted.toString();
         if (!normalized.startsWith("/")) {
             normalized = "/" + normalized;
         }
         if (normalized.length() > 1 && normalized.endsWith("/")) {
             normalized = normalized.substring(0, normalized.length() - 1);
         }
-        return Arrays.stream(normalized.split("/"))
-                .filter(segment -> !segment.isEmpty())
-                .map(this::normalizePathSegment)
-                .collect(Collectors.joining("/", "/", ""));
+        StringBuilder result = new StringBuilder(normalized.length());
+        result.append('/');
+        int segmentStart = normalized.startsWith("/") ? 1 : 0;
+        for (int index = segmentStart; index <= normalized.length(); index++) {
+            if (index < normalized.length() && normalized.charAt(index) != '/') {
+                continue;
+            }
+            if (index > segmentStart) {
+                result.append(normalizePathSegment(normalized.substring(segmentStart, index)));
+                result.append('/');
+            }
+            segmentStart = index + 1;
+        }
+        if (result.length() > 1) {
+            result.setLength(result.length() - 1);
+        }
+        return result.toString();
     }
 
     private String decodePath(String path) {
@@ -454,16 +492,16 @@ public class RateLimitService {
         if (matrixParamStart >= 0) {
             cleaned = cleaned.substring(0, matrixParamStart);
         }
-        if (cleaned.matches("\\d+")) {
+        if (NUMERIC_SEGMENT_PATTERN.matcher(cleaned).matches()) {
             return "{id}";
         }
-        if (cleaned.matches("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}")) {
+        if (UUID_SEGMENT_PATTERN.matcher(cleaned).matches()) {
             return "{id}";
         }
-        if (cleaned.matches("[0-9a-f]{16,}")) {
+        if (HEX_SEGMENT_PATTERN.matcher(cleaned).matches()) {
             return "{id}";
         }
-        if (cleaned.matches("so\\d{10,}[0-9a-z]*")) {
+        if (ORDER_SEGMENT_PATTERN.matcher(cleaned).matches()) {
             return "{orderNo}";
         }
         if (cleaned.length() > 64) {
@@ -473,10 +511,20 @@ public class RateLimitService {
     }
 
     private Set<String> parseCsv(String value) {
-        return Arrays.stream((value == null ? "" : value).split(","))
-                .map(String::trim)
-                .filter(item -> !item.isEmpty())
-                .collect(Collectors.toSet());
+        String source = value == null ? "" : value;
+        Set<String> values = new java.util.HashSet<>();
+        int tokenStart = 0;
+        for (int index = 0; index <= source.length(); index++) {
+            if (index < source.length() && source.charAt(index) != ',') {
+                continue;
+            }
+            String token = source.substring(tokenStart, index).trim();
+            if (!token.isEmpty()) {
+                values.add(token);
+            }
+            tokenStart = index + 1;
+        }
+        return values;
     }
 
     private void cleanup(long now, Config config) {
@@ -484,27 +532,42 @@ public class RateLimitService {
         if (size <= config.maxBuckets) {
             return;
         }
-        buckets.entrySet().removeIf(entry -> entry.getValue().windowStart + (entry.getValue().windowSeconds * 2L) < now);
+        for (Map.Entry<String, Bucket> entry : buckets.entrySet()) {
+            Bucket bucket = entry.getValue();
+            if (bucket.windowStart + (bucket.windowSeconds * 2L) < now) {
+                buckets.remove(entry.getKey(), bucket);
+            }
+        }
         int overflow = buckets.size() - config.maxBuckets;
         if (overflow <= 0) {
             return;
         }
-        buckets.entrySet().stream()
-                .sorted(Comparator
-                        .comparingLong((Map.Entry<String, Bucket> entry) -> entry.getValue().windowStart)
-                        .thenComparingLong(entry -> entry.getValue().count))
-                .limit(overflow)
-                .forEach(entry -> buckets.remove(entry.getKey(), entry.getValue()));
+        List<Map.Entry<String, Bucket>> candidates = new ArrayList<>(buckets.entrySet());
+        candidates.sort(Comparator
+                .comparingLong((Map.Entry<String, Bucket> entry) -> entry.getValue().windowStart)
+                .thenComparingLong(entry -> entry.getValue().count));
+        int removalCount = Math.min(overflow, candidates.size());
+        for (int index = 0; index < removalCount; index++) {
+            Map.Entry<String, Bucket> entry = candidates.get(index);
+            buckets.remove(entry.getKey(), entry.getValue());
+        }
     }
 
     private List<TrafficControlStatusResponse.RateLimitBucketStatus> hotBuckets() {
         long now = nowEpochSecond();
-        return buckets.values().stream()
-                .filter(bucket -> bucket.windowStart + (bucket.windowSeconds * 2L) >= now)
-                .sorted(Comparator.comparingLong((Bucket bucket) -> bucket.count).reversed())
-                .limit(10)
-                .map(this::toBucketStatus)
-                .collect(Collectors.toList());
+        List<Bucket> active = new ArrayList<>(Math.min(10, buckets.size()));
+        for (Bucket bucket : buckets.values()) {
+            if (bucket.windowStart + (bucket.windowSeconds * 2L) >= now) {
+                active.add(bucket);
+            }
+        }
+        active.sort(Comparator.comparingLong((Bucket bucket) -> bucket.count).reversed());
+        int resultSize = Math.min(10, active.size());
+        List<TrafficControlStatusResponse.RateLimitBucketStatus> result = new ArrayList<>(resultSize);
+        for (int index = 0; index < resultSize; index++) {
+            result.add(toBucketStatus(active.get(index)));
+        }
+        return result;
     }
 
     private TrafficControlStatusResponse.RateLimitBucketStatus toBucketStatus(Bucket bucket) {
@@ -544,14 +607,15 @@ public class RateLimitService {
 
     private String redisPrefix(String prefix) {
         String value = prefix == null || prefix.isBlank() ? "shop:rate-limit" : prefix.trim();
-        return value.replaceAll("[^A-Za-z0-9:_-]", "_");
+        return REDIS_PREFIX_UNSAFE_PATTERN.matcher(value).replaceAll("_");
     }
 
     private String safeRedisSegment(String value) {
         if (value == null || value.isBlank()) {
             return "_";
         }
-        return value.trim().toLowerCase(Locale.ROOT).replaceAll("[^a-z0-9:_*-]", "_");
+        String normalized = value.trim().toLowerCase(Locale.ROOT);
+        return REDIS_SEGMENT_UNSAFE_PATTERN.matcher(normalized).replaceAll("_");
     }
 
     private String sha256Hex(String value) {
@@ -560,7 +624,9 @@ public class RateLimitService {
             byte[] hash = digest.digest((value == null ? "" : value).getBytes(StandardCharsets.UTF_8));
             StringBuilder builder = new StringBuilder(hash.length * 2);
             for (byte b : hash) {
-                builder.append(String.format("%02x", b & 0xff));
+                int unsigned = b & 0xff;
+                builder.append(HEX_DIGITS[unsigned >>> 4]);
+                builder.append(HEX_DIGITS[unsigned & 0x0f]);
             }
             return builder.toString();
         } catch (NoSuchAlgorithmException e) {

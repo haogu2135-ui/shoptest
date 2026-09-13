@@ -15,7 +15,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @Slf4j
@@ -36,37 +35,30 @@ public class ProductVariantService {
     public Optional<Map<String, Object>> findSelectedVariant(Product product, String selectedSpecs) {
         List<Map<String, Object>> variants = product.getVariantsList();
         Map<String, String> selected = parseSelectedSpecs(selectedSpecs);
-        if (variants == null || variants.isEmpty() || selected.isEmpty()) {
-            return Optional.empty();
-        }
-        String selectedSku = selected.get("_variantSku");
-        if (selectedSku != null && !selectedSku.isEmpty()) {
-            return variants.stream()
-                    .filter(variant -> selectedSku.equals(String.valueOf(variant.getOrDefault("sku", ""))))
-                    .filter(variant -> selectedOptionsMatch(variant, selected))
-                    .findFirst();
-        }
-        return variants.stream()
-                .filter(variant -> selectedOptionsMatch(variant, selected))
-                .findFirst();
+        return findSelectedVariant(variants, selected);
     }
 
     public BigDecimal resolvePrice(Product product, String selectedSpecs) {
-        BigDecimal bundlePrice = resolveBundlePrice(product, selectedSpecs);
+        Map<String, String> selected = parseSelectedSpecs(selectedSpecs);
+        BigDecimal bundlePrice = resolveBundlePrice(product, selected);
         if (bundlePrice != null) {
             return bundlePrice;
         }
-        BigDecimal price = findSelectedVariant(product, selectedSpecs)
-                .map(variant -> decimalValue(variant.get("price")))
-                .filter(resolvedPrice -> resolvedPrice.compareTo(BigDecimal.ZERO) > 0)
-                .orElse(product.getEffectivePrice());
-        return price;
+        Optional<Map<String, Object>> variant = findSelectedVariant(product.getVariantsList(), selected);
+        if (variant.isPresent()) {
+            BigDecimal price = decimalValue(variant.get().get("price"));
+            if (price.compareTo(BigDecimal.ZERO) > 0) {
+                return price;
+            }
+        }
+        return product.getEffectivePrice();
     }
 
     public Integer resolveStock(Product product, String selectedSpecs) {
-        return findSelectedVariant(product, selectedSpecs)
-                .map(variant -> integerValue(variant.get("stock")))
-                .orElse(product.getStock());
+        Optional<Map<String, Object>> variant = findSelectedVariant(product.getVariantsList(), parseSelectedSpecs(selectedSpecs));
+        if (!variant.isPresent()) return product.getStock();
+        Integer stock = integerValue(variant.get().get("stock"));
+        return stock == null ? product.getStock() : stock;
     }
 
     public void validateSelection(Product product, String selectedSpecs) {
@@ -85,11 +77,11 @@ public class ProductVariantService {
         }
 
         List<Map<String, Object>> variants = product.getVariantsList();
-        if (variants != null && !variants.isEmpty() && !findSelectedVariant(variants, selectedSpecs).isPresent()) {
+        if (variants != null && !variants.isEmpty() && !findSelectedVariant(variants, selected).isPresent()) {
             throw new IllegalArgumentException("Selected product variant is unavailable");
         }
 
-        if (PURCHASE_MODE_BUNDLE.equals(selected.get("_purchaseMode")) && resolveBundlePrice(product, selectedSpecs) == null) {
+        if (PURCHASE_MODE_BUNDLE.equals(selected.get("_purchaseMode")) && resolveBundlePrice(product, selected) == null) {
             throw new IllegalArgumentException("Selected bundle is unavailable");
         }
     }
@@ -99,7 +91,7 @@ public class ProductVariantService {
             throw new IllegalArgumentException("Invalid quantity");
         }
         List<Map<String, Object>> variants = product.getVariantsList();
-        Optional<Map<String, Object>> selected = findSelectedVariant(variants, selectedSpecs);
+        Optional<Map<String, Object>> selected = findSelectedVariant(variants, parseSelectedSpecs(selectedSpecs));
         if (!selected.isPresent()) {
             return false;
         }
@@ -118,7 +110,7 @@ public class ProductVariantService {
             throw new IllegalArgumentException("Invalid quantity");
         }
         List<Map<String, Object>> variants = product.getVariantsList();
-        Optional<Map<String, Object>> selected = findSelectedVariant(variants, selectedSpecs);
+        Optional<Map<String, Object>> selected = findSelectedVariant(variants, parseSelectedSpecs(selectedSpecs));
         if (!selected.isPresent()) {
             return false;
         }
@@ -175,6 +167,7 @@ public class ProductVariantService {
 
         Set<String> seenSkus = new HashSet<>();
         Set<String> seenCombinations = new HashSet<>();
+        Set<String> requiredOptionSet = new HashSet<>(requiredOptions);
         for (Map<String, Object> variant : variants) {
             String sku = String.valueOf(variant.getOrDefault("sku", "")).trim();
             if (!sku.isEmpty() && !seenSkus.add(sku)) {
@@ -190,13 +183,18 @@ public class ProductVariantService {
                 }
             }
             for (String optionName : options.keySet()) {
-                if (!requiredOptions.contains(optionName)) {
+                if (!requiredOptionSet.contains(optionName)) {
                     throw new IllegalArgumentException("Product variant has unknown option: " + optionName);
                 }
             }
-            String combinationKey = requiredOptions.stream()
-                    .map(optionName -> optionName + "=" + options.get(optionName))
-                    .collect(Collectors.joining("|"));
+            StringBuilder combinationBuilder = new StringBuilder();
+            for (String optionName : requiredOptions) {
+                if (combinationBuilder.length() > 0) {
+                    combinationBuilder.append('|');
+                }
+                combinationBuilder.append(optionName).append('=').append(options.get(optionName));
+            }
+            String combinationKey = combinationBuilder.toString();
             if (!seenCombinations.add(combinationKey)) {
                 throw new IllegalArgumentException("Duplicate product variant option combination");
             }
@@ -204,8 +202,9 @@ public class ProductVariantService {
     }
 
     private void rejectUnknownSelectedKeys(Map<String, String> selected, List<String> requiredOptions) {
+        Set<String> requiredOptionSet = new HashSet<>(requiredOptions);
         for (String key : selected.keySet()) {
-            if (requiredOptions.contains(key)) {
+            if (requiredOptionSet.contains(key)) {
                 continue;
             }
             if (ALLOWED_METADATA_KEYS.contains(key)) {
@@ -220,17 +219,20 @@ public class ProductVariantService {
             return new ArrayList<>();
         }
         Set<String> values = new HashSet<>();
-        for (String token : rawValue.split("[,\\uFF0C\\u3001;\\uFF1B\\n]")) {
-            String value = token == null ? "" : token.trim();
-            if (!value.isEmpty()) {
-                values.add(value);
+        int tokenStart = 0;
+        for (int index = 0; index <= rawValue.length(); index++) {
+            if (index != rawValue.length() && !isOptionDelimiter(rawValue.charAt(index))) {
+                continue;
             }
+            String value = rawValue.substring(tokenStart, index).trim();
+            if (!value.isEmpty()) values.add(value);
+            tokenStart = index + 1;
         }
         return new ArrayList<>(values);
     }
 
-    private BigDecimal resolveBundlePrice(Product product, String selectedSpecs) {
-        if (!PURCHASE_MODE_BUNDLE.equals(parseSelectedSpecs(selectedSpecs).get("_purchaseMode"))) {
+    private BigDecimal resolveBundlePrice(Product product, Map<String, String> selected) {
+        if (!PURCHASE_MODE_BUNDLE.equals(selected.get("_purchaseMode"))) {
             return null;
         }
         Map<String, String> specs = product.getSpecificationsMap();
@@ -259,12 +261,16 @@ public class ProductVariantService {
     private List<String> requiredOptionNames(Product product) {
         Map<String, String> specs = product.getSpecificationsMap();
         if (specs != null && !specs.isEmpty()) {
-            List<String> configuredOptions = specs.entrySet().stream()
-                    .filter(entry -> entry.getKey() != null && entry.getKey().startsWith("options."))
-                    .filter(entry -> entry.getValue() != null && !entry.getValue().trim().isEmpty())
-                    .map(entry -> entry.getKey().replaceFirst("^options\\.", ""))
-                    .filter(name -> !name.trim().isEmpty())
-                    .collect(Collectors.toList());
+            List<String> configuredOptions = new ArrayList<>();
+            for (Map.Entry<String, String> entry : specs.entrySet()) {
+                String key = entry.getKey();
+                String value = entry.getValue();
+                if (key == null || !key.startsWith("options.") || value == null || value.trim().isEmpty()) {
+                    continue;
+                }
+                String name = key.substring("options.".length());
+                if (!name.trim().isEmpty()) configuredOptions.add(name);
+            }
             if (!configuredOptions.isEmpty()) {
                 return configuredOptions;
             }
@@ -274,28 +280,29 @@ public class ProductVariantService {
         if (variants == null || variants.isEmpty()) {
             return new ArrayList<>();
         }
-        return variants.stream()
-                .flatMap(variant -> parseVariantOptions(variant).keySet().stream())
-                .filter(name -> name != null && !name.trim().isEmpty())
-                .distinct()
-                .collect(Collectors.toList());
+        List<String> names = new ArrayList<>();
+        Set<String> seenNames = new HashSet<>();
+        for (Map<String, Object> variant : variants) {
+            for (String name : parseVariantOptions(variant).keySet()) {
+                if (name != null && !name.trim().isEmpty() && seenNames.add(name)) names.add(name);
+            }
+        }
+        return names;
     }
 
-    private Optional<Map<String, Object>> findSelectedVariant(List<Map<String, Object>> variants, String selectedSpecs) {
-        Map<String, String> selected = parseSelectedSpecs(selectedSpecs);
+    private Optional<Map<String, Object>> findSelectedVariant(List<Map<String, Object>> variants, Map<String, String> selected) {
         if (variants == null || variants.isEmpty() || selected.isEmpty()) {
             return Optional.empty();
         }
         String selectedSku = selected.get("_variantSku");
-        if (selectedSku != null && !selectedSku.isEmpty()) {
-            return variants.stream()
-                    .filter(variant -> selectedSku.equals(String.valueOf(variant.getOrDefault("sku", "")).trim()))
-                    .filter(variant -> selectedOptionsMatch(variant, selected))
-                    .findFirst();
+        for (Map<String, Object> variant : variants) {
+            if (selectedSku != null && !selectedSku.isEmpty()
+                    && !selectedSku.equals(String.valueOf(variant.getOrDefault("sku", "")).trim())) {
+                continue;
+            }
+            if (selectedOptionsMatch(variant, selected)) return Optional.of(variant);
         }
-        return variants.stream()
-                .filter(variant -> selectedOptionsMatch(variant, selected))
-                .findFirst();
+        return Optional.empty();
     }
 
     private Map<String, String> parseSelectedSpecs(String selectedSpecs) {
@@ -305,9 +312,11 @@ public class ProductVariantService {
         try {
             Map<String, Object> raw = mapper.readValue(selectedSpecs, new TypeReference<LinkedHashMap<String, Object>>() {});
             Map<String, String> result = new LinkedHashMap<>();
-            raw.forEach((key, value) -> {
+            for (Map.Entry<String, Object> entry : raw.entrySet()) {
+                String key = entry.getKey();
+                Object value = entry.getValue();
                 if (value != null) result.put(key, String.valueOf(value));
-            });
+            }
             return result;
         } catch (Exception e) {
             return Map.of();
@@ -322,13 +331,15 @@ public class ProductVariantService {
         if (rawOptions instanceof Map) {
             Map<?, ?> options = (Map<?, ?>) rawOptions;
             Map<String, String> result = new LinkedHashMap<>();
-            options.forEach((key, value) -> {
+            for (Map.Entry<?, ?> entry : options.entrySet()) {
+                Object key = entry.getKey();
+                Object value = entry.getValue();
                 String normalizedKey = key == null ? "" : String.valueOf(key).trim();
                 String normalizedValue = value == null ? "" : String.valueOf(value).trim();
                 if (!normalizedKey.isEmpty() && !normalizedValue.isEmpty()) {
                     result.put(normalizedKey, normalizedValue);
                 }
-            });
+            }
             return result;
         }
 
@@ -337,18 +348,26 @@ public class ProductVariantService {
             return Map.of();
         }
         Map<String, String> result = new LinkedHashMap<>();
-        for (String token : String.valueOf(optionText).split("[,\\uFF0C\\u3001;\\uFF1B\\n]")) {
-            String[] parts = token.split("=", 2);
-            if (parts.length != 2) {
-                continue;
-            }
-            String key = parts[0] == null ? "" : parts[0].trim();
-            String value = parts[1] == null ? "" : parts[1].trim();
-            if (!key.isEmpty() && !value.isEmpty()) {
-                result.put(key, value);
-            }
+        String text = String.valueOf(optionText);
+        int tokenStart = 0;
+        for (int index = 0; index <= text.length(); index++) {
+            if (index != text.length() && !isOptionDelimiter(text.charAt(index))) continue;
+            addOptionToken(result, text.substring(tokenStart, index));
+            tokenStart = index + 1;
         }
         return result;
+    }
+
+    private boolean isOptionDelimiter(char value) {
+        return value == ',' || value == '\uFF0C' || value == '\u3001' || value == ';' || value == '\uFF1B' || value == '\n';
+    }
+
+    private void addOptionToken(Map<String, String> options, String token) {
+        int separator = token.indexOf('=');
+        if (separator < 0) return;
+        String key = token.substring(0, separator).trim();
+        String value = token.substring(separator + 1).trim();
+        if (!key.isEmpty() && !value.isEmpty()) options.put(key, value);
     }
 
     private void writeVariants(Product product, List<Map<String, Object>> variants) {
@@ -372,11 +391,13 @@ public class ProductVariantService {
             // exposing binary floating-point artifacts through doubleValue().
             return new BigDecimal(value.toString());
         }
-        if (value == null || String.valueOf(value).trim().isEmpty()) {
+        if (value == null) {
             return BigDecimal.ZERO;
         }
+        String text = String.valueOf(value).trim();
+        if (text.isEmpty()) return BigDecimal.ZERO;
         try {
-            return new BigDecimal(String.valueOf(value).trim());
+            return new BigDecimal(text);
         } catch (NumberFormatException e) {
             return BigDecimal.ZERO;
         }
@@ -386,11 +407,13 @@ public class ProductVariantService {
         if (value instanceof Number) {
             return ((Number) value).intValue();
         }
-        if (value == null || String.valueOf(value).trim().isEmpty()) {
+        if (value == null) {
             return null;
         }
+        String text = String.valueOf(value).trim();
+        if (text.isEmpty()) return null;
         try {
-            return Integer.parseInt(String.valueOf(value).trim());
+            return Integer.parseInt(text);
         } catch (NumberFormatException e) {
             return null;
         }

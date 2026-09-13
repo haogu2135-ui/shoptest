@@ -11,11 +11,19 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Locale;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class PetProfileService {
+    private static final Set<String> SUPPORTED_PET_TYPES = Set.of("DOG", "CAT", "SMALL_PET");
+    private static final Set<String> SUPPORTED_SIZES = Set.of("SMALL", "MEDIUM", "LARGE");
+    private static final java.math.BigDecimal DEFAULT_MAX_WEIGHT_KG = new java.math.BigDecimal("200");
+    private static final Pattern CONTROL_TEXT_PATTERN = Pattern.compile("\\p{Cntrl}");
+    private static final Pattern WHITESPACE_TEXT_PATTERN = Pattern.compile("\\s+");
+
     private final PetProfileMapper petProfileMapper;
     private final UserMapper userMapper;
     private final ProductService productService;
@@ -45,13 +53,15 @@ public class PetProfileService {
         pet.setBirthday(normalizeBirthday(request.getBirthday()));
         pet.setWeight(normalizeWeight(request.getWeight()));
         pet.setSize(normalizeSize(request.getSize()));
-        pet.setUpdatedAt(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        pet.setUpdatedAt(now);
         if (id == null) {
             lockOwnerForProfileCreate(userId);
-            if (petProfileMapper.countByUserId(userId) >= maxProfilesPerUser()) {
+            int maxProfiles = maxProfilesPerUser();
+            if (petProfileMapper.countByUserId(userId) >= maxProfiles) {
                 throw new IllegalStateException("Pet profile limit reached");
             }
-            pet.setCreatedAt(LocalDateTime.now());
+            pet.setCreatedAt(now);
             petProfileMapper.insert(pet);
         } else if (petProfileMapper.update(pet) == 0) {
             throw new IllegalArgumentException("Pet profile not found");
@@ -74,22 +84,20 @@ public class PetProfileService {
 
     private String normalizePetType(String value) {
         String normalized = value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
-        if (!"DOG".equals(normalized) && !"CAT".equals(normalized) && !"SMALL_PET".equals(normalized)) {
-            return "DOG";
-        }
-        return normalized;
+        return SUPPORTED_PET_TYPES.contains(normalized) ? normalized : "DOG";
     }
 
     private String normalizeSize(String value) {
         String normalized = value == null ? "" : value.trim().toUpperCase(Locale.ROOT);
-        if (!"SMALL".equals(normalized) && !"MEDIUM".equals(normalized) && !"LARGE".equals(normalized)) {
-            return null;
-        }
-        return normalized;
+        return SUPPORTED_SIZES.contains(normalized) ? normalized : null;
     }
 
     private String trimToNull(String value) {
-        return value == null || value.trim().isEmpty() ? null : value.trim();
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     private String normalizeRequiredText(String value, String field, int maxLength) {
@@ -101,11 +109,11 @@ public class PetProfileService {
     }
 
     private String normalizeOptionalText(String value, String field, int maxLength) {
-        String normalized = trimToNull(value == null ? null : value.replaceAll("\\p{Cntrl}", " "));
+        String normalized = trimToNull(value == null ? null : CONTROL_TEXT_PATTERN.matcher(value).replaceAll(" "));
         if (normalized == null) {
             return null;
         }
-        normalized = normalized.replaceAll("\\s+", " ");
+        normalized = WHITESPACE_TEXT_PATTERN.matcher(normalized).replaceAll(" ");
         if (normalized.length() > maxLength) {
             throw new IllegalArgumentException(field + " is too long");
         }
@@ -134,9 +142,9 @@ public class PetProfileService {
         if (weight.compareTo(java.math.BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Pet weight must be positive");
         }
-        java.math.BigDecimal maxWeight = runtimeConfig.getBigDecimal("pet-profile.max-weight-kg", new java.math.BigDecimal("200"));
+        java.math.BigDecimal maxWeight = runtimeConfig.getBigDecimal("pet-profile.max-weight-kg", DEFAULT_MAX_WEIGHT_KG);
         if (maxWeight == null || maxWeight.compareTo(java.math.BigDecimal.ZERO) <= 0) {
-            maxWeight = new java.math.BigDecimal("200");
+            maxWeight = DEFAULT_MAX_WEIGHT_KG;
         }
         if (weight.compareTo(maxWeight) > 0) {
             throw new IllegalArgumentException("Pet weight is too high");

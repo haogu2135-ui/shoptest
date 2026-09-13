@@ -18,15 +18,27 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import java.util.stream.Collectors;
+import java.util.regex.Pattern;
 
 @Service
 @Slf4j
 public class ProductQuestionServiceImpl implements ProductQuestionService {
+    private static final int MAX_PUBLIC_ROWS = 100;
+    private static final int MAX_SEARCH_CHARS = 120;
+    private static final int RATE_WINDOW_SECONDS = 60;
+    private static final int MIN_CONFIGURED_ADMIN_ROWS = 20;
+    private static final int MAX_CONFIGURED_ADMIN_ROWS = 1000;
+    private static final int MAX_STALE_HOURS = 24 * 30;
+    private static final Pattern CONTROL_TEXT_PATTERN = Pattern.compile("[\\p{Cntrl}&&[^\\r\\n\\t]]");
+    private static final Pattern WHITESPACE_TEXT_PATTERN = Pattern.compile("\\s+");
+
     private final ProductQuestionRepository questionRepository;
     private final ProductRepository productRepository;
     private final UserRepository userRepository;
@@ -47,10 +59,13 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
     @Override
     @Transactional(rollbackFor = Exception.class, readOnly = true)
     public List<ProductQuestionPublicResponse> getPublicByProductId(Long productId) {
-        int limit = Math.max(1, Math.min(runtimeConfig.getInt("product-question.public-max-rows", 20), 100));
-        return questionRepository.findAnsweredByProductId(productId, PageRequest.of(0, limit)).stream()
-                .map(question -> ProductQuestionPublicResponse.from(question, productId))
-                .collect(Collectors.toList());
+        int limit = Math.max(1, Math.min(runtimeConfig.getInt("product-question.public-max-rows", 20), MAX_PUBLIC_ROWS));
+        List<ProductQuestion> questions = questionRepository.findAnsweredByProductId(productId, PageRequest.of(0, limit));
+        List<ProductQuestionPublicResponse> responses = new ArrayList<>(questions.size());
+        for (ProductQuestion question : questions) {
+            responses.add(ProductQuestionPublicResponse.from(question, productId));
+        }
+        return responses;
     }
 
     @Override
@@ -81,9 +96,10 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
         int maxAdminRows = normalizedMaxAdminRows();
         Boolean answeredFilter = normalizedAnsweredFilter(status);
         String normalizedSearch = normalizeSearch(search);
+        LocalDateTime checkedAt = LocalDateTime.now();
         ProductQuestionAdminSummaryResponse response = new ProductQuestionAdminSummaryResponse();
         List<Object[]> metricRows = questionRepository.summarizeAdminQuestionMetrics(
-                answeredFilter, normalizedSearch, LocalDateTime.now().minusHours(staleHours));
+                answeredFilter, normalizedSearch, checkedAt.minusHours(staleHours));
         Object[] metrics = metricRows == null || metricRows.isEmpty() ? null : metricRows.get(0);
         response.setTotalQuestions(metricValue(metrics, 0));
         response.setUnansweredQuestions(metricValue(metrics, 1));
@@ -92,7 +108,7 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
         response.setStaleHours(staleHours);
         response.setMaxAdminRows(maxAdminRows);
         response.setResponseScore(calculateResponseScore(response));
-        response.setCheckedAt(Instant.now().toString());
+        response.setCheckedAt(checkedAt.atZone(ZoneId.systemDefault()).toInstant().toString());
         return response;
     }
 
@@ -138,7 +154,8 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
 
         question.setAnswer(normalizedAnswer);
         question.setAnsweredBy(userId);
-        question.setAnsweredAt(LocalDateTime.now());
+        LocalDateTime answeredAt = LocalDateTime.now();
+        question.setAnsweredAt(answeredAt);
         return questionRepository.save(question);
     }
 
@@ -152,10 +169,7 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
     }
 
     private String normalizeText(String value, int maxChars, String label) {
-        String normalized = String.valueOf(value == null ? "" : value)
-                .replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", " ")
-                .trim()
-                .replaceAll("\\s+", " ");
+        String normalized = normalizeWhitespace(value);
         if (normalized.length() > maxChars) {
             throw new IllegalArgumentException(label + " is too long");
         }
@@ -163,22 +177,33 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
     }
 
     private String normalizeSearch(String value) {
-        String normalized = String.valueOf(value == null ? "" : value)
-                .replaceAll("[\\p{Cntrl}&&[^\r\n\t]]", " ")
-                .replaceAll("\\s+", " ")
-                .trim()
-                .toLowerCase(Locale.ROOT);
+        String normalized = normalizeWhitespace(value).toLowerCase(Locale.ROOT);
         if (normalized.isEmpty()) {
             return null;
         }
-        String bounded = normalized.length() > 120 ? normalized.substring(0, 120).trim() : normalized;
+        String bounded = normalized.length() > MAX_SEARCH_CHARS
+                ? normalized.substring(0, MAX_SEARCH_CHARS).trim()
+                : normalized;
         return escapeLikeLiteral(bounded);
     }
 
+    private String normalizeWhitespace(String value) {
+        String source = value == null ? "" : value;
+        return WHITESPACE_TEXT_PATTERN.matcher(CONTROL_TEXT_PATTERN.matcher(source).replaceAll(" "))
+                .replaceAll(" ")
+                .trim();
+    }
+
     private String escapeLikeLiteral(String value) {
-        return value.replace("!", "!!")
-                .replace("%", "!%")
-                .replace("_", "!_");
+        StringBuilder escaped = new StringBuilder(value.length());
+        for (int index = 0; index < value.length(); index++) {
+            char character = value.charAt(index);
+            if (character == '!' || character == '%' || character == '_') {
+                escaped.append('!');
+            }
+            escaped.append(character);
+        }
+        return escaped.toString();
     }
 
     private void consumeAskRate(Long userId) {
@@ -190,7 +215,7 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
             return;
         }
         long now = Instant.now().getEpochSecond();
-        long windowStart = now - Math.floorMod(now, 60);
+        long windowStart = now - Math.floorMod(now, RATE_WINDOW_SECONDS);
         RateBucket bucket = askRateBuckets.compute(userId, (ignored, current) -> {
             if (current == null || current.windowStart != windowStart) {
                 return new RateBucket(windowStart, 1);
@@ -201,8 +226,14 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
         if (bucket.count > maxPerMinute) {
             throw new IllegalStateException("Too many product questions. Please try again later.");
         }
-        if (askRateBuckets.size() > runtimeConfig.getInt("product-question.max-rate-buckets", 5000)) {
-            askRateBuckets.entrySet().removeIf(entry -> entry.getValue().windowStart < windowStart);
+        int maxBuckets = Math.max(1, runtimeConfig.getInt("product-question.max-rate-buckets", 5000));
+        if (askRateBuckets.size() > maxBuckets) {
+            Iterator<java.util.Map.Entry<Long, RateBucket>> iterator = askRateBuckets.entrySet().iterator();
+            while (iterator.hasNext()) {
+                if (iterator.next().getValue().windowStart < windowStart) {
+                    iterator.remove();
+                }
+            }
         }
     }
 
@@ -215,7 +246,7 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
     }
 
     private Boolean normalizedAnsweredFilter(String status) {
-        String normalized = String.valueOf(status == null ? "" : status).trim().toUpperCase(Locale.ROOT);
+        String normalized = status == null ? "" : status.trim().toUpperCase(Locale.ROOT);
         if ("ANSWERED".equals(normalized)) {
             return true;
         }
@@ -232,11 +263,12 @@ public class ProductQuestionServiceImpl implements ProductQuestionService {
     }
 
     private int normalizedMaxAdminRows() {
-        return Math.max(20, Math.min(runtimeConfig.getInt("product-question.admin.max-rows", 200), 1000));
+        return Math.max(MIN_CONFIGURED_ADMIN_ROWS,
+                Math.min(runtimeConfig.getInt("product-question.admin.max-rows", 200), MAX_CONFIGURED_ADMIN_ROWS));
     }
 
     private int normalizedStaleHours() {
-        return Math.max(1, Math.min(runtimeConfig.getInt("product-question.admin.stale-hours", 24), 24 * 30));
+        return Math.max(1, Math.min(runtimeConfig.getInt("product-question.admin.stale-hours", 24), MAX_STALE_HOURS));
     }
 
     private int calculateResponseScore(ProductQuestionAdminSummaryResponse summary) {

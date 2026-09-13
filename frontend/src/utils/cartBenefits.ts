@@ -24,29 +24,29 @@ export const getNearestCartBenefitTarget = (
   freeShippingThreshold: number,
   currency: string,
 ): CartBenefitTarget | null => {
-  const candidates: CartBenefitTarget[] = [];
   const safeSubtotal = toNonNegativeFinite(subtotal);
   const safeFreeShippingThreshold = toNonNegativeFinite(freeShippingThreshold);
   const shippingRemaining = Math.max(0, safeFreeShippingThreshold - safeSubtotal);
+  let best: CartBenefitTarget | null = null;
   if (safeFreeShippingThreshold > 0 && shippingRemaining > 0) {
-    candidates.push({
+    best = {
       reason: 'shipping',
       remainingAmount: shippingRemaining,
       threshold: safeFreeShippingThreshold,
-    });
+    };
   }
 
   const giftThreshold = getGiftThreshold(currency);
   const giftRemaining = Math.max(0, giftThreshold - safeSubtotal);
-  if (giftThreshold > 0 && giftRemaining > 0) {
-    candidates.push({
+  if (giftThreshold > 0 && giftRemaining > 0 && (!best || giftRemaining < best.remainingAmount)) {
+    best = {
       reason: 'gift',
       remainingAmount: giftRemaining,
       threshold: giftThreshold,
-    });
+    };
   }
 
-  return candidates.sort((left, right) => left.remainingAmount - right.remainingAmount)[0] || null;
+  return best;
 };
 
 export const isGiftUnlocked = (subtotal: number, currency: string) => {

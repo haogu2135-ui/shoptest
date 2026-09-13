@@ -13,6 +13,9 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Instant;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -31,6 +34,7 @@ public class GuestAccessRateLimitService {
     private static final int DEFAULT_CLIENT_MAX_FAILURES = 30;
     private static final int DEFAULT_WINDOW_MINUTES = 15;
     private static final int DEFAULT_MAX_BUCKETS = 100_000;
+    private static final char[] HEX_DIGITS = "0123456789abcdef".toCharArray();
 
     private final RuntimeConfigService runtimeConfig;
     private final ClientIpResolver clientIpResolver;
@@ -82,8 +86,9 @@ public class GuestAccessRateLimitService {
     }
 
     private boolean hasCredential(String orderNo, String email) {
-        return orderNo != null && !orderNo.trim().isEmpty()
-                && email != null && !email.trim().isEmpty();
+        String normalizedOrderNo = orderNo == null ? "" : orderNo.trim();
+        String normalizedEmail = email == null ? "" : email.trim();
+        return !normalizedOrderNo.isEmpty() && !normalizedEmail.isEmpty();
     }
 
     private Config config() {
@@ -157,7 +162,8 @@ public class GuestAccessRateLimitService {
 
     private String clientKey(HttpServletRequest request) {
         String client = clientIpResolver.resolve(request);
-        return client == null || client.trim().isEmpty() ? null : key("client", client, null);
+        String normalizedClient = client == null ? "" : client.trim();
+        return normalizedClient.isEmpty() ? null : key("client", normalizedClient, null);
     }
 
     private String key(String kind, String first, String second) {
@@ -176,7 +182,9 @@ public class GuestAccessRateLimitService {
                     .digest(value.getBytes(StandardCharsets.UTF_8));
             StringBuilder result = new StringBuilder(digest.length * 2);
             for (byte item : digest) {
-                result.append(String.format("%02x", item & 0xff));
+                int unsigned = item & 0xff;
+                result.append(HEX_DIGITS[unsigned >>> 4]);
+                result.append(HEX_DIGITS[unsigned & 0x0f]);
             }
             return result.toString();
         } catch (NoSuchAlgorithmException ex) {
@@ -194,10 +202,13 @@ public class GuestAccessRateLimitService {
         if (overflow <= 0) {
             return;
         }
-        buckets.entrySet().stream()
-                .sorted((left, right) -> Long.compare(left.getValue().windowStart, right.getValue().windowStart))
-                .limit(overflow)
-                .forEach(entry -> buckets.remove(entry.getKey(), entry.getValue()));
+        List<Map.Entry<String, Bucket>> candidates = new ArrayList<>(buckets.entrySet());
+        candidates.sort(Comparator.comparingLong(entry -> entry.getValue().windowStart));
+        int removalCount = Math.min(overflow, candidates.size());
+        for (int index = 0; index < removalCount; index++) {
+            Map.Entry<String, Bucket> entry = candidates.get(index);
+            buckets.remove(entry.getKey(), entry.getValue());
+        }
     }
 
     private static final class Bucket {

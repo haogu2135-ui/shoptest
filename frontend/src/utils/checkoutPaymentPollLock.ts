@@ -3,6 +3,7 @@ import { reportNonBlockingError } from './nonBlockingError';
 
 export const CHECKOUT_PAYMENT_POLL_LOCK_TTL_MS = 30 * 1000;
 const CHECKOUT_PAYMENT_POLL_LOCK_SETTLE_MS = 75;
+const CHECKOUT_POLL_WHITESPACE_PATTERN = /\s+/g;
 
 type CheckoutWebLockManager = {
   request: <T>(
@@ -27,7 +28,7 @@ export type CheckoutPaymentPollWebLockSession = {
 };
 
 const normalizeCheckoutPollText = (value: unknown, maxLength: number) =>
-  String(value || '').trim().replace(/\s+/g, ' ').slice(0, maxLength);
+  String(value || '').trim().replace(CHECKOUT_POLL_WHITESPACE_PATTERN, ' ').slice(0, maxLength);
 
 export const checkoutPaymentPollLockKey = (orderId: number) => `checkoutPaymentPollLock:${orderId}`;
 
@@ -51,13 +52,14 @@ export const parseCheckoutPaymentPollLock = (raw: string | null): CheckoutPaymen
     const orderId = Number(parsed?.orderId);
     const expiresAt = Number(parsed?.expiresAt);
     const updatedAt = Number(parsed?.updatedAt);
+    const orderNo = normalizeCheckoutPollText(parsed?.orderNo, 80);
     if (!ownerId || !Number.isSafeInteger(orderId) || orderId <= 0 || !Number.isFinite(expiresAt)) {
       return null;
     }
     return {
       ownerId,
       orderId,
-      orderNo: normalizeCheckoutPollText(parsed?.orderNo, 80) || undefined,
+      orderNo: orderNo || undefined,
       expiresAt,
       updatedAt: Number.isFinite(updatedAt) ? updatedAt : 0,
     };
@@ -82,10 +84,11 @@ export const claimCheckoutPaymentPollLock = async (orderId: number, orderNo: str
   if (existing && existing.ownerId !== ownerId && existing.expiresAt > now) {
     return false;
   }
+  const normalizedOrderNo = normalizeCheckoutPollText(orderNo, 80);
   const nextLock: CheckoutPaymentPollLock = {
     ownerId,
     orderId,
-    orderNo,
+    orderNo: normalizedOrderNo || undefined,
     updatedAt: now,
     expiresAt: now + CHECKOUT_PAYMENT_POLL_LOCK_TTL_MS,
   };

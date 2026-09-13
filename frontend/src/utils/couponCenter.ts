@@ -135,8 +135,8 @@ export const sortPublicCoupons = (
   return coupons.sort((a, b) => {
     const remainingA = getCouponRemaining(a);
     const remainingB = getCouponRemaining(b);
-    const claimableA = !ownedCouponIds.has(a.id) && remainingA !== 0 && isCouponInValidWindow(a);
-    const claimableB = !ownedCouponIds.has(b.id) && remainingB !== 0 && isCouponInValidWindow(b);
+    const claimableA = isCouponClaimable(a, ownedCouponIds);
+    const claimableB = isCouponClaimable(b, ownedCouponIds);
     const daysA = getDaysUntilEnd(a.endAt) ?? Number.MAX_SAFE_INTEGER;
     const daysB = getDaysUntilEnd(b.endAt) ?? Number.MAX_SAFE_INTEGER;
     const remainingScoreA = remainingA == null ? Number.MAX_SAFE_INTEGER : remainingA;
@@ -168,16 +168,18 @@ export const filterPublicCoupons = (
   coupons: CouponPublic[],
   ownedCouponIds: Set<number>,
   couponFilter: CouponFilter,
-) => coupons.filter((coupon) => {
-  const claimable = isCouponClaimable(coupon, ownedCouponIds);
-  if (couponFilter === 'claimable') {
-    return claimable;
+) => {
+  const filtered: CouponPublic[] = [];
+  for (const coupon of coupons) {
+    if (couponFilter === 'all') {
+      filtered.push(coupon);
+      continue;
+    }
+    const claimable = isCouponClaimable(coupon, ownedCouponIds);
+    if (claimable && (couponFilter === 'claimable' || isCouponEndingSoon(coupon.endAt))) filtered.push(coupon);
   }
-  if (couponFilter === 'ending') {
-    return claimable && isCouponEndingSoon(coupon.endAt);
-  }
-  return true;
-});
+  return filtered;
+};
 
 export const getCartSubtotal = (items: CartItem[]) => {
   let total = 0;

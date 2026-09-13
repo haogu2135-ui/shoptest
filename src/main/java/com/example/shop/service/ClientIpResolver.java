@@ -48,7 +48,7 @@ public class ClientIpResolver {
 
     public String normalizeIpAddress(String value) {
         String address = cleanAddress(value);
-        return parseAddress(address) == null ? "" : address;
+        return parseCleanAddress(address) == null ? "" : address;
     }
 
     public boolean matchesAny(String ipAddress, String configuredAddresses) {
@@ -56,10 +56,15 @@ public class ClientIpResolver {
         if (remote == null) {
             return false;
         }
-        return Arrays.stream((configuredAddresses == null ? "" : configuredAddresses).split(","))
-                .map(String::trim)
-                .filter(value -> !value.isEmpty())
-                .anyMatch(entry -> matchesTrustedEntry(remote, entry));
+        String configured = configuredAddresses == null ? "" : configuredAddresses;
+        int entryStart = 0;
+        for (int index = 0; index <= configured.length(); index++) {
+            if (index != configured.length() && configured.charAt(index) != ',') continue;
+            String entry = configured.substring(entryStart, index).trim();
+            if (!entry.isEmpty() && matchesTrustedEntry(remote, entry)) return true;
+            entryStart = index + 1;
+        }
+        return false;
     }
 
     boolean isTrustedProxy(String remoteAddress) {
@@ -76,17 +81,17 @@ public class ClientIpResolver {
     }
 
     private boolean matchesCidr(byte[] remote, String cidr) {
-        String[] parts = cidr.split("/", 2);
-        if (parts.length != 2) {
+        int separator = cidr.indexOf('/');
+        if (separator < 0) {
             return false;
         }
-        byte[] network = parseAddress(parts[0]);
+        byte[] network = parseAddress(cidr.substring(0, separator));
         if (network == null || network.length != remote.length) {
             return false;
         }
         int prefixLength;
         try {
-            prefixLength = Integer.parseInt(parts[1].trim());
+            prefixLength = parsePrefixLength(cidr.substring(separator + 1));
         } catch (NumberFormatException ignored) {
             return false;
         }
@@ -104,11 +109,34 @@ public class ClientIpResolver {
         return true;
     }
 
+    private int parsePrefixLength(String value) {
+        String normalized = value.trim();
+        if (normalized.isEmpty()) throw new NumberFormatException("empty prefix");
+        int sign = 1;
+        int index = 0;
+        char first = normalized.charAt(0);
+        if (first == '+' || first == '-') {
+            sign = first == '-' ? -1 : 1;
+            index = 1;
+        }
+        if (index == normalized.length()) throw new NumberFormatException("empty prefix");
+        int result = 0;
+        for (; index < normalized.length(); index++) {
+            char digit = normalized.charAt(index);
+            if (digit < '0' || digit > '9' || result > (Integer.MAX_VALUE - (digit - '0')) / 10) {
+                throw new NumberFormatException("invalid prefix");
+            }
+            result = result * 10 + digit - '0';
+        }
+        return sign * result;
+    }
+
     private String firstForwardedAddress(String headerValue) {
         if (headerValue == null || headerValue.isBlank()) {
             return null;
         }
-        return cleanAddress(headerValue.split(",", 2)[0]);
+        int separator = headerValue.indexOf(',');
+        return cleanAddress(separator < 0 ? headerValue : headerValue.substring(0, separator));
     }
 
     private boolean isValidIp(String value) {
@@ -117,6 +145,10 @@ public class ClientIpResolver {
 
     private byte[] parseAddress(String value) {
         String address = cleanAddress(value);
+        return parseCleanAddress(address);
+    }
+
+    private byte[] parseCleanAddress(String address) {
         if (address == null || address.isBlank() || address.length() > 45) {
             return null;
         }
@@ -127,8 +159,12 @@ public class ClientIpResolver {
         } else if (!address.contains(":")) {
             return null;
         }
-        if (!address.matches("[0-9A-Fa-f:.]+")) {
-            return null;
+        for (int index = 0; index < address.length(); index++) {
+            char value = address.charAt(index);
+            if (!((value >= '0' && value <= '9') || (value >= 'A' && value <= 'F')
+                    || (value >= 'a' && value <= 'f') || value == ':' || value == '.')) {
+                return null;
+            }
         }
         try {
             return InetAddress.getByName(address).getAddress();
@@ -138,37 +174,39 @@ public class ClientIpResolver {
     }
 
     private boolean isStrictIpv4(String value) {
-        String[] parts = value.split("\\.", -1);
-        if (parts.length != 4) {
-            return false;
-        }
-        for (String part : parts) {
-            if (part.isBlank() || part.length() > 3 || !part.matches("\\d+")) {
-                return false;
+        int segmentStart = 0;
+        int segmentCount = 0;
+        for (int index = 0; index <= value.length(); index++) {
+            if (index != value.length() && value.charAt(index) != '.') continue;
+            if (index == segmentStart || index - segmentStart > 3) return false;
+            for (int digitIndex = segmentStart; digitIndex < index; digitIndex++) {
+                char digit = value.charAt(digitIndex);
+                if (digit < '0' || digit > '9') return false;
             }
-            int octet;
-            try {
-                octet = Integer.parseInt(part);
-            } catch (NumberFormatException ignored) {
-                return false;
+            int octet = 0;
+            for (int digitIndex = segmentStart; digitIndex < index; digitIndex++) {
+                octet = octet * 10 + value.charAt(digitIndex) - '0';
             }
             if (octet < 0 || octet > 255) {
                 return false;
             }
+            segmentCount++;
+            segmentStart = index + 1;
         }
-        return true;
+        return segmentCount == 4;
     }
 
     private String cleanAddress(String value) {
         if (value == null) {
             return null;
         }
-        String address = value.replaceAll("\\p{Cntrl}", "").trim();
+        String address = stripControlCharacters(value).trim();
         if (address.startsWith("\"") && address.endsWith("\"") && address.length() > 1) {
             address = address.substring(1, address.length() - 1).trim();
         }
         if (address.startsWith("[") && address.contains("]")) {
-            return address.substring(1, address.indexOf(']')).trim();
+            int closingBracket = address.indexOf(']');
+            return address.substring(1, closingBracket).trim();
         }
         int colonCount = 0;
         for (int i = 0; i < address.length(); i++) {
@@ -177,8 +215,25 @@ public class ClientIpResolver {
             }
         }
         if (address.contains(".") && colonCount == 1) {
-            return address.substring(0, address.indexOf(':')).trim();
+            int separator = address.indexOf(':');
+            return address.substring(0, separator).trim();
         }
         return address;
+    }
+
+    private String stripControlCharacters(String value) {
+        StringBuilder cleaned = null;
+        for (int index = 0; index < value.length(); index++) {
+            char character = value.charAt(index);
+            if (!Character.isISOControl(character)) {
+                if (cleaned != null) cleaned.append(character);
+                continue;
+            }
+            if (cleaned == null) {
+                cleaned = new StringBuilder(value.length());
+                cleaned.append(value, 0, index);
+            }
+        }
+        return cleaned == null ? value : cleaned.toString();
     }
 }

@@ -56,8 +56,9 @@ public class BrandService {
         if (name.isEmpty()) {
             throw new IllegalArgumentException("Brand name is required");
         }
+        Long currentId = brand.getId();
         brandRepository.findByNameIgnoreCase(name)
-                .filter(existing -> brand.getId() == null || !existing.getId().equals(brand.getId()))
+                .filter(existing -> currentId == null || !existing.getId().equals(currentId))
                 .ifPresent(existing -> {
                     throw new IllegalArgumentException("Brand name already exists");
                 });
@@ -77,10 +78,11 @@ public class BrandService {
     }
 
     private String normalizeStatus(String status) {
-        if (status == null || status.isBlank()) {
+        String trimmed = status == null ? "" : status.trim();
+        if (trimmed.isEmpty()) {
             return "ACTIVE";
         }
-        String normalized = status.trim().toUpperCase(Locale.ROOT);
+        String normalized = trimmed.toUpperCase(Locale.ROOT);
         if (!ALLOWED_STATUSES.contains(normalized)) {
             throw new IllegalArgumentException("Brand status must be ACTIVE or INACTIVE");
         }

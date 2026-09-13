@@ -5,6 +5,8 @@ import { getLocalStorageItem, setLocalStorageItem } from './safeStorage';
 
 const STORAGE_KEY = 'shop-stock-alerts';
 const MAX_ALERTS = 50;
+const MAX_PRODUCT_NAME_LENGTH = 160;
+const MAX_IMAGE_URL_LENGTH = 1000;
 
 const normalizePositiveId = (value: unknown) => {
   const numeric = Number(value);
@@ -13,7 +15,8 @@ const normalizePositiveId = (value: unknown) => {
 
 const normalizeCreatedAt = (value: unknown) => {
   const text = String(value || '').trim();
-  return Number.isFinite(new Date(text).getTime()) ? text : new Date().toISOString();
+  const timestamp = new Date(text).getTime();
+  return Number.isFinite(timestamp) ? text : new Date().toISOString();
 };
 
 export type StockAlertItem = {
@@ -23,6 +26,26 @@ export type StockAlertItem = {
   createdAt: string;
 };
 
+const normalizeProductName = (value: unknown) => String(value || '').trim().slice(0, MAX_PRODUCT_NAME_LENGTH);
+
+const normalizeImageUrl = (value: unknown) => {
+  if (!value) return undefined;
+  const normalized = String(value).trim().slice(0, MAX_IMAGE_URL_LENGTH);
+  return normalized || undefined;
+};
+
+const normalizeStoredAlert = (item: Partial<StockAlertItem> | null | undefined): StockAlertItem | null => {
+  const productId = normalizePositiveId(item?.productId);
+  const productName = normalizeProductName(item?.productName);
+  if (productId === null || !productName) return null;
+  return {
+    productId,
+    productName,
+    imageUrl: normalizeImageUrl(item?.imageUrl),
+    createdAt: normalizeCreatedAt(item?.createdAt),
+  };
+};
+
 const readRaw = (): StockAlertItem[] => {
   try {
     const parsed = JSON.parse(getLocalStorageItem(STORAGE_KEY) || '[]');
@@ -30,16 +53,10 @@ const readRaw = (): StockAlertItem[] => {
     const seenProductIds = new Set<number>();
     const items: StockAlertItem[] = [];
     for (const item of parsed) {
-      const productId = normalizePositiveId(item?.productId);
-      const productName = String(item?.productName || '').trim().slice(0, 160);
-      if (productId === null || !productName || seenProductIds.has(productId)) continue;
-      seenProductIds.add(productId);
-      items.push({
-        productId,
-        productName,
-        imageUrl: item?.imageUrl ? String(item.imageUrl).trim().slice(0, 1000) : undefined,
-        createdAt: normalizeCreatedAt(item?.createdAt),
-      });
+      const normalized = normalizeStoredAlert(item);
+      if (!normalized || seenProductIds.has(normalized.productId)) continue;
+      seenProductIds.add(normalized.productId);
+      items.push(normalized);
     }
     return items;
   } catch (error) {
@@ -53,17 +70,10 @@ const writeRaw = (items: StockAlertItem[]) => {
   const normalizedItems: StockAlertItem[] = [];
   for (const item of items) {
     if (normalizedItems.length >= MAX_ALERTS) break;
-    const productId = normalizePositiveId(item.productId);
-    const productName = String(item.productName || '').trim().slice(0, 160);
-    if (productId === null || !productName || seenProductIds.has(productId)) continue;
-    seenProductIds.add(productId);
-    normalizedItems.push({
-      ...item,
-      productId,
-      productName,
-      imageUrl: item.imageUrl ? String(item.imageUrl).trim().slice(0, 1000) : undefined,
-      createdAt: normalizeCreatedAt(item.createdAt),
-    });
+    const normalized = normalizeStoredAlert(item);
+    if (!normalized || seenProductIds.has(normalized.productId)) continue;
+    seenProductIds.add(normalized.productId);
+    normalizedItems.push(normalized);
   }
   setLocalStorageItem(STORAGE_KEY, JSON.stringify(normalizedItems));
   dispatchDomEvent('shop:stock-alerts-updated');
@@ -71,11 +81,14 @@ const writeRaw = (items: StockAlertItem[]) => {
 
 export const readStockAlerts = () => readRaw();
 
-export const hasStockAlert = (productId: number) => readRaw().some((item) => item.productId === productId);
+export const hasStockAlert = (productId: number) => {
+  const normalizedProductId = normalizePositiveId(productId);
+  return normalizedProductId !== null && readRaw().some((item) => item.productId === normalizedProductId);
+};
 
 export const addStockAlert = (product: Pick<ProductPublic, 'id' | 'name' | 'imageUrl'>) => {
   const productId = normalizePositiveId(product.id);
-  const productName = String(product.name || '').trim().slice(0, 160);
+  const productName = normalizeProductName(product.name);
   if (productId === null || !productName) {
     return { status: 'invalid' as const, items: readRaw() };
   }
@@ -87,7 +100,7 @@ export const addStockAlert = (product: Pick<ProductPublic, 'id' | 'name' | 'imag
     {
       productId,
       productName,
-      imageUrl: product.imageUrl ? String(product.imageUrl).trim().slice(0, 1000) : undefined,
+      imageUrl: normalizeImageUrl(product.imageUrl),
       createdAt: new Date().toISOString(),
     },
     ...current,
@@ -98,7 +111,8 @@ export const addStockAlert = (product: Pick<ProductPublic, 'id' | 'name' | 'imag
 
 export const removeStockAlert = (productId: number) => {
   const normalizedProductId = normalizePositiveId(productId);
-  const next = normalizedProductId === null ? readRaw() : readRaw().filter((item) => item.productId !== normalizedProductId);
+  const current = readRaw();
+  const next = normalizedProductId === null ? current : current.filter((item) => item.productId !== normalizedProductId);
   writeRaw(next);
   return next;
 };

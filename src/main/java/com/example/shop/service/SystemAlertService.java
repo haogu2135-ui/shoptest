@@ -30,13 +30,14 @@ import java.sql.SQLException;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.stream.Collectors;
+import java.util.Set;
+import java.util.regex.Pattern;
 
 @Service
 @RequiredArgsConstructor
@@ -48,6 +49,20 @@ public class SystemAlertService {
     private static final int DEFAULT_SEARCH_MAX_ROWS = 1000;
     private static final int DEFAULT_BATCH_MAX_SIZE = 200;
     private static final int DEFAULT_RETENTION_MAX_DAYS = 3650;
+    private static final Pattern CATEGORY_UNSAFE_PATTERN = Pattern.compile("[^A-Z0-9_]");
+    private static final Pattern MULTI_SLASH_PATTERN = Pattern.compile("/{2,}");
+    private static final Pattern NUMERIC_PATH_PATTERN = Pattern.compile("/\\d+");
+    private static final Pattern UUID_PATH_PATTERN = Pattern.compile("(?i)/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
+    private static final Pattern LONG_HEX_PATH_PATTERN = Pattern.compile("(?i)/[0-9a-f]{16,}");
+    private static final Pattern ORDER_PATH_PATTERN = Pattern.compile("(?i)/so\\d{10,}[0-9a-z]*");
+    private static final Pattern TOKEN_PATH_PATTERN = Pattern.compile("/[A-Za-z0-9._~+\\-=]{64,}");
+    private static final Pattern UUID_FINGERPRINT_PATTERN = Pattern.compile("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}");
+    private static final Pattern LONG_HEX_FINGERPRINT_PATTERN = Pattern.compile("\\b[0-9a-f]{16,}\\b");
+    private static final Pattern ORDER_FINGERPRINT_PATTERN = Pattern.compile("\\bso\\d{10,}[0-9a-z]*\\b");
+    private static final Pattern NUMERIC_FINGERPRINT_PATTERN = Pattern.compile("\\b\\d{6,}\\b");
+    private static final Pattern TOKEN_FINGERPRINT_PATTERN = Pattern.compile("\\b[a-z0-9._~+\\-=]{64,}\\b");
+    private static final Pattern CONTROL_TEXT_PATTERN = Pattern.compile("[\\r\\n\\t]+");
+    private static final Pattern WHITESPACE_TEXT_PATTERN = Pattern.compile("\\s+");
 
     private final JdbcTemplate jdbcTemplate;
     private final RuntimeConfigService runtimeConfig;
@@ -133,21 +148,21 @@ public class SystemAlertService {
         response.setMaxBatchActionSize(batchActionMaxSize());
         response.setMaxRetentionDays(retentionMaxDays());
         Map<String, Long> bySeverity = new LinkedHashMap<>();
-        jdbcTemplate.queryForList(
-                        "SELECT status, severity, COUNT(*) AS total FROM system_alerts "
-                                + "GROUP BY status, severity ORDER BY status, severity")
-                .forEach(row -> {
-                    String status = String.valueOf(row.get("status"));
-                    long total = numberValue(row.get("total"));
-                    if (STATUS_OPEN.equals(status)) {
-                        response.setOpenCount(response.getOpenCount() + total);
-                        bySeverity.merge(String.valueOf(row.get("severity")), total, Long::sum);
-                    } else if (STATUS_ACKNOWLEDGED.equals(status)) {
-                        response.setAcknowledgedCount(response.getAcknowledgedCount() + total);
-                    } else if (STATUS_RESOLVED.equals(status)) {
-                        response.setResolvedCount(response.getResolvedCount() + total);
-                    }
-                });
+        List<Map<String, Object>> rows = jdbcTemplate.queryForList(
+                "SELECT status, severity, COUNT(*) AS total FROM system_alerts "
+                        + "GROUP BY status, severity ORDER BY status, severity");
+        for (Map<String, Object> row : rows) {
+            String status = String.valueOf(row.get("status"));
+            long total = numberValue(row.get("total"));
+            if (STATUS_OPEN.equals(status)) {
+                response.setOpenCount(response.getOpenCount() + total);
+                bySeverity.merge(String.valueOf(row.get("severity")), total, Long::sum);
+            } else if (STATUS_ACKNOWLEDGED.equals(status)) {
+                response.setAcknowledgedCount(response.getAcknowledgedCount() + total);
+            } else if (STATUS_RESOLVED.equals(status)) {
+                response.setResolvedCount(response.getResolvedCount() + total);
+            }
+        }
         response.setOpenBySeverity(bySeverity);
         response.setCheckedAt(Instant.now().toString());
         return response;
@@ -423,40 +438,41 @@ public class SystemAlertService {
         if (ids.isEmpty()) {
             return 0;
         }
-        String placeholders = String.join(",", Collections.nCopies(ids.size(), "?"));
+        StringBuilder placeholderBuilder = new StringBuilder(ids.size() * 2 - 1);
+        for (int index = 0; index < ids.size(); index++) {
+            if (index > 0) placeholderBuilder.append(',');
+            placeholderBuilder.append('?');
+        }
+        String placeholders = placeholderBuilder.toString();
         List<Object> args = new ArrayList<>();
         args.add(status);
         args.add(sanitize(actor, 100));
         args.addAll(ids);
+        args.add(STATUS_RESOLVED);
         if (STATUS_ACKNOWLEDGED.equals(status)) {
             return jdbcTemplate.update(
                     "UPDATE system_alerts SET status = ?, acknowledged_at = NOW(), acknowledged_by = ? "
                             + "WHERE id IN (" + placeholders + ") AND status <> ?",
-                    append(args, STATUS_RESOLVED).toArray());
+                    args.toArray());
         }
         if (STATUS_RESOLVED.equals(status)) {
             return jdbcTemplate.update(
                     "UPDATE system_alerts SET status = ?, resolved_at = NOW(), resolved_by = ? "
                             + "WHERE id IN (" + placeholders + ") AND status <> ?",
-                    append(args, STATUS_RESOLVED).toArray());
+                    args.toArray());
         }
         return 0;
-    }
-
-    private List<Object> append(List<Object> values, Object value) {
-        List<Object> copy = new ArrayList<>(values);
-        copy.add(value);
-        return copy;
     }
 
     private List<Long> normalizeIds(List<Long> ids) {
         if (ids == null || ids.isEmpty()) {
             return List.of();
         }
-        List<Long> normalizedIds = ids.stream()
-                .filter(id -> id != null && id > 0)
-                .distinct()
-                .collect(Collectors.toList());
+        List<Long> normalizedIds = new ArrayList<>(ids.size());
+        Set<Long> seenIds = new HashSet<>();
+        for (Long id : ids) {
+            if (id != null && id > 0 && seenIds.add(id)) normalizedIds.add(id);
+        }
         if (normalizedIds.size() > batchActionMaxSize()) {
             throw new IllegalArgumentException("Too many system alerts selected");
         }
@@ -476,7 +492,7 @@ public class SystemAlertService {
 
     private Optional<SystemAlert> findById(Long id) {
         List<SystemAlert> rows = jdbcTemplate.query("SELECT * FROM system_alerts WHERE id = ?", (rs, rowNum) -> mapAlert(rs), id);
-        return rows.stream().findFirst();
+        return rows.isEmpty() ? Optional.empty() : Optional.of(rows.get(0));
     }
 
     private long numberValue(Object value) {
@@ -505,7 +521,8 @@ public class SystemAlertService {
     }
 
     private LocalDateTime toLocalDateTime(ResultSet rs, String column) throws SQLException {
-        return rs.getTimestamp(column) == null ? null : rs.getTimestamp(column).toLocalDateTime();
+        java.sql.Timestamp timestamp = rs.getTimestamp(column);
+        return timestamp == null ? null : timestamp.toLocalDateTime();
     }
 
     private Throwable rootCause(Throwable throwable) {
@@ -544,12 +561,16 @@ public class SystemAlertService {
             return null;
         }
         String normalized = value.trim().toUpperCase(Locale.ROOT);
-        return "ALL".equals(normalized) ? null : blankToNull(normalizeStatus(value));
+        return "ALL".equals(normalized) ? null : blankToNull(normalized);
     }
 
     private String normalizeCategory(String value) {
-        String normalized = value == null ? "APPLICATION" : value.trim().toUpperCase(Locale.ROOT).replaceAll("[^A-Z0-9_]", "_");
+        String normalized = value == null ? "APPLICATION" : normalizeCategoryText(value.trim().toUpperCase(Locale.ROOT));
         return limit(normalized.isEmpty() ? "APPLICATION" : normalized, 50);
+    }
+
+    private String normalizeCategoryText(String value) {
+        return CATEGORY_UNSAFE_PATTERN.matcher(value).replaceAll("_");
     }
 
     private String normalizeCategoryFilter(String value) {
@@ -567,12 +588,12 @@ public class SystemAlertService {
         if (path == null || path.isBlank()) {
             return "/";
         }
-        String safe = path.replaceAll("/{2,}", "/");
-        safe = safe.replaceAll("/\\d+", "/{id}");
-        safe = safe.replaceAll("(?i)/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", "/{id}");
-        safe = safe.replaceAll("(?i)/[0-9a-f]{16,}", "/{id}");
-        safe = safe.replaceAll("(?i)/so\\d{10,}[0-9a-z]*", "/{orderNo}");
-        safe = safe.replaceAll("/[A-Za-z0-9._~+\\-=]{64,}", "/{token}");
+        String safe = MULTI_SLASH_PATTERN.matcher(path).replaceAll("/");
+        safe = NUMERIC_PATH_PATTERN.matcher(safe).replaceAll("/{id}");
+        safe = UUID_PATH_PATTERN.matcher(safe).replaceAll("/{id}");
+        safe = LONG_HEX_PATH_PATTERN.matcher(safe).replaceAll("/{id}");
+        safe = ORDER_PATH_PATTERN.matcher(safe).replaceAll("/{orderNo}");
+        safe = TOKEN_PATH_PATTERN.matcher(safe).replaceAll("/{token}");
         return limit(safe, 240);
     }
 
@@ -624,16 +645,18 @@ public class SystemAlertService {
             return null;
         }
         normalized = normalized.toLowerCase(Locale.ROOT);
-        normalized = normalized.replaceAll("[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}", "{id}");
-        normalized = normalized.replaceAll("\\b[0-9a-f]{16,}\\b", "{id}");
-        normalized = normalized.replaceAll("\\bso\\d{10,}[0-9a-z]*\\b", "{orderno}");
-        normalized = normalized.replaceAll("\\b\\d{6,}\\b", "{id}");
-        normalized = normalized.replaceAll("\\b[a-z0-9._~+\\-=]{64,}\\b", "{token}");
+        normalized = UUID_FINGERPRINT_PATTERN.matcher(normalized).replaceAll("{id}");
+        normalized = LONG_HEX_FINGERPRINT_PATTERN.matcher(normalized).replaceAll("{id}");
+        normalized = ORDER_FINGERPRINT_PATTERN.matcher(normalized).replaceAll("{orderno}");
+        normalized = NUMERIC_FINGERPRINT_PATTERN.matcher(normalized).replaceAll("{id}");
+        normalized = TOKEN_FINGERPRINT_PATTERN.matcher(normalized).replaceAll("{token}");
         return limit(normalized, 180);
     }
 
     private String normalizeText(String value) {
-        return value == null ? null : value.replaceAll("[\\r\\n\\t]+", " ").replaceAll("\\s+", " ").trim();
+        if (value == null) return null;
+        String withoutControls = CONTROL_TEXT_PATTERN.matcher(value).replaceAll(" ");
+        return WHITESPACE_TEXT_PATTERN.matcher(withoutControls).replaceAll(" ").trim();
     }
 
     private String firstNonBlank(String... values) {

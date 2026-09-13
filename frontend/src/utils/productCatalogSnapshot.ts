@@ -51,6 +51,7 @@ const fallbackCategoryRules: Array<[RegExp, string]> = [
 
 const categoryIdLabelPattern = /^(category|categoria|categor[ií]a)\s*#?\s*\d+$/i;
 const chineseCategoryIdLabelPattern = /^分类\s*#?\s*\d+$/;
+const SNAPSHOT_WHITESPACE_PATTERN = /\s+/g;
 
 const fallbackCatalogProducts: ProductCatalogSnapshotProduct[] = [
   {
@@ -190,7 +191,7 @@ const fallbackCatalogProducts: ProductCatalogSnapshotProduct[] = [
 ];
 
 const clampString = (value: unknown, maxLength: number) =>
-  String(value || '').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+  String(value || '').replace(SNAPSHOT_WHITESPACE_PATTERN, ' ').trim().slice(0, maxLength);
 
 const finiteNumber = (value: unknown, fallback = 0) => {
   const numeric = Number(value);
@@ -275,8 +276,9 @@ const normalizeVariants = (value: unknown): ProductVariant[] | undefined => {
     };
     const sku = clampString(variant?.sku, 80);
     const imageUrl = normalizePersistentImageUrl(clampString(variant?.imageUrl, 1000));
+    const stock = Number(variant?.stock);
     if (sku) normalizedVariant.sku = sku;
-    if (Number.isFinite(Number(variant?.stock))) normalizedVariant.stock = Math.max(0, Math.floor(Number(variant.stock)));
+    if (Number.isFinite(stock)) normalizedVariant.stock = Math.max(0, Math.floor(stock));
     if (imageUrl) normalizedVariant.imageUrl = imageUrl;
     variants.push(normalizedVariant);
   }
@@ -296,6 +298,11 @@ export const normalizeProductForCatalogSnapshot = (value: unknown): ProductCatal
   const discount = finiteNumber(product?.discount, NaN);
   const effectiveDiscountPercent = finiteNumber(product?.effectiveDiscountPercent, NaN);
   const freeShippingThreshold = finiteNumber(product?.freeShippingThreshold, NaN);
+  const limitedTimePrice = finiteNumber(product?.limitedTimePrice, NaN);
+  const rating = finiteNumber(product?.rating, NaN);
+  const averageRating = finiteNumber(product?.averageRating, NaN);
+  const positiveRate = finiteNumber(product?.positiveRate, NaN);
+  const reviewCount = finiteNumber(product?.reviewCount, NaN);
 
   return {
     id,
@@ -311,7 +318,7 @@ export const normalizeProductForCatalogSnapshot = (value: unknown): ProductCatal
     brand: clampString(product?.brand, 120) || undefined,
     originalPrice: Number.isFinite(originalPrice) && originalPrice >= 0 ? originalPrice : undefined,
     discount: Number.isFinite(discount) ? Math.max(0, Math.min(discount, 100)) : undefined,
-    limitedTimePrice: Number.isFinite(Number(product?.limitedTimePrice)) ? Math.max(0, Number(product?.limitedTimePrice)) : undefined,
+    limitedTimePrice: Number.isFinite(limitedTimePrice) ? Math.max(0, limitedTimePrice) : undefined,
     limitedTimeStartAt: clampString(product?.limitedTimeStartAt, 80) || undefined,
     limitedTimeEndAt: clampString(product?.limitedTimeEndAt, 80) || undefined,
     activeLimitedTimeDiscount: Boolean(product?.activeLimitedTimeDiscount),
@@ -320,10 +327,10 @@ export const normalizeProductForCatalogSnapshot = (value: unknown): ProductCatal
     freeShipping: Boolean(product?.freeShipping),
     freeShippingThreshold: Number.isFinite(freeShippingThreshold) && freeShippingThreshold >= 0 ? freeShippingThreshold : undefined,
     tag: clampString(product?.tag, 80) || undefined,
-    rating: Number.isFinite(Number(product?.rating)) ? Math.max(0, Math.min(Number(product?.rating), 5)) : undefined,
-    averageRating: Number.isFinite(Number(product?.averageRating)) ? Math.max(0, Math.min(Number(product?.averageRating), 5)) : undefined,
-    positiveRate: Number.isFinite(Number(product?.positiveRate)) ? Math.max(0, Math.min(Number(product?.positiveRate), 100)) : undefined,
-    reviewCount: Number.isFinite(Number(product?.reviewCount)) ? Math.max(0, Math.floor(Number(product?.reviewCount))) : undefined,
+    rating: Number.isFinite(rating) ? Math.max(0, Math.min(rating, 5)) : undefined,
+    averageRating: Number.isFinite(averageRating) ? Math.max(0, Math.min(averageRating, 5)) : undefined,
+    positiveRate: Number.isFinite(positiveRate) ? Math.max(0, Math.min(positiveRate, 100)) : undefined,
+    reviewCount: Number.isFinite(reviewCount) ? Math.max(0, Math.floor(reviewCount)) : undefined,
     sizes: boundedStringList(product?.sizes, MAX_SNAPSHOT_OPTIONS),
     colors: boundedStringList(product?.colors, MAX_SNAPSHOT_OPTIONS),
     specifications: normalizeSpecifications(product?.specifications),
@@ -373,10 +380,10 @@ export const loadProductCatalogSnapshot = (now = Date.now()): ProductCatalogSnap
 
 export const loadFallbackProductCatalog = (): ProductCatalogSnapshotProduct[] => {
   const products: ProductCatalogSnapshotProduct[] = [];
-  fallbackCatalogProducts.forEach((product) => {
+  for (const product of fallbackCatalogProducts) {
     const normalized = normalizeProductForCatalogSnapshot(product);
     if (normalized) products.push(normalized);
-  });
+  }
   return products;
 };
 
@@ -432,7 +439,8 @@ export const buildProductCatalogFallbackCategories = (products: ProductCatalogSn
       product,
       usedNames,
     );
-    usedNames.add(name.toLowerCase());
+    const normalizedName = name.toLowerCase();
+    usedNames.add(normalizedName);
     categories.set(id, {
       id,
       name,

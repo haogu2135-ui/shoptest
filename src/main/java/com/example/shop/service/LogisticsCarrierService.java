@@ -61,13 +61,14 @@ public class LogisticsCarrierService {
         if (trackingCode.isEmpty()) {
             throw new IllegalArgumentException("17TRACK carrier code is required");
         }
+        Long currentId = carrier.getId();
         logisticsCarrierRepository.findByNameIgnoreCase(name)
-                .filter(existing -> carrier.getId() == null || !existing.getId().equals(carrier.getId()))
+                .filter(existing -> currentId == null || !existing.getId().equals(currentId))
                 .ifPresent(existing -> {
                     throw new IllegalArgumentException("Carrier name already exists");
                 });
         logisticsCarrierRepository.findByTrackingCodeIgnoreCase(trackingCode)
-                .filter(existing -> carrier.getId() == null || !existing.getId().equals(carrier.getId()))
+                .filter(existing -> currentId == null || !existing.getId().equals(currentId))
                 .ifPresent(existing -> {
                     throw new IllegalArgumentException("17TRACK carrier code already exists");
                 });

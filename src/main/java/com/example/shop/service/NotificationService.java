@@ -17,9 +17,9 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
+import java.util.ArrayList;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -39,6 +39,7 @@ public class NotificationService {
             "button", "svg", "math", "frame", "frameset", "base");
     private static final Set<String> URL_ATTRIBUTES = Set.of("href", "src", "xlink:href", "action", "formaction");
     private static final Set<String> ALLOWED_ANCHOR_TARGETS = Set.of("_blank", "_self", "_parent", "_top");
+    private static final Set<String> ALLOWED_URL_SCHEMES = Set.of("http", "https", "mailto", "tel");
     private static final Pattern HTML_COMMENT_PATTERN = Pattern.compile("(?is)<!--.*?-->");
     private static final Pattern BLOCKED_ELEMENT_PATTERN = Pattern.compile("(?is)<\\s*(script|iframe|object|embed|link|meta|style|form|input|button|svg|math|frame|frameset|base)\\b[^>]*>.*?<\\s*/\\s*\\1\\s*>");
     private static final Pattern BLOCKED_TAG_PATTERN = Pattern.compile("(?is)<\\s*/?\\s*(script|iframe|object|embed|link|meta|style|form|input|button|svg|math|frame|frameset|base)\\b[^>]*>");
@@ -130,19 +131,20 @@ public class NotificationService {
                              String message,
                              String contentFormat,
                              LocalDateTime createdAt) {
-        List<Notification> notifications = customerIds.stream()
-            .map(userId -> {
-                Notification n = new Notification();
-                n.setUserId(userId);
-                n.setType(normalizeType(type));
-                n.setTitle(title.trim());
-                n.setMessage(message);
-                n.setContentFormat(contentFormat);
-                n.setIsRead(false);
-                n.setCreatedAt(createdAt);
-                return n;
-            })
-            .collect(Collectors.toList());
+        String normalizedType = normalizeType(type);
+        String normalizedTitle = title == null ? "" : title.trim();
+        List<Notification> notifications = new ArrayList<>(customerIds.size());
+        for (Long userId : customerIds) {
+            Notification n = new Notification();
+            n.setUserId(userId);
+            n.setType(normalizedType);
+            n.setTitle(normalizedTitle);
+            n.setMessage(message);
+            n.setContentFormat(contentFormat);
+            n.setIsRead(false);
+            n.setCreatedAt(createdAt);
+            notifications.add(n);
+        }
         if (notifications.isEmpty()) {
             return 0;
         }
@@ -165,18 +167,16 @@ public class NotificationService {
     }
 
     private String normalizeType(String type) {
-        String normalized = type == null || type.trim().isEmpty()
-                ? "SYSTEM"
-                : type.trim().toUpperCase(Locale.ROOT);
+        String trimmed = type == null ? "" : type.trim();
+        String normalized = trimmed.isEmpty() ? "SYSTEM" : trimmed.toUpperCase(Locale.ROOT);
         return "PROMOTION".equals(normalized) || "ORDER".equals(normalized) || "DELIVERY".equals(normalized)
                 ? normalized
                 : "SYSTEM";
     }
 
     private String normalizeFormat(String contentFormat) {
-        String normalized = contentFormat == null || contentFormat.trim().isEmpty()
-                ? "TEXT"
-                : contentFormat.trim().toUpperCase(Locale.ROOT);
+        String trimmed = contentFormat == null ? "" : contentFormat.trim();
+        String normalized = trimmed.isEmpty() ? "TEXT" : trimmed.toUpperCase(Locale.ROOT);
         return "HTML".equals(normalized) ? "HTML" : "TEXT";
     }
 
@@ -194,7 +194,11 @@ public class NotificationService {
     }
 
     private String sanitizeHtml(String html) {
-        String sanitized = HTML_COMMENT_PATTERN.matcher(html == null ? "" : html).replaceAll("");
+        String source = html == null ? "" : html;
+        if (source.indexOf('<') < 0) {
+            return source;
+        }
+        String sanitized = HTML_COMMENT_PATTERN.matcher(source).replaceAll("");
         String previous;
         do {
             previous = sanitized;
@@ -216,7 +220,7 @@ public class NotificationService {
     }
 
     private String rebuildStartTag(String tagName, String attributeSource) {
-        Map<String, String> attributes = new LinkedHashMap<>();
+        Map<String, String> attributes = new LinkedHashMap<>(4);
         if (attributeSource != null && !attributeSource.isBlank()) {
             Matcher matcher = ATTRIBUTE_PATTERN.matcher(attributeSource);
             while (matcher.find()) {
@@ -282,7 +286,7 @@ public class NotificationService {
                 return true;
             }
             String scheme = uri.getScheme().toLowerCase(Locale.ROOT);
-            return uri.getUserInfo() == null && Set.of("http", "https", "mailto", "tel").contains(scheme);
+            return uri.getUserInfo() == null && ALLOWED_URL_SCHEMES.contains(scheme);
         } catch (URISyntaxException e) {
             return false;
         }
@@ -314,7 +318,12 @@ public class NotificationService {
     }
 
     private String escapeAttributeValue(String value) {
-        return (value == null ? "" : value)
+        String normalized = value == null ? "" : value;
+        if (normalized.indexOf('&') < 0 && normalized.indexOf('"') < 0
+                && normalized.indexOf('<') < 0 && normalized.indexOf('>') < 0) {
+            return normalized;
+        }
+        return normalized
                 .replace("&", "&amp;")
                 .replace("\"", "&quot;")
                 .replace("<", "&lt;")
