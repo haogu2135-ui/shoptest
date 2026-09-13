@@ -41,6 +41,17 @@ map $http_upgrade $dashboard_connection_upgrade {
     '' close;
 }
 
+# A bare-IP request must reach the dashboard entry point instead of the
+# storefront default server. Redirect it to the certificate-backed hostname.
+server {
+    listen 80;
+    server_name ${F2B_IP_REDIRECT_NAME};
+
+    location / {
+        return 301 https://${F2B_SERVER_NAME}$request_uri;
+    }
+}
+
 # Commercial edge: serve HTTP content (no force-HTTPS redirect).
 # Cloudflare Flexible SSL proxies client HTTPS -> origin HTTP. A 301 to HTTPS here
 # creates a CF edge loop and hangs public requests. Full/Strict still use :443 below.
