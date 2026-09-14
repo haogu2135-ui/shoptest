@@ -18,7 +18,6 @@ import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandl
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.LinkedHashSet;
 import java.util.Map;
 import java.util.Set;
 
@@ -91,8 +90,12 @@ public class SecurityApiErrorHandler implements AuthenticationEntryPoint, Access
         }
         String path = servletPath(request);
         String method = request.getMethod();
-        return requestMappingHandlerMapping.getHandlerMethods().keySet().stream()
-                .noneMatch(mapping -> pathMatches(mapping, path) && methodMatches(mapping, method));
+        for (RequestMappingInfo mapping : requestMappingHandlerMapping.getHandlerMethods().keySet()) {
+            if (pathMatches(mapping, path) && methodMatches(mapping, method)) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private String servletPath(HttpServletRequest request) {
@@ -105,18 +108,33 @@ public class SecurityApiErrorHandler implements AuthenticationEntryPoint, Access
     }
 
     private boolean pathMatches(RequestMappingInfo mapping, String path) {
-        Set<String> patterns = new LinkedHashSet<>();
         if (mapping.getPatternsCondition() != null) {
-            patterns.addAll(mapping.getPatternsCondition().getPatterns());
+            for (String pattern : mapping.getPatternsCondition().getPatterns()) {
+                if (pathMatcher.match(pattern, path)) {
+                    return true;
+                }
+            }
         }
         if (mapping.getPathPatternsCondition() != null) {
-            patterns.addAll(mapping.getPathPatternsCondition().getPatternValues());
+            for (String pattern : mapping.getPathPatternsCondition().getPatternValues()) {
+                if (pathMatcher.match(pattern, path)) {
+                    return true;
+                }
+            }
         }
-        return patterns.stream().anyMatch(pattern -> pathMatcher.match(pattern, path));
+        return false;
     }
 
     private boolean methodMatches(RequestMappingInfo mapping, String method) {
         Set<RequestMethod> methods = mapping.getMethodsCondition().getMethods();
-        return methods.isEmpty() || methods.stream().anyMatch(requestMethod -> requestMethod.name().equalsIgnoreCase(method));
+        if (methods.isEmpty()) {
+            return true;
+        }
+        for (RequestMethod requestMethod : methods) {
+            if (requestMethod.name().equalsIgnoreCase(method)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

@@ -12,7 +12,9 @@ public final class CsvUtils {
 
     public static List<Record> parseRecords(Reader reader) throws IOException {
         List<Record> records = new ArrayList<>(16);
-        PushbackReader pushbackReader = new PushbackReader(reader, 1);
+        PushbackReader pushbackReader = reader instanceof PushbackReader
+                ? (PushbackReader) reader
+                : new PushbackReader(reader, 1);
         StringBuilder record = new StringBuilder();
         boolean quoted = false;
         int lineNumber = 1;
@@ -150,20 +152,22 @@ public final class CsvUtils {
             return "";
         }
         String text = preventFormulaInjection(String.valueOf(value));
-        if (containsCsvSpecialCharacter(text)) {
-            return "\"" + text.replace("\"", "\"\"") + "\"";
-        }
-        return text;
-    }
-
-    private static boolean containsCsvSpecialCharacter(String value) {
-        for (int i = 0; i < value.length(); i++) {
-            char ch = value.charAt(i);
-            if (ch == ',' || ch == '"' || ch == '\r' || ch == '\n') {
-                return true;
+        boolean requiresQuotes = false;
+        boolean containsQuote = false;
+        for (int i = 0; i < text.length(); i++) {
+            char ch = text.charAt(i);
+            if (ch == '"') {
+                requiresQuotes = true;
+                containsQuote = true;
+            } else if (ch == ',' || ch == '\r' || ch == '\n') {
+                requiresQuotes = true;
             }
         }
-        return false;
+        if (requiresQuotes) {
+            String escaped = containsQuote ? text.replace("\"", "\"\"") : text;
+            return "\"" + escaped + "\"";
+        }
+        return text;
     }
 
     private static String preventFormulaInjection(String value) {

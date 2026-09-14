@@ -15,10 +15,10 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/pet-gallery")
@@ -109,8 +109,13 @@ public class PetGalleryController {
     }
 
     private List<PetGalleryPhotoPublicResponse> publicPhotos(List<PetGalleryPhoto> photos) {
-        return photos.stream()
-                .map(PetGalleryPhotoPublicResponse::from)
-                .collect(Collectors.toList());
+        if (photos == null || photos.isEmpty()) {
+            return List.of();
+        }
+        List<PetGalleryPhotoPublicResponse> responses = new ArrayList<>(photos.size());
+        for (PetGalleryPhoto photo : photos) {
+            responses.add(PetGalleryPhotoPublicResponse.from(photo));
+        }
+        return responses;
     }
 }

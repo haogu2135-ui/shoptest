@@ -15,14 +15,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.function.Function;
 
 @RestController
 @RequestMapping("/notifications")
 @RequiredArgsConstructor
 public class NotificationController {
+    private static final Function<Notification, NotificationResponse> NOTIFICATION_RESPONSE_FACTORY = NotificationResponse::from;
+
     private final NotificationService notificationService;
 
     @GetMapping
@@ -88,8 +91,13 @@ public class NotificationController {
     }
 
     private List<NotificationResponse> toResponses(List<Notification> notifications) {
-        return notifications.stream()
-                .map(NotificationResponse::from)
-                .collect(Collectors.toList());
+        if (notifications == null || notifications.isEmpty()) {
+            return List.of();
+        }
+        List<NotificationResponse> responses = new ArrayList<>(notifications.size());
+        for (Notification notification : notifications) {
+            responses.add(NOTIFICATION_RESPONSE_FACTORY.apply(notification));
+        }
+        return responses;
     }
 }

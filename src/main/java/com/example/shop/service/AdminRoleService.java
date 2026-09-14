@@ -362,22 +362,24 @@ public class AdminRoleService {
         if (path.matches("/users/[^/]+/role-code")) {
             return "permissions";
         }
-        return PATH_PERMISSIONS.entrySet().stream()
-                .filter(entry -> path.equals(entry.getKey()) || path.startsWith(entry.getKey() + "/"))
-                .map(Map.Entry::getValue)
-                .findFirst()
-                .orElse(null);
+        for (Map.Entry<String, String> entry : PATH_PERMISSIONS.entrySet()) {
+            if (path.equals(entry.getKey()) || path.startsWith(entry.getKey() + "/")) {
+                return entry.getValue();
+            }
+        }
+        return null;
     }
 
     public String permissionForWritePath(String servletPath) {
         if (servletPath == null) {
             return null;
         }
-        return WRITE_PATH_PERMISSIONS.entrySet().stream()
-                .filter(entry -> servletPath.equals(entry.getKey()) || servletPath.startsWith(entry.getKey() + "/"))
-                .map(Map.Entry::getValue)
-                .findFirst()
-                .orElse(null);
+        for (Map.Entry<String, String> entry : WRITE_PATH_PERMISSIONS.entrySet()) {
+            if (servletPath.equals(entry.getKey()) || servletPath.startsWith(entry.getKey() + "/")) {
+                return entry.getValue();
+            }
+        }
+        return null;
     }
 
     private boolean isAuthenticatedAdminBootstrapPath(String servletPath) {
@@ -501,11 +503,12 @@ public class AdminRoleService {
         if (permissions == null || permissions.isEmpty()) {
             return;
         }
+        List<Object[]> arguments = new ArrayList<>(permissions.size());
+        for (String permission : permissions) {
+            arguments.add(new Object[]{code, permission});
+        }
         jdbcTemplate.batchUpdate(
-                "INSERT INTO admin_role_permissions (role_code, permission_key) VALUES (?, ?)",
-                permissions.stream()
-                        .map(permission -> new Object[]{code, permission})
-                        .collect(Collectors.toList()));
+                "INSERT INTO admin_role_permissions (role_code, permission_key) VALUES (?, ?)", arguments);
     }
 
     private void addMissingPermissions(String code, List<String> permissions) {
@@ -517,33 +520,41 @@ public class AdminRoleService {
                 "SELECT permission_key FROM admin_role_permissions WHERE role_code = ?",
                 String.class,
                 code));
-        List<String> missingPermissions = sanitizedPermissions.stream()
-                .filter(permission -> !existingPermissions.contains(permission))
-                .collect(Collectors.toList());
+        List<String> missingPermissions = new ArrayList<>(sanitizedPermissions.size());
+        for (String permission : sanitizedPermissions) {
+            if (!existingPermissions.contains(permission)) {
+                missingPermissions.add(permission);
+            }
+        }
         if (missingPermissions.isEmpty()) {
             return;
         }
+        List<Object[]> arguments = new ArrayList<>(missingPermissions.size());
+        for (String permission : missingPermissions) {
+            arguments.add(new Object[]{code, permission});
+        }
         jdbcTemplate.batchUpdate(
-                "INSERT INTO admin_role_permissions (role_code, permission_key) VALUES (?, ?)",
-                missingPermissions.stream()
-                        .map(permission -> new Object[]{code, permission})
-                        .collect(Collectors.toList()));
+                "INSERT INTO admin_role_permissions (role_code, permission_key) VALUES (?, ?)", arguments);
     }
 
     private void grantAllPermissionsToActiveAdminRoles() {
-        List<String> roleCodes = jdbcTemplate.queryForList("SELECT code FROM admin_roles WHERE status = 'ACTIVE'", String.class)
-                .stream()
-                .map(this::normalize)
-                .filter(code -> !code.isEmpty() && !"USER".equals(code))
-                .distinct()
-                .collect(Collectors.toList());
+        List<String> roleRows = jdbcTemplate.queryForList("SELECT code FROM admin_roles WHERE status = 'ACTIVE'", String.class);
+        Set<String> uniqueRoleCodes = new LinkedHashSet<>(roleRows.size());
+        for (String roleRow : roleRows) {
+            String code = normalize(roleRow);
+            if (!code.isEmpty() && !"USER".equals(code)) {
+                uniqueRoleCodes.add(code);
+            }
+        }
+        List<String> roleCodes = new ArrayList<>(uniqueRoleCodes);
         if (roleCodes.isEmpty()) {
             return;
         }
 
-        Map<String, Set<String>> existingByRole = new LinkedHashMap<>();
-        for (Map<String, Object> row : jdbcTemplate.queryForList(
-                "SELECT role_code, permission_key FROM admin_role_permissions")) {
+        List<Map<String, Object>> existingRows = jdbcTemplate.queryForList(
+                "SELECT role_code, permission_key FROM admin_role_permissions");
+        Map<String, Set<String>> existingByRole = new LinkedHashMap<>(existingRows.size());
+        for (Map<String, Object> row : existingRows) {
             String roleCode = mapString(row, "role_code");
             String permission = mapString(row, "permission_key");
             if (!roleCode.isEmpty() && !permission.isEmpty()) {
@@ -551,7 +562,7 @@ public class AdminRoleService {
             }
         }
 
-        List<Object[]> missingPermissions = new ArrayList<>();
+        List<Object[]> missingPermissions = new ArrayList<>(roleCodes.size() * ALL_ADMIN_PERMISSIONS.size());
         for (String code : roleCodes) {
             Set<String> existingPermissions = existingByRole.computeIfAbsent(code, ignored -> new LinkedHashSet<>());
             for (String permission : ALL_ADMIN_PERMISSIONS) {
@@ -594,10 +605,18 @@ public class AdminRoleService {
 
     private List<String> sanitizePermissions(List<String> permissions) {
         Set<String> allowed = new LinkedHashSet<>(ALL_ADMIN_PERMISSIONS);
-        return new ArrayList<>(new LinkedHashSet<>(permissions == null ? List.of() : permissions)).stream()
-                .map(this::normalizePermission)
-                .filter(allowed::contains)
-                .collect(Collectors.toList());
+        List<String> source = permissions == null ? List.of() : permissions;
+        Set<String> seenRaw = new LinkedHashSet<>(source.size());
+        List<String> sanitized = new ArrayList<>(source.size());
+        for (String permission : source) {
+            if (seenRaw.add(permission)) {
+                String normalized = normalizePermission(permission);
+                if (allowed.contains(normalized)) {
+                    sanitized.add(normalized);
+                }
+            }
+        }
+        return sanitized;
     }
 
     private static List<String> allAdminPermissions() {
@@ -607,15 +626,26 @@ public class AdminRoleService {
     }
 
     private static List<String> defaultAdminPermissions() {
-        List<String> permissions = ADMIN_PAGES.stream()
-                .filter(page -> !"permissions".equals(page))
-                .collect(Collectors.toCollection(ArrayList::new));
+        List<String> permissions = new ArrayList<>(ADMIN_PAGES.size() + ADMIN_ACTION_PERMISSIONS.size());
+        for (String page : ADMIN_PAGES) {
+            if (!"permissions".equals(page)) {
+                permissions.add(page);
+            }
+        }
         permissions.addAll(ADMIN_ACTION_PERMISSIONS);
         return List.copyOf(new LinkedHashSet<>(permissions));
     }
 
     private static boolean containsBugPermission(List<String> permissions) {
-        return permissions != null && permissions.stream().anyMatch(BUG_PERMISSION_KEYS::contains);
+        if (permissions == null || permissions.isEmpty()) {
+            return false;
+        }
+        for (String permission : permissions) {
+            if (BUG_PERMISSION_KEYS.contains(permission)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private String normalizePermission(String permission) {

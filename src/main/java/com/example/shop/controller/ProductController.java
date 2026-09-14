@@ -23,9 +23,9 @@ import org.springframework.web.bind.annotation.*;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.Valid;
 import java.math.BigDecimal;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/products")
@@ -171,9 +171,14 @@ public class ProductController {
     }
 
     private List<ProductPublicListItemResponse> toPublicListItems(List<Product> products) {
-        return products == null ? List.of() : products.stream()
-                .map(ProductPublicListItemResponse::from)
-                .collect(Collectors.toList());
+        if (products == null || products.isEmpty()) {
+            return List.of();
+        }
+        List<ProductPublicListItemResponse> responses = new ArrayList<>(products.size());
+        for (Product product : products) {
+            responses.add(ProductPublicListItemResponse.from(product));
+        }
+        return responses;
     }
 
     @PostMapping

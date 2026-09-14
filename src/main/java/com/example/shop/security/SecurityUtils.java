@@ -2,6 +2,7 @@ package com.example.shop.security;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Objects;
@@ -18,13 +19,27 @@ public final class SecurityUtils {
     }
 
     public static boolean isAdmin(UserDetailsImpl user) {
-        return user != null && user.getAuthorities().stream()
-                .anyMatch(authority -> "ROLE_ADMIN".equals(authority.getAuthority()));
+        if (user == null) {
+            return false;
+        }
+        for (GrantedAuthority authority : user.getAuthorities()) {
+            if ("ROLE_ADMIN".equals(authority.getAuthority())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static boolean isSuperAdmin(UserDetailsImpl user) {
-        return user != null && user.getAuthorities().stream()
-                .anyMatch(authority -> "ROLE_SUPER_ADMIN".equals(authority.getAuthority()));
+        if (user == null) {
+            return false;
+        }
+        for (GrantedAuthority authority : user.getAuthorities()) {
+            if ("ROLE_SUPER_ADMIN".equals(authority.getAuthority())) {
+                return true;
+            }
+        }
+        return false;
     }
 
     public static void assertSelfOrAdmin(Authentication authentication, Long userId) {

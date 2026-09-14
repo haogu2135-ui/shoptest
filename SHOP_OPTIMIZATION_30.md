@@ -2012,3 +2012,98 @@ accordance with the repository resource-safety instructions.
 1441. Skip announcement copy normalization for empty text.
 1442. Skip URL lowercase allocation when no percent escapes exist.
 1443. Cache the parsed URI host during safe-link validation.
+
+1444. Return the immutable empty address response list for empty address input.
+1445. Pre-size user-address response storage from the source count.
+1446. Convert user addresses with direct indexed-free iteration.
+1447. Return the immutable empty category response list for empty category input.
+1448. Pre-size category response storage from the source count.
+1449. Convert categories with direct iteration instead of stream intermediates.
+1450. Return the immutable empty notification response list for empty input.
+1451. Pre-size notification response storage from the notification count.
+1452. Convert notifications with a direct response-building loop.
+1453. Return the immutable empty product response list for null or empty input.
+1454. Pre-size public product response storage from the product count.
+1455. Convert public products with direct iteration.
+1456. Return the immutable empty pet-gallery response list for empty photo input.
+1457. Pre-size pet-gallery response storage from the photo count.
+1458. Convert pet-gallery photos with direct iteration.
+1459. Return an empty pet-profile response immediately when no profiles exist.
+1460. Pre-size pet-profile response storage from the profile count.
+1461. Convert pet profiles with a direct response-building loop.
+1462. Return the immutable empty payment-channel list before filtering absent configuration.
+1463. Pre-size available payment-channel storage from enabled channels.
+1464. Filter available payment channels with direct iteration.
+1465. Route stored-payment list conversion through the shared customer response helper.
+1466. Return the immutable empty customer-payment response list for empty input.
+1467. Pre-size customer-payment response storage from the payment count.
+1468. Convert customer payments with direct iteration.
+1469. Resolve configured payment currency with explicit null and blank checks.
+
+1470. Return the immutable empty active-coupon response list when no coupons exist.
+1471. Pre-size active-coupon response storage from the coupon count.
+1472. Convert active coupons with direct iteration.
+1473. Return the immutable empty user-coupon response list for empty results.
+1474. Pre-size user-coupon response storage from the coupon count.
+1475. Convert user coupons with direct iteration.
+1476. Return the immutable empty available-coupon response list for empty results.
+1477. Pre-size available-coupon response storage from the coupon count.
+1478. Convert available coupons with direct iteration.
+1479. Accumulate coupon-quote subtotal through direct BigDecimal iteration.
+1480. Cache the scaled coupon-quote subtotal for all discount calculations.
+1481. Copy available coupons once into a mutable list for sorting.
+1482. Sort the mutable coupon list in place without a stream result.
+1483. Select the first positive coupon discount with a direct early-exit loop.
+1484. Pre-size coupon-quote response storage from the available coupon count.
+1485. Convert coupon-quote entries with direct iteration.
+1486. Pre-size recipient membership storage while filtering invalid IDs directly.
+1487. Validate grant recipients with direct membership scanning.
+1488. Build bounded invalid-recipient summaries with one StringBuilder.
+
+1489. Return the immutable empty public-campaign list when conversion yields no responses.
+1490. Pre-size visible seckill campaign storage from converted responses.
+1491. Filter visible seckill campaigns through direct iteration.
+1492. Pre-size the seckill product-ID validation set from request items.
+1493. Pre-size campaign-ID output and membership storage from campaign input.
+1494. Scan campaigns directly while retaining unique positive IDs.
+1495. Pre-size the campaign-item grouping map from campaign IDs.
+1496. Cache the fetched campaign-item list before grouping it.
+1497. Group campaign items with direct iteration and lazy per-campaign buckets.
+1498. Collect product IDs with direct nested iteration over grouped items.
+1499. Deduplicate seckill product IDs with insertion-order membership storage.
+1500. Pre-size seckill campaign response storage from the campaign count.
+1501. Convert seckill campaigns with direct iteration.
+1502. Pre-size the seckill product map from requested product IDs.
+1503. Populate the seckill product map with direct iteration.
+1504. Return an immutable empty seckill-item list before item conversion.
+1505. Pre-size and populate seckill-item responses directly.
+
+1506. Resolve read permission paths with a direct entry scan.
+1507. Resolve write permission paths with a direct entry scan.
+1508. Pre-size the initial role-permission batch argument list.
+1509. Populate initial role-permission arguments with direct iteration.
+1510. Pre-size the missing-permission list from sanitized permissions.
+1511. Find missing role permissions with direct membership checks.
+1512. Pre-size the missing role-permission batch argument list.
+1513. Populate missing role-permission arguments with direct iteration.
+1514. Pre-size active-role membership storage from database rows.
+1515. Normalize and deduplicate active role codes in one direct scan.
+1516. Cache existing role-permission rows before building the lookup map.
+1517. Pre-size the existing-permissions-by-role map from fetched rows.
+1518. Pre-size the all-role missing-permission batch from role and permission counts.
+1519. Materialize normalized role codes once from insertion-order membership storage.
+1520. Pre-size raw permission membership storage from the source list.
+1521. Pre-size sanitized permission output from the source list.
+1522. Build default admin permissions with capacity planning and direct page scanning.
+1523. Check bug permissions with a direct early-exit loop.
+
+1524. Scan admin authorities directly without an any-match stream.
+1525. Scan super-admin authorities directly without an any-match stream.
+1526. Read a product status once during public-product classification.
+1527. Reject null product-status input before trimming.
+1528. Reuse an incoming pushback reader in CSV record parsing.
+1529. Scan CSV special characters once while deciding whether quoting is needed.
+1530. Skip CSV quote replacement when the field contains no quote.
+1531. Scan mapped handlers directly when checking for a missing controller route.
+1532. Match request patterns directly without a temporary deduplicating set.
+1533. Scan allowed request methods directly without a stream predicate.

@@ -12,22 +12,30 @@ import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.function.Function;
 
 @RestController
 @RequestMapping("/pet-profiles")
 @RequiredArgsConstructor
 public class PetProfileController {
+    private static final Function<PetProfile, PetProfileResponse> PROFILE_RESPONSE_FACTORY = PetProfileResponse::from;
+
     private final PetProfileService petProfileService;
 
     @GetMapping
     public ResponseEntity<List<PetProfileResponse>> mine(Authentication authentication) {
         UserDetailsImpl userDetails = SecurityUtils.requireUser(authentication);
-        List<PetProfileResponse> responses = petProfileService.findByUserId(userDetails.getId()).stream()
-                .map(PetProfileResponse::from)
-                .collect(Collectors.toList());
+        List<PetProfile> profiles = petProfileService.findByUserId(userDetails.getId());
+        if (profiles.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+        List<PetProfileResponse> responses = new ArrayList<>(profiles.size());
+        for (PetProfile profile : profiles) {
+            responses.add(PROFILE_RESPONSE_FACTORY.apply(profile));
+        }
         return ResponseEntity.ok(responses);
     }
 

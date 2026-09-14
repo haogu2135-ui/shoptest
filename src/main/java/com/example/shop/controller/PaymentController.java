@@ -30,10 +30,10 @@ import org.springframework.web.server.ResponseStatusException;
 
 import javax.validation.Valid;
 import javax.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping({"/payments", "/payment"})
@@ -54,9 +54,16 @@ public class PaymentController {
 
     @GetMapping("/channels")
     public List<PaymentChannelResponse> channels(HttpServletRequest request) {
-        List<PaymentChannelConfig.Channel> channels = paymentChannelConfig.enabledChannels().stream()
-                .filter(paymentService::isChannelAvailableForCheckout)
-                .collect(Collectors.toList());
+        List<PaymentChannelConfig.Channel> enabledChannels = paymentChannelConfig.enabledChannels();
+        if (enabledChannels.isEmpty()) {
+            return List.of();
+        }
+        List<PaymentChannelConfig.Channel> channels = new ArrayList<>(enabledChannels.size());
+        for (PaymentChannelConfig.Channel channel : enabledChannels) {
+            if (paymentService.isChannelAvailableForCheckout(channel)) {
+                channels.add(channel);
+            }
+        }
         return paymentChannelRecommendationService.buildChannelResponses(channels, request);
     }
 
@@ -292,9 +299,7 @@ public class PaymentController {
                                                                             HttpServletRequest request) {
         GuestOrderAccessRequest access = requireGuestAccessRequest(body);
         assertCanSeeGuestOrder(orderId, access.getGuestEmail(), access.getOrderNo(), access.getGuestAccessToken(), request);
-        return ResponseEntity.ok(paymentService.findStoredByOrderId(orderId).stream()
-                .map(this::customerPaymentResponse)
-                .collect(Collectors.toList()));
+        return ResponseEntity.ok(customerPaymentResponses(paymentService.findStoredByOrderId(orderId)));
     }
 
     @GetMapping("/order/{orderId}/latest")
@@ -463,18 +468,30 @@ public class PaymentController {
     }
 
     private List<PaymentCustomerResponse> customerPaymentResponses(List<Payment> payments) {
-        return payments.stream().map(this::customerPaymentResponse).collect(Collectors.toList());
+        if (payments == null || payments.isEmpty()) {
+            return List.of();
+        }
+        List<PaymentCustomerResponse> responses = new ArrayList<>(payments.size());
+        for (Payment payment : payments) {
+            responses.add(customerPaymentResponse(payment));
+        }
+        return responses;
     }
 
     private String resolvePaymentCurrency(Payment payment) {
         if (payment == null) {
             return paymentChannelConfig.getDefaultCurrency();
         }
-        return paymentChannelConfig.findConfigured(payment.getChannel())
-                .map(PaymentChannelConfig.Channel::getCurrency)
-                .filter(Objects::nonNull)
-                .filter(currency -> !currency.trim().isEmpty())
-                .orElse(paymentChannelConfig.getDefaultCurrency());
+        PaymentChannelConfig.Channel channel = paymentChannelConfig.findConfigured(payment.getChannel()).orElse(null);
+        if (channel == null) {
+            return paymentChannelConfig.getDefaultCurrency();
+        }
+        String currency = channel.getCurrency();
+        if (currency == null) {
+            return paymentChannelConfig.getDefaultCurrency();
+        }
+        String normalizedCurrency = currency.trim();
+        return normalizedCurrency.isEmpty() ? paymentChannelConfig.getDefaultCurrency() : normalizedCurrency;
     }
 
     private String reasonOf(ResponseStatusException e) {

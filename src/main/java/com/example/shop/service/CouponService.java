@@ -25,6 +25,7 @@ import org.springframework.transaction.support.TransactionTemplate;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -88,9 +89,15 @@ public class CouponService {
     }
 
     public List<CouponPublicResponse> findPublicActiveResponses() {
-        return findPublicActive().stream()
-                .map(CouponPublicResponse::from)
-                .collect(Collectors.toList());
+        List<Coupon> coupons = findPublicActive();
+        if (coupons == null || coupons.isEmpty()) {
+            return List.of();
+        }
+        List<CouponPublicResponse> responses = new ArrayList<>(coupons.size());
+        for (Coupon coupon : coupons) {
+            responses.add(CouponPublicResponse.from(coupon));
+        }
+        return responses;
     }
 
     public CouponAdminSummaryResponse adminSummary() {
@@ -145,9 +152,15 @@ public class CouponService {
     }
 
     public List<UserCouponResponse> findUserCouponResponses(Long userId) {
-        return findUserCoupons(userId).stream()
-                .map(UserCouponResponse::from)
-                .collect(Collectors.toList());
+        List<UserCoupon> coupons = findUserCoupons(userId);
+        if (coupons == null || coupons.isEmpty()) {
+            return List.of();
+        }
+        List<UserCouponResponse> responses = new ArrayList<>(coupons.size());
+        for (UserCoupon coupon : coupons) {
+            responses.add(UserCouponResponse.from(coupon));
+        }
+        return responses;
     }
 
     public List<UserCoupon> findAvailableUserCoupons(Long userId) {
@@ -157,9 +170,15 @@ public class CouponService {
     }
 
     public List<UserCouponResponse> findAvailableUserCouponResponses(Long userId) {
-        return findAvailableUserCoupons(userId).stream()
-                .map(UserCouponResponse::from)
-                .collect(Collectors.toList());
+        List<UserCoupon> coupons = findAvailableUserCoupons(userId);
+        if (coupons == null || coupons.isEmpty()) {
+            return List.of();
+        }
+        List<UserCouponResponse> responses = new ArrayList<>(coupons.size());
+        for (UserCoupon coupon : coupons) {
+            responses.add(UserCouponResponse.from(coupon));
+        }
+        return responses;
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -306,36 +325,44 @@ public class CouponService {
     public CouponQuoteResponse quote(Long userId, List<CartItem> cartItems, Long userCouponId) {
         requirePositiveId(userId, "User");
         List<CartItem> safeItems = cartItems == null ? List.of() : cartItems;
-        BigDecimal subtotal = safeItems.stream()
-                .map(this::calculateLineAmount)
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .setScale(2, RoundingMode.HALF_UP);
-        List<UserCoupon> available = findAvailableUserCoupons(userId).stream()
-                .sorted(Comparator
-                        .comparing((UserCoupon userCoupon) -> calculateDiscount(userCoupon, subtotal)).reversed()
-                        .thenComparing(UserCoupon::getEndAt, Comparator.nullsLast(Comparator.naturalOrder()))
-                        .thenComparing(UserCoupon::getId, Comparator.nullsLast(Comparator.reverseOrder())))
-                .collect(Collectors.toList());
+        BigDecimal subtotal = BigDecimal.ZERO;
+        for (CartItem item : safeItems) {
+            subtotal = subtotal.add(calculateLineAmount(item));
+        }
+        BigDecimal quoteSubtotal = subtotal.setScale(2, RoundingMode.HALF_UP);
+        List<UserCoupon> availableCoupons = findAvailableUserCoupons(userId);
+        List<UserCoupon> available = availableCoupons == null
+                ? new ArrayList<>()
+                : new ArrayList<>(availableCoupons);
+        available.sort(Comparator
+                .comparing((UserCoupon userCoupon) -> calculateDiscount(userCoupon, quoteSubtotal)).reversed()
+                .thenComparing(UserCoupon::getEndAt, Comparator.nullsLast(Comparator.naturalOrder()))
+                .thenComparing(UserCoupon::getId, Comparator.nullsLast(Comparator.reverseOrder())));
         BigDecimal discount = BigDecimal.ZERO;
         Long selectedUserCouponId = userCouponId;
         if (userCouponId != null) {
             UserCoupon selected = userCouponMapper.findByIdAndUserId(userCouponId, userId);
-            validateUsable(selected, subtotal);
-            discount = calculateDiscount(selected, subtotal);
+            validateUsable(selected, quoteSubtotal);
+            discount = calculateDiscount(selected, quoteSubtotal);
         } else if (!available.isEmpty()) {
-            UserCoupon bestCoupon = available.stream()
-                    .filter(userCoupon -> calculateDiscount(userCoupon, subtotal).compareTo(BigDecimal.ZERO) > 0)
-                    .findFirst()
-                    .orElse(null);
+            UserCoupon bestCoupon = null;
+            for (UserCoupon candidate : available) {
+                BigDecimal candidateDiscount = calculateDiscount(candidate, quoteSubtotal);
+                if (candidateDiscount.compareTo(BigDecimal.ZERO) > 0) {
+                    bestCoupon = candidate;
+                    break;
+                }
+            }
             if (bestCoupon != null) {
                 selectedUserCouponId = bestCoupon.getId();
-                discount = calculateDiscount(bestCoupon, subtotal);
+                discount = calculateDiscount(bestCoupon, quoteSubtotal);
             }
         }
-        List<UserCouponResponse> availableResponses = available.stream()
-                .map(UserCouponResponse::from)
-                .collect(Collectors.toList());
-        return new CouponQuoteResponse(subtotal, discount, subtotal.subtract(discount).max(BigDecimal.ZERO), selectedUserCouponId, availableResponses);
+        List<UserCouponResponse> availableResponses = new ArrayList<>(available.size());
+        for (UserCoupon coupon : available) {
+            availableResponses.add(UserCouponResponse.from(coupon));
+        }
+        return new CouponQuoteResponse(quoteSubtotal, discount, quoteSubtotal.subtract(discount).max(BigDecimal.ZERO), selectedUserCouponId, availableResponses);
     }
 
     @Transactional(rollbackFor = Exception.class)
@@ -543,9 +570,12 @@ public class CouponService {
         if (userIds.size() > maxUsers) {
             throw new IllegalArgumentException("Too many coupon recipients");
         }
-        LinkedHashSet<Long> uniqueIds = userIds.stream()
-                .filter(id -> id != null && id > 0)
-                .collect(Collectors.toCollection(LinkedHashSet::new));
+        LinkedHashSet<Long> uniqueIds = new LinkedHashSet<>(userIds.size());
+        for (Long userId : userIds) {
+            if (userId != null && userId > 0) {
+                uniqueIds.add(userId);
+            }
+        }
         if (uniqueIds.isEmpty()) {
             throw new IllegalArgumentException("User ids are required");
         }
@@ -554,16 +584,24 @@ public class CouponService {
 
     private void validateGrantRecipientsExist(List<Long> userIds) {
         Set<Long> existingIds = new LinkedHashSet<>(userMapper.findExistingIds(userIds));
-        List<Long> invalidUserIds = userIds.stream()
-                .filter(id -> !existingIds.contains(id))
-                .collect(Collectors.toList());
+        List<Long> invalidUserIds = new ArrayList<>();
+        for (Long userId : userIds) {
+            if (!existingIds.contains(userId)) {
+                invalidUserIds.add(userId);
+            }
+        }
         if (invalidUserIds.isEmpty()) {
             return;
         }
-        String invalidSummary = invalidUserIds.stream()
-                .limit(INVALID_GRANT_USER_ID_MESSAGE_LIMIT)
-                .map(String::valueOf)
-                .collect(Collectors.joining(", "));
+        StringBuilder invalidSummaryBuilder = new StringBuilder();
+        int invalidLimit = Math.min(INVALID_GRANT_USER_ID_MESSAGE_LIMIT, invalidUserIds.size());
+        for (int index = 0; index < invalidLimit; index++) {
+            if (index > 0) {
+                invalidSummaryBuilder.append(", ");
+            }
+            invalidSummaryBuilder.append(invalidUserIds.get(index));
+        }
+        String invalidSummary = invalidSummaryBuilder.toString();
         if (invalidUserIds.size() > INVALID_GRANT_USER_ID_MESSAGE_LIMIT) {
             invalidSummary += ", ...";
         }

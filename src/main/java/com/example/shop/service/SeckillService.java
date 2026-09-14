@@ -35,6 +35,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
@@ -107,11 +108,18 @@ public class SeckillService {
     @Transactional(readOnly = true)
     public List<SeckillCampaignResponse> findPublicCampaigns() {
         LocalDateTime now = LocalDateTime.now();
-        return toResponses(campaignRepository.findByStatus("PUBLISHED", PageRequest.of(0, publicCampaignLimit(),
-                        Sort.by(Sort.Direction.ASC, "startAt", "id"))), true, now)
-                .stream()
-                .filter(response -> response != null && response.getItems() != null && !response.getItems().isEmpty())
-                .collect(Collectors.toList());
+        List<SeckillCampaignResponse> responses = toResponses(campaignRepository.findByStatus(
+                "PUBLISHED", PageRequest.of(0, publicCampaignLimit(), Sort.by(Sort.Direction.ASC, "startAt", "id"))), true, now);
+        if (responses.isEmpty()) {
+            return List.of();
+        }
+        List<SeckillCampaignResponse> visible = new ArrayList<>(responses.size());
+        for (SeckillCampaignResponse response : responses) {
+            if (response != null && response.getItems() != null && !response.getItems().isEmpty()) {
+                visible.add(response);
+            }
+        }
+        return visible.isEmpty() ? List.of() : visible;
     }
 
     @Transactional(readOnly = true)
@@ -308,7 +316,7 @@ public class SeckillService {
         if (request.getItems() == null || request.getItems().isEmpty()) {
             throw new IllegalArgumentException("At least one seckill item is required");
         }
-        Set<Long> productIds = new HashSet<>();
+        Set<Long> productIds = new HashSet<>(request.getItems().size());
         for (SeckillItemWriteRequest item : request.getItems()) {
             if (item == null || item.getProductId() == null || !productIds.add(item.getProductId())) {
                 throw new IllegalArgumentException("Seckill products must be unique");
@@ -419,36 +427,48 @@ public class SeckillService {
             return List.of();
         }
 
-        List<Long> campaignIds = campaigns.stream()
-                .map(SeckillCampaign::getId)
-                .filter(id -> id != null && id > 0)
-                .distinct()
-                .collect(Collectors.toList());
+        List<Long> campaignIds = new ArrayList<>(campaigns.size());
+        Set<Long> seenCampaignIds = new LinkedHashSet<>(campaigns.size());
+        for (SeckillCampaign campaign : campaigns) {
+            if (campaign != null && campaign.getId() != null && campaign.getId() > 0
+                    && seenCampaignIds.add(campaign.getId())) {
+                campaignIds.add(campaign.getId());
+            }
+        }
         if (campaignIds.isEmpty()) {
             return List.of();
         }
 
-        Map<Long, List<SeckillItem>> itemsByCampaign = itemRepository
-                .findByCampaignIdInOrderByCampaignIdAscIdAsc(campaignIds)
-                .stream()
-                .collect(Collectors.groupingBy(SeckillItem::getCampaignId,
-                        LinkedHashMap::new,
-                        Collectors.toList()));
-        List<Long> productIds = itemsByCampaign.values().stream()
-                .flatMap(List::stream)
-                .map(SeckillItem::getProductId)
-                .filter(id -> id != null && id > 0)
-                .distinct()
-                .collect(Collectors.toList());
+        Map<Long, List<SeckillItem>> itemsByCampaign = new LinkedHashMap<>(campaignIds.size());
+        List<SeckillItem> campaignItems = itemRepository.findByCampaignIdInOrderByCampaignIdAscIdAsc(campaignIds);
+        for (SeckillItem item : campaignItems) {
+            if (item == null || item.getCampaignId() == null) {
+                continue;
+            }
+            itemsByCampaign.computeIfAbsent(item.getCampaignId(), ignored -> new ArrayList<>()).add(item);
+        }
+        List<Long> productIds = new ArrayList<>();
+        Set<Long> seenProductIds = new LinkedHashSet<>();
+        for (List<SeckillItem> items : itemsByCampaign.values()) {
+            for (SeckillItem item : items) {
+                Long productId = item.getProductId();
+                if (productId != null && productId > 0 && seenProductIds.add(productId)) {
+                    productIds.add(productId);
+                }
+            }
+        }
         Map<Long, Product> productsById = loadProductsByIds(productIds, publicOnly);
-        return campaigns.stream()
-                .filter(campaign -> campaign != null && campaign.getId() != null)
-                .map(campaign -> toResponse(campaign, itemsByCampaign.get(campaign.getId()), productsById, now))
-                .collect(Collectors.toList());
+        List<SeckillCampaignResponse> responses = new ArrayList<>(campaigns.size());
+        for (SeckillCampaign campaign : campaigns) {
+            if (campaign != null && campaign.getId() != null) {
+                responses.add(toResponse(campaign, itemsByCampaign.get(campaign.getId()), productsById, now));
+            }
+        }
+        return responses;
     }
 
     private Map<Long, Product> loadProductsByIds(List<Long> productIds, boolean publicOnly) {
-        Map<Long, Product> productsById = new LinkedHashMap<>();
+        Map<Long, Product> productsById = new LinkedHashMap<>(productIds == null ? 0 : productIds.size());
         if (productIds == null || productIds.isEmpty()) {
             return productsById;
         }
@@ -458,9 +478,11 @@ public class SeckillService {
                     ? productService.findPublicByIds(batch)
                     : productService.findByIds(batch);
             if (products != null) {
-                products.stream()
-                        .filter(product -> product != null && product.getId() != null)
-                        .forEach(product -> productsById.putIfAbsent(product.getId(), product));
+                for (Product product : products) {
+                    if (product != null && product.getId() != null) {
+                        productsById.putIfAbsent(product.getId(), product);
+                    }
+                }
             }
         }
         return productsById;
@@ -479,13 +501,17 @@ public class SeckillService {
         response.setState(campaignState(campaign, now));
         response.setStartAt(campaign.getStartAt());
         response.setEndAt(campaign.getEndAt());
-        List<SeckillItemResponse> itemResponses = (items == null ? List.<SeckillItem>of() : items).stream()
-                .map(item -> {
-                    Product product = productsById.get(item.getProductId());
-                    return product == null ? null : SeckillItemResponse.from(item, product);
-                })
-                .filter(item -> item != null)
-                .collect(Collectors.toList());
+        if (items == null || items.isEmpty()) {
+            response.setItems(List.of());
+            return response;
+        }
+        List<SeckillItemResponse> itemResponses = new ArrayList<>(items.size());
+        for (SeckillItem item : items) {
+            Product product = productsById.get(item.getProductId());
+            if (product != null) {
+                itemResponses.add(SeckillItemResponse.from(item, product));
+            }
+        }
         response.setItems(itemResponses);
         return response;
     }

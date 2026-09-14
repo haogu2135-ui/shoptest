@@ -15,8 +15,8 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.bind.annotation.*;
 
 import javax.servlet.http.HttpServletRequest;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/categories")
@@ -158,8 +158,13 @@ public class CategoryController {
     }
 
     private List<CategoryPublicResponse> publicCategories(List<Category> categories) {
-        return categories.stream()
-                .map(CategoryPublicResponse::from)
-                .collect(Collectors.toList());
+        if (categories == null || categories.isEmpty()) {
+            return List.of();
+        }
+        List<CategoryPublicResponse> responses = new ArrayList<>(categories.size());
+        for (Category category : categories) {
+            responses.add(CategoryPublicResponse.from(category));
+        }
+        return responses;
     }
 }

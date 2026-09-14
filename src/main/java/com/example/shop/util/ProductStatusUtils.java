@@ -12,11 +12,18 @@ public final class ProductStatusUtils {
     }
 
     public static boolean isPublicProduct(Product product) {
-        return product != null && (product.getStatus() == null || "ACTIVE".equalsIgnoreCase(product.getStatus()));
+        if (product == null) {
+            return false;
+        }
+        String status = product.getStatus();
+        return status == null || "ACTIVE".equalsIgnoreCase(status);
     }
 
     public static String normalizeProductStatus(String status) {
-        String normalizedInput = status == null ? "" : status.trim();
+        if (status == null) {
+            return null;
+        }
+        String normalizedInput = status.trim();
         if (normalizedInput.isEmpty()) {
             return null;
         }

@@ -22,14 +22,17 @@ import org.springframework.web.server.ResponseStatusException;
 import org.springframework.http.HttpStatus;
 
 import javax.validation.Valid;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
+import java.util.function.Function;
 
 @RestController
 @RequestMapping("/addresses")
 @RequiredArgsConstructor
 public class UserAddressController {
+    private static final Function<UserAddress, UserAddressResponse> ADDRESS_RESPONSE_FACTORY = UserAddressResponse::from;
+
     private final UserAddressService userAddressService;
 
     @GetMapping
@@ -136,8 +139,13 @@ public class UserAddressController {
     }
 
     private List<UserAddressResponse> toResponses(List<UserAddress> addresses) {
-        return addresses.stream()
-                .map(UserAddressResponse::from)
-                .collect(Collectors.toList());
+        if (addresses == null || addresses.isEmpty()) {
+            return List.of();
+        }
+        List<UserAddressResponse> responses = new ArrayList<>(addresses.size());
+        for (UserAddress address : addresses) {
+            responses.add(ADDRESS_RESPONSE_FACTORY.apply(address));
+        }
+        return responses;
     }
 }
