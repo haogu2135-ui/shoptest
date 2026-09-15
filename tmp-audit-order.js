@@ -2,7 +2,7 @@ const fs = require('fs');
 const path = require('path');
 const { chromium } = require('./frontend/node_modules/playwright');
 
-const outDir = path.join(__dirname, 'artifacts/ui-opt/out-order');
+const outDir = path.join(__dirname, 'app-ui-audit-20260608T0425-admin-orders-codex');
 const baseUrl = 'http://127.0.0.1:4200';
 
 const viewports = [
